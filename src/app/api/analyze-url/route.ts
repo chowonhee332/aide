@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { Browser } from 'puppeteer'
 import { analyzeUrlToDesignMd } from '@/lib/gemini'
+import { isSafeUrl } from '@/lib/utils'
 
 export const maxDuration = 120
 
@@ -17,6 +18,10 @@ export async function POST(req: NextRequest) {
     let normalizedUrl = url.trim()
     if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
       normalizedUrl = `https://${normalizedUrl}`
+    }
+
+    if (!isSafeUrl(normalizedUrl)) {
+      return NextResponse.json({ error: '허용되지 않는 URL입니다.' }, { status: 400 })
     }
 
     const puppeteer = await import('puppeteer')

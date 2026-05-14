@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { Browser } from 'puppeteer'
+import { isSafeUrl } from '@/lib/utils'
 
 export const maxDuration = 60
 
@@ -13,6 +14,10 @@ export async function POST(req: NextRequest) {
 
     let normalized = url.trim()
     if (!/^https?:\/\//i.test(normalized)) normalized = 'https://' + normalized
+
+    if (!isSafeUrl(normalized)) {
+      return NextResponse.json({ error: '허용되지 않는 URL입니다.' }, { status: 400 })
+    }
 
     const puppeteer = await import('puppeteer')
     browser = await puppeteer.default.launch({
