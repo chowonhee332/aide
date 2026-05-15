@@ -3,20 +3,100 @@ name: Airbnb Design System
 version: "1.0.0"
 tokens:
   colors:
-    primary: "#ff385c"  # Rausch
+    primary: "#ff385c"
     canvas: "#ffffff"
     ink: "#222222"
     inkMuted: "#6a6a6a"
     hairline: "#dddddd"
     hairlineSoft: "#ebebeb"
+    surfaceSoft: "#f7f7f7"
   spacing:
-    base: 8
-    section: 64
+    xxs: "2px"
+    xs: "4px"
+    sm: "8px"
+    md: "12px"
+    base: "16px"
+    lg: "24px"
+    xl: "32px"
+    xxl: "48px"
+    section: "64px"
+  typography:
+    displayXl:
+      fontSize: "28px"
+      fontWeight: 700
+      lineHeight: 1.43
+    displayLg:
+      fontSize: "22px"
+      fontWeight: 500
+      lineHeight: 1.18
+    titleMd:
+      fontSize: "16px"
+      fontWeight: 600
+      lineHeight: 1.25
+    bodyMd:
+      fontSize: "16px"
+      fontWeight: 400
+      lineHeight: 1.5
+    bodySm:
+      fontSize: "14px"
+      fontWeight: 400
+      lineHeight: 1.43
+    caption:
+      fontSize: "13px"
+      fontWeight: 400
+      lineHeight: 1.23
   rounded:
-    sm: 8
-    md: 14
-    full: 999
+    sm: "8px"
+    md: "14px"
+    xl: "32px"
+    full: "999px"
 ---
+
+## CSS Implementation
+
+Copy this `:root` block verbatim — Gemini must not alter these values:
+
+```css
+:root {
+  /* Colors */
+  --color-primary: #ff385c;
+  --color-canvas: #ffffff;
+  --color-ink: #222222;
+  --color-ink-muted: #6a6a6a;
+  --color-hairline: #dddddd;
+  --color-surface-soft: #f7f7f7;
+
+  /* Spacing — 4px base, 2px micro-step */
+  --spacing-xxs: 2px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-base: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+  --spacing-section: 64px;
+
+  /* Border radius */
+  --rounded-sm: 8px;
+  --rounded-md: 14px;
+  --rounded-xl: 32px;
+  --rounded-full: 999px;
+
+  /* Typography — Airbnb Cereal VF */
+  --font-sans: 'Airbnb Cereal VF', Circular, -apple-system, system-ui, sans-serif;
+  --text-display-xl: 28px;
+  --text-display-lg: 22px;
+  --text-title: 16px;
+  --text-body: 16px;
+  --text-body-sm: 14px;
+  --text-caption: 13px;
+}
+```
+
+**Spacing rules:** section padding = `var(--spacing-section)` (64px) · card interior = `var(--spacing-lg)` (24px) · card meta block = `var(--spacing-base)` (16px) · card grid gap = `var(--spacing-base)` (16px) · caption gutters = `var(--spacing-sm)` (8px).
+
+**Button-primary spec:** height 48px · padding `var(--spacing-sm) var(--spacing-lg)` (8px 24px) · radius `var(--rounded-sm)` · bg `var(--color-primary)` · color `#ffffff` · font-weight 500.
 
 ## Overview
 

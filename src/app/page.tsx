@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowUp, Sparkles, MessageSquare, Layers, Sliders, FileText, Upload, X,
   ChevronLeft, ChevronRight, Check, ChevronDown, Zap, Palette, MousePointer2, Share2,
-  Clock, Trash2, ExternalLink, Link2,
+  Clock, Trash2, ExternalLink, Link2, KeyRound,
 } from 'lucide-react'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import Grainient from '@/components/Grainient'
@@ -480,6 +480,51 @@ function extractColorsFromImage(dataUrl: string): Promise<string[]> {
 
 export default function Home() {
   const router = useRouter()
+  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
+  const [apiKeyInput, setApiKeyInput] = useState('')
+  const [apiKeyValidating, setApiKeyValidating] = useState(false)
+  const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
+  const [apiKeyError, setApiKeyError] = useState('')
+
+  const openApiKeyModal = () => {
+    setApiKeyInput(localStorage.getItem('aide_gemini_api_key') ?? '')
+    setApiKeyStatus('idle')
+    setApiKeyError('')
+    setApiKeyModalOpen(true)
+  }
+
+  const handleValidateAndSave = async () => {
+    const trimmed = apiKeyInput.trim()
+    if (!trimmed) {
+      setApiKeyError('API Key를 입력해주세요.')
+      return
+    }
+    setApiKeyValidating(true)
+    setApiKeyStatus('idle')
+    setApiKeyError('')
+    try {
+      const res = await fetch('/api/validate-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: trimmed }),
+      })
+      const data = await res.json()
+      if (data.valid) {
+        localStorage.setItem('aide_gemini_api_key', trimmed)
+        setApiKeyStatus('valid')
+        setTimeout(() => setApiKeyModalOpen(false), 800)
+      } else {
+        setApiKeyStatus('invalid')
+        setApiKeyError(data.error ?? '유효하지 않은 API Key입니다.')
+      }
+    } catch {
+      setApiKeyStatus('invalid')
+      setApiKeyError('네트워크 오류가 발생했습니다.')
+    } finally {
+      setApiKeyValidating(false)
+    }
+  }
+
   const [historyModalOpen, setHistoryModalOpen] = useState(false)
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([])
 
@@ -511,6 +556,14 @@ export default function Home() {
   const [refCapturing, setRefCapturing] = useState(false)
   const [refError, setRefError] = useState<string | null>(null)
   const [refPreviewOpen, setRefPreviewOpen] = useState(false)
+
+  const [modelId, setModelId] = useState<string>('gemini-3.1-pro-preview')
+  const [modelDropOpen, setModelDropOpen] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('aide_model')
+    if (saved) startTransition(() => setModelId(saved))
+  }, [])
 
   const [brandPanelOpen, setBrandPanelOpen] = useState(false)
   const [brandLogo, setBrandLogo] = useState<string | null>(null)
@@ -576,9 +629,10 @@ export default function Home() {
     setUrlAnalyzing(true)
     setUrlError(null)
     try {
+      const storedKey = localStorage.getItem('aide_gemini_api_key') ?? ''
       const res = await fetch('/api/analyze-url', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(storedKey && { 'x-gemini-key': storedKey }) },
         body: JSON.stringify({ url: urlInput.trim() }),
       })
       const data = await res.json()
@@ -624,9 +678,10 @@ export default function Home() {
     setRefCapturing(true)
     setRefError(null)
     try {
+      const storedKey = localStorage.getItem('aide_gemini_api_key') ?? ''
       const res = await fetch('/api/capture-url', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(storedKey && { 'x-gemini-key': storedKey }) },
         body: JSON.stringify({ url: refPageUrlInput.trim() }),
       })
       const data = await res.json()
@@ -671,8 +726,9 @@ export default function Home() {
     } else {
       sessionStorage.removeItem('brandColors')
     }
+    sessionStorage.setItem('aide_model', modelId)
     router.push(`/studio?${params.toString()}`)
-  }, [brief, designPreset, platform, designMdContent, refPageImage, brandLogo, brandColors, router])
+  }, [brief, designPreset, platform, designMdContent, refPageImage, brandLogo, brandColors, modelId, router])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -842,6 +898,19 @@ export default function Home() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <button
+                onClick={openApiKeyModal}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: F.inkMuted, display: 'flex', alignItems: 'center',
+                  padding: '6px', borderRadius: '8px', transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = F.surface1; (e.currentTarget as HTMLButtonElement).style.color = F.ink }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = F.inkMuted }}
+                title="API Key 설정"
+              >
+                <KeyRound size={18} />
+              </button>
+              <button
                 onClick={() => setHistoryModalOpen(true)}
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
@@ -897,7 +966,7 @@ export default function Home() {
             textAlign: 'center', lineHeight: 1.6, maxWidth: '560px',
             marginBottom: '52px',
           }}>
-            Stitch transforms your ideas into designs through AI-powered iteration. Whether you&apos;re building web apps, mobile experiences, or prototypes, start here.
+            Aide turns your brief and design system into UI prototypes — generate, compare, and refine through conversation.
           </p>
 
 
@@ -1063,7 +1132,7 @@ export default function Home() {
                     }}
                   >
                     <FileText size={11} />
-                    Start with a DESIGN.md
+                    design.md
                   </button>
                 )}
 
@@ -1120,21 +1189,78 @@ export default function Home() {
                     브랜드 정보
                   </button>
                 )}
+
+
               </div>
 
-              <button
-                onClick={handleSubmit}
-                disabled={!canSubmit}
-                style={{
-                  width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: canSubmit ? 'pointer' : 'default', transition: 'all 0.2s',
-                  backgroundColor: canSubmit ? F.ink : F.surface2,
-                  color: canSubmit ? F.canvas : 'rgba(0,0,0,0.25)', border: 'none',
-                }}
-              >
-                <ArrowUp size={17} strokeWidth={2.2} />
-              </button>
+              {/* 모델 선택 드롭다운 + 전송 버튼 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, position: 'relative' }}>
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setModelDropOpen(v => !v)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '4px',
+                      padding: '0 10px 0 12px', height: '38px', borderRadius: '100px',
+                      border: 'none', backgroundColor: 'rgba(0,0,0,0.08)',
+                      color: 'rgba(0,0,0,0.55)', fontSize: '12px', fontWeight: 600,
+                      cursor: 'pointer', letterSpacing: '-0.1px', transition: 'all 0.15s',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <Zap size={11} />
+                    {modelId === 'gemini-3.1-pro-preview' ? 'Gemini 3.1 Pro' : 'Gemini 3.0 Flash'}
+                    <ChevronDown size={11} />
+                  </button>
+                  {modelDropOpen && (
+                    <div style={{
+                      position: 'absolute', bottom: 'calc(100% + 6px)', right: 0,
+                      backgroundColor: '#ffffff', border: `1px solid ${F.hairline}`,
+                      borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                      overflow: 'hidden', zIndex: 100, minWidth: '180px',
+                    }}>
+                      {([
+                        { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', desc: '고품질 · 느림' },
+                        { id: 'gemini-2.0-flash', label: 'Gemini 3.0 Flash', desc: '빠름 · 가벼움' },
+                      ] as const).map(opt => (
+                        <button
+                          key={opt.id}
+                          onClick={() => {
+                            setModelId(opt.id)
+                            localStorage.setItem('aide_model', opt.id)
+                            setModelDropOpen(false)
+                          }}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            width: '100%', padding: '10px 14px', border: 'none',
+                            backgroundColor: modelId === opt.id ? F.surface1 : '#ffffff',
+                            cursor: 'pointer', textAlign: 'left', gap: '12px',
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: F.ink, letterSpacing: '-0.13px' }}>{opt.label}</div>
+                            <div style={{ fontSize: '11px', color: F.inkMuted, marginTop: '1px' }}>{opt.desc}</div>
+                          </div>
+                          {modelId === opt.id && <Check size={13} color={F.primary} />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleSubmit}
+                  disabled={!canSubmit}
+                  style={{
+                    width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: canSubmit ? 'pointer' : 'default', transition: 'all 0.2s',
+                    backgroundColor: canSubmit ? F.ink : F.surface2,
+                    color: canSubmit ? F.canvas : 'rgba(0,0,0,0.25)', border: 'none',
+                  }}
+                >
+                  <ArrowUp size={17} strokeWidth={2.2} />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1911,6 +2037,73 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* API Key modal */}
+      {apiKeyModalOpen && (
+        <div
+          onClick={() => setApiKeyModalOpen(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: F.canvas, borderRadius: '20px', padding: '32px', width: '440px', maxWidth: 'calc(100vw - 32px)', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <KeyRound size={20} color={F.primary} />
+              <h2 style={{ fontSize: '18px', fontWeight: 700, color: F.ink, margin: 0 }}>Gemini API Key</h2>
+            </div>
+            <p style={{ fontSize: '13px', color: F.inkMuted, marginBottom: '20px', lineHeight: 1.6 }}>
+              키를 입력하면 서버 환경변수 대신 이 키로 Gemini API를 호출합니다. 브라우저 localStorage에만 저장됩니다.
+            </p>
+            <input
+              type="password"
+              value={apiKeyInput}
+              onChange={e => { setApiKeyInput(e.target.value); setApiKeyStatus('idle'); setApiKeyError('') }}
+              onKeyDown={e => { if (e.key === 'Enter') handleValidateAndSave() }}
+              placeholder="AIza..."
+              autoFocus
+              disabled={apiKeyValidating}
+              style={{
+                width: '100%', boxSizing: 'border-box', borderRadius: '10px',
+                border: `1.5px solid ${apiKeyStatus === 'valid' ? '#22c55e' : apiKeyStatus === 'invalid' ? '#ef4444' : F.hairline}`,
+                padding: '10px 14px', fontSize: '14px', color: F.ink, outline: 'none',
+                fontFamily: 'monospace', marginBottom: apiKeyError ? '8px' : '16px',
+                background: apiKeyValidating ? F.surface1 : F.canvas,
+              }}
+              onFocus={e => { if (apiKeyStatus === 'idle') e.currentTarget.style.borderColor = F.primary }}
+              onBlur={e => { if (apiKeyStatus === 'idle') e.currentTarget.style.borderColor = F.hairline }}
+            />
+            {apiKeyError && (
+              <p style={{ fontSize: '12px', color: '#ef4444', margin: '0 0 16px', lineHeight: 1.5 }}>{apiKeyError}</p>
+            )}
+            {apiKeyStatus === 'valid' && (
+              <p style={{ fontSize: '12px', color: '#22c55e', margin: '0 0 16px', lineHeight: 1.5 }}>✓ 유효한 API Key입니다. 저장 중...</p>
+            )}
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setApiKeyModalOpen(false)}
+                disabled={apiKeyValidating}
+                style={{ padding: '9px 18px', borderRadius: '10px', border: `1px solid ${F.hairline}`, background: 'none', fontSize: '14px', cursor: 'pointer', color: F.inkMuted }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleValidateAndSave}
+                disabled={apiKeyValidating || !apiKeyInput.trim()}
+                style={{
+                  padding: '9px 18px', borderRadius: '10px', border: 'none',
+                  background: apiKeyValidating || !apiKeyInput.trim() ? F.hairline : F.primary,
+                  color: apiKeyValidating || !apiKeyInput.trim() ? F.inkMuted : '#fff',
+                  fontSize: '14px', fontWeight: 600,
+                  cursor: apiKeyValidating || !apiKeyInput.trim() ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {apiKeyValidating ? '검증 중...' : '검증 후 저장'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* History modal */}
       {historyModalOpen && (

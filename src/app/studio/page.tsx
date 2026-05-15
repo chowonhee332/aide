@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Sparkles, Upload, Download, RefreshCw, ArrowLeft, Check,
   SlidersHorizontal, X, Moon, Sun, Pencil, Send, ChevronDown,
-  CornerUpLeft, CornerUpRight,
+  CornerUpLeft, CornerUpRight, Image as ImageIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import DotField from '@/components/DotField'
@@ -38,6 +38,19 @@ interface ElementStyles {
 
 // ─── Inspector script injected into generated HTML ───────────────────────────
 
+// Always injected: handles dark mode, brand color, navigation (no inspector UI)
+const BRIDGE_SCRIPT = `<script>
+(function(){
+  window.addEventListener('message',function(e){
+    if(!e.data)return;
+    var d=e.data;
+    if(d.type==='aide:dark'){document.documentElement.style.filter=d.on?'invert(1) hue-rotate(180deg)':'';}
+    if(d.type==='aide:brand'){var r=document.documentElement;r.style.setProperty('--color-primary',d.color);r.style.setProperty('--primary',d.color);}
+  });
+})();
+</script>`
+
+// Only injected in edit mode: adds inspector selection UI + style update handling
 const INSPECTOR_SCRIPT = `<script>
 (function(){
   var sel=null;
@@ -57,16 +70,20 @@ const INSPECTOR_SCRIPT = `<script>
     if(!e.data)return;
     var d=e.data;
     if(d.type==='aide:update'&&sel){sel.style[d.prop]=d.value;report(sel);}
-    if(d.type==='aide:dark'){document.documentElement.style.filter=d.on?'invert(1) hue-rotate(180deg)':'';}
-    if(d.type==='aide:brand'){var r=document.documentElement;r.style.setProperty('--color-primary',d.color);r.style.setProperty('--primary',d.color);}
     if(d.type==='aide:navigate'){sel=null;sb.style.display='none';}
   });
 })();
 </script>`
 
+function injectBridge(html: string): string {
+  if (html.includes('</body>')) return html.replace('</body>', BRIDGE_SCRIPT + '</body>')
+  return html + BRIDGE_SCRIPT
+}
+
 function injectInspector(html: string): string {
-  if (html.includes('</body>')) return html.replace('</body>', INSPECTOR_SCRIPT + '</body>')
-  return html + INSPECTOR_SCRIPT
+  const withBridge = injectBridge(html)
+  if (withBridge.includes('</body>')) return withBridge.replace('</body>', INSPECTOR_SCRIPT + '</body>')
+  return withBridge + INSPECTOR_SCRIPT
 }
 
 function rgbToHex(rgb: string): string {
@@ -125,6 +142,12 @@ export default function StudioPage() {
   const [brandColors, setBrandColors] = useState<string[]>([])
   const logoInputRef = useRef<HTMLInputElement>(null)
   const [brief, setBrief] = useState('')
+
+  const apiHeaders = useCallback((): Record<string, string> => {
+    const key = typeof window !== 'undefined' ? (localStorage.getItem('aide_gemini_api_key') ?? '') : ''
+    return { 'Content-Type': 'application/json', ...(key && { 'x-gemini-key': key }) }
+  }, [])
+
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analyzeError, setAnalyzeError] = useState('')
   const [questionnaire, setQuestionnaire] = useState<QuestionnaireResponse | null>(null)
@@ -162,6 +185,8 @@ export default function StudioPage() {
   const [selectedStyles, setSelectedStyles] = useState<ElementStyles | null>(null)
   const [tweaksOpen, setTweaksOpen] = useState(false)
   const [editMode, setEditMode] = useState(false)
+  const [creonOpen, setCreonOpen] = useState(false)
+  const [creonAsset, setCreonAsset] = useState<string | null>(null)
   const [darkMode, setDarkMode] = useState(false)
   const [brandColor, setBrandColor] = useState('#ff385c')
   const [debouncedBrandColor, setDebouncedBrandColor] = useState('#ff385c')
@@ -237,7 +262,7 @@ export default function StudioPage() {
     if (origPrimary && debouncedBrandColor.toLowerCase() !== origPrimary) {
       html = html.split(origPrimary).join(debouncedBrandColor.toLowerCase())
     }
-    return editMode ? injectInspector(html) : html
+    return editMode ? injectInspector(html) : injectBridge(html)
   }, [result, tweakSpec, activeStateId, varValues, debouncedBrandColor, editMode])
 
   // Auto-start from landing page URL params
@@ -290,7 +315,7 @@ export default function StudioPage() {
     setAnalyzeError('')
     fetch('/api/analyze', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(),
       body: JSON.stringify({ designMd: effectiveDesignMd, brief: briefParam, platform: platformParam }),
     })
       .then(res => res.json())
@@ -418,13 +443,17 @@ export default function StudioPage() {
     }
   }, [step])
 
-  // Listen for messages from iframe
+  // Listen for messages from iframe and Creon panel
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       if (!e.data) return
       if (e.data.type === 'aide:select') setSelectedStyles(e.data.styles)
       if (e.data.type === 'aide:screens') { setScreens(e.data.screens ?? []); if (e.data.screens?.[0]) setActiveScreenId(e.data.screens[0].id) }
       if (e.data.type === 'aide:screen') setActiveScreenId(e.data.id)
+      if (e.data.type === 'creon:asset') {
+        const url: string = e.data.url || e.data.dataUrl
+        if (url) setCreonAsset(url)
+      }
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
@@ -527,7 +556,7 @@ export default function StudioPage() {
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: apiHeaders(),
         body: JSON.stringify({ designMd: effectiveDesignMd, brief, platform }),
       })
       const data = await res.json()
@@ -569,13 +598,36 @@ export default function StudioPage() {
     const genId = ++generationIdRef.current
     try {
       const referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
-      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, platform }
+      const modelId = sessionStorage.getItem('aide_model') ?? undefined
+      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, platform, modelId }
       const variantStyles = [
-        '클래식/기본형: 명확한 정보 계층 구조, 규칙적인 그리드 레이아웃, 신뢰감 있고 안정적인 디자인. 카드·리스트 기반 정보 배치, 일관된 여백 리듬.',
-        '볼드/비주얼형: 대형 히어로 영역, 강렬한 색상 대비, 임팩트 있는 대형 타이포그래피. 배경 그라디언트 또는 풀블리드 이미지, 시선을 끄는 강조 요소.',
-        '미니멀/여백형: 넓은 여백, 타이포그래피 중심 레이아웃, 장식 최소화. 콘텐츠가 직접 말하게 하는 구성, 섬세한 선·그림자, 우아한 색조.',
+        `클래식/카드형 (시안 A):
+- 레이아웃: 흰색 배경에 그림자 있는 카드(box-shadow: 0 2px 8px rgba(0,0,0,0.08)) 그리드
+- 핵심 KPI: 섹션 내 52px bold, primary 색상, 아래 보조 텍스트 13px gray
+- 상단 헤더: 흰색 배경, 브랜드명 + 알림 아이콘, 아래 얇은 구분선
+- 섹션 제목: 15px, font-weight 600, #222
+- 카드 내부 패딩: 20px
+- 진행 상태 바/링: primary 색상, 배경은 primary 10% 투명도
+- 전체 분위기: 신뢰감 있고 정보가 명확하게 계층화된 클래식 앱`,
+
+        `볼드/히어로형 (시안 B):
+- 최상단 히어로 카드: primary 배경색, 흰 텍스트, 핵심 KPI 64px font-weight:800, 히어로 카드 border-radius:20px, box-shadow: 0 12px 32px rgba(0,0,0,0.15)
+- 히어로 카드 내부: KPI 숫자 압도적으로 크게 + 목표 대비 진행률 바 (흰색 배경 20% 투명도)
+- 나머지 카드: 흰색 배경, 섀도우 있는 elevated 카드
+- 섹션 제목: 17px semibold, 카드 간 간격 16px
+- 하단 탭바: 흰색 배경, 그림자 있음, 활성 아이콘 primary 색
+- 전체 분위기: 임팩트 있고 KPI가 화면을 지배하는 Bold 레이아웃`,
+
+        `미니멀/타이포형 (시안 C):
+- 배경: #fafafa 아주 연한 회색
+- 헤더: 로고/앱명 20px bold, 날짜 13px gray, 패딩 20px
+- KPI: 56px font-weight:800, color: #111, 바로 아래 단위/설명 12px gray (컬러 최소화)
+- 카드: border: 1px solid #e8e8e8, border-radius:16px, box-shadow: 0 1px 4px rgba(0,0,0,0.06), 배경 흰색
+- 섹션 간 여백: 28px, 카드 내부 패딩: 22px
+- primary 색상은 진행바·active 탭 아이콘 2-3개에만 제한 사용
+- 전체 분위기: 군더더기 없는 미니멀, 타이포그래피가 주인공`,
       ]
-      const headers = { 'Content-Type': 'application/json' }
+      const headers = apiHeaders()
 
       const saveVariantHistory = (result: GenerateResult) => {
         if (result.image) {
@@ -655,7 +707,7 @@ export default function StudioPage() {
     try {
       const res = await fetch('/api/expand', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: apiHeaders(),
         body: JSON.stringify({
           mainHtml: chosen.html,
           designMd: effectiveDesignMd,
@@ -665,6 +717,7 @@ export default function StudioPage() {
           logoDataUrl,
           brandColors: brandColors.length > 0 ? brandColors : undefined,
           platform,
+          modelId: sessionStorage.getItem('aide_model') ?? undefined,
         }),
       })
       const data = await res.json()
@@ -684,7 +737,7 @@ export default function StudioPage() {
       setZoom(isMobile ? 100 : isTablet ? 70 : 60)
       setStep(4)
 
-      const headers = { 'Content-Type': 'application/json' }
+      const headers = apiHeaders()
       const requestedHtml = data.html
       tweakRequestHtmlRef.current = requestedHtml
       setIsAnalyzingTweakA(true)
@@ -732,7 +785,7 @@ export default function StudioPage() {
     if (!questionnaire) return
     const effectiveDesignMd = DESIGN_PRESETS[designPreset].md
     const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, platform }
-    const headers = { 'Content-Type': 'application/json' }
+    const headers = apiHeaders()
     const genId = generationIdRef.current
     if (idx === 1) {
       bgFetchAbortRef.current?.abort()
@@ -769,7 +822,7 @@ export default function StudioPage() {
       const effectiveDesignMd = DESIGN_PRESETS[designPreset].md
       const res = await fetch('/api/refine', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: apiHeaders(),
         body: JSON.stringify({ html: result.html, message: userMsg, brief, designMd: effectiveDesignMd }),
       })
       const data = await res.json()
@@ -790,7 +843,7 @@ export default function StudioPage() {
       setChatMessages(prev => [...prev, { role: 'assistant', content: data.summary }])
 
       const refinedHtml = data.html
-      const headers = { 'Content-Type': 'application/json' }
+      const headers = apiHeaders()
       tweakRequestHtmlRef.current = refinedHtml
       if (activeVariant === 0) {
         setTweakSpecA(null)
@@ -1441,6 +1494,14 @@ export default function StudioPage() {
               <Pencil size={12} /> Edit
             </button>
             <button
+              onClick={() => setCreonOpen(o => !o)}
+              className="flex items-center gap-1.5 text-[13px] px-2.5 py-1 border transition-colors"
+              style={{ borderRadius: '6px', ...(creonOpen ? { backgroundColor: '#111111', color: '#ffffff', borderColor: '#111111' } : { color: '#666666', borderColor: 'rgba(0,0,0,0.09)' }) }}
+              title="Creon 에셋 패널"
+            >
+              <ImageIcon size={12} /> Creon
+            </button>
+            <button
               onClick={() => { const next = !darkMode; setDarkMode(next); sendToIframe({ type: 'aide:dark', on: next }) }}
               className="flex items-center justify-center size-7 rounded hover:bg-[#ebebeb] transition-colors"
               style={{ color: '#666666' }}
@@ -1611,6 +1672,42 @@ export default function StudioPage() {
 
           {/* Right: properties panel (edit mode only) */}
           {editMode && <PropertiesPanel styles={selectedStyles} onUpdate={handleStyleUpdate} />}
+
+          {/* Right: Creon asset panel */}
+          {creonOpen && (
+            <div style={{ width: 300, borderLeft: '1px solid rgba(0,0,0,0.09)', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+              <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(0,0,0,0.09)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#111111' }}>Creon Assets</span>
+                <button onClick={() => setCreonOpen(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 6, border: 'none', background: 'none', cursor: 'pointer', color: '#666666' }}>
+                  <X size={14} />
+                </button>
+              </div>
+              {creonAsset && (
+                <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(0,0,0,0.09)', backgroundColor: '#f7f7f7', flexShrink: 0 }}>
+                  <p style={{ fontSize: 11, color: '#666666', marginBottom: 6 }}>선택된 에셋{selectedStyles ? ' — 아래 버튼으로 적용' : ' — Edit 모드에서 요소를 클릭 후 적용'}</p>
+                  <img src={creonAsset} alt="selected asset" style={{ width: '100%', height: 72, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+                  {selectedStyles && (
+                    <button
+                      onClick={() => {
+                        sendToIframe({ type: 'aide:update', prop: 'backgroundImage', value: `url("${creonAsset}")` })
+                        sendToIframe({ type: 'aide:update', prop: 'backgroundSize', value: 'cover' })
+                        sendToIframe({ type: 'aide:update', prop: 'backgroundPosition', value: 'center' })
+                      }}
+                      style={{ marginTop: 6, width: '100%', padding: '5px 0', fontSize: 12, fontWeight: 600, color: '#ffffff', backgroundColor: '#111111', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                    >
+                      선택된 요소에 적용
+                    </button>
+                  )}
+                </div>
+              )}
+              <iframe
+                src="http://localhost:3000"
+                style={{ flex: 1, border: 'none', width: '100%', minHeight: 0 }}
+                allow="clipboard-read; clipboard-write"
+                title="Creon"
+              />
+            </div>
+          )}
         </div>
 
         {tweaksOpen && (

@@ -11,17 +11,142 @@ tokens:
     surface1: "#1a1a1a"
     surface2: "#2a2a2a"
   spacing:
-    base: 5
-    section: 96
+    hair: "1px"
+    xxs: "4px"
+    xs: "8px"
+    sm: "12px"
+    md: "15px"
+    lg: "20px"
+    xl: "30px"
+    xxl: "40px"
+    section: "96px"
+  typography:
+    displayXxl:
+      fontSize: "110px"
+      fontWeight: 500
+      lineHeight: 0.85
+      letterSpacing: "-5.5px"
+    displayXl:
+      fontSize: "85px"
+      fontWeight: 500
+      lineHeight: 0.95
+      letterSpacing: "-4.25px"
+    displayLg:
+      fontSize: "62px"
+      fontWeight: 500
+      lineHeight: 1.0
+      letterSpacing: "-3.1px"
+    displayMd:
+      fontSize: "32px"
+      fontWeight: 500
+      lineHeight: 1.13
+      letterSpacing: "-1.0px"
+    headline:
+      fontSize: "22px"
+      fontWeight: 700
+      lineHeight: 1.2
+      letterSpacing: "-0.8px"
+    bodyLg:
+      fontSize: "18px"
+      fontWeight: 400
+      lineHeight: 1.3
+      letterSpacing: "-0.18px"
+    body:
+      fontSize: "15px"
+      fontWeight: 400
+      lineHeight: 1.3
+      letterSpacing: "-0.15px"
+    bodySm:
+      fontSize: "14px"
+      fontWeight: 500
+      lineHeight: 1.4
+      letterSpacing: "-0.14px"
+    caption:
+      fontSize: "13px"
+      fontWeight: 500
+      lineHeight: 1.2
+      letterSpacing: "-0.13px"
+    button:
+      fontSize: "14px"
+      fontWeight: 500
+      lineHeight: 1.0
+      letterSpacing: "-0.14px"
   rounded:
-    xs: 4
-    sm: 6
-    md: 10
-    lg: 15
-    xl: 20
-    xxl: 30
-    pill: 100
+    xs: "4px"
+    sm: "6px"
+    md: "10px"
+    lg: "15px"
+    xl: "20px"
+    xxl: "30px"
+    pill: "100px"
+    full: "9999px"
 ---
+
+## CSS Implementation
+
+Copy this `:root` block verbatim — Gemini must not alter these values:
+
+```css
+:root {
+  /* Colors — dark canvas system */
+  --color-canvas: #000000;
+  --color-surface-1: #1a1a1a;
+  --color-surface-2: #2a2a2a;
+  --color-ink: #ffffff;
+  --color-ink-muted: #999999;
+  --color-accent-blue: #0099ff;
+
+  /* Spacing — 5px base (non-standard: 1/4/8/12/15/20/30/40/96) */
+  --spacing-hair: 1px;
+  --spacing-xxs: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 15px;
+  --spacing-lg: 20px;
+  --spacing-xl: 30px;
+  --spacing-xxl: 40px;
+  --spacing-section: 96px;
+
+  /* Border radius */
+  --rounded-xs: 4px;
+  --rounded-sm: 6px;
+  --rounded-md: 10px;
+  --rounded-lg: 15px;
+  --rounded-xl: 20px;
+  --rounded-xxl: 30px;
+  --rounded-pill: 100px;
+  --rounded-full: 9999px;
+
+  /* Typography — GT Walsheim display / Inter Variable body */
+  --font-display: 'GT Walsheim Medium', 'Mona Sans', sans-serif;
+  --font-body: 'Inter Variable', Inter, sans-serif;
+  --font-features-body: 'cv01', 'cv05', 'cv09', 'cv11', 'ss03', 'ss07', 'dlig';
+  --text-display-xxl: 110px;
+  --text-display-xl: 85px;
+  --text-display-lg: 62px;
+  --text-display-md: 32px;
+  --text-headline: 22px;
+  --text-body-lg: 18px;
+  --text-body: 15px;
+  --text-body-sm: 14px;
+  --text-caption: 13px;
+  --text-button: 14px;
+
+  /* CRITICAL: negative letter-spacing is the brand signature */
+  --tracking-display-xxl: -5.5px;
+  --tracking-display-xl: -4.25px;
+  --tracking-display-lg: -3.1px;
+  --tracking-display-md: -1.0px;
+  --tracking-body: -0.15px;
+}
+body { background: var(--color-canvas); color: var(--color-ink); }
+```
+
+**Spacing rules:** section padding = `var(--spacing-section)` (96px) · pricing card interior = `var(--spacing-lg)` (20px) · gradient spotlight card = `var(--spacing-xl)` (30px) · pill button padding = 10px vertical × 15px horizontal.
+
+**Button-primary spec:** bg `var(--color-ink)` (#ffffff) · text `var(--color-canvas)` (#000000) · padding 10px 15px · radius `var(--rounded-pill)` (100px) · font `var(--font-body)` 14px/500.
+
+**CRITICAL dark mode rules:** page background MUST be `#000000`. All CTAs are pill-shaped (`var(--rounded-pill)`). Display headlines MUST apply the negative letter-spacing values above — do not omit them.
 
 ## Overview
 

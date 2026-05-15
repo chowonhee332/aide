@@ -5,21 +5,135 @@ tokens:
   colors:
     primary: "#000000"
     canvas: "#ffffff"
-    ink: "#000000"
     canvasSoft: "#efefef"
+    canvasSofter: "#f3f3f3"
+    ink: "#000000"
     body: "#5e5e5e"
+    onDark: "#ffffff"
+    mute: "#afafaf"
   spacing:
-    base: 4
-    lg: 16
-    xl: 20
-    2xl: 24
-    3xl: 32
+    xxs: "4px"
+    xs: "6px"
+    sm: "8px"
+    md: "12px"
+    lg: "16px"
+    xl: "20px"
+    2xl: "24px"
+    3xl: "32px"
+    4xl: "48px"
+    section: "64px"
+  typography:
+    displayXxl:
+      fontSize: "52px"
+      fontWeight: 700
+      lineHeight: "64px"
+    displayXl:
+      fontSize: "36px"
+      fontWeight: 700
+      lineHeight: "44px"
+    displayLg:
+      fontSize: "32px"
+      fontWeight: 700
+      lineHeight: "40px"
+    displayMd:
+      fontSize: "24px"
+      fontWeight: 700
+      lineHeight: "32px"
+    displaySm:
+      fontSize: "20px"
+      fontWeight: 700
+      lineHeight: "28px"
+    bodyLg:
+      fontSize: "18px"
+      fontWeight: 500
+      lineHeight: "24px"
+    bodyMd:
+      fontSize: "16px"
+      fontWeight: 400
+      lineHeight: "24px"
+    bodyMdStrong:
+      fontSize: "16px"
+      fontWeight: 500
+      lineHeight: "20px"
+    bodySm:
+      fontSize: "14px"
+      fontWeight: 400
+      lineHeight: "20px"
+    caption:
+      fontSize: "12px"
+      fontWeight: 400
+      lineHeight: "20px"
+    buttonMd:
+      fontSize: "16px"
+      fontWeight: 500
+      lineHeight: "20px"
   rounded:
-    md: 8
-    lg: 12
-    xl: 16
-    pill: 999
+    none: "0px"
+    md: "8px"
+    lg: "12px"
+    xl: "16px"
+    pillTab: "36px"
+    pill: "999px"
+    full: "9999px"
 ---
+
+## CSS Implementation
+
+Copy this `:root` block verbatim — Gemini must not alter these values:
+
+```css
+:root {
+  /* Colors — black & white duet, no accent color */
+  --color-primary: #000000;
+  --color-canvas: #ffffff;
+  --color-canvas-soft: #efefef;
+  --color-canvas-softer: #f3f3f3;
+  --color-ink: #000000;
+  --color-body: #5e5e5e;
+  --color-on-dark: #ffffff;
+  --color-mute: #afafaf;
+
+  /* Spacing — 4px base */
+  --spacing-xxs: 4px;
+  --spacing-xs: 6px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-2xl: 24px;
+  --spacing-3xl: 32px;
+  --spacing-4xl: 48px;
+  --spacing-section: 64px;
+
+  /* Border radius — pill is the brand signature */
+  --rounded-none: 0px;
+  --rounded-md: 8px;
+  --rounded-lg: 12px;
+  --rounded-xl: 16px;
+  --rounded-pill-tab: 36px;
+  --rounded-pill: 999px;
+  --rounded-full: 9999px;
+
+  /* Typography — UberMove display / UberMoveText body */
+  --font-display: UberMove, Inter, sans-serif;
+  --font-body: UberMoveText, Inter, sans-serif;
+  --text-display-xxl: 52px;
+  --text-display-xl: 36px;
+  --text-display-lg: 32px;
+  --text-display-md: 24px;
+  --text-display-sm: 20px;
+  --text-body-lg: 18px;
+  --text-body-md: 16px;
+  --text-body-sm: 14px;
+  --text-caption: 12px;
+}
+```
+
+**Spacing rules:** hero band padding = `var(--spacing-3xl)` (32px) · card interior = `var(--spacing-2xl)` (24px) · ride-request form = `var(--spacing-lg)` (16px) · inline gap (chips/buttons) = `var(--spacing-md)` (12px) · desktop container gutters = `var(--spacing-3xl)` (32px) · mobile gutters = `var(--spacing-lg)` (16px).
+
+**Button-primary spec:** bg `var(--color-primary)` (#000000) · color `var(--color-on-dark)` · padding `var(--spacing-md) var(--spacing-md)` (12px) · radius `var(--rounded-pill)` (999px) · font 16px/500 UberMoveText. ALL interactive elements use pill shape.
+
+**CRITICAL brand rules:** Only two colors — black and white (plus grayscale). No accent colors. Every CTA must be `var(--rounded-pill)`. Headlines always sentence-case, never all-caps. No letter-spacing on display type. Black promo bands mid-page break the white rhythm.
 
 ## Overview
 

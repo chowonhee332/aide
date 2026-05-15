@@ -20,8 +20,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const params = await req.json()
+    const apiKey = req.headers.get('x-gemini-key') ?? undefined
     console.log('[generate] step1: params parsed, starting generateUI')
-    const html = await generateUI(params)
+    const html = await generateUI(params, apiKey)
     console.log('[generate] step2: html generated, length=', html.length)
 
     const puppeteer = await import('puppeteer')
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
 
     const isWeb = params.platform === 'web'
     const vpWidth = isWeb ? 1440 : 390
-    const vpHeight = isWeb ? 900 : 844
+    const vpHeight = isWeb ? 1024 : 844
 
     console.log('[generate] step3: browser launched, setting viewport', vpWidth, vpHeight)
     await page.setViewport({ width: vpWidth, height: vpHeight, deviceScaleFactor: 2 })

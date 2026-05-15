@@ -51,7 +51,8 @@ export async function POST(req: NextRequest) {
       clip: { x: 0, y: 0, width: 1440, height: 900 },
     }) as string
 
-    const designMd = await analyzeUrlToDesignMd(screenshotBuffer, normalizedUrl)
+    const apiKey = req.headers.get('x-gemini-key') ?? undefined
+    const designMd = await analyzeUrlToDesignMd(screenshotBuffer, normalizedUrl, apiKey)
 
     return NextResponse.json({ designMd, screenshot: `data:image/png;base64,${screenshotBuffer}` })
   } catch (err) {

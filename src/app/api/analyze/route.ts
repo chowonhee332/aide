@@ -11,8 +11,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '기획서를 입력해주세요' }, { status: 400 })
     }
 
+    const apiKey = req.headers.get('x-gemini-key') ?? undefined
     const trimmedDesignMd = (designMd ?? '').slice(0, 2000)
-    const result = await analyzeAndGenerateQuestions(trimmedDesignMd, brief, platform)
+    const result = await analyzeAndGenerateQuestions(trimmedDesignMd, brief, platform, apiKey)
     return NextResponse.json(result)
   } catch (err) {
     const message = err instanceof Error ? err.message : '알 수 없는 오류'
