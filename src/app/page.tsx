@@ -1369,8 +1369,8 @@ export default function Home() {
                   </div>
                 </>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                {(['airbnb', 'framer', 'ktds', 'uber'] as const).map(key => {
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                {(['ktds', 'airbnb', 'framer', 'uber'] as const).map(key => {
                   const preset = DESIGN_PRESETS[key]
                   const isActive = designPreset === key
                   return (
@@ -1378,7 +1378,7 @@ export default function Home() {
                       key={key}
                       onClick={() => { setDesignPreset(isActive ? 'none' : key); if (!isActive) setDesignPanelOpen(false) }}
                       style={{
-                        padding: '14px 16px', borderRadius: '10px', textAlign: 'left',
+                        padding: '12px 12px', borderRadius: '10px', textAlign: 'left',
                         cursor: 'pointer',
                         border: isActive ? `1px solid ${preset.color}40` : `1px solid ${F.hairlineSoft}`,
                         backgroundColor: isActive ? `${preset.color}18` : F.surface2,
