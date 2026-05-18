@@ -1299,77 +1299,7 @@ export default function Home() {
               border: `1px solid ${F.hairline}`, padding: '16px',
             }}>
               <input ref={fileInputRef} type="file" accept=".md,.txt" onChange={handleFileUpload} style={{ display: 'none' }} />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                style={{
-                  width: '100%', padding: '14px', borderRadius: '10px',
-                  border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
-                  color: F.inkMuted, fontSize: '13px', fontWeight: 500, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
-                  marginBottom: '10px', letterSpacing: '-0.13px',
-                }}
-              >
-                <Upload size={13} />
-                DESIGN.md 파일 업로드
-              </button>
-
-              {/* URL 분석 or 미리보기 */}
-              {urlPreviewMd ? (
-                <DesignMdPreview
-                  md={urlPreviewMd}
-                  url={urlInput}
-                  screenshot={urlPreviewScreenshot ?? undefined}
-                  onApply={handleApplyUrlDesign}
-                  onBack={() => { setUrlPreviewMd(null); setUrlPreviewScreenshot(null) }}
-                />
-              ) : (
-                <>
-                  <div style={{ marginBottom: '14px' }}>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <input
-                        type="text"
-                        value={urlInput}
-                        onChange={e => { setUrlInput(e.target.value); setUrlError(null) }}
-                        onKeyDown={e => e.key === 'Enter' && handleUrlAnalyze()}
-                        placeholder="타사 서비스 URL 붙여넣기 (예: airbnb.com)"
-                        style={{
-                          flex: 1, padding: '10px 12px', borderRadius: '10px',
-                          border: urlError ? '1px solid rgba(255,80,80,0.5)' : `1px solid ${F.hairline}`,
-                          backgroundColor: F.surface2, color: F.ink,
-                          fontSize: '13px', fontFamily: 'inherit', outline: 'none',
-                          letterSpacing: '-0.13px',
-                        }}
-                      />
-                      <button
-                        onClick={handleUrlAnalyze}
-                        disabled={!urlInput.trim() || urlAnalyzing}
-                        style={{
-                          padding: '10px 14px', borderRadius: '10px', flexShrink: 0,
-                          border: 'none', cursor: urlInput.trim() && !urlAnalyzing ? 'pointer' : 'default',
-                          backgroundColor: urlInput.trim() && !urlAnalyzing ? F.ink : F.surface2,
-                          color: urlInput.trim() && !urlAnalyzing ? F.canvas : 'rgba(0,0,0,0.25)',
-                          fontSize: '13px', fontWeight: 500, letterSpacing: '-0.13px',
-                          transition: 'all 0.15s', whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {urlAnalyzing ? '분석 중…' : '분석하기'}
-                      </button>
-                    </div>
-                    {urlError && (
-                      <p style={{ color: 'rgba(255,80,80,0.8)', fontSize: '12px', marginTop: '6px', letterSpacing: '-0.12px' }}>
-                        {urlError}
-                      </p>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                    <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
-                    <span style={{ color: F.inkMuted, fontSize: '11px', letterSpacing: '-0.11px' }}>또는 프리셋 선택</span>
-                    <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
-                  </div>
-                </>
-              )}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '14px' }}>
                 {(['ktds', 'airbnb', 'framer', 'uber'] as const).map(key => {
                   const preset = DESIGN_PRESETS[key]
                   const isActive = designPreset === key
@@ -1398,6 +1328,74 @@ export default function Home() {
                   )
                 })}
               </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '14px 0' }}>
+                <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
+                <span style={{ color: F.inkMuted, fontSize: '11px', letterSpacing: '-0.11px' }}>또는 직접 입력</span>
+                <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
+              </div>
+
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  width: '100%', padding: '14px', borderRadius: '10px',
+                  border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
+                  color: F.inkMuted, fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+                  marginBottom: '10px', letterSpacing: '-0.13px',
+                }}
+              >
+                <Upload size={13} />
+                DESIGN.md 파일 업로드
+              </button>
+
+              {urlPreviewMd ? (
+                <DesignMdPreview
+                  md={urlPreviewMd}
+                  url={urlInput}
+                  screenshot={urlPreviewScreenshot ?? undefined}
+                  onApply={handleApplyUrlDesign}
+                  onBack={() => { setUrlPreviewMd(null); setUrlPreviewScreenshot(null) }}
+                />
+              ) : (
+                <div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input
+                      type="text"
+                      value={urlInput}
+                      onChange={e => { setUrlInput(e.target.value); setUrlError(null) }}
+                      onKeyDown={e => e.key === 'Enter' && handleUrlAnalyze()}
+                      placeholder="타사 서비스 URL 붙여넣기 (예: airbnb.com)"
+                      style={{
+                        flex: 1, padding: '10px 12px', borderRadius: '10px',
+                        border: urlError ? '1px solid rgba(255,80,80,0.5)' : `1px solid ${F.hairline}`,
+                        backgroundColor: F.surface2, color: F.ink,
+                        fontSize: '13px', fontFamily: 'inherit', outline: 'none',
+                        letterSpacing: '-0.13px',
+                      }}
+                    />
+                    <button
+                      onClick={handleUrlAnalyze}
+                      disabled={!urlInput.trim() || urlAnalyzing}
+                      style={{
+                        padding: '10px 14px', borderRadius: '10px', flexShrink: 0,
+                        border: 'none', cursor: urlInput.trim() && !urlAnalyzing ? 'pointer' : 'default',
+                        backgroundColor: urlInput.trim() && !urlAnalyzing ? F.ink : F.surface2,
+                        color: urlInput.trim() && !urlAnalyzing ? F.canvas : 'rgba(0,0,0,0.25)',
+                        fontSize: '13px', fontWeight: 500, letterSpacing: '-0.13px',
+                        transition: 'all 0.15s', whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {urlAnalyzing ? '분석 중…' : '분석하기'}
+                    </button>
+                  </div>
+                  {urlError && (
+                    <p style={{ color: 'rgba(255,80,80,0.8)', fontSize: '12px', marginTop: '6px', letterSpacing: '-0.12px' }}>
+                      {urlError}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
