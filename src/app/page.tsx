@@ -1315,15 +1315,12 @@ export default function Home() {
                         transition: 'all 0.15s',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '5px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                         <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: preset.color, flexShrink: 0 }} />
                         <span style={{ color: isActive ? preset.color : F.ink, fontSize: '13px', fontWeight: 600, letterSpacing: '-0.5px' }}>
                           {preset.label}
                         </span>
                       </div>
-                      <p style={{ color: F.inkMuted, fontSize: '12px', lineHeight: 1.5, margin: 0, letterSpacing: '-0.12px' }}>
-                        {preset.description}
-                      </p>
                     </button>
                   )
                 })}
