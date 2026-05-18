@@ -16,12 +16,12 @@ const F = {
   canvas:       '#ffffff',
   surface1:     '#f7f7f7',
   surface2:     '#f2f2f2',
-  ink:          '#222222',
-  inkMuted:     '#6a6a6a',
-  primary:      '#ff385c', // Airbnb Rausch
-  primaryActive:'#e00b41',
+  ink:          '#111111',
+  inkMuted:     '#666666',
+  primary:      '#5227FF', // Electric Blue
+  primaryActive:'#3d1bd9',
   hairline:     '#dddddd',
-  hairlineSoft: '#ebebeb',
+  hairlineSoft: '#eeeeee',
 }
 
 const HOW_IT_WORKS = [
@@ -525,6 +525,15 @@ export default function Home() {
     }
   }
 
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   const [historyModalOpen, setHistoryModalOpen] = useState(false)
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([])
 
@@ -839,25 +848,25 @@ export default function Home() {
       <section style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
         <div className="fixed inset-0 pointer-events-none">
           <Grainient
-            color1="#ff385c"
-            color2="#ff9aa2"
-            color3="#ffffff"
-            timeSpeed={0.8}
-            colorBalance={0.1}
+            color1="#95c7cd"
+            color2="#5227FF"
+            color3="#B497CF"
+            timeSpeed={1}
+            colorBalance={0}
             warpStrength={1}
             warpFrequency={3.7}
-            warpSpeed={2}
+            warpSpeed={2.5}
             warpAmplitude={50}
-            blendAngle={10}
+            blendAngle={5}
             blendSoftness={0.05}
             rotationAmount={400}
-            noiseScale={1.8}
-            grainAmount={0.12}
+            noiseScale={2}
+            grainAmount={0.1}
             grainScale={1.5}
             grainAnimated={false}
-            contrast={1.4}
+            contrast={1.5}
             gamma={1}
-            saturation={1.1}
+            saturation={0.8}
             centerX={0}
             centerY={0}
             zoom={0.9}
@@ -866,46 +875,64 @@ export default function Home() {
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '200px', background: `linear-gradient(to top, ${F.canvas} 0%, transparent 100%)` }} />
         </div>
 
-        <header className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-48px)] max-w-[1000px]">
+        <header style={{
+          position: 'fixed',
+          top: scrolled ? '24px' : '0',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 50,
+          width: scrolled ? 'calc(100% - 48px)' : '100%',
+          maxWidth: scrolled ? '1000px' : 'none',
+          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}>
           <div style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.4)',
-            backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            borderRadius: '20px',
-            padding: '12px 24px',
+            backgroundColor: scrolled ? 'rgba(255, 255, 255, 0.4)' : 'transparent',
+            backdropFilter: scrolled ? 'blur(16px)' : 'none',
+            borderBottom: !scrolled ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid transparent',
+            border: scrolled ? '1px solid rgba(255, 255, 255, 0.3)' : undefined,
+            borderRadius: scrolled ? '20px' : '0',
+            padding: scrolled ? '12px 24px' : '20px 48px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.04)',
+            boxShadow: scrolled ? '0 8px 32px rgba(0,0,0,0.04)' : 'none',
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           }}>
-            <div className="flex items-center gap-8">
-              <span style={{ color: F.ink, fontWeight: 700, fontSize: '18px', letterSpacing: '-0.8px' }}>Aide</span>
-              <nav className="hidden md:flex items-center gap-6">
-                {([
-                  ['Features', 'features'],
-                  ['How it Works', 'how-it-works'],
-                  ['Pricing', 'pricing'],
-                ] as const).map(([label, id]) => (
-                  <button
-                    key={id}
-                    onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
-                    style={{ color: F.inkMuted, fontSize: '14px', fontWeight: 500, textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </nav>
+            {/* 좌측: 로고 */}
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
+              <span style={{ color: F.ink, fontWeight: 700, fontSize: '18px', letterSpacing: '-0.8px', cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                Aide
+              </span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+
+            {/* 중앙: 메뉴 */}
+            <nav className="hidden md:flex items-center gap-8" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+              {([
+                ['Features', 'features'],
+                ['How it Works', 'how-it-works'],
+                ['Pricing', 'pricing'],
+              ] as const).map(([label, id]) => (
+                <button
+                  key={id}
+                  onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
+                  style={{ color: scrolled ? F.inkMuted : 'rgba(0,0,0,0.6)', fontSize: '14px', fontWeight: 500, textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+
+            {/* 우측: 액션 */}
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px' }}>
               <button
                 onClick={openApiKeyModal}
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
-                  color: F.inkMuted, display: 'flex', alignItems: 'center',
+                  color: scrolled ? F.inkMuted : 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center',
                   padding: '6px', borderRadius: '8px', transition: 'all 0.15s',
                 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = F.surface1; (e.currentTarget as HTMLButtonElement).style.color = F.ink }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = F.inkMuted }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(255,255,255,0.2)'; (e.currentTarget as HTMLButtonElement).style.color = F.ink }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = scrolled ? F.inkMuted : 'rgba(0,0,0,0.6)' }}
                 title="API Key 설정"
               >
                 <KeyRound size={18} />
@@ -914,11 +941,11 @@ export default function Home() {
                 onClick={() => setHistoryModalOpen(true)}
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
-                  color: F.inkMuted, display: 'flex', alignItems: 'center',
+                  color: scrolled ? F.inkMuted : 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center',
                   padding: '6px', borderRadius: '8px', transition: 'all 0.15s',
                 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = F.surface1; (e.currentTarget as HTMLButtonElement).style.color = F.ink }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = F.inkMuted }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(255,255,255,0.2)'; (e.currentTarget as HTMLButtonElement).style.color = F.ink }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = scrolled ? F.inkMuted : 'rgba(0,0,0,0.6)' }}
                 title="히스토리"
               >
                 <Clock size={18} />
@@ -926,10 +953,11 @@ export default function Home() {
               <a
                 href="/studio"
                 style={{
-                  backgroundColor: '#fff', color: '#111',
+                  backgroundColor: scrolled ? '#fff' : 'rgba(255,255,255,0.9)', color: '#111',
                   fontSize: '14px', fontWeight: 600, padding: '10px 20px', borderRadius: '12px',
                   textDecoration: 'none', transition: 'all 0.15s',
                   letterSpacing: '-0.14px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
                 }}
               >
                 Get Started
@@ -973,7 +1001,7 @@ export default function Home() {
           {/* Input card */}
           <div style={{
             width: '100%', maxWidth: '700px', borderRadius: '20px',
-            backgroundColor: 'rgba(255, 255, 255, 0.82)',
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
             backdropFilter: 'blur(20px)',
             border: '1px solid rgba(255, 255, 255, 0.4)',
             padding: '22px 22px 16px',
@@ -1553,61 +1581,84 @@ export default function Home() {
       {/* ══════════════════════════════════════════
           PROBLEM → SOLUTION
       ══════════════════════════════════════════ */}
-      <section style={{ backgroundColor: F.canvas, position: 'relative', zIndex: 10, padding: '96px 24px', borderTop: `1px solid ${F.hairlineSoft}` }}>
-        <div style={{ maxWidth: '1080px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px', alignItems: 'stretch' }}>
+      <section style={{ 
+        backgroundColor: '#f5f7ff', // 더 확실한 블루 틴트 배경
+        position: 'relative', zIndex: 10, padding: '140px 24px',
+        overflow: 'hidden'
+      }}>
+        {/* 장식용 배경 요소 - 더 진한 블루 포인트 */}
+        <div style={{ position: 'absolute', top: '10%', right: '-5%', width: '500px', height: '500px', background: 'radial-gradient(circle, rgba(82, 39, 255, 0.1) 0%, transparent 70%)', filter: 'blur(80px)' }} />
+        <div style={{ position: 'absolute', bottom: '10%', left: '-5%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(149, 199, 205, 0.12) 0%, transparent 70%)', filter: 'blur(60px)' }} />
+        
+        <div style={{ maxWidth: '1080px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '32px', position: 'relative', zIndex: 1 }}>
           {/* Problem */}
-          <div style={{ padding: '48px 40px', backgroundColor: F.surface1, borderRadius: '20px 0 0 20px', border: `1px solid ${F.hairlineSoft}` }}>
+          <div style={{ 
+            padding: '64px 48px', 
+            backgroundColor: 'rgba(255, 255, 255, 0.5)', 
+            backdropFilter: 'blur(30px)',
+            borderRadius: '32px', 
+            border: '1px solid rgba(255, 255, 255, 0.6)',
+            boxShadow: '0 20px 40px rgba(82, 39, 255, 0.03)'
+          }}>
             <div style={{
-              display: 'inline-flex', fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em',
-              color: 'rgba(255,80,80,0.8)', border: '1px solid rgba(255,80,80,0.2)',
-              borderRadius: '100px', padding: '3px 10px', marginBottom: '28px', textTransform: 'uppercase',
+              display: 'inline-flex', fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em',
+              color: '#666', border: '1px solid rgba(0,0,0,0.1)',
+              borderRadius: '100px', padding: '4px 14px', marginBottom: '32px', textTransform: 'uppercase',
             }}>
               Problem
             </div>
-            <h3 style={{ color: F.ink, fontSize: 'clamp(22px, 2.5vw, 32px)', fontWeight: 500, lineHeight: 1.15, letterSpacing: '-1.6px', marginBottom: '24px' }}>
+            <h3 style={{ color: F.ink, fontSize: 'clamp(26px, 3.5vw, 40px)', fontWeight: 700, lineHeight: 1.1, letterSpacing: '-2px', marginBottom: '32px' }}>
               UI 시안 하나에<br />며칠이 걸립니다
             </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               {[
                 '디자이너와 일정을 맞추기가 어렵다',
                 'Figma를 배우는 데만 몇 주가 걸린다',
                 '초안을 만들어도 방향이 맞는지 확신이 없다',
                 '수정 요청이 반복되며 시간이 낭비된다',
               ].map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                  <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'rgba(255,80,80,0.12)', border: '1px solid rgba(255,80,80,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>
-                    <X size={8} color="rgba(255,80,80,0.7)" />
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                  <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
+                    <X size={10} color="#999" />
                   </div>
-                  <span style={{ color: F.inkMuted, fontSize: '15px', lineHeight: 1.4, letterSpacing: '-0.15px' }}>{item}</span>
+                  <span style={{ color: F.inkMuted, fontSize: '17px', lineHeight: 1.5, letterSpacing: '-0.17px' }}>{item}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Solution */}
-          <div style={{ padding: '48px 40px', backgroundColor: F.surface1, borderRadius: '0 20px 20px 0', border: `1px solid ${F.hairlineSoft}` }}>
+          <div style={{ 
+            padding: '64px 48px', 
+            backgroundColor: 'rgba(255, 255, 255, 0.9)', 
+            backdropFilter: 'blur(30px)',
+            borderRadius: '32px', 
+            border: `1px solid ${F.primary}30`,
+            boxShadow: '0 40px 80px rgba(82, 39, 255, 0.12)'
+          }}>
             <div style={{
-              display: 'inline-flex', fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em',
-              color: F.primary, border: `1px solid rgba(255,56,92,0.2)`,
-              borderRadius: '100px', padding: '3px 10px', marginBottom: '28px', textTransform: 'uppercase',
+              display: 'inline-flex', fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em',
+              color: F.primary, border: `1px solid ${F.primary}30`,
+              borderRadius: '100px', padding: '4px 14px', marginBottom: '32px', textTransform: 'uppercase',
+              backgroundColor: `${F.primary}10`
             }}>
               Solution
             </div>
-            <h3 style={{ color: F.ink, fontSize: 'clamp(22px, 2.5vw, 32px)', fontWeight: 500, lineHeight: 1.15, letterSpacing: '-1.6px', marginBottom: '24px' }}>
+            <h3 style={{ color: F.ink, fontSize: 'clamp(26px, 3.5vw, 40px)', fontWeight: 700, lineHeight: 1.1, letterSpacing: '-2px', marginBottom: '32px' }}>
               설명 한 줄로<br />시안이 완성됩니다
             </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               {[
                 '브리프를 입력하면 AI가 즉시 이해합니다',
                 '검증된 디자인 시스템으로 완성도를 보장합니다',
                 '3가지 스타일 시안을 동시에 비교합니다',
                 '실시간으로 편집하고 팀에게 공유합니다',
               ].map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                  <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'rgba(255,56,92,0.1)', border: '1px solid rgba(255,56,92,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>
-                    <Check size={8} color={F.primary} />
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                  <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: `${F.primary}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
+                    <Check size={12} color={F.primary} strokeWidth={3} />
                   </div>
-                  <span style={{ color: F.inkMuted, fontSize: '15px', lineHeight: 1.4, letterSpacing: '-0.15px' }}>{item}</span>
+                  <span style={{ color: F.ink, fontSize: '17px', lineHeight: 1.5, letterSpacing: '-0.17px', fontWeight: 600 }}>{item}</span>
                 </div>
               ))}
             </div>
@@ -1618,32 +1669,48 @@ export default function Home() {
       {/* ══════════════════════════════════════════
           HOW IT WORKS
       ══════════════════════════════════════════ */}
-      <section id="how-it-works" style={{ backgroundColor: F.canvas, position: 'relative', zIndex: 10, padding: '96px 24px', borderTop: `1px solid ${F.hairlineSoft}` }}>
+      <section id="how-it-works" style={{ 
+        backgroundColor: F.canvas, position: 'relative', zIndex: 10, padding: '120px 24px',
+        borderTop: `1px solid ${F.hairlineSoft}` 
+      }}>
         <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
-          <p style={{ color: F.inkMuted, fontSize: '13px', fontWeight: 500, letterSpacing: '-0.13px', marginBottom: '16px', textAlign: 'center' }}>
-            How it works
+          <p style={{ color: F.primary, fontSize: '14px', fontWeight: 600, letterSpacing: '0.1em', marginBottom: '20px', textAlign: 'center', textTransform: 'uppercase' }}>
+            Workflow
           </p>
-          <h2 style={{ color: F.ink, fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 500, letterSpacing: '-2.4px', lineHeight: 1.05, textAlign: 'center', marginBottom: '64px' }}>
-            세 단계로 완성되는<br />UI 시안
+          <h2 style={{ color: F.ink, fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: 600, letterSpacing: '-2.8px', lineHeight: 1, textAlign: 'center', marginBottom: '80px' }}>
+            세 단계로 완성되는<br />프리미엄 UI 시안
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
             {HOW_IT_WORKS.map((item, i) => (
               <div key={i} style={{
-                padding: '40px 32px',
+                padding: '48px 40px',
                 backgroundColor: F.surface1,
-                borderRadius: i === 0 ? '14px 0 0 14px' : i === 2 ? '0 14px 14px 0' : undefined,
+                borderRadius: '24px',
                 border: `1px solid ${F.hairlineSoft}`,
-              }}>
-                <span style={{ color: 'rgba(0,0,0,0.03)', fontSize: '48px', fontWeight: 600, letterSpacing: '-2.4px', lineHeight: 1, display: 'block', marginBottom: '24px' }}>
+                position: 'relative',
+                transition: 'all 0.3s ease',
+                cursor: 'default'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = `${F.primary}30` }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = F.hairlineSoft }}
+              >
+                <span style={{ 
+                  position: 'absolute', top: '32px', right: '40px',
+                  color: 'rgba(0,0,0,0.05)', fontSize: '64px', fontWeight: 800, letterSpacing: '-4px', lineHeight: 1 
+                }}>
                   {item.step}
                 </span>
-                <div style={{ color: F.primary, opacity: 0.8, marginBottom: '16px' }}>
+                <div style={{ 
+                  width: '48px', height: '48px', borderRadius: '12px',
+                  backgroundColor: `${F.primary}10`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: F.primary, marginBottom: '28px' 
+                }}>
                   {item.icon}
                 </div>
-                <h3 style={{ color: F.ink, fontSize: '17px', fontWeight: 500, marginBottom: '10px', letterSpacing: '-0.5px' }}>
+                <h3 style={{ color: F.ink, fontSize: '20px', fontWeight: 600, marginBottom: '16px', letterSpacing: '-0.6px' }}>
                   {item.title}
                 </h3>
-                <p style={{ color: F.inkMuted, fontSize: '15px', lineHeight: 1.30, letterSpacing: '-0.15px' }}>
+                <p style={{ color: F.inkMuted, fontSize: '16px', lineHeight: 1.5, letterSpacing: '-0.16px' }}>
                   {item.desc}
                 </p>
               </div>
@@ -1655,38 +1722,44 @@ export default function Home() {
       {/* ══════════════════════════════════════════
           BENTO FEATURES
       ══════════════════════════════════════════ */}
-      <section id="features" style={{ backgroundColor: F.canvas, position: 'relative', zIndex: 10, padding: '96px 24px', borderTop: `1px solid ${F.hairlineSoft}` }}>
+      <section id="features" style={{ backgroundColor: '#fff', position: 'relative', zIndex: 10, padding: '140px 24px', borderTop: `1px solid ${F.hairlineSoft}` }}>
         <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
-          <p style={{ color: F.inkMuted, fontSize: '13px', fontWeight: 500, letterSpacing: '-0.13px', marginBottom: '16px', textAlign: 'center' }}>
+          <p style={{ color: F.primary, fontSize: '15px', fontWeight: 700, letterSpacing: '0.12em', marginBottom: '24px', textAlign: 'center', textTransform: 'uppercase' }}>
             Features
           </p>
-          <h2 style={{ color: F.ink, fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 500, letterSpacing: '-2.4px', lineHeight: 1.05, textAlign: 'center', marginBottom: '64px' }}>
+          <h2 style={{ color: F.ink, fontSize: 'clamp(32px, 5vw, 56px)', fontWeight: 700, letterSpacing: '-3px', lineHeight: 1, textAlign: 'center', marginBottom: '100px' }}>
             아이디어를 현실로 만드는<br />모든 도구
           </h2>
 
           {/* Bento grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gridTemplateRows: 'auto auto', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px' }}>
 
             {/* Large left – Design Systems */}
-            <div style={{ gridColumn: 'span 7', padding: '36px 32px', borderRadius: '14px', backgroundColor: F.surface1, border: `1px solid ${F.hairlineSoft}`, minHeight: '280px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ 
+              gridColumn: 'span 7', padding: '56px 48px', borderRadius: '32px', 
+              backgroundColor: '#f8faff', border: `1px solid ${F.primary}15`, 
+              minHeight: '360px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+              boxShadow: '0 4px 24px rgba(82, 39, 255, 0.03)'
+            }}>
               <div>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: F.inkMuted, border: `1px solid ${F.hairline}`, borderRadius: '100px', padding: '3px 10px', marginBottom: '24px', textTransform: 'uppercase' }}>
-                  <Palette size={10} />
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', color: F.primary, border: `1px solid ${F.primary}20`, borderRadius: '100px', padding: '5px 14px', marginBottom: '32px', textTransform: 'uppercase', backgroundColor: `${F.primary}10` }}>
+                  <Palette size={14} />
                   Design Systems
                 </div>
-                <h3 style={{ color: F.ink, fontSize: '22px', fontWeight: 500, lineHeight: 1.2, letterSpacing: '-0.9px', marginBottom: '12px' }}>검증된 디자인 시스템</h3>
-                <p style={{ color: F.inkMuted, fontSize: '15px', lineHeight: 1.4, letterSpacing: '-0.15px' }}>
+                <h3 style={{ color: F.ink, fontSize: '30px', fontWeight: 700, lineHeight: 1.2, letterSpacing: '-1.2px', marginBottom: '20px' }}>검증된 디자인 시스템</h3>
+                <p style={{ color: F.inkMuted, fontSize: '17px', lineHeight: 1.6, letterSpacing: '-0.17px' }}>
                   Airbnb, Framer, KT 디지털서비스, Uber의 공식 가이드를 기반으로 일관성 있는 UI를 생성합니다.
                 </p>
               </div>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '24px' }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '40px' }}>
                 {(['airbnb', 'framer', 'ktds', 'uber'] as const).map(key => (
                   <span key={key} style={{
-                    fontSize: '12px', letterSpacing: '-0.12px',
-                    color: key === 'airbnb' ? '#fff' : 'rgba(0,0,0,0.5)',
-                    border: key === 'airbnb' ? `1px solid ${F.primary}` : '1px solid rgba(0,0,0,0.1)',
-                    borderRadius: '100px', padding: '3px 10px',
-                    backgroundColor: key === 'airbnb' ? F.primary : 'rgba(0,0,0,0.04)',
+                    fontSize: '14px', letterSpacing: '-0.14px', fontWeight: 600,
+                    color: key === 'airbnb' ? '#fff' : F.ink,
+                    border: key === 'airbnb' ? 'none' : '1px solid rgba(0,0,0,0.1)',
+                    borderRadius: '100px', padding: '8px 18px',
+                    backgroundColor: key === 'airbnb' ? F.primary : '#fff',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                   }}>
                     {DESIGN_PRESETS[key].label}
                   </span>
@@ -1695,56 +1768,65 @@ export default function Home() {
             </div>
 
             {/* Right top – Live Editor */}
-            <div style={{ gridColumn: 'span 5', padding: '36px 32px', borderRadius: '14px', backgroundColor: F.surface1, border: `1px solid ${F.hairlineSoft}`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ 
+              gridColumn: 'span 5', padding: '56px 48px', borderRadius: '32px', 
+              backgroundColor: '#fff', border: `1px solid ${F.hairlineSoft}`, 
+              display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.03)'
+            }}>
               <div>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: F.inkMuted, border: `1px solid ${F.hairline}`, borderRadius: '100px', padding: '3px 10px', marginBottom: '24px', textTransform: 'uppercase' }}>
-                  <MousePointer2 size={10} />
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', color: F.inkMuted, border: `1px solid ${F.hairline}`, borderRadius: '100px', padding: '5px 14px', marginBottom: '32px', textTransform: 'uppercase' }}>
+                  <MousePointer2 size={14} />
                   Live Editor
                 </div>
-                <h3 style={{ color: F.ink, fontSize: '22px', fontWeight: 500, lineHeight: 1.2, letterSpacing: '-0.9px', marginBottom: '12px' }}>실시간 인터랙티브 편집</h3>
-                <p style={{ color: F.inkMuted, fontSize: '15px', lineHeight: 1.4, letterSpacing: '-0.15px' }}>
+                <h3 style={{ color: F.ink, fontSize: '30px', fontWeight: 700, lineHeight: 1.2, letterSpacing: '-1.2px', marginBottom: '20px' }}>실시간 인터랙티브 편집</h3>
+                <p style={{ color: F.inkMuted, fontSize: '17px', lineHeight: 1.6, letterSpacing: '-0.17px' }}>
                   요소를 클릭해 폰트·색상·여백을 바로 조정하고, AI 채팅으로 레이아웃을 수정합니다.
                 </p>
               </div>
             </div>
 
-            {/* Bottom left – Speed */}
-            <div style={{ gridColumn: 'span 4', padding: '36px 32px', borderRadius: '14px', backgroundColor: F.surface1, border: `1px solid ${F.hairlineSoft}`, display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: F.inkMuted, border: `1px solid ${F.hairline}`, borderRadius: '100px', padding: '3px 10px', marginBottom: '24px', textTransform: 'uppercase', width: 'fit-content' }}>
-                <Zap size={10} />
+            {/* Bottom row */}
+            <div style={{ gridColumn: 'span 4', padding: '48px', borderRadius: '32px', backgroundColor: '#fff', border: `1px solid ${F.hairlineSoft}`, display: 'flex', flexDirection: 'column', gap: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.03)' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', color: F.inkMuted, border: `1px solid ${F.hairline}`, borderRadius: '100px', padding: '5px 14px', textTransform: 'uppercase', width: 'fit-content' }}>
+                <Zap size={14} />
                 Speed
               </div>
-              <div style={{ marginBottom: '8px' }}>
-                <span style={{ fontSize: 'clamp(40px, 5vw, 56px)', fontWeight: 500, letterSpacing: '-3px', color: F.ink, lineHeight: 1 }}>3</span>
-                <span style={{ fontSize: '20px', color: F.inkMuted, letterSpacing: '-0.5px' }}>분</span>
+              <div>
+                <div style={{ marginBottom: '8px' }}>
+                  <span style={{ fontSize: '64px', fontWeight: 800, letterSpacing: '-4px', color: F.primary, lineHeight: 1 }}>3</span>
+                  <span style={{ fontSize: '28px', fontWeight: 700, color: F.ink, letterSpacing: '-0.5px', marginLeft: '6px' }}>분</span>
+                </div>
+                <p style={{ color: F.inkMuted, fontSize: '16px', lineHeight: 1.6, letterSpacing: '-0.16px' }}>
+                  브리프 입력부터 시안 완성까지 평균 3분이면 충분합니다.
+                </p>
               </div>
-              <p style={{ color: F.inkMuted, fontSize: '15px', lineHeight: 1.4, letterSpacing: '-0.15px' }}>
-                브리프 입력부터 시안 완성까지 평균 3분이면 충분합니다.
-              </p>
             </div>
 
-            {/* Bottom middle – Prototype */}
-            <div style={{ gridColumn: 'span 4', padding: '36px 32px', borderRadius: '14px', backgroundColor: F.surface1, border: `1px solid ${F.hairlineSoft}`, display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: F.inkMuted, border: `1px solid ${F.hairline}`, borderRadius: '100px', padding: '3px 10px', marginBottom: '24px', textTransform: 'uppercase', width: 'fit-content' }}>
-                <Layers size={10} />
+            <div style={{ gridColumn: 'span 4', padding: '48px', borderRadius: '32px', backgroundColor: '#fff', border: `1px solid ${F.hairlineSoft}`, display: 'flex', flexDirection: 'column', gap: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.03)' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', color: F.inkMuted, border: `1px solid ${F.hairline}`, borderRadius: '100px', padding: '5px 14px', textTransform: 'uppercase', width: 'fit-content' }}>
+                <Layers size={14} />
                 Prototype
               </div>
-              <h3 style={{ color: F.ink, fontSize: '20px', fontWeight: 500, lineHeight: 1.2, letterSpacing: '-0.8px', marginBottom: '12px' }}>다중 화면 프로토타입</h3>
-              <p style={{ color: F.inkMuted, fontSize: '15px', lineHeight: 1.4, letterSpacing: '-0.15px', flex: 1 }}>
-                여러 화면을 연결해 실제 앱처럼 탐색할 수 있는 프로토타입을 만듭니다.
-              </p>
+              <div>
+                <h3 style={{ color: F.ink, fontSize: '24px', fontWeight: 700, lineHeight: 1.2, letterSpacing: '-0.8px', marginBottom: '16px' }}>다중 화면 프로토타입</h3>
+                <p style={{ color: F.inkMuted, fontSize: '16px', lineHeight: 1.6, letterSpacing: '-0.16px' }}>
+                  여러 화면을 연결해 실제 앱처럼 탐색할 수 있는 프로토타입을 만듭니다.
+                </p>
+              </div>
             </div>
 
-            {/* Bottom right – Share */}
-            <div style={{ gridColumn: 'span 4', padding: '36px 32px', borderRadius: '14px', backgroundColor: F.surface1, border: `1px solid ${F.hairlineSoft}`, display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: F.inkMuted, border: `1px solid ${F.hairline}`, borderRadius: '100px', padding: '3px 10px', marginBottom: '24px', textTransform: 'uppercase', width: 'fit-content' }}>
-                <Share2 size={10} />
+            <div style={{ gridColumn: 'span 4', padding: '48px', borderRadius: '32px', backgroundColor: '#fff', border: `1px solid ${F.hairlineSoft}`, display: 'flex', flexDirection: 'column', gap: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.03)' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', color: F.inkMuted, border: `1px solid ${F.hairline}`, borderRadius: '100px', padding: '5px 14px', textTransform: 'uppercase', width: 'fit-content' }}>
+                <Share2 size={14} />
                 Share
               </div>
-              <h3 style={{ color: F.ink, fontSize: '20px', fontWeight: 500, lineHeight: 1.2, letterSpacing: '-0.8px', marginBottom: '12px' }}>링크로 즉시 공유</h3>
-              <p style={{ color: F.inkMuted, fontSize: '15px', lineHeight: 1.4, letterSpacing: '-0.15px', flex: 1 }}>
-                완성된 시안을 링크 하나로 팀 또는 클라이언트와 공유할 수 있습니다.
-              </p>
+              <div>
+                <h3 style={{ color: F.ink, fontSize: '24px', fontWeight: 700, lineHeight: 1.2, letterSpacing: '-0.8px', marginBottom: '16px' }}>링크로 즉시 공유</h3>
+                <p style={{ color: F.inkMuted, fontSize: '16px', lineHeight: 1.6, letterSpacing: '-0.16px' }}>
+                  완성된 시안을 링크 하나로 팀 또는 클라이언트와 공유할 수 있습니다.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -1753,29 +1835,30 @@ export default function Home() {
       {/* ══════════════════════════════════════════
           TEMPLATES
       ══════════════════════════════════════════ */}
-      <section style={{ backgroundColor: F.canvas, position: 'relative', zIndex: 10, padding: '96px 0', borderTop: `1px solid ${F.hairlineSoft}` }}>
-        <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '40px' }}>
-          <div>
-            <p style={{ color: F.inkMuted, fontSize: '13px', fontWeight: 500, letterSpacing: '-0.13px', marginBottom: '12px' }}>
-              Templates
-            </p>
-            <h2 style={{ color: F.ink, fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 500, letterSpacing: '-2.4px', lineHeight: 1.05 }}>
-              Get started<br />with templates
-            </h2>
-          </div>
-          <div style={{ display: 'flex', gap: '8px', paddingBottom: '6px' }}>
+      <section style={{ backgroundColor: F.canvas, position: 'relative', zIndex: 10, padding: '120px 0', borderTop: `1px solid ${F.hairlineSoft}` }}>
+        <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '0 24px', textAlign: 'center', marginBottom: '64px' }}>
+          <p style={{ color: F.primary, fontSize: '14px', fontWeight: 600, letterSpacing: '0.1em', marginBottom: '20px', textTransform: 'uppercase' }}>
+            Templates
+          </p>
+          <h2 style={{ color: F.ink, fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: 600, letterSpacing: '-2.8px', lineHeight: 1, marginBottom: '24px' }}>
+            Get started with templates
+          </h2>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
             {(['left', 'right'] as const).map(dir => (
               <button
                 key={dir}
                 onClick={() => scroll(dir)}
                 style={{
-                  width: 36, height: 36, borderRadius: '50%',
+                  width: 44, height: 44, borderRadius: '50%',
                   border: `1px solid ${F.hairline}`, backgroundColor: F.surface1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', color: F.ink, transition: 'all 0.15s',
+                  cursor: 'pointer', color: F.ink, transition: 'all 0.2s',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
                 }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fff'; e.currentTarget.style.borderColor = F.primary; e.currentTarget.style.color = F.primary }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = F.surface1; e.currentTarget.style.borderColor = F.hairline; e.currentTarget.style.color = F.ink }}
               >
-                {dir === 'left' ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+                {dir === 'left' ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
               </button>
             ))}
           </div>
@@ -1887,49 +1970,56 @@ export default function Home() {
       {/* ══════════════════════════════════════════
           PRICING
       ══════════════════════════════════════════ */}
-      <section id="pricing" style={{ backgroundColor: F.canvas, position: 'relative', zIndex: 10, padding: '96px 24px', borderTop: `1px solid ${F.hairlineSoft}` }}>
+      <section id="pricing" style={{ backgroundColor: '#f5f7ff', position: 'relative', zIndex: 10, padding: '140px 24px', borderTop: `1px solid ${F.hairlineSoft}` }}>
         <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
-          <p style={{ color: F.inkMuted, fontSize: '13px', fontWeight: 500, letterSpacing: '-0.13px', marginBottom: '16px', textAlign: 'center' }}>Pricing</p>
-          <h2 style={{ color: F.ink, fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 500, letterSpacing: '-2.4px', lineHeight: 1.05, textAlign: 'center', marginBottom: '16px' }}>
+          <p style={{ color: F.primary, fontSize: '15px', fontWeight: 700, letterSpacing: '0.12em', marginBottom: '24px', textAlign: 'center', textTransform: 'uppercase' }}>Pricing</p>
+          <h2 style={{ color: F.ink, fontSize: 'clamp(32px, 5vw, 56px)', fontWeight: 700, letterSpacing: '-3px', lineHeight: 1, textAlign: 'center', marginBottom: '24px' }}>
             심플한 요금제
           </h2>
-          <p style={{ color: F.inkMuted, fontSize: '15px', textAlign: 'center', lineHeight: 1.4, marginBottom: '64px', letterSpacing: '-0.15px' }}>
+          <p style={{ color: F.inkMuted, fontSize: '18px', textAlign: 'center', lineHeight: 1.6, marginBottom: '80px', letterSpacing: '-0.2px' }}>
             무료로 시작하고, 필요할 때 업그레이드하세요
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px', alignItems: 'start' }}>
             {PRICING_PLANS.map(plan => (
               <div
                 key={plan.name}
                 style={{
-                  padding: '36px 32px', borderRadius: '14px',
-                  backgroundColor: plan.featured ? F.ink : F.surface1,
+                  padding: '56px 48px', borderRadius: '32px',
+                  backgroundColor: plan.featured ? F.primary : '#fff',
                   border: plan.featured ? 'none' : `1px solid ${F.hairlineSoft}`,
                   position: 'relative',
+                  boxShadow: plan.featured ? `0 40px 80px ${F.primary}40` : '0 10px 30px rgba(0,0,0,0.02)',
+                  transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
                 }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-12px)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
               >
                 {plan.featured && (
                   <div style={{
-                    position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
-                    fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
-                    color: '#111', backgroundColor: '#fff',
-                    borderRadius: '100px', padding: '4px 12px', whiteSpace: 'nowrap',
+                    position: 'absolute', top: '-16px', left: '50%', transform: 'translateX(-50%)',
+                    fontSize: '12px', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase',
+                    color: F.primary, backgroundColor: '#fff',
+                    borderRadius: '100px', padding: '8px 24px', whiteSpace: 'nowrap',
+                    boxShadow: '0 10px 20px rgba(0,0,0,0.1)'
                   }}>
                     가장 인기
                   </div>
                 )}
-                <div style={{ marginBottom: '24px' }}>
-                  <h3 style={{ color: plan.featured ? F.canvas : F.ink, fontSize: '18px', fontWeight: 500, letterSpacing: '-0.6px', marginBottom: '6px' }}>{plan.name}</h3>
-                  <p style={{ color: plan.featured ? 'rgba(255,255,255,0.55)' : F.inkMuted, fontSize: '14px', letterSpacing: '-0.14px' }}>{plan.desc}</p>
+                <div style={{ marginBottom: '40px' }}>
+                  <h3 style={{ color: plan.featured ? '#fff' : F.ink, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.8px', marginBottom: '12px' }}>{plan.name}</h3>
+                  <p style={{ color: plan.featured ? 'rgba(255,255,255,0.7)' : F.inkMuted, fontSize: '16px', letterSpacing: '-0.16px' }}>{plan.desc}</p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', marginBottom: '32px' }}>
-                  <span style={{ color: plan.featured ? F.canvas : F.ink, fontSize: 'clamp(32px, 4vw, 44px)', fontWeight: 500, letterSpacing: '-2px', lineHeight: 1 }}>{plan.price}</span>
-                  {plan.per && <span style={{ color: plan.featured ? 'rgba(255,255,255,0.5)' : F.inkMuted, fontSize: '15px', letterSpacing: '-0.15px' }}>{plan.per}</span>}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '48px' }}>
+                  <span style={{ color: plan.featured ? '#fff' : F.ink, fontSize: '56px', fontWeight: 800, letterSpacing: '-2px', lineHeight: 1 }}>{plan.price}</span>
+                  {plan.per && <span style={{ color: plan.featured ? 'rgba(255,255,255,0.6)' : F.inkMuted, fontSize: '18px', letterSpacing: '-0.18px' }}>{plan.per}</span>}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '32px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', marginBottom: '56px' }}>
                   {plan.features.map(f => (
-                    <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <Check size={13} color={plan.featured ? 'rgba(255,255,255,0.7)' : F.inkMuted} strokeWidth={2.5} style={{ flexShrink: 0 }} />
-                      <span style={{ color: plan.featured ? 'rgba(255,255,255,0.8)' : F.inkMuted, fontSize: '14px', letterSpacing: '-0.14px' }}>{f}</span>
+                    <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: plan.featured ? 'rgba(255,255,255,0.15)' : `${F.primary}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Check size={12} color={plan.featured ? '#fff' : F.primary} strokeWidth={4} />
+                      </div>
+                      <span style={{ color: plan.featured ? 'rgba(255,255,255,0.9)' : F.ink, fontSize: '16px', letterSpacing: '-0.16px', fontWeight: 600 }}>{f}</span>
                     </div>
                   ))}
                 </div>
@@ -1937,12 +2027,12 @@ export default function Home() {
                   href="/studio"
                   style={{
                     display: 'block', textAlign: 'center',
-                    padding: '12px', borderRadius: '100px',
-                    backgroundColor: plan.featured ? '#fff' : F.surface2,
-                    color: plan.featured ? '#111' : F.ink,
-                    fontSize: '14px', fontWeight: 500, letterSpacing: '-0.14px',
-                    textDecoration: 'none', transition: 'all 0.15s',
-                    border: plan.featured ? 'none' : `1px solid ${F.hairline}`,
+                    padding: '20px', borderRadius: '100px',
+                    backgroundColor: plan.featured ? '#fff' : F.ink,
+                    color: plan.featured ? F.primary : '#fff',
+                    fontSize: '16px', fontWeight: 700, letterSpacing: '-0.16px',
+                    textDecoration: 'none', transition: 'all 0.2s',
+                    boxShadow: plan.featured ? '0 10px 20px rgba(0,0,0,0.1)' : 'none'
                   }}
                 >
                   {plan.cta}
@@ -1971,35 +2061,45 @@ export default function Home() {
       {/* ══════════════════════════════════════════
           CTA
       ══════════════════════════════════════════ */}
-      <section style={{ backgroundColor: F.canvas, position: 'relative', zIndex: 10, padding: '96px 24px', borderTop: `1px solid ${F.hairlineSoft}` }}>
-        <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
+      <section style={{ 
+        backgroundColor: '#f0f4ff', position: 'relative', zIndex: 10, padding: '160px 24px', 
+        borderTop: `1px solid ${F.hairlineSoft}`, overflow: 'hidden'
+      }}>
+        {/* 화려한 블루 그라데이션 배경 */}
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '1000px', height: '800px', background: 'radial-gradient(circle, rgba(82, 39, 255, 0.08) 0%, rgba(149, 199, 205, 0.05) 50%, transparent 100%)', filter: 'blur(100px)', pointerEvents: 'none' }} />
+
+        <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center', position: 'relative', zIndex: 1 }}>
           <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            border: `1px solid ${F.hairline}`, color: F.inkMuted,
-            fontSize: '13px', fontWeight: 500, padding: '5px 13px', borderRadius: '100px',
-            backgroundColor: F.surface1, marginBottom: '32px', letterSpacing: '-0.13px',
+            display: 'inline-flex', alignItems: 'center', gap: '8px',
+            border: `1px solid ${F.primary}30`, color: F.primary,
+            fontSize: '14px', fontWeight: 700, padding: '8px 20px', borderRadius: '100px',
+            backgroundColor: `${F.primary}10`, marginBottom: '32px', letterSpacing: '0.1em', textTransform: 'uppercase'
           }}>
-            <Sliders size={10} />
-            무료로 시작
+            <Sparkles size={14} />
+            Start for free
           </div>
-          <h2 style={{ color: F.ink, fontSize: 'clamp(28px, 4vw, 52px)', fontWeight: 500, letterSpacing: '-2.6px', lineHeight: 1.00, marginBottom: '20px' }}>
-            지금 바로<br />첫 시안을 만들어보세요
+          <h2 style={{ color: F.ink, fontSize: 'clamp(40px, 7vw, 72px)', fontWeight: 700, letterSpacing: '-4px', lineHeight: 0.9, marginBottom: '40px' }}>
+            지금 바로 첫 시안을<br />만들어보세요
           </h2>
-          <p style={{ color: F.inkMuted, fontSize: '15px', lineHeight: 1.30, marginBottom: '44px', letterSpacing: '-0.15px' }}>
-            설명 한 줄로 시작합니다. 디자인 경험이 없어도 괜찮습니다.
+          <p style={{ color: F.inkMuted, fontSize: '20px', lineHeight: 1.6, marginBottom: '64px', letterSpacing: '-0.2px', maxWidth: '640px', margin: '0 auto 64px' }}>
+            설명 한 줄로 시작합니다. 디자인 경험이 없어도 괜찮습니다.<br />
+            당신의 아이디어를 실시간으로 확인하세요.
           </p>
           <a
             href="/studio"
             style={{
-              display: 'inline-flex', alignItems: 'center', gap: '8px',
-              backgroundColor: F.ink, color: F.canvas,
-              fontSize: '14px', fontWeight: 500, letterSpacing: '-0.14px',
-              padding: '10px 15px', borderRadius: '100px',
-              textDecoration: 'none', transition: 'all 0.2s',
+              display: 'inline-flex', alignItems: 'center', gap: '14px',
+              backgroundColor: F.primary, color: '#fff',
+              fontSize: '18px', fontWeight: 700, letterSpacing: '-0.18px',
+              padding: '20px 48px', borderRadius: '100px',
+              textDecoration: 'none', transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+              boxShadow: `0 20px 40px ${F.primary}40`
             }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08) translateY(-4px)'; e.currentTarget.style.boxShadow = `0 30px 60px ${F.primary}60` }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1) translateY(0)'; e.currentTarget.style.boxShadow = `0 20px 40px ${F.primary}40` }}
           >
-            <Sparkles size={14} />
             스튜디오 시작하기
+            <ChevronRight size={20} strokeWidth={3} />
           </a>
         </div>
       </section>
