@@ -716,9 +716,9 @@ ${isMd3Base ? `
 - 모든 입력: MD3 Outlined Text Field 구조 사용 (레이블 항상 필드 위에 배치)
 - 카드: MD3 Elevated/Filled/Outlined Card 구조 사용
 - 목록: MD3 List Item 구조 (min-height 56px 준수)
-- 내비게이션: 모바일=Navigation Bar(하단), 데스크탑=Navigation Rail(좌측 240px)
+- 내비게이션: ${effectivePlatform === 'web' ? '⛔ 하단 탭바 절대 금지 — Navigation Rail(좌측 고정, 240px 너비) 사용 필수' : 'Navigation Bar(하단 고정 탭바) 사용'}
 - 칩: MD3 Assist/Filter Chip (rounded-full, height 32px)
-- 모달: MD3 Dialog (max-width 480px) 또는 Bottom Sheet (모바일)
+- 모달: MD3 Dialog (max-width 480px)${effectivePlatform !== 'web' ? ' 또는 Bottom Sheet (모바일)' : ''}
 - 위의 --md-sys-color-*, --md-sys-shape-*, --md-sys-typescale-* CSS 변수를 MD3 컴포넌트 스타일링에 활용할 것
 
 ⚠️ KTDS 치수 우선 — MD3 플랫폼 가이드 수치 완전 무시:
@@ -763,17 +763,23 @@ ${isMd3Base ? `
   .badge-caution  { background:var(--color-caution);  color:#ffffff; border-radius:var(--rounded-full); }
   .badge-info     { background:var(--color-info);     color:#ffffff; border-radius:var(--rounded-full); }
 
-[NavigationBar]
-  { background:var(--color-surface); border-top:1px solid var(--color-border-alt); }
-  active icon+text: var(--color-primary); inactive: var(--color-icon)
+${effectivePlatform === 'web' ? `[NavigationRail] ⛔ 웹 전용 — 하단 탭바 절대 금지
+  { position:fixed; left:0; top:0; width:240px; height:100vh; background:var(--color-surface); border-right:1px solid var(--color-border-alt); display:flex; flex-direction:column; padding:var(--spacing-lg) 0; }
+  .nav-header { padding:0 var(--spacing-base) var(--spacing-lg); }
+  .nav-item   { height:56px; padding:0 var(--spacing-base); display:flex; align-items:center; gap:var(--spacing-sm); font-size:14px; cursor:pointer; }
+  .nav-item.active { color:var(--color-primary); background:var(--color-primary-fill-neutral); border-radius:var(--rounded-md); font-weight:600; }
+  .nav-item.inactive { color:var(--color-text-alternative); }
+  .main-content { margin-left:240px; }` : `[NavigationBar] ⛔ 모바일 전용 — 하단 고정 탭바
+  { position:fixed; bottom:0; left:0; right:0; background:var(--color-surface); border-top:1px solid var(--color-border-alt); display:flex; }
+  active icon+text: var(--color-primary); inactive: var(--color-icon)`}
 
 [Modal / Dialog]
   { max-width:480px; border-radius:var(--rounded-xl); padding:var(--spacing-lg); }
 
-[BottomSheet]
+${effectivePlatform !== 'web' ? `[BottomSheet]
   { border-radius:var(--rounded-2xl) var(--rounded-2xl) 0 0; padding:var(--spacing-base) var(--spacing-lg); }
 
-[Snackbar]
+` : ''}[Snackbar]
   { border-radius:var(--rounded-md); background:#28292c; color:#ffffff; }
 ` : ''}` : effectivePlatform === 'web' ? 'Google, Stripe, Linear 수준의 완성도 높은 웹 UI를 만드세요.' : '네이티브 모바일 앱 수준의 UI를 만드세요 (Material Design 3 기반).'}
 
@@ -788,7 +794,7 @@ ${hasDesignSystem ? `
 > - [ ] components.input → height 52px, radius var(--rounded-md), label above(body2/var(--color-text-neutral)), focus=var(--color-primary-border), error=var(--color-negative)?
 > - [ ] components.card → radius var(--rounded-xl), padding var(--spacing-md), bg var(--color-surface), border 1px var(--color-border-alt), shadow?
 > - [ ] components.listItem → min-height 56px, paddingX var(--spacing-base), divider 1px var(--color-border-alt)?
-> - [ ] components.navigationBar → bg var(--color-surface), border-top 1px var(--color-border-alt), active=var(--color-primary)?
+> - [ ] ${effectivePlatform === 'web' ? '⛔ 하단 탭바 사용했는가? → 있으면 즉시 제거. NavigationRail(좌측 240px 고정)로 교체 필수' : 'components.navigationBar → bg var(--color-surface), border-top 1px var(--color-border-alt), active=var(--color-primary)?'}
 > - [ ] 폰트 크기·굵기가 typography 토큰과 일치하는가?
 > - [ ] ${hasBrandColors ? '임의 색상 사용하지 않았는가? (브랜드 컬러 외 hex 금지)' : '⛔ CSS 속성에 #hex 직접 사용했는가? → 있으면 반드시 CSS 변수로 교체 (e.g., color: #333 → color: var(--color-text))'}
 > - [ ] ⛔ spacing에 임의 px 값 사용하지 않았는가? (var(--spacing-*) 변수만 허용, 예: padding: 16px 금지)
