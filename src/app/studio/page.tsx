@@ -645,14 +645,11 @@ export default function StudioPage() {
         applyTransform(newPan, newZoom)
         return
       }
-      // 트랙패드 좌우 스와이프(deltaX 우세) → 수평 패닝
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-        e.preventDefault()
-        const newPan = { x: canvasPanRef.current.x - e.deltaX, y: canvasPanRef.current.y }
-        canvasPanRef.current = newPan
-        applyTransform(newPan, canvasZoomRef.current)
-      }
-      // 일반 스크롤 → 브라우저 기본 동작 허용
+      // 트랙패드/마우스 스크롤 → 양방향 패닝
+      e.preventDefault()
+      const newPan = { x: canvasPanRef.current.x - e.deltaX, y: canvasPanRef.current.y - e.deltaY }
+      canvasPanRef.current = newPan
+      applyTransform(newPan, canvasZoomRef.current)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
@@ -678,14 +675,11 @@ export default function StudioPage() {
         applyTransform(studioPanRef.current, newScale)
         return
       }
-      // 트랙패드 좌우 스와이프(deltaX 우세) → 수평 패닝
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-        e.preventDefault()
-        const newPan = { x: studioPanRef.current.x - e.deltaX, y: studioPanRef.current.y }
-        studioPanRef.current = newPan
-        applyTransform(newPan, studioScaleRef.current)
-      }
-      // 일반 스크롤 → 브라우저 기본 동작 허용
+      // 트랙패드/마우스 스크롤 → 양방향 패닝
+      e.preventDefault()
+      const newPan = { x: studioPanRef.current.x - e.deltaX, y: studioPanRef.current.y - e.deltaY }
+      studioPanRef.current = newPan
+      applyTransform(newPan, studioScaleRef.current)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
