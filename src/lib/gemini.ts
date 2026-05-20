@@ -928,10 +928,11 @@ export async function expandToPrototype(mainHtml: string, params: GenerateParams
     .join('\n');
 
   const isWeb = platform === 'web'
-  // Strip base64 data URIs before sending to AI — inline images can exceed the 1M token limit
+  // Replace logo first, then strip remaining base64 URIs — order matters:
+  // if we strip first, the logo's base64 is already gone when we try to replace it.
   const TINY_GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
-  const strippedHtml = mainHtml.replace(/data:[^;]+;base64,[A-Za-z0-9+/]+=*/g, TINY_GIF)
-  const safeMainHtml = expandLogoUrl ? strippedHtml.split(expandLogoUrl).join('__LOGO_DATA_URL__') : strippedHtml
+  const logoSwapped = expandLogoUrl ? mainHtml.split(expandLogoUrl).join('__LOGO_DATA_URL__') : mainHtml
+  const safeMainHtml = logoSwapped.replace(/data:[^;]+;base64,[A-Za-z0-9+/]+=*/g, TINY_GIF)
 
   const navExtractionGuide = isWeb
     ? `- 상단 GNB/nav 전체 (<nav>, <header> 또는 최상단 고정 영역)

@@ -1255,7 +1255,7 @@ mb={spacing.lg}  (24px — 헤더와 콘텐츠 사이)
 
 ## Iteration Guide
 
-1. 컴포넌트는 반드시 `components:` 토큰 이름으로 정확히 지칭하라 (예: `button-primary`, `tab-item-active`, `alert-negative`)
+1. 컴포넌트는 반드시 `components:` 토큰 이름으로 정확히 지칭하라 (예: `button.primary`, `tab.item-active`, `alert.negative`)
 2. 색상은 반드시 `var(--color-*)` CSS 변수로만 참조 — hex 직접 입력 절대 금지
 3. 새 섹션 추가 시 배경 레이어를 먼저 결정하라
    - 전체 페이지 배경: `var(--color-surface-alt)` (항상)
