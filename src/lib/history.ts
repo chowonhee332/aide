@@ -6,42 +6,100 @@ export interface HistoryItem {
   html: string
   thumbnail: string  // compressed jpeg base64
   createdAt: number
+  platform?: 'mobile' | 'web'
+  itemType?: 'variant' | 'design'
 }
 
-const KEY = 'aide_history'
-const MAX_ITEMS = 20
+const DB_NAME = 'aide_db'
+const STORE_NAME = 'history'
+const DB_VERSION = 1
+const MAX_ITEMS = 50
 
-export function loadHistory(): HistoryItem[] {
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION)
+    req.onupgradeneeded = () => {
+      const db = req.result
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+        store.createIndex('createdAt', 'createdAt')
+      }
+    }
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+export async function loadHistory(): Promise<HistoryItem[]> {
   if (typeof window === 'undefined') return []
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? '[]')
+    const db = await openDB()
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly')
+      const store = tx.objectStore(STORE_NAME)
+      const index = store.index('createdAt')
+      const req = index.getAll()
+      req.onsuccess = () => resolve((req.result as HistoryItem[]).reverse())
+      req.onerror = () => reject(req.error)
+    })
   } catch {
     return []
   }
 }
 
-export function saveHistoryItem(item: Omit<HistoryItem, 'id' | 'createdAt'>): void {
-  if (typeof window === 'undefined') return
-  const history = loadHistory()
-  const newItem: HistoryItem = { ...item, id: crypto.randomUUID(), createdAt: Date.now() }
-  const updated = [newItem, ...history].slice(0, MAX_ITEMS)
+export async function saveHistoryItem(item: Omit<HistoryItem, 'id' | 'createdAt'>): Promise<string | null> {
+  if (typeof window === 'undefined') return null
   try {
-    localStorage.setItem(KEY, JSON.stringify(updated))
+    const db = await openDB()
+    const newItem: HistoryItem = { ...item, id: crypto.randomUUID(), createdAt: Date.now() }
+
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite')
+      const store = tx.objectStore(STORE_NAME)
+      store.add(newItem)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+
+    // Trim to MAX_ITEMS
+    const all = await loadHistory()
+    if (all.length > MAX_ITEMS) {
+      const toDelete = all.slice(MAX_ITEMS)
+      const tx = db.transaction(STORE_NAME, 'readwrite')
+      const store = tx.objectStore(STORE_NAME)
+      toDelete.forEach(h => store.delete(h.id))
+    }
+    return newItem.id
   } catch {
-    // quota exceeded — purge oldest half and retry
-    const trimmed = [newItem, ...history].slice(0, Math.floor(MAX_ITEMS / 2))
-    try { localStorage.setItem(KEY, JSON.stringify(trimmed)) } catch { /* give up */ }
+    // Silently ignore — IndexedDB not available (SSR, private mode with restrictions)
   }
+  return null
 }
 
-export function deleteHistoryItem(id: string): void {
+export async function deleteHistoryItem(id: string): Promise<void> {
   if (typeof window === 'undefined') return
-  localStorage.setItem(KEY, JSON.stringify(loadHistory().filter(h => h.id !== id)))
+  try {
+    const db = await openDB()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite')
+      tx.objectStore(STORE_NAME).delete(id)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch { /* ignore */ }
 }
 
-export function clearHistory(): void {
+export async function clearHistory(): Promise<void> {
   if (typeof window === 'undefined') return
-  localStorage.removeItem(KEY)
+  try {
+    const db = await openDB()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite')
+      tx.objectStore(STORE_NAME).clear()
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch { /* ignore */ }
 }
 
 export async function compressThumbnail(dataUrl: string): Promise<string> {

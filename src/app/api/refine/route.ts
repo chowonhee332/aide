@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { refineUI } from '@/lib/gemini'
+import { refineUI, resolveImagePlaceholders } from '@/lib/gemini'
 
 export const maxDuration = 120
 
@@ -8,7 +8,8 @@ export async function POST(req: NextRequest) {
     const { html, message, brief, designMd } = await req.json()
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
 
-    const text = await refineUI(html, message, brief, designMd, apiKey)
+    let text = await refineUI(html, message, brief, designMd, apiKey)
+    text = await resolveImagePlaceholders(text, { apiKey })
 
     if (!text.includes('<html') && !text.includes('<!DOCTYPE')) {
       return NextResponse.json({ error: '유효한 HTML이 반환되지 않았습니다' }, { status: 500 })

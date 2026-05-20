@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { Browser } from 'puppeteer'
-import { expandToPrototype, type GenerateParams } from '@/lib/gemini'
+import { expandToPrototype, resolveImagePlaceholders, type GenerateParams } from '@/lib/gemini'
 
 export const maxDuration = 180
 
@@ -21,8 +21,9 @@ export async function POST(req: NextRequest) {
     const { mainHtml, ...params } = await req.json() as { mainHtml: string } & GenerateParams
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
     console.log('[expand] step1: params parsed, starting expandToPrototype')
-    const html = await expandToPrototype(mainHtml, params, apiKey)
+    let html = await expandToPrototype(mainHtml, params, apiKey)
     console.log('[expand] step2: html generated, length=', html.length)
+    html = await resolveImagePlaceholders(html, { heroImagePrompt: params.heroImagePrompt, apiKey })
 
     const puppeteer = await import('puppeteer')
     browser = await puppeteer.default.launch({

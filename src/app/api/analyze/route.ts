@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     }
 
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
-    const trimmedDesignMd = (designMd ?? '').slice(0, 2000)
+    const trimmedDesignMd = (designMd ?? '').slice(0, 10000)
     const result = await analyzeAndGenerateQuestions(trimmedDesignMd, brief, platform, apiKey)
     return NextResponse.json(result)
   } catch (err) {

@@ -3,14 +3,14 @@
 import { useState, useCallback, useRef, useEffect, startTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowUp, Sparkles, MessageSquare, Layers, Sliders, FileText, Upload, X,
+  ArrowUp, ArrowRight, Sparkles, MessageSquare, Layers, Sliders, FileText, Upload, X,
   ChevronLeft, ChevronRight, Check, ChevronDown, Zap, Palette, MousePointer2, Share2,
   Clock, Trash2, ExternalLink, Link2, KeyRound,
 } from 'lucide-react'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import Grainient from '@/components/Grainient'
 import { DesignMdPreview } from '@/components/DesignMdPreview'
-import { type HistoryItem, loadHistory, deleteHistoryItem, clearHistory, relativeTime } from '@/lib/history'
+import { type HistoryItem, loadHistory, deleteHistoryItem, relativeTime } from '@/lib/history'
 
 const F = {
   canvas:       '#ffffff',
@@ -110,22 +110,22 @@ interface TemplateItem {
 
 const TEMPLATES: TemplateItem[] = [
   {
-    id: 'logistics', type: 'Web Template', name: '물류 대시보드', preset: 'framer',
+    id: 'logistics', type: 'Web Template', name: '물류 대시보드', preset: 'linear',
     brief: '물류 배송 관리 SaaS 대시보드. 사이드바 네비게이션, 실시간 배송 지도, KPI 위젯 포함',
     bg: 'linear-gradient(145deg, #9ecfac 0%, #e8c170 55%, #88c5d8 100%)', wide: true,
   },
   {
-    id: 'health', type: 'Mobile Template', name: '헬스 트래커', preset: 'airbnb',
+    id: 'health', type: 'Mobile Template', name: '헬스 트래커', preset: 'notion',
     brief: '헬스 & 웰니스 앱. 수면 품질 주간 그래프, 스트레스 지수 링 차트, 활동 통계 화면',
     bg: 'linear-gradient(160deg, #f0e9e0 0%, #e5d9ce 100%)', wide: false,
   },
   {
-    id: 'streaming', type: 'Mobile Template', name: '엔터테인먼트 앱', preset: 'framer',
+    id: 'streaming', type: 'Mobile Template', name: '엔터테인먼트 앱', preset: 'linear',
     brief: '다크 테마 영화 스트리밍 앱. 검색 바, 장르 필터 칩, 추천 콘텐츠 2열 그리드',
     bg: 'radial-gradient(ellipse at 40% 20%, #5a1a3a 0%, #0e0e0e 65%)', wide: false,
   },
   {
-    id: 'fashion', type: 'Mobile Template', name: '패션 쇼핑 앱', preset: 'uber',
+    id: 'fashion', type: 'Mobile Template', name: '패션 쇼핑 앱', preset: 'ibm',
     brief: '미니멀 패션 이커머스. 전신 상품 이미지, 브랜드명, 가격, 사이즈 선택 포함',
     bg: '#efefef', wide: false,
   },
@@ -135,7 +135,7 @@ const TEMPLATES: TemplateItem[] = [
     bg: 'linear-gradient(145deg, #dbeafe 0%, #bfdbfe 100%)', wide: true,
   },
   {
-    id: 'travel', type: 'Mobile Template', name: '여행 예약 앱', preset: 'airbnb',
+    id: 'travel', type: 'Mobile Template', name: '여행 예약 앱', preset: 'notion',
     brief: '여행 예약 앱 홈. 목적지 검색, 인기 여행지 카드 그리드, 카테고리 탭 포함',
     bg: 'linear-gradient(145deg, #ffd6c4 0%, #ffb89a 100%)', wide: false,
   },
@@ -536,17 +536,17 @@ export default function Home() {
 
   const [historyModalOpen, setHistoryModalOpen] = useState(false)
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([])
+  const [historyModalTab, setHistoryModalTab] = useState<'variant' | 'design'>('variant')
 
   useEffect(() => {
     if (historyModalOpen) {
-      const items = loadHistory()
-      startTransition(() => setHistoryItems(items))
+      loadHistory().then(items => startTransition(() => setHistoryItems(items)))
     }
   }, [historyModalOpen])
 
   const [brief, setBrief] = useState('')
   const [platform, setPlatform] = useState<'mobile' | 'web'>('mobile')
-  const [designPreset, setDesignPreset] = useState<DesignPreset>('none')
+  const [designPreset, setDesignPreset] = useState<DesignPreset>('ktds')
   const [designPanelOpen, setDesignPanelOpen] = useState(false)
   const [designMdContent, setDesignMdContent] = useState<string | null>(null)
   const [designMdFileName, setDesignMdFileName] = useState<string | null>(null)
@@ -950,18 +950,29 @@ export default function Home() {
               >
                 <Clock size={18} />
               </button>
-              <a
-                href="/studio"
+              <button
+                onClick={async () => {
+                  const items = await loadHistory()
+                  if (items.length > 0) {
+                    router.push(`/studio?historyId=${items[0].id}`)
+                  } else {
+                    router.push('/studio')
+                  }
+                }}
                 style={{
                   backgroundColor: scrolled ? '#fff' : 'rgba(255,255,255,0.9)', color: '#111',
                   fontSize: '14px', fontWeight: 600, padding: '10px 20px', borderRadius: '12px',
-                  textDecoration: 'none', transition: 'all 0.15s',
+                  border: 'none', cursor: 'pointer', transition: 'all 0.15s',
                   letterSpacing: '-0.14px',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
                 }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fff'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.12)' }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = scrolled ? '#fff' : 'rgba(255,255,255,0.9)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)' }}
               >
-                Get Started
-              </a>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  Studio <ArrowRight size={14} strokeWidth={2.5} />
+                </span>
+              </button>
             </div>
           </div>
         </header>
@@ -973,7 +984,7 @@ export default function Home() {
             border: '1px solid rgba(255,255,255,0.3)', color: '#fff',
             fontSize: '13px', fontWeight: 600, padding: '6px 16px', borderRadius: '100px',
             backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)',
-            marginBottom: '40px', letterSpacing: '-0.13px',
+            marginBottom: '24px', letterSpacing: '-0.13px',
           }}>
             <span style={{ backgroundColor: '#fff', color: '#111', padding: '1px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 800, marginRight: '4px' }}>NEW</span>
             Just shipped v2.0
@@ -987,7 +998,7 @@ export default function Home() {
             textShadow: '0 2px 20px rgba(0,0,0,0.1)',
             textWrap: 'balance',
           } as React.CSSProperties}>
-            Start with a prompt.<br />Iterate into a design.
+            Start with Aide.<br />Iterate into a design.
           </h1>
           <p style={{
             fontSize: 'clamp(15px, 1.5vw, 18px)', color: 'rgba(255,255,255,0.72)',
@@ -1300,7 +1311,7 @@ export default function Home() {
             }}>
               <input ref={fileInputRef} type="file" accept=".md,.txt" onChange={handleFileUpload} style={{ display: 'none' }} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '14px' }}>
-                {(['ktds', 'airbnb', 'framer', 'uber'] as const).map(key => {
+                {(Object.keys(DESIGN_PRESETS).filter(k => k !== 'none') as DesignPreset[]).map(key => {
                   const preset = DESIGN_PRESETS[key]
                   const isActive = designPreset === key
                   return (
@@ -1542,7 +1553,7 @@ export default function Home() {
             </div>
           )}
 
-          <p style={{ color: 'rgba(0,0,0,0.3)', fontSize: '13px', marginTop: '14px', letterSpacing: '-0.13px' }}>
+          <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '13px', marginTop: '14px', letterSpacing: '-0.13px' }}>
             Enter로 전송 · Shift+Enter로 줄바꿈
           </p>
         </main>
@@ -1747,13 +1758,13 @@ export default function Home() {
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '40px' }}>
-                {(['airbnb', 'framer', 'ktds', 'uber'] as const).map(key => (
+                {(Object.keys(DESIGN_PRESETS).filter(k => k !== 'none') as DesignPreset[]).map((key, i) => (
                   <span key={key} style={{
                     fontSize: '14px', letterSpacing: '-0.14px', fontWeight: 600,
-                    color: key === 'airbnb' ? '#fff' : F.ink,
-                    border: key === 'airbnb' ? 'none' : '1px solid rgba(0,0,0,0.1)',
+                    color: i === 0 ? '#fff' : F.ink,
+                    border: i === 0 ? 'none' : '1px solid rgba(0,0,0,0.1)',
                     borderRadius: '100px', padding: '8px 18px',
-                    backgroundColor: key === 'airbnb' ? F.primary : '#fff',
+                    backgroundColor: i === 0 ? F.primary : '#fff',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                   }}>
                     {DESIGN_PRESETS[key].label}
@@ -2222,58 +2233,100 @@ export default function Home() {
             }}
           >
             <div style={{
-              padding: '20px 24px', borderBottom: `1px solid ${F.hairlineSoft}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+              padding: '16px 24px 0', borderBottom: `1px solid ${F.hairlineSoft}`,
+              display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0,
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Clock size={16} color={F.inkMuted} />
-                <span style={{ color: F.ink, fontSize: '15px', fontWeight: 600, letterSpacing: '-0.3px' }}>히스토리</span>
-                {historyItems.length > 0 && (
-                  <span style={{ color: F.inkMuted, fontSize: '12px', letterSpacing: '-0.12px' }}>{historyItems.length}개</span>
-                )}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                {historyItems.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Clock size={16} color={F.inkMuted} />
+                  <span style={{ color: F.ink, fontSize: '15px', fontWeight: 600, letterSpacing: '-0.3px' }}>히스토리</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {historyItems.filter(h => historyModalTab === 'variant' ? h.itemType === 'variant' : !h.itemType || h.itemType === 'design').length > 0 && (
+                    <button
+                      onClick={() => {
+                        const toDelete = historyItems.filter(h => historyModalTab === 'variant' ? h.itemType === 'variant' : !h.itemType || h.itemType === 'design')
+                        Promise.all(toDelete.map(h => deleteHistoryItem(h.id))).then(() => {
+                          setHistoryItems(prev => prev.filter(h => historyModalTab === 'variant' ? h.itemType !== 'variant' : (h.itemType === 'variant')))
+                        })
+                      }}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: 'rgba(200,50,50,0.6)', fontSize: '12px',
+                        display: 'flex', alignItems: 'center', gap: '4px',
+                        letterSpacing: '-0.12px', padding: '2px 0', fontFamily: 'inherit',
+                      }}
+                    >
+                      <Trash2 size={11} />
+                      탭 삭제
+                    </button>
+                  )}
                   <button
-                    onClick={() => { clearHistory(); setHistoryItems([]) }}
+                    onClick={() => setHistoryModalOpen(false)}
                     style={{
                       background: 'none', border: 'none', cursor: 'pointer',
-                      color: 'rgba(200,50,50,0.6)', fontSize: '12px',
-                      display: 'flex', alignItems: 'center', gap: '4px',
-                      letterSpacing: '-0.12px', padding: '2px 0', fontFamily: 'inherit',
+                      color: F.inkMuted, display: 'flex', alignItems: 'center',
+                      padding: '4px', borderRadius: '6px', fontFamily: 'inherit',
+                      fontSize: '18px', lineHeight: 1,
                     }}
                   >
-                    <Trash2 size={11} />
-                    전체 삭제
+                    ✕
                   </button>
-                )}
-                <button
-                  onClick={() => setHistoryModalOpen(false)}
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: F.inkMuted, display: 'flex', alignItems: 'center',
-                    padding: '4px', borderRadius: '6px', fontFamily: 'inherit',
-                    fontSize: '18px', lineHeight: 1,
-                  }}
-                >
-                  ✕
-                </button>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {(['variant', 'design'] as const).map(tab => {
+                  const label = tab === 'variant' ? '시안' : '디자인'
+                  const count = historyItems.filter(h => tab === 'variant' ? h.itemType === 'variant' : !h.itemType || h.itemType === 'design').length
+                  const isActive = historyModalTab === tab
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => setHistoryModalTab(tab)}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: '13px', fontWeight: isActive ? 600 : 400,
+                        color: isActive ? F.ink : F.inkMuted,
+                        padding: '6px 12px', borderRadius: '8px 8px 0 0',
+                        borderBottom: isActive ? `2px solid ${F.ink}` : '2px solid transparent',
+                        letterSpacing: '-0.13px', fontFamily: 'inherit',
+                        display: 'flex', alignItems: 'center', gap: '5px',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {label}
+                      {count > 0 && (
+                        <span style={{
+                          fontSize: '10px', fontWeight: 500,
+                          color: isActive ? 'rgba(0,0,0,0.5)' : F.inkMuted,
+                          backgroundColor: isActive ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.04)',
+                          borderRadius: '100px', padding: '1px 5px',
+                        }}>{count}</span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </div>
             <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
-              {historyItems.length === 0 ? (
+              {(() => {
+                const filteredItems = historyItems.filter(h =>
+                  historyModalTab === 'variant' ? h.itemType === 'variant' : !h.itemType || h.itemType === 'design'
+                )
+                const emptyLabel = historyModalTab === 'variant' ? '아직 생성한 시안이 없습니다' : '아직 완성한 디자인이 없습니다'
+                return filteredItems.length === 0 ? (
                 <div style={{
                   padding: '64px 24px', textAlign: 'center',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px',
                 }}>
                   <Clock size={28} color={F.inkMuted} />
                   <p style={{ color: F.inkMuted, fontSize: '14px', letterSpacing: '-0.14px', margin: 0 }}>
-                    아직 생성한 시안이 없습니다
+                    {emptyLabel}
                   </p>
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                  {historyItems.map(item => (
+                  {filteredItems.map(item => (
                     <div
                       key={item.id}
                       style={{
@@ -2319,7 +2372,7 @@ export default function Home() {
                           </div>
                           <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                             <button
-                              onClick={() => { deleteHistoryItem(item.id); setHistoryItems(h => h.filter(x => x.id !== item.id)) }}
+                              onClick={() => { deleteHistoryItem(item.id).then(() => setHistoryItems(h => h.filter(x => x.id !== item.id))) }}
                               style={{
                                 width: '28px', height: '28px', borderRadius: '6px',
                                 border: 'none', backgroundColor: 'transparent', cursor: 'pointer',
@@ -2348,7 +2401,8 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-              )}
+              )
+              })()}
             </div>
           </div>
         </div>

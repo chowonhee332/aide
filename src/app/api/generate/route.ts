@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { Browser } from 'puppeteer'
-import { generateUI } from '@/lib/gemini'
+import { generateUI, generateHeroImage, resolveImagePlaceholders } from '@/lib/gemini'
 
 export const maxDuration = 180
 
@@ -22,8 +22,14 @@ export async function POST(req: NextRequest) {
     const params = await req.json()
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
     console.log('[generate] step1: params parsed, starting generateUI')
-    const html = await generateUI(params, apiKey)
-    console.log('[generate] step2: html generated, length=', html.length)
+
+    const [html, heroImage] = await Promise.all([
+      generateUI(params, apiKey),
+      params.heroImagePrompt ? generateHeroImage(params.heroImagePrompt, apiKey) : Promise.resolve(null),
+    ])
+
+    const finalHtml = await resolveImagePlaceholders(html, { heroImageData: heroImage, apiKey })
+    console.log('[generate] step2: html generated, length=', finalHtml.length, heroImage ? '(3D hero included)' : '')
 
     const puppeteer = await import('puppeteer')
     browser = await puppeteer.default.launch({
@@ -44,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     console.log('[generate] step3: browser launched, setting viewport', vpWidth, vpHeight)
     await page.setViewport({ width: vpWidth, height: vpHeight, deviceScaleFactor: 2 })
-    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await page.setContent(finalHtml, { waitUntil: 'domcontentloaded', timeout: 30000 })
     console.log('[generate] step4: content loaded, waiting for fonts')
     await new Promise(r => setTimeout(r, 1500))
     await page.evaluate(() => document.fonts.ready.then(() => null)).catch(() => null)
@@ -58,7 +64,7 @@ export async function POST(req: NextRequest) {
     })
 
     console.log('[generate] step6: screenshot done')
-    return NextResponse.json({ html, image: `data:image/png;base64,${screenshot}` })
+    return NextResponse.json({ html: finalHtml, image: `data:image/png;base64,${screenshot}`, has3dHero: !!heroImage })
   } catch (err) {
     const name = err instanceof Error ? err.name : 'unknown'
     const message = err instanceof Error ? err.message : String(err)

@@ -4,13 +4,14 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Sparkles, Upload, Download, RefreshCw, ArrowLeft, Check,
   SlidersHorizontal, X, Moon, Sun, Pencil, Send, ChevronDown,
-  CornerUpLeft, CornerUpRight, Image as ImageIcon,
+  CornerUpLeft, CornerUpRight, Image as ImageIcon, Shapes,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import DotField from '@/components/DotField'
-import type { Question, QuestionnaireResponse, TweakSpec, TweakVariable } from '@/lib/gemini'
+import type { Question, QuestionnaireResponse, TweakSpec, TweakVariable, AppDomain } from '@/lib/gemini'
+import { getVariantStyles, getVariantInfo } from '@/lib/variant-refs'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
-import { saveHistoryItem, compressThumbnail, loadHistory } from '@/lib/history'
+import { saveHistoryItem, compressThumbnail, loadHistory, deleteHistoryItem, type HistoryItem } from '@/lib/history'
 
 // ─── Airbnb design tokens ────────────────────────────────────────────────────
 const F = {
@@ -27,20 +28,81 @@ type Step = 1 | 2 | 3 | 4
 interface GenerateResult { html: string; image: string }
 
 interface ElementStyles {
-  tagName: string; text: string
+  tagName: string; text: string; className: string
   fontFamily: string; fontSize: string; fontWeight: string
   color: string; textAlign: string; lineHeight: string; letterSpacing: string
   width: string; height: string; opacity: string
   paddingTop: string; paddingRight: string; paddingBottom: string; paddingLeft: string
   marginTop: string; marginRight: string; marginBottom: string; marginLeft: string
-  borderWidth: string; borderRadius: string; backgroundColor: string
+  borderWidth: string; borderRadius: string; backgroundColor: string; backgroundImage: string
+}
+
+// Detect web vs mobile for history items that pre-date the platform field
+function guessPlatform(item: { platform?: 'mobile' | 'web'; brief: string; html: string }): 'mobile' | 'web' {
+  if (item.platform) return item.platform
+  const b = item.brief.toLowerCase()
+  const webKw = ['웹', 'web', '랜딩', 'landing', '대시보드', 'dashboard',
+                 '데스크탑', 'desktop', '어드민', 'admin', '홈페이지', 'homepage', 'saas', '관리자 페이지']
+  if (webKw.some(k => b.includes(k))) return 'web'
+  // Width hints: web-generated HTML typically references 1440 or 1200px containers
+  if (item.html.includes('1440') || /max-width:\s*1[0-9]{3}px/.test(item.html)) return 'web'
+  return 'mobile'
 }
 
 // ─── Inspector script injected into generated HTML ───────────────────────────
 
 // Always injected: handles dark mode, brand color, navigation (no inspector UI)
-const BRIDGE_SCRIPT = `<script>
+const BRIDGE_SCRIPT = `<script data-aide-inject="1">
 (function(){
+  // 1. Block <a> link navigation (allow #anchors only)
+  document.addEventListener('click',function(e){
+    var el=e.target;
+    while(el&&el.tagName){
+      if(el.tagName==='A'){
+        var h=el.getAttribute('href')||'';
+        if(!h.startsWith('#')){e.preventDefault();e.stopPropagation();}
+        return;
+      }
+      el=el.parentElement;
+    }
+  },true);
+
+  // 2. Block form submissions
+  document.addEventListener('submit',function(e){e.preventDefault();e.stopPropagation();},true);
+
+  // 3. Override Location.prototype.href setter — blocks location.href = 'url'
+  try{
+    var locDesc=Object.getOwnPropertyDescriptor(Location.prototype,'href');
+    if(locDesc&&locDesc.set){
+      Object.defineProperty(Location.prototype,'href',{
+        get:locDesc.get,
+        set:function(v){if(typeof v==='string'&&v.startsWith('#')){locDesc.set.call(this,v);}},
+        configurable:true
+      });
+    }
+  }catch(e){}
+
+  // 4. Override location.assign / replace
+  try{window.location.assign=function(){};}catch(e){}
+  try{window.location.replace=function(){};}catch(e){}
+
+  // 5. Override history API
+  try{
+    var noop=function(){};
+    history.pushState=noop;
+    history.replaceState=noop;
+    history.go=noop;
+    history.back=noop;
+    history.forward=noop;
+  }catch(e){}
+
+  // 6. Block window.open
+  try{window.open=function(){return null;};}catch(e){}
+
+  // 7. Last-resort beforeunload
+  window.addEventListener('beforeunload',function(e){e.preventDefault();e.returnValue='';},true);
+
+  // 8. postMessage bridge (dark mode, brand color)
   window.addEventListener('message',function(e){
     if(!e.data)return;
     var d=e.data;
@@ -51,18 +113,20 @@ const BRIDGE_SCRIPT = `<script>
 </script>`
 
 // Only injected in edit mode: adds inspector selection UI + style update handling
-const INSPECTOR_SCRIPT = `<script>
+const INSPECTOR_SCRIPT = `<script data-aide-inject="1">
 (function(){
   var sel=null;
   var sb=document.createElement('div');
+  sb.setAttribute('data-aide-inject','1');
   sb.style.cssText='position:fixed;pointer-events:none;z-index:2147483647;outline:2px solid #0055ff;outline-offset:0;box-sizing:border-box;border-radius:2px;transition:all 80ms ease;display:none';
   var hb=document.createElement('div');
+  hb.setAttribute('data-aide-inject','1');
   hb.style.cssText='position:fixed;pointer-events:none;z-index:2147483646;background:rgba(0,85,255,0.07);box-sizing:border-box;transition:all 50ms ease';
   document.body.appendChild(sb);document.body.appendChild(hb);
   function box(el,div){var r=el.getBoundingClientRect();div.style.left=r.left+'px';div.style.top=r.top+'px';div.style.width=r.width+'px';div.style.height=r.height+'px';}
   function report(el){
     var cs=getComputedStyle(el),r=el.getBoundingClientRect();
-    parent.postMessage({type:'aide:select',styles:{tagName:el.tagName.toLowerCase(),text:(el.textContent||'').trim().slice(0,80),fontFamily:cs.fontFamily,fontSize:cs.fontSize,fontWeight:cs.fontWeight,color:cs.color,textAlign:cs.textAlign,lineHeight:cs.lineHeight,letterSpacing:cs.letterSpacing,width:Math.round(r.width)+'px',height:Math.round(r.height)+'px',opacity:cs.opacity,paddingTop:cs.paddingTop,paddingRight:cs.paddingRight,paddingBottom:cs.paddingBottom,paddingLeft:cs.paddingLeft,marginTop:cs.marginTop,marginRight:cs.marginRight,marginBottom:cs.marginBottom,marginLeft:cs.marginLeft,borderWidth:cs.borderWidth,borderRadius:cs.borderRadius,backgroundColor:cs.backgroundColor}},'*');
+    parent.postMessage({type:'aide:select',styles:{tagName:el.tagName.toLowerCase(),className:el.className||'',text:(el.textContent||'').trim().slice(0,80),fontFamily:cs.fontFamily,fontSize:cs.fontSize,fontWeight:cs.fontWeight,color:cs.color,textAlign:cs.textAlign,lineHeight:cs.lineHeight,letterSpacing:cs.letterSpacing,width:Math.round(r.width)+'px',height:Math.round(r.height)+'px',opacity:cs.opacity,paddingTop:cs.paddingTop,paddingRight:cs.paddingRight,paddingBottom:cs.paddingBottom,paddingLeft:cs.paddingLeft,marginTop:cs.marginTop,marginRight:cs.marginRight,marginBottom:cs.marginBottom,marginLeft:cs.marginLeft,borderWidth:cs.borderWidth,borderRadius:cs.borderRadius,backgroundColor:cs.backgroundColor,backgroundImage:cs.backgroundImage}},'*');
   }
   document.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();sel=e.target;sb.style.display='block';box(sel,sb);report(sel);},true);
   document.addEventListener('mouseover',function(e){if(e.target!==sel)box(e.target,hb);},true);
@@ -70,7 +134,73 @@ const INSPECTOR_SCRIPT = `<script>
     if(!e.data)return;
     var d=e.data;
     if(d.type==='aide:update'&&sel){sel.style[d.prop]=d.value;report(sel);}
+    if(d.type==='aide:setVideoSrc'&&sel){
+      function makeVideo(src,ref){var v=document.createElement('video');v.src=src;v.autoplay=true;v.muted=true;v.loop=true;v.playsInline=true;v.style.cssText=ref.style.cssText;v.className=ref.className;return v;}
+      if(sel.tagName==='VIDEO'){sel.src=d.url;}
+      else if(sel.tagName==='IMG'){var v=makeVideo(d.url,sel);sel.parentNode.replaceChild(v,sel);sel=v;}
+      else{var ci=sel.querySelector('img');if(ci){var v2=makeVideo(d.url,ci);ci.parentNode.replaceChild(v2,ci);sel=v2;}else{sel.style.backgroundImage='none';var v3=document.createElement('video');v3.src=d.url;v3.autoplay=true;v3.muted=true;v3.loop=true;v3.playsInline=true;v3.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;';sel.style.position='relative';sel.appendChild(v3);sel=v3;}}
+      report(sel);
+    }
     if(d.type==='aide:navigate'){sel=null;sb.style.display='none';}
+    if(d.type==='aide:pulse'){
+      if(d.on&&sel){
+        sel.style.transition='outline 0.4s ease, outline-offset 0.4s ease';
+        var count=0;var iv=setInterval(function(){
+          sel.style.outline=count%2===0?'3px solid #0055ff':'3px solid rgba(0,85,255,0.3)';
+          sel.style.outlineOffset=count%2===0?'0px':'4px';
+          count++;if(count>6)clearInterval(iv);
+        },400);
+        sel._pulseIv=iv;
+      } else if(!d.on&&sel){
+        clearInterval(sel._pulseIv);
+        sel.style.outline='';sel.style.outlineOffset='';sel.style.transition='';
+      }
+    }
+    if(d.type==='aide:setIcon'&&sel){
+      var t=sel;
+      // Material Symbols/Icons: textContent가 아이콘 이름
+      if(t.tagName==='SPAN'||t.tagName==='I'){
+        // 자식 노드를 모두 제거하고 텍스트만 설정
+        while(t.firstChild)t.removeChild(t.firstChild);
+        t.appendChild(document.createTextNode(d.name));
+      } else if(t.tagName==='SVG'||t.tagName==='svg'){
+        // SVG는 부모에 Material Symbol span을 삽입해 대체
+        var sp=document.createElement('span');
+        sp.className='material-symbols-outlined';
+        sp.style.cssText=t.style.cssText||'font-size:24px';
+        sp.textContent=d.name;
+        t.parentNode.replaceChild(sp,t);
+        sel=sp;
+      }
+      setTimeout(function(){report(sel);},50);
+    }
+    if(d.type==='aide:replaceImage'&&sel){
+      var url=d.url;
+      if(sel.tagName==='IMG'){
+        sel.src=url;
+      } else {
+        var childImg=sel.querySelector('img');
+        if(childImg){
+          childImg.src=url;
+        } else {
+          sel.style.backgroundImage='url("'+url+'")';
+          sel.style.backgroundSize='cover';
+          sel.style.backgroundPosition='center';
+        }
+      }
+      report(sel);
+    }
+    if(d.type==='aide:replaceIconWithImg'&&sel){
+      var img=document.createElement('img');
+      img.src=d.url;
+      var sz=sel.tagName==='SVG'||sel.tagName==='svg'
+        ?(sel.getAttribute('width')||'24')+'px'
+        :(parseFloat(getComputedStyle(sel).fontSize)||24)+'px';
+      img.style.cssText='width:'+sz+';height:'+sz+';object-fit:contain;display:inline-block;vertical-align:middle;';
+      sel.parentNode.replaceChild(img,sel);
+      sel=img;
+      setTimeout(function(){report(sel);},50);
+    }
   });
 })();
 </script>`
@@ -131,12 +261,146 @@ async function resizeLogo(file: File): Promise<string> {
   })
 }
 
+// ─── Expanding overlay ────────────────────────────────────────────────────────
+
+const EXPAND_STAGES = [
+  '서브 화면 레이아웃 설계 중...',
+  '화면 간 내비게이션 연결 중...',
+  '인터랙션 & 트랜지션 추가 중...',
+  '최종 완성도 높이는 중...',
+]
+
+function ExpandingOverlay({ image, platform, variantLabel }: { image?: string; platform?: string; variantLabel?: string }) {
+  const [stageIdx, setStageIdx] = useState(0)
+  const isMob = platform !== 'web'
+
+  useEffect(() => {
+    const t = setInterval(() => setStageIdx(i => (i + 1) % EXPAND_STAGES.length), 2600)
+    return () => clearInterval(t)
+  }, [])
+
+  const W = isMob ? 76 : 118
+  const H = isMob ? 130 : 80
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ backgroundColor: 'rgba(248,248,248,0.93)', backdropFilter: 'blur(12px)' }}>
+      <style>{`
+        @keyframes ep-draw { to { stroke-dashoffset: 0 } }
+        @keyframes ep-fade { from { opacity:0 } to { opacity:1 } }
+        @keyframes ep-slide { from { opacity:0; transform:translateX(-8px) } to { opacity:1; transform:translateX(0) } }
+        @keyframes ep-bar  { 0%,100%{ transform:translateX(-100%) } 50%{ transform:translateX(200%) } }
+        .ep-fr2 { stroke-dasharray:700; stroke-dashoffset:700; animation: ep-draw 1.0s cubic-bezier(.4,0,.2,1) 0.4s forwards }
+        .ep-h2  { stroke-dasharray:220; stroke-dashoffset:220; animation: ep-draw 0.4s ease 1.1s forwards }
+        .ep-b2  { stroke-dasharray:340; stroke-dashoffset:340; animation: ep-draw 0.45s ease 1.4s forwards }
+        .ep-c2  { stroke-dasharray:240; stroke-dashoffset:240; animation: ep-draw 0.4s ease 1.7s forwards }
+        .ep-fr3 { stroke-dasharray:700; stroke-dashoffset:700; animation: ep-draw 1.0s cubic-bezier(.4,0,.2,1) 1.2s forwards }
+        .ep-h3  { stroke-dasharray:220; stroke-dashoffset:220; animation: ep-draw 0.4s ease 1.9s forwards }
+        .ep-b3  { stroke-dasharray:340; stroke-dashoffset:340; animation: ep-draw 0.45s ease 2.2s forwards }
+        .ep-c3  { stroke-dasharray:240; stroke-dashoffset:240; animation: ep-draw 0.4s ease 2.5s forwards }
+        .ep-arr { opacity:0 }
+        .ep-arr1 { animation: ep-slide 0.3s ease 1.35s forwards }
+        .ep-arr2 { animation: ep-slide 0.3s ease 2.15s forwards }
+        .ep-stage { animation: ep-fade 0.4s ease forwards }
+      `}</style>
+
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 36 }}>
+
+        {/* ── Three screens ── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+
+          {/* Screen 1: selected thumbnail */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              width: W, height: H,
+              borderRadius: isMob ? 10 : 6,
+              overflow: 'hidden',
+              boxShadow: '0 6px 24px rgba(0,0,0,0.18)',
+              border: '2.5px solid #111111',
+              flexShrink: 0,
+            }}>
+              {image
+                ? <img src={image} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                : <div style={{ width: '100%', height: '100%', background: '#e4e4e4' }} />}
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#111111', letterSpacing: '-0.01em' }}>{variantLabel ?? '선택된 시안'}</span>
+          </div>
+
+          {/* Arrow 1 */}
+          <div className="ep-arr ep-arr1" style={{ color: '#bbbbbb', fontSize: 20, lineHeight: '1' }}>→</div>
+
+          {/* Screen 2: wireframe drawing */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            {isMob ? (
+              <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
+                <rect className="ep-fr2" x="2" y="2" width={W-4} height={H-4} rx="9" stroke="#222" strokeWidth="2"/>
+                <line className="ep-h2" x1="10" y1="20" x2={W-10} y2="20" stroke="#bbb" strokeWidth="1.2"/>
+                <rect className="ep-b2" x="8" y="28" width={W-16} height={Math.round(H*0.3)} rx="4" stroke="#999" strokeWidth="1.4"/>
+                <line className="ep-c2" x1="8" y1={H*0.68} x2={W*0.7} y2={H*0.68} stroke="#ccc" strokeWidth="1.2"/>
+                <rect className="ep-c2" x="8" y={H*0.73} width={W-16} height={Math.round(H*0.16)} rx="3" stroke="#ddd" strokeWidth="1.2"/>
+              </svg>
+            ) : (
+              <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
+                <rect className="ep-fr2" x="2" y="2" width={W-4} height={H-4} rx="5" stroke="#222" strokeWidth="2"/>
+                <line className="ep-h2" x1="2" y1="17" x2={W-2} y2="17" stroke="#ccc" strokeWidth="1.2"/>
+                <rect className="ep-b2" x="8" y="23" width={W-16} height={Math.round(H*0.32)} rx="3" stroke="#999" strokeWidth="1.4"/>
+                <rect className="ep-c2" x="8" y={H*0.65} width={(W-20)/2} height={Math.round(H*0.25)} rx="3" stroke="#ccc" strokeWidth="1.2"/>
+                <rect className="ep-c2" x={8+(W-20)/2+4} y={H*0.65} width={(W-20)/2} height={Math.round(H*0.25)} rx="3" stroke="#ccc" strokeWidth="1.2"/>
+              </svg>
+            )}
+            <span style={{ fontSize: 11, color: '#999', fontWeight: 500 }}>서브 화면</span>
+          </div>
+
+          {/* Arrow 2 */}
+          <div className="ep-arr ep-arr2" style={{ color: '#bbbbbb', fontSize: 20, lineHeight: '1' }}>→</div>
+
+          {/* Screen 3: wireframe drawing */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            {isMob ? (
+              <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
+                <rect className="ep-fr3" x="2" y="2" width={W-4} height={H-4} rx="9" stroke="#222" strokeWidth="2"/>
+                <line className="ep-h3" x1="10" y1="20" x2={W-10} y2="20" stroke="#bbb" strokeWidth="1.2"/>
+                <rect className="ep-b3" x="8" y="28" width={W-16} height={Math.round(H*0.38)} rx="4" stroke="#999" strokeWidth="1.4"/>
+                <rect className="ep-c3" x="8" y={H*0.72} width={W-16} height={Math.round(H*0.18)} rx="3" stroke="#ddd" strokeWidth="1.2"/>
+                <line className="ep-c3" x1="8" y1={H*0.94} x2={W*0.5} y2={H*0.94} stroke="#eee" strokeWidth="1"/>
+              </svg>
+            ) : (
+              <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
+                <rect className="ep-fr3" x="2" y="2" width={W-4} height={H-4} rx="5" stroke="#222" strokeWidth="2"/>
+                <line className="ep-h3" x1="2" y1="17" x2={W-2} y2="17" stroke="#ccc" strokeWidth="1.2"/>
+                <rect className="ep-b3" x="8" y="23" width={Math.round((W-20)*0.42)} height={H-30} rx="3" stroke="#999" strokeWidth="1.4"/>
+                <rect className="ep-c3" x={8+Math.round((W-20)*0.42)+4} y="23" width={Math.round((W-20)*0.54)} height={Math.round((H-30)/2-2)} rx="3" stroke="#ccc" strokeWidth="1.2"/>
+                <rect className="ep-c3" x={8+Math.round((W-20)*0.42)+4} y={23+Math.round((H-30)/2)+2} width={Math.round((W-20)*0.54)} height={Math.round((H-30)/2-2)} rx="3" stroke="#ccc" strokeWidth="1.2"/>
+              </svg>
+            )}
+            <span style={{ fontSize: 11, color: '#999', fontWeight: 500 }}>내비게이션</span>
+          </div>
+        </div>
+
+        {/* ── Text ── */}
+        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111111', letterSpacing: '-0.03em', margin: 0 }}>
+            선택한 시안으로 프로토타입을 완성하고 있습니다
+          </h2>
+          <p key={stageIdx} className="ep-stage" style={{ fontSize: 13, color: '#888888', margin: 0 }}>
+            {EXPAND_STAGES[stageIdx]}
+          </p>
+        </div>
+
+        {/* ── Progress bar ── */}
+        <div style={{ width: 220, height: 3, backgroundColor: '#e8e8e8', borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{ height: '100%', backgroundColor: '#111111', borderRadius: 2, animation: 'ep-bar 1.8s ease-in-out infinite' }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function StudioPage() {
   const [step, setStep] = useState<Step>(1)
   const [platform, setPlatform] = useState<'mobile' | 'web'>('mobile')
-  const [designPreset, setDesignPreset] = useState<DesignPreset>('none')
+  const [designPreset, setDesignPreset] = useState<DesignPreset>('ktds')
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null)
   const [logoLoading, setLogoLoading] = useState(false)
   const [brandColors, setBrandColors] = useState<string[]>([])
@@ -149,6 +413,7 @@ export default function StudioPage() {
   }, [])
 
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [wfAnimKey, setWfAnimKey] = useState(0)
   const [analyzeError, setAnalyzeError] = useState('')
   const [questionnaire, setQuestionnaire] = useState<QuestionnaireResponse | null>(null)
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
@@ -159,7 +424,6 @@ export default function StudioPage() {
   const [mainVariants, setMainVariants] = useState<[GenerateResult|null, GenerateResult|null, GenerateResult|null]>([null, null, null])
   const [pickedVariantIdx, setPickedVariantIdx] = useState<0|1|2|null>(null)
   const [generateError, setGenerateError] = useState('')
-  const [expandedVariant, setExpandedVariant] = useState<{ image: string; letter: string } | null>(null)
   const generationIdRef = useRef(0)
   const bgFetchAbortRef = useRef<AbortController | null>(null)
   const tweakRequestHtmlRef = useRef<string | null>(null)
@@ -187,6 +451,9 @@ export default function StudioPage() {
   const [editMode, setEditMode] = useState(false)
   const [creonOpen, setCreonOpen] = useState(false)
   const [creonAsset, setCreonAsset] = useState<string | null>(null)
+  const [iconPickerOpen, setIconPickerOpen] = useState(false)
+  const [pickedIcon, setPickedIcon] = useState<string | null>(null)
+  const [originalIconText, setOriginalIconText] = useState<string | null>(null)
   const [darkMode, setDarkMode] = useState(false)
   const [brandColor, setBrandColor] = useState('#ff385c')
   const [debouncedBrandColor, setDebouncedBrandColor] = useState('#ff385c')
@@ -206,6 +473,10 @@ export default function StudioPage() {
   const [historyIndexA, setHistoryIndexA] = useState(-1)
   const [historyB, setHistoryB] = useState<string[]>([])
   const [historyIndexB, setHistoryIndexB] = useState(-1)
+
+  // GNB history tabs
+  const [gnbHistory, setGnbHistory] = useState<HistoryItem[]>([])
+  const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null)
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([])
@@ -231,6 +502,10 @@ export default function StudioPage() {
   const canvasPanRef = useRef({ x: 0, y: 0 })
   const canvasAreaRef = useRef<HTMLDivElement>(null)
   const canvasTransformRef = useRef<HTMLDivElement>(null)
+  const studioAreaRef = useRef<HTMLDivElement>(null)
+  const studioTransformRef = useRef<HTMLDivElement>(null)
+  const studioScaleRef = useRef(1)
+  const studioPanRef = useRef({ x: 0, y: 0 })
   const spaceDownRef = useRef(false)
   const isPanningRef = useRef(false)
   const panStartRef = useRef({ mouseX: 0, mouseY: 0, panX: 0, panY: 0 })
@@ -272,20 +547,11 @@ export default function StudioPage() {
     // Load from history
     const historyId = params.get('historyId')
     if (historyId) {
-      const item = loadHistory().find(h => h.id === historyId)
-      if (item) {
-        setBrief(item.brief)
-        if (item.preset && item.preset in DESIGN_PRESETS) setDesignPreset(item.preset as DesignPreset)
-        const result: GenerateResult = { html: item.html, image: item.thumbnail }
-        setVariants([result, null])
-        setActiveVariant(0)
-        setHistoryA([item.html]); setHistoryIndexA(0)
-        setHistoryB([]); setHistoryIndexB(-1)
-        const extractedColor = item.html.match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? '#0055ff'
-        setBrandColor(extractedColor); setDebouncedBrandColor(extractedColor)
-        setZoom(60)
-        setStep(4)
-      }
+      loadHistory().then(items => {
+        setGnbHistory(items.filter(h => !h.itemType || h.itemType === 'design').slice(0, 30))
+        const item = items.find(h => h.id === historyId)
+        if (item) loadHistoryItemIntoEditor(item)
+      })
       return
     }
 
@@ -296,10 +562,10 @@ export default function StudioPage() {
 
     const preset: DesignPreset = (presetParam && presetParam in DESIGN_PRESETS)
       ? presetParam as DesignPreset
-      : 'none'
+      : 'ktds'
 
     setBrief(briefParam)
-    if (preset !== 'none') setDesignPreset(preset)
+    setDesignPreset(preset)
     if (platformParam === 'web' || platformParam === 'mobile') setPlatform(platformParam)
 
     const brandLogoFromStorage = sessionStorage.getItem('brandLogo')
@@ -340,6 +606,7 @@ export default function StudioPage() {
   useEffect(() => { canvasPanRef.current = canvasPan }, [canvasPan])
   useEffect(() => { selectedCardRef.current = selectedCard }, [selectedCard])
 
+
   // Canvas zoom/pan (step 3)
   useEffect(() => {
     if (step !== 3) return
@@ -359,15 +626,16 @@ export default function StudioPage() {
           return
         }
       }
-      e.preventDefault()
+      // Ctrl/Meta + scroll → 줌 (커서 기준)
       if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
         const rect = el.getBoundingClientRect()
         const mouseX = e.clientX - rect.left
         const mouseY = e.clientY - rect.top
-        const factor = e.deltaY > 0 ? 0.9 : 1.1
+        const factor = e.deltaY > 0 ? 0.92 : 1 / 0.92
         const curZoom = canvasZoomRef.current
         const curPan = canvasPanRef.current
-        const newZoom = Math.min(Math.max(curZoom * factor, 0.2), 4)
+        const newZoom = Math.min(Math.max(curZoom * factor, 0.15), 4)
         const newPan = {
           x: mouseX - (mouseX - curPan.x) * (newZoom / curZoom),
           y: mouseY - (mouseY - curPan.y) * (newZoom / curZoom),
@@ -375,11 +643,49 @@ export default function StudioPage() {
         canvasZoomRef.current = newZoom
         canvasPanRef.current = newPan
         applyTransform(newPan, newZoom)
-      } else {
-        const newPan = { x: canvasPanRef.current.x - e.deltaX, y: canvasPanRef.current.y - e.deltaY }
+        return
+      }
+      // 트랙패드 좌우 스와이프(deltaX 우세) → 수평 패닝
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        e.preventDefault()
+        const newPan = { x: canvasPanRef.current.x - e.deltaX, y: canvasPanRef.current.y }
         canvasPanRef.current = newPan
         applyTransform(newPan, canvasZoomRef.current)
       }
+      // 일반 스크롤 → 브라우저 기본 동작 허용
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [step])
+
+  // Canvas zoom/pan (step 4 studio)
+  useEffect(() => {
+    if (step !== 4) return
+    const el = studioAreaRef.current
+    if (!el) return
+    const applyTransform = (pan: { x: number; y: number }, scale: number) => {
+      const t = studioTransformRef.current
+      if (t) t.style.transform = `translate(${pan.x}px,${pan.y}px) scale(${scale})`
+    }
+    const onWheel = (e: WheelEvent) => {
+      // Ctrl/Meta + scroll → 줌
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        const factor = e.deltaY > 0 ? 0.92 : 1 / 0.92
+        const cur = studioScaleRef.current
+        const newScale = Math.min(Math.max(cur * factor, 0.15), 4)
+        studioScaleRef.current = newScale
+        applyTransform(studioPanRef.current, newScale)
+        return
+      }
+      // 트랙패드 좌우 스와이프(deltaX 우세) → 수평 패닝
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        e.preventDefault()
+        const newPan = { x: studioPanRef.current.x - e.deltaX, y: studioPanRef.current.y }
+        studioPanRef.current = newPan
+        applyTransform(newPan, studioScaleRef.current)
+      }
+      // 일반 스크롤 → 브라우저 기본 동작 허용
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
@@ -387,8 +693,9 @@ export default function StudioPage() {
 
   // Spacebar pan: hold space → grab cursor, drag → pan canvas
   useEffect(() => {
-    if (step !== 3) return
-    const el = canvasAreaRef.current
+    if (step !== 3 && step !== 4) return
+    const isStudio = step === 4
+    const el = (isStudio ? studioAreaRef : canvasAreaRef).current
     if (!el) return
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -409,7 +716,8 @@ export default function StudioPage() {
       if (!spaceDownRef.current) return
       e.preventDefault()
       isPanningRef.current = true
-      panStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, panX: canvasPanRef.current.x, panY: canvasPanRef.current.y }
+      const curPan = isStudio ? studioPanRef.current : canvasPanRef.current
+      panStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, panX: curPan.x, panY: curPan.y }
       el.style.cursor = 'grabbing'
     }
     const onMouseMove = (e: MouseEvent) => {
@@ -417,16 +725,20 @@ export default function StudioPage() {
       const dx = e.clientX - panStartRef.current.mouseX
       const dy = e.clientY - panStartRef.current.mouseY
       const newPan = { x: panStartRef.current.panX + dx, y: panStartRef.current.panY + dy }
-      canvasPanRef.current = newPan
-      const t = canvasTransformRef.current
-      if (t) t.style.transform = `translate(${newPan.x}px,${newPan.y}px) scale(${canvasZoomRef.current})`
+      if (isStudio) {
+        studioPanRef.current = newPan
+        const t = studioTransformRef.current
+        if (t) t.style.transform = `translate(${newPan.x}px,${newPan.y}px) scale(${studioScaleRef.current})`
+      } else {
+        canvasPanRef.current = newPan
+        const t = canvasTransformRef.current
+        if (t) t.style.transform = `translate(${newPan.x}px,${newPan.y}px) scale(${canvasZoomRef.current})`
+      }
     }
     const onMouseUp = () => {
       if (!isPanningRef.current) return
       isPanningRef.current = false
       el.style.cursor = spaceDownRef.current ? 'grab' : ''
-      // sync React state once at drag end so other logic stays consistent
-      setCanvasPan({ ...canvasPanRef.current })
     }
 
     window.addEventListener('keydown', onKeyDown)
@@ -519,6 +831,13 @@ export default function StudioPage() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  // Wireframe animation loop while analyzing
+  useEffect(() => {
+    if (!isAnalyzing) return
+    const id = setInterval(() => setWfAnimKey(k => k + 1), 4000)
+    return () => clearInterval(id)
+  }, [isAnalyzing])
+
   // Undo/Redo keyboard shortcuts
   useEffect(() => {
     if (step !== 4) return
@@ -530,9 +849,63 @@ export default function StudioPage() {
     return () => window.removeEventListener('keydown', handler)
   }, [step, handleUndo, handleRedo])
 
+  useEffect(() => {
+    if (step !== 4) return
+    loadHistory().then(items => setGnbHistory(items.filter(h => !h.itemType || h.itemType === 'design').slice(0, 30)))
+  }, [step])
+
   const handleStyleUpdate = useCallback((prop: string, value: string) => {
     sendToIframe({ type: 'aide:update', prop, value })
   }, [sendToIframe])
+
+  const loadHistoryItemIntoEditor = useCallback((item: HistoryItem) => {
+    setBrief(item.brief)
+    if (item.preset && item.preset in DESIGN_PRESETS) setDesignPreset(item.preset as DesignPreset)
+    setPlatform(guessPlatform(item))
+    const loaded: GenerateResult = { html: item.html, image: item.thumbnail }
+    setVariants([loaded, null])
+    setActiveVariant(0)
+    setHistoryA([item.html]); setHistoryIndexA(0)
+    setHistoryB([]); setHistoryIndexB(-1)
+    const extractedColor = item.html.match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? '#0055ff'
+    setBrandColor(extractedColor); setDebouncedBrandColor(extractedColor)
+    setCurrentHistoryId(item.id)
+    setEditMode(false)
+    setSelectedStyles(null)
+    setChatMessages([])
+    setZoom(60)
+    setStep(4)
+  }, [])
+
+  const commitIframeHtml = useCallback(() => {
+    const doc = iframeRef.current?.contentDocument
+    if (!doc) return
+    // inspector가 동적으로 추가한 overlay div 제거 (serialize 전에)
+    doc.querySelectorAll('[data-aide-inject="1"]:not(script)').forEach(el => el.remove())
+    // pulse/inspector가 직접 적용한 인라인 outline 스타일 제거
+    doc.querySelectorAll<HTMLElement>('*').forEach(el => {
+      if (el.style?.outline?.includes('0055ff')) {
+        el.style.outline = ''
+        el.style.outlineOffset = ''
+        el.style.transition = ''
+      }
+    })
+    const raw = doc.documentElement.outerHTML
+    if (!raw) return
+    const cleaned = raw.replace(/<script data-aide-inject="1">[\s\S]*?<\/script>/g, '')
+    setVariants(prev => {
+      const updated = [...prev] as [GenerateResult | null, GenerateResult | null]
+      if (updated[activeVariant]) updated[activeVariant] = { ...updated[activeVariant]!, html: cleaned }
+      return updated
+    })
+    if (activeVariant === 0) {
+      setHistoryA(prev => [...prev.slice(0, historyIndexA + 1), cleaned].slice(-30))
+      setHistoryIndexA(prev => prev + 1)
+    } else {
+      setHistoryB(prev => [...prev.slice(0, historyIndexB + 1), cleaned].slice(-30))
+      setHistoryIndexB(prev => prev + 1)
+    }
+  }, [activeVariant, historyIndexA, historyIndexB])
 
 
   const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -599,34 +972,8 @@ export default function StudioPage() {
     try {
       const referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
       const modelId = sessionStorage.getItem('aide_model') ?? undefined
-      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, platform, modelId }
-      const variantStyles = [
-        `클래식/카드형 (시안 A):
-- 레이아웃: 흰색 배경에 그림자 있는 카드(box-shadow: 0 2px 8px rgba(0,0,0,0.08)) 그리드
-- 핵심 KPI: 섹션 내 52px bold, primary 색상, 아래 보조 텍스트 13px gray
-- 상단 헤더: 흰색 배경, 브랜드명 + 알림 아이콘, 아래 얇은 구분선
-- 섹션 제목: 15px, font-weight 600, #222
-- 카드 내부 패딩: 20px
-- 진행 상태 바/링: primary 색상, 배경은 primary 10% 투명도
-- 전체 분위기: 신뢰감 있고 정보가 명확하게 계층화된 클래식 앱`,
-
-        `볼드/히어로형 (시안 B):
-- 최상단 히어로 카드: primary 배경색, 흰 텍스트, 핵심 KPI 64px font-weight:800, 히어로 카드 border-radius:20px, box-shadow: 0 12px 32px rgba(0,0,0,0.15)
-- 히어로 카드 내부: KPI 숫자 압도적으로 크게 + 목표 대비 진행률 바 (흰색 배경 20% 투명도)
-- 나머지 카드: 흰색 배경, 섀도우 있는 elevated 카드
-- 섹션 제목: 17px semibold, 카드 간 간격 16px
-- 하단 탭바: 흰색 배경, 그림자 있음, 활성 아이콘 primary 색
-- 전체 분위기: 임팩트 있고 KPI가 화면을 지배하는 Bold 레이아웃`,
-
-        `미니멀/타이포형 (시안 C):
-- 배경: #fafafa 아주 연한 회색
-- 헤더: 로고/앱명 20px bold, 날짜 13px gray, 패딩 20px
-- KPI: 56px font-weight:800, color: #111, 바로 아래 단위/설명 12px gray (컬러 최소화)
-- 카드: border: 1px solid #e8e8e8, border-radius:16px, box-shadow: 0 1px 4px rgba(0,0,0,0.06), 배경 흰색
-- 섹션 간 여백: 28px, 카드 내부 패딩: 22px
-- primary 색상은 진행바·active 탭 아이콘 2-3개에만 제한 사용
-- 전체 분위기: 군더더기 없는 미니멀, 타이포그래피가 주인공`,
-      ]
+      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, platform, modelId, heroImagePrompt: questionnaire.heroImageDecision?.generate ? questionnaire.heroImageDecision.prompt : undefined }
+      const variantStyles = getVariantStyles((questionnaire.domain ?? 'other') as AppDomain)
       const headers = apiHeaders()
 
       const saveVariantHistory = (result: GenerateResult) => {
@@ -638,6 +985,8 @@ export default function StudioPage() {
               designMdFileName: sessionStorage.getItem('designMdFileName') ?? null,
               html: result.html,
               thumbnail,
+              platform,
+              itemType: 'variant',
             })
           })
         }
@@ -737,16 +1086,36 @@ export default function StudioPage() {
       setZoom(isMobile ? 100 : isTablet ? 70 : 60)
       setStep(4)
 
+      if (data.image) {
+        compressThumbnail(data.image).then(async thumbnail => {
+          const newId = await saveHistoryItem({
+            brief,
+            preset: designPreset !== 'none' ? designPreset : null,
+            designMdFileName: sessionStorage.getItem('designMdFileName') ?? null,
+            html: data.html,
+            thumbnail,
+            platform,
+            itemType: 'design',
+          })
+          if (newId) {
+            setCurrentHistoryId(newId)
+            loadHistory().then(items => {
+              setGnbHistory(items.filter(h => !h.itemType || h.itemType === 'design').slice(0, 30))
+            })
+          }
+        })
+      }
+
       const headers = apiHeaders()
       const requestedHtml = data.html
       tweakRequestHtmlRef.current = requestedHtml
       setIsAnalyzingTweakA(true)
       fetch('/api/analyze-tweaks', { method: 'POST', headers, body: JSON.stringify({ html: requestedHtml, brief }) })
-        .then(r => r.json())
+        .then(r => r.ok ? r.json() : null)
         .then(spec => {
           if (tweakRequestHtmlRef.current !== requestedHtml) return
-          setTweakSpecA(spec.variables || spec.states ? spec : null)
-          if (spec.variables?.length) {
+          setTweakSpecA(spec?.states?.length ? spec : null)
+          if (spec?.variables?.length) {
             const defaults: Record<string, number> = {}
             spec.variables.forEach((v: TweakVariable) => { defaults[v.id] = v.currentValue })
             setVarValues(defaults)
@@ -772,7 +1141,7 @@ export default function StudioPage() {
     setEditMode(false); setChatMessages([]); setChatInput('')
     setHistoryA([]); setHistoryIndexA(-1); setHistoryB([]); setHistoryIndexB(-1)
     setShareOpen(false); setZoomOpen(false); setZoom(60)
-    setDesignPreset('none'); setLogoDataUrl(null); setLogoLoading(false); setBrandColors([])
+    setDesignPreset('ktds'); setLogoDataUrl(null); setLogoLoading(false); setBrandColors([])
     setMainVariants([null, null, null]); setPickedVariantIdx(null)
     setIsGeneratingB(false); setIsGeneratingC(false); setIsExpandingPrototype(false)
     setScreens([]); setActiveScreenId('')
@@ -849,11 +1218,11 @@ export default function StudioPage() {
         setTweakSpecA(null)
         setIsAnalyzingTweakA(true)
         fetch('/api/analyze-tweaks', { method: 'POST', headers, body: JSON.stringify({ html: refinedHtml, brief }) })
-          .then(r => r.json())
+          .then(r => r.ok ? r.json() : null)
           .then(spec => {
             if (tweakRequestHtmlRef.current !== refinedHtml) return
-            setTweakSpecA(spec.variables || spec.states ? spec : null)
-            if (spec.variables?.length) {
+            setTweakSpecA(spec?.states?.length ? spec : null)
+            if (spec?.variables?.length) {
               const defaults: Record<string, number> = {}
               spec.variables.forEach((v: TweakVariable) => { defaults[v.id] = v.currentValue })
               setVarValues(defaults)
@@ -865,10 +1234,10 @@ export default function StudioPage() {
         setTweakSpecB(null)
         setIsAnalyzingTweakB(true)
         fetch('/api/analyze-tweaks', { method: 'POST', headers, body: JSON.stringify({ html: refinedHtml, brief }) })
-          .then(r => r.json())
+          .then(r => r.ok ? r.json() : null)
           .then(spec => {
             if (tweakRequestHtmlRef.current !== refinedHtml) return
-            setTweakSpecB(spec.variables || spec.states ? spec : null)
+            setTweakSpecB(spec?.states?.length ? spec : null)
           })
           .catch(() => { if (tweakRequestHtmlRef.current === refinedHtml) setTweakSpecB(null) })
           .finally(() => { if (tweakRequestHtmlRef.current === refinedHtml) setIsAnalyzingTweakB(false) })
@@ -949,7 +1318,7 @@ export default function StudioPage() {
           backgroundSize: '16px 16px',
         }}
       >
-        {isExpandingPrototype && <ExpandingOverlay />}
+        {isExpandingPrototype && <ExpandingOverlay image={pickedVariantIdx !== null ? (mainVariants[pickedVariantIdx]?.image ?? undefined) : undefined} platform={platform} variantLabel={pickedVariantIdx !== null ? ['시안 A','시안 B','시안 C'][pickedVariantIdx] : undefined} />}
 
         {/* Header */}
         <div className="h-11 border-b border-[rgba(0,0,0,0.09)] flex items-stretch shrink-0 bg-white">
@@ -982,9 +1351,239 @@ export default function StudioPage() {
           </div>
         </div>
 
+        {/* Content area: left panel + canvas */}
+        <div className="flex-1 flex overflow-hidden">
+
+        {/* Left panel */}
+        {(() => {
+          const selectedVariant = selectedCard?.startsWith('variant-') ? selectedCard.replace('variant-', '') as 'A' | 'B' | 'C' : null
+          const variantIdx = selectedVariant ? (['A', 'B', 'C'].indexOf(selectedVariant) as 0 | 1 | 2) : null
+          const variant = variantIdx !== null ? mainVariants[variantIdx] : null
+
+          const VARIANT_INFO = getVariantInfo((questionnaire?.domain ?? 'other') as AppDomain)
+
+          return (
+            <div style={{ width: 252, flexShrink: 0, borderRight: '1px solid rgba(0,0,0,0.09)', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', padding: '24px 20px' }}>
+              {selectedCard === 'design-md' ? (() => {
+                const preset = DESIGN_PRESETS[designPreset]
+                return (
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0, overflow: 'hidden' }}>
+                    {/* Header */}
+                    <div style={{ paddingBottom: 18, borderBottom: '1px solid rgba(0,0,0,0.07)', marginBottom: 18 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9 }}>
+                        {designPreset !== 'none' && preset.color && (
+                          <div style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: preset.color, flexShrink: 0 }} />
+                        )}
+                        {designPreset === 'none' && (
+                          <div style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: '#f4f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                          </div>
+                        )}
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#111111', letterSpacing: '-0.3px', lineHeight: 1.2 }}>{preset.label}</span>
+                      </div>
+                      <p style={{ fontSize: 12, color: '#888888', lineHeight: 1.55, letterSpacing: '-0.1px' }}>{preset.description}</p>
+                    </div>
+
+                    <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+                      {/* Color palette */}
+                      {preset.palette && preset.palette.length > 0 && (
+                        <div>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>컬러 팔레트</p>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                            {preset.palette.map(swatch => (
+                              <div key={swatch.hex} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ width: 22, height: 22, borderRadius: 6, backgroundColor: swatch.hex, border: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }} />
+                                <div>
+                                  <p style={{ fontSize: 11.5, fontWeight: 600, color: '#333333', margin: 0, lineHeight: 1.2 }}>{swatch.name}</p>
+                                  <p style={{ fontSize: 10, color: '#aaaaaa', margin: 0, fontFamily: 'monospace', letterSpacing: '0.03em' }}>{swatch.hex}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Fonts */}
+                      {preset.fonts && (
+                        <div>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>타이포그래피</p>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 11, color: '#aaaaaa' }}>Headline</span>
+                              <span style={{ fontSize: 11.5, fontWeight: 600, color: '#333333' }}>{preset.fonts.headline}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 11, color: '#aaaaaa' }}>Body</span>
+                              <span style={{ fontSize: 11.5, fontWeight: 600, color: '#333333' }}>{preset.fonts.body}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Traits */}
+                      {preset.traits && preset.traits.length > 0 && (
+                        <div>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>디자인 특성</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {preset.traits.map(trait => (
+                              <span key={trait} style={{ fontSize: 11, fontWeight: 500, color: '#555555', backgroundColor: '#f4f4f6', borderRadius: 6, padding: '4px 8px', lineHeight: 1.2 }}>{trait}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Typography Scale */}
+                      {preset.typographyScale && preset.typographyScale.length > 0 && (
+                        <div>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>타이포그래피 스케일</p>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                            {preset.typographyScale.map(step => (
+                              <div key={step.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ width: 36, flexShrink: 0, textAlign: 'right' }}>
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: '#aaaaaa', fontFamily: 'monospace' }}>{step.size}</span>
+                                </div>
+                                <div style={{ width: 1, height: 14, backgroundColor: '#e8e8ea', flexShrink: 0 }} />
+                                <span style={{ fontSize: parseInt(step.size) > 20 ? 14 : 12, fontWeight: step.weight >= 600 ? 600 : step.weight >= 500 ? 500 : 400, color: '#222222', lineHeight: 1, letterSpacing: '-0.1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>{step.name}</span>
+                                <span style={{ marginLeft: 'auto', fontSize: 10, color: '#cccccc', fontFamily: 'monospace' }}>{step.weight}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Status Colors */}
+                      {preset.statusColors && preset.statusColors.length > 0 && (
+                        <div>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>상태 색상</p>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 10px' }}>
+                            {preset.statusColors.map(s => (
+                              <div key={s.hex} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                                <div style={{ width: 16, height: 16, borderRadius: 4, backgroundColor: s.hex, flexShrink: 0 }} />
+                                <div>
+                                  <p style={{ fontSize: 11, fontWeight: 600, color: '#333333', margin: 0, lineHeight: 1.2 }}>{s.name}</p>
+                                  <p style={{ fontSize: 9.5, color: '#aaaaaa', margin: 0, fontFamily: 'monospace' }}>{s.hex}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Radius Tokens */}
+                      {preset.radiusTokens && preset.radiusTokens.length > 0 && (
+                        <div>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>Border Radius</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 8px', alignItems: 'flex-end' }}>
+                            {preset.radiusTokens.map(r => {
+                              const px = parseInt(r.value)
+                              const sz = Math.min(Math.max(px === 9999 || px >= 100 ? 20 : px * 1.2, 6), 20)
+                              return (
+                                <div key={r.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                  <div style={{ width: sz + 4, height: sz + 4, border: '1.5px solid #c8c8cc', borderRadius: px >= 999 ? 9999 : Math.min(px, (sz + 4) / 2), backgroundColor: '#f4f4f6' }} />
+                                  <span style={{ fontSize: 9.5, color: '#aaaaaa', fontFamily: 'monospace', lineHeight: 1 }}>{r.name}</span>
+                                  <span style={{ fontSize: 9, color: '#cccccc', fontFamily: 'monospace', lineHeight: 1 }}>{r.value}</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })() : !selectedVariant ? (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, paddingBottom: 48 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: '#f4f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#aaaaaa" strokeWidth="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                  </div>
+                  <p style={{ fontSize: 12.5, color: '#aaaaaa', textAlign: 'center', lineHeight: 1.65, letterSpacing: '-0.1px' }}>시안을 클릭하면<br />스타일 분석을 보여드립니다</p>
+                </div>
+              ) : (() => {
+                const info = VARIANT_INFO[selectedVariant]
+                return (
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0, overflow: 'hidden' }}>
+                    {/* Header */}
+                    <div style={{ paddingBottom: 16, borderBottom: '1px solid rgba(0,0,0,0.07)', marginBottom: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
+                        <div style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: '#111111', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{selectedVariant}</span>
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#111111', letterSpacing: '-0.3px', lineHeight: 1.2 }}>{info.name}</span>
+                      </div>
+                      {/* Strategy badge */}
+                      <span style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, color: '#1a75ff', backgroundColor: 'rgba(26,117,255,0.09)', borderRadius: 5, padding: '3px 7px', letterSpacing: '0.02em', marginBottom: 8 }}>{info.strategy}</span>
+                      <p style={{ fontSize: 11.5, color: '#555555', lineHeight: 1.6, letterSpacing: '-0.1px', margin: 0 }}>{info.tagline}</p>
+                    </div>
+
+                    {/* Analysis */}
+                    <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      {/* Rationale */}
+                      <div style={{ backgroundColor: '#f8f8fa', borderRadius: 8, padding: '10px 11px' }}>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: '#aaaaaa', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>UX 전략 근거</p>
+                        <p style={{ fontSize: 11.5, color: '#444444', lineHeight: 1.65, letterSpacing: '-0.1px', margin: 0 }}>{info.rationale}</p>
+                      </div>
+
+                      {/* Key Points */}
+                      <div>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>설계 포인트</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {info.points.map((point, i) => {
+                            const [before, after] = point.split(' → ')
+                            return (
+                              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                                <div style={{ width: 17, height: 17, borderRadius: '50%', backgroundColor: '#111111', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1.5 }}>
+                                  <span style={{ fontSize: 8.5, fontWeight: 800, color: '#ffffff' }}>{i + 1}</span>
+                                </div>
+                                <p style={{ fontSize: 11.5, color: '#444444', lineHeight: 1.6, letterSpacing: '-0.1px', margin: 0 }}>
+                                  {after ? (
+                                    <>{before} <span style={{ color: '#aaaaaa', fontWeight: 400 }}>→</span> <span style={{ color: '#1a75ff', fontWeight: 500 }}>{after}</span></>
+                                  ) : point}
+                                </p>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Best for */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, paddingTop: 2 }}>
+                        <svg style={{ marginTop: 1, flexShrink: 0 }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#aaaaaa" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                        <span style={{ fontSize: 11, color: '#888888', letterSpacing: '-0.05px', lineHeight: 1.55 }}><span style={{ fontWeight: 600, color: '#555555' }}>적합한 컨텍스트</span>  {info.bestFor}</span>
+                      </div>
+
+                      {/* Expected effect */}
+                      <div style={{ backgroundColor: 'rgba(26,117,255,0.05)', borderRadius: 8, padding: '9px 11px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <svg style={{ marginTop: 1.5, flexShrink: 0 }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1a75ff" strokeWidth="2.2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                        <span style={{ fontSize: 11, color: '#444444', letterSpacing: '-0.05px', lineHeight: 1.6 }}><span style={{ fontWeight: 700, color: '#1a75ff' }}>기대 효과</span>  {info.expectedEffect}</span>
+                      </div>
+                    </div>
+
+                    {/* CTA */}
+                    {variant && (
+                      <button
+                        onClick={() => handlePickVariant(variantIdx as 0|1|2)}
+                        style={{ marginTop: 16, width: '100%', padding: '11px 0', borderRadius: '10px', backgroundColor: '#111111', color: '#ffffff', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', letterSpacing: '-0.2px', transition: 'background 0.15s' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#333333' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#111111' }}
+                      >
+                        이 시안으로 진행
+                      </button>
+                    )}
+                    {!variant && (
+                      <div style={{ marginTop: 16, width: '100%', padding: '11px 0', borderRadius: '10px', backgroundColor: '#f4f4f6', color: '#cccccc', fontSize: 13, fontWeight: 600, textAlign: 'center', letterSpacing: '-0.2px' }}>
+                        생성 중...
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+            </div>
+          )
+        })()}
+
         {/* Canvas: all cards laid out on the dotted surface */}
         <div ref={canvasAreaRef} className="flex-1 overflow-hidden relative" onClick={() => setSelectedCard(null)}>
-          <div ref={canvasTransformRef} style={{ transform: `translate(${canvasPan.x}px, ${canvasPan.y}px) scale(${canvasZoom})`, transformOrigin: '0 0', display: 'flex', alignItems: 'flex-start', gap: 24, padding: 40, width: 'max-content' }}>
+          <div ref={canvasTransformRef} style={{ transformOrigin: '0 0', display: 'flex', alignItems: 'flex-start', gap: 24, padding: 40, width: 'max-content' }}>
           <style>{`@keyframes aide-bar{0%{transform:translateX(-150%)}100%{transform:translateX(500%)}}`}</style>
 
           {/* DESIGN.md text card */}
@@ -1089,7 +1688,7 @@ export default function StudioPage() {
 
           {/* Design system card — grid visualization */}
           {hasDesign ? (() => {
-            const isDark = designPreset === 'framer'
+            const isDark = designPreset === 'linear'
             const outerBg = isDark ? '#111111' : '#e8e8eb'
             const cellBg = isDark ? '#1a1a1a' : '#ffffff'
             const gridLine = isDark ? '#272727' : '#e0e0e3'
@@ -1178,14 +1777,15 @@ export default function StudioPage() {
 
                   {/* Col 3: Components */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {/* 2×2 Buttons */}
-                    <div style={{ backgroundColor: cellBg, padding: '10px 10px', flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 5 }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+                    {/* Buttons */}
+                    <div style={{ backgroundColor: cellBg, padding: '10px 10px', flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
                         <button style={{ backgroundColor: preset.color, color: '#fff', border: 'none', borderRadius: 6, padding: '6px 4px', fontSize: 9, fontWeight: 600, cursor: 'default' }}>Primary</button>
-                        <button style={{ backgroundColor: 'transparent', color: ink, border: `1px solid ${isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)'}`, borderRadius: 6, padding: '6px 4px', fontSize: 9, cursor: 'default' }}>Outline</button>
-                        <button style={{ backgroundColor: subtle, color: ink, border: 'none', borderRadius: 6, padding: '6px 4px', fontSize: 9, cursor: 'default' }}>Ghost</button>
-                        <button style={{ backgroundColor: isDark ? '#222' : '#e8e8e8', color: muted, border: 'none', borderRadius: 6, padding: '6px 4px', fontSize: 9, cursor: 'default' }}>Disabled</button>
+                        <button style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.07)', color: ink, border: 'none', borderRadius: 6, padding: '6px 4px', fontSize: 9, fontWeight: 500, cursor: 'default' }}>Secondary</button>
+                        <button style={{ backgroundColor: 'transparent', color: ink, border: `1px solid ${isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.22)'}`, borderRadius: 6, padding: '6px 4px', fontSize: 9, fontWeight: 500, cursor: 'default' }}>Outline</button>
+                        <button style={{ backgroundColor: 'transparent', color: ink, border: 'none', borderRadius: 6, padding: '6px 4px', fontSize: 9, fontWeight: 500, cursor: 'default' }}>Ghost</button>
                       </div>
+                      <button style={{ backgroundColor: '#ff4242', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 4px', fontSize: 9, fontWeight: 600, cursor: 'default', width: '100%' }}>Negative</button>
                     </div>
 
                     {/* Dividers */}
@@ -1332,15 +1932,7 @@ export default function StudioPage() {
                     }}
                   >
                     {variant ? (
-                      <button
-                        className="w-full h-full block group relative"
-                        onClick={() => setExpandedVariant({ image: variant.image, letter })}
-                      >
-                        <img src={variant.image} alt={`시안 ${letter}`} className="w-full h-full object-cover object-top" />
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}>
-                          <span className="text-white text-[13px] font-medium px-3 py-1.5 rounded-full bg-black/70">크게 보기</span>
-                        </div>
-                      </button>
+                      <img src={variant.image} alt={`시안 ${letter}`} className="w-full h-full object-cover object-top" />
                     ) : isLoadingThis ? (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="size-8 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#0055ff' }} />
@@ -1376,19 +1968,15 @@ export default function StudioPage() {
           </div>
         </div>
 
+        </div>{/* ← closes content-area flex wrapper */}
+
         {generateError && (
           <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-3 text-sm text-[#ff6b6b]" style={{ borderRadius: '8px', backgroundColor: 'rgba(30,30,30,0.9)', border: '1px solid rgba(255,107,107,0.3)', backdropFilter: 'blur(8px)' }}>
             {generateError}
           </div>
         )}
 
-        {expandedVariant && (
-          <ImageExpandModal
-            image={expandedVariant.image}
-            letter={expandedVariant.letter}
-            onClose={() => setExpandedVariant(null)}
-          />
-        )}
+
       </div>
     )
   }
@@ -1403,13 +1991,88 @@ export default function StudioPage() {
           <a href="/" className="flex items-center px-4 text-[#111111] font-bold text-[15px] border-r border-[rgba(0,0,0,0.09)] hover:bg-[#ebebeb] transition-colors shrink-0">
             aide
           </a>
-          <button className="px-4 text-[13px] text-[#666666] hover:text-[#111111] hover:bg-[#ebebeb] transition-colors border-r border-[rgba(0,0,0,0.09)]">
-            Design Files
-          </button>
-          <div className="px-5 text-[13px] flex items-center border-b-2 border-[#111111] text-[#111111]">
-            시안 {pickedVariantIdx !== null ? (['A', 'B', 'C'] as const)[pickedVariantIdx] : 'A'}
+          {/* Scrollable history tabs */}
+          <div className="flex items-stretch overflow-x-auto" style={{ scrollbarWidth: 'none', flex: '1 1 0', minWidth: 0 }}>
+            {gnbHistory.map(item => {
+              const isActive = item.id === currentHistoryId
+              return (
+                <div
+                  key={item.id}
+                  className="group"
+                  style={{
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    padding: '0 8px 0 14px',
+                    maxWidth: 180,
+                    borderRight: '1px solid rgba(0,0,0,0.06)',
+                    borderBottom: isActive ? '2px solid #111111' : '2px solid transparent',
+                    backgroundColor: 'transparent',
+                    height: '100%',
+                  }}
+                >
+                  <button
+                    onClick={() => loadHistoryItemIntoEditor(item)}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      fontSize: 13,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      color: isActive ? '#111111' : '#666666',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      textAlign: 'left',
+                      transition: 'color 0.1s',
+                    }}
+                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = '#111111' }}
+                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = '#666666' }}
+                  >
+                    {item.brief.length > 16 ? item.brief.slice(0, 16) + '…' : item.brief}
+                  </button>
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation()
+                      await deleteHistoryItem(item.id)
+                      const updated = gnbHistory.filter(h => h.id !== item.id)
+                      setGnbHistory(updated)
+                      if (isActive) {
+                        if (updated.length > 0) loadHistoryItemIntoEditor(updated[0])
+                        else setStep(1)
+                      }
+                    }}
+                    style={{
+                      flexShrink: 0,
+                      width: 16,
+                      height: 16,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '50%',
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      cursor: 'pointer',
+                      color: '#999999',
+                      fontSize: 11,
+                      opacity: 0,
+                      transition: 'opacity 0.1s, background-color 0.1s',
+                      padding: 0,
+                    }}
+                    className="group-hover:!opacity-100"
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.08)'; e.currentTarget.style.color = '#333333' }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#999999' }}
+                    title="탭 닫기"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )
+            })}
           </div>
-          <div className="flex-1" />
           <div className="flex items-center gap-3 px-4">
             <div className="relative" ref={shareRef}>
               <button
@@ -1487,7 +2150,7 @@ export default function StudioPage() {
             </div>
             <div className="w-px h-4 bg-[rgba(0,0,0,0.09)]" />
             <button
-              onClick={() => { setEditMode(e => !e); setSelectedStyles(null) }}
+              onClick={() => { if (editMode) commitIframeHtml(); setEditMode(e => !e); setSelectedStyles(null) }}
               className="flex items-center gap-1.5 text-[13px] px-2.5 py-1 border transition-colors"
               style={{ borderRadius: '6px', ...(editMode ? { backgroundColor: '#111111', color: '#ffffff', borderColor: '#111111' } : { color: '#666666', borderColor: 'rgba(0,0,0,0.09)' }) }}
             >
@@ -1634,74 +2297,143 @@ export default function StudioPage() {
           </div>
 
           {/* Center: preview */}
-          <div className="flex-1 flex flex-col items-center justify-center overflow-auto p-8">
-            {isMobile ? (
-              <MobileFrame scale={zoom / 100}>
-                <iframe
-                  ref={iframeRef}
-                  srcDoc={displayHtml}
-                  style={{ width: 402, height: 874, border: 'none', display: 'block' }}
-                  sandbox="allow-scripts allow-same-origin"
-                  title="Generated UI"
-                />
-              </MobileFrame>
-            ) : isTablet ? (
-              <TabletFrame scale={zoom / 100}>
-                <iframe
-                  ref={iframeRef}
-                  srcDoc={displayHtml}
-                  style={{ width: 834, height: 1194, border: 'none', display: 'block' }}
-                  sandbox="allow-scripts allow-same-origin"
-                  title="Generated UI"
-                />
-              </TabletFrame>
-            ) : (
-              <DesktopFrame scale={zoom / 100}>
-                <div style={{ width: 1440, height: 1024, transformOrigin: 'top left', transform: `scale(${zoom / 100})`, overflow: 'hidden' }}>
+          <div ref={studioAreaRef} className="flex-1 overflow-hidden relative flex flex-col items-center justify-center">
+            <div
+              ref={studioTransformRef}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 32,
+              }}
+            >
+              {isMobile ? (
+                <MobileFrame scale={zoom / 100}>
                   <iframe
                     ref={iframeRef}
                     srcDoc={displayHtml}
-                    style={{ width: 1440, height: 1024, border: 'none', display: 'block' }}
+                    style={{ width: 390, height: 844, border: 'none', display: 'block' }}
                     sandbox="allow-scripts allow-same-origin"
                     title="Generated UI"
                   />
-                </div>
-              </DesktopFrame>
-            )}
+                </MobileFrame>
+              ) : isTablet ? (
+                <TabletFrame scale={zoom / 100}>
+                  <iframe
+                    ref={iframeRef}
+                    srcDoc={displayHtml}
+                    style={{ width: 834, height: 1170, border: 'none', display: 'block' }}
+                    sandbox="allow-scripts allow-same-origin"
+                    title="Generated UI"
+                  />
+                </TabletFrame>
+              ) : (
+                <DesktopFrame scale={zoom / 100}>
+                  <div style={{ width: 1440, height: 1024, transformOrigin: 'top left', transform: `scale(${zoom / 100})`, overflow: 'hidden' }}>
+                    <iframe
+                      ref={iframeRef}
+                      srcDoc={displayHtml}
+                      style={{ width: 1440, height: 1024, border: 'none', display: 'block' }}
+                      sandbox="allow-scripts allow-same-origin"
+                      title="Generated UI"
+                    />
+                  </div>
+                </DesktopFrame>
+              )}
+            </div>
           </div>
 
-          {/* Right: properties panel (edit mode only) */}
-          {editMode && <PropertiesPanel styles={selectedStyles} onUpdate={handleStyleUpdate} />}
+          {/* Right: icon picker panel */}
+          {editMode && iconPickerOpen && (
+            <IconPickerPanel
+              pickedIcon={pickedIcon}
+              onPick={(name) => { setPickedIcon(name); sendToIframe({ type: 'aide:setIcon', name }) }}
+              onApply={() => { setIconPickerOpen(false); setPickedIcon(null); setOriginalIconText(null) }}
+              onCancel={() => {
+                if (originalIconText !== null) sendToIframe({ type: 'aide:setIcon', name: originalIconText })
+                setIconPickerOpen(false); setPickedIcon(null); setOriginalIconText(null)
+              }}
+            />
+          )}
+
+          {/* Right: properties panel (edit mode only, hidden when Creon or icon picker is open) */}
+          {editMode && !creonOpen && !iconPickerOpen && <PropertiesPanel styles={selectedStyles} onUpdate={handleStyleUpdate}
+            onCreonReplace={selectedStyles && (() => {
+              const s = selectedStyles
+              const visualTag = ['img', 'svg', 'canvas', 'video', 'figure', 'picture'].includes(s.tagName)
+              const hasBgImage = s.backgroundImage && s.backgroundImage !== 'none'
+              const w = parseFloat(s.width), h = parseFloat(s.height)
+              const isSquarish = !isNaN(w) && !isNaN(h) && w < 300 && h < 300 && (w / h) > 0.5 && (w / h) < 2.0
+              return visualTag || hasBgImage || isSquarish
+            })() ? () => { setCreonOpen(true); sendToIframe({ type: 'aide:pulse', on: true }) } : undefined}
+            onIconChange={selectedStyles && (() => {
+              const s = selectedStyles
+              const isMaterialSymbol = (s.tagName === 'span' || s.tagName === 'i') &&
+                (s.className.includes('material-symbol') || s.className.includes('material-icon'))
+              const isSvg = s.tagName === 'svg'
+              return isMaterialSymbol || isSvg
+            })() ? () => { setOriginalIconText(selectedStyles.text); setPickedIcon(null); setIconPickerOpen(true) } : undefined}
+          />}
 
           {/* Right: Creon asset panel */}
           {creonOpen && (
-            <div style={{ width: 300, borderLeft: '1px solid rgba(0,0,0,0.09)', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+            <div style={{ width: 520, borderLeft: '1px solid rgba(0,0,0,0.09)', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
               <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(0,0,0,0.09)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: '#111111' }}>Creon Assets</span>
-                <button onClick={() => setCreonOpen(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 6, border: 'none', background: 'none', cursor: 'pointer', color: '#666666' }}>
+                <button onClick={() => { sendToIframe({ type: 'aide:pulse', on: false }); setCreonOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 6, border: 'none', background: 'none', cursor: 'pointer', color: '#666666' }}>
                   <X size={14} />
                 </button>
               </div>
               {creonAsset && (
                 <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(0,0,0,0.09)', backgroundColor: '#f7f7f7', flexShrink: 0 }}>
                   <p style={{ fontSize: 11, color: '#666666', marginBottom: 6 }}>선택된 에셋{selectedStyles ? ' — 아래 버튼으로 적용' : ' — Edit 모드에서 요소를 클릭 후 적용'}</p>
-                  <img src={creonAsset} alt="selected asset" style={{ width: '100%', height: 72, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
-                  {selectedStyles && (
-                    <button
-                      onClick={() => {
-                        sendToIframe({ type: 'aide:update', prop: 'backgroundImage', value: `url("${creonAsset}")` })
-                        sendToIframe({ type: 'aide:update', prop: 'backgroundSize', value: 'cover' })
-                        sendToIframe({ type: 'aide:update', prop: 'backgroundPosition', value: 'center' })
-                      }}
-                      style={{ marginTop: 6, width: '100%', padding: '5px 0', fontSize: 12, fontWeight: 600, color: '#ffffff', backgroundColor: '#111111', border: 'none', borderRadius: 6, cursor: 'pointer' }}
-                    >
-                      선택된 요소에 적용
-                    </button>
+                  {/\.(mp4|webm|mov)(\?|$)/i.test(creonAsset) ? (
+                    <video src={creonAsset} autoPlay muted loop playsInline style={{ width: '100%', height: 72, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+                  ) : (
+                    <img src={creonAsset} alt="selected asset" style={{ width: '100%', height: 72, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
                   )}
+                  {selectedStyles && (() => {
+                    const s = selectedStyles
+                    const isIcon = ((s.tagName === 'span' || s.tagName === 'i') &&
+                      (s.className.includes('material-symbol') || s.className.includes('material-icon'))) ||
+                      s.tagName === 'svg'
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+                        {!isIcon && (
+                          <button
+                            onClick={() => {
+                              if (/\.(mp4|webm|mov)(\?|$)/i.test(creonAsset)) {
+                                sendToIframe({ type: 'aide:update', prop: 'backgroundImage', value: 'none' })
+                                sendToIframe({ type: 'aide:setVideoSrc', url: creonAsset })
+                              } else {
+                                sendToIframe({ type: 'aide:replaceImage', url: creonAsset })
+                              }
+                              sendToIframe({ type: 'aide:pulse', on: false })
+                            }}
+                            style={{ width: '100%', padding: '5px 0', fontSize: 12, fontWeight: 600, color: '#ffffff', backgroundColor: '#111111', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                          >
+                            선택된 요소에 적용
+                          </button>
+                        )}
+                        {isIcon && (
+                          <button
+                            onClick={() => {
+                              sendToIframe({ type: 'aide:replaceIconWithImg', url: creonAsset })
+                              sendToIframe({ type: 'aide:pulse', on: false })
+                            }}
+                            style={{ width: '100%', padding: '5px 0', fontSize: 12, fontWeight: 600, color: '#ffffff', backgroundColor: '#111111', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                          >
+                            Aide에 적용하기
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
               <iframe
-                src="http://localhost:3000"
+                src="https://creon-two.vercel.app/?v=2"
                 style={{ flex: 1, border: 'none', width: '100%', minHeight: 0 }}
                 allow="clipboard-read; clipboard-write"
                 title="Creon"
@@ -1731,7 +2463,7 @@ export default function StudioPage() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ fontFamily: "'Inter', -apple-system, sans-serif", backgroundColor: F.surface1, color: F.ink }}>
-      {isExpandingPrototype && <ExpandingOverlay />}
+      {isExpandingPrototype && <ExpandingOverlay image={pickedVariantIdx !== null ? (mainVariants[pickedVariantIdx]?.image ?? undefined) : undefined} platform={platform} variantLabel={pickedVariantIdx !== null ? ['시안 A','시안 B','시안 C'][pickedVariantIdx] : undefined} />}
 
       {/* ── Header ── */}
       <header className="sticky top-0 z-10 px-8 py-4 flex items-center" style={{ backgroundColor: F.canvas, borderBottom: `1px solid ${F.hairlineSoft}` }}>
@@ -1743,7 +2475,179 @@ export default function StudioPage() {
       <main className="flex-1 flex flex-col">
 
         {/* ── Step 1: Input ── */}
-        {step === 1 && (
+        {step === 1 && isAnalyzing && (
+          <div className="flex-1 flex items-center justify-center px-8 py-16">
+            <style>{`
+              @keyframes wf-draw { to { stroke-dashoffset: 0 } }
+              @keyframes wf-fade { from { opacity: 0 } to { opacity: 1 } }
+              @keyframes wf-spin { to { transform: rotate(360deg) } }
+              @keyframes wf-pulse-bar { 0%,100%{opacity:0.4} 50%{opacity:1} }
+              /* Mobile wireframe classes */
+              .wf-phone { stroke-dasharray:900; stroke-dashoffset:900; animation: wf-draw 1.4s cubic-bezier(.4,0,.2,1) forwards }
+              .wf-hdr  { stroke-dasharray:240; stroke-dashoffset:240; animation: wf-draw 0.55s ease 1.0s  forwards }
+              .wf-hero { stroke-dasharray:380; stroke-dashoffset:380; animation: wf-draw 0.5s  ease 1.4s  forwards }
+              .wf-c1   { stroke-dasharray:260; stroke-dashoffset:260; animation: wf-draw 0.45s ease 1.75s forwards }
+              .wf-c2   { stroke-dasharray:260; stroke-dashoffset:260; animation: wf-draw 0.45s ease 1.95s forwards }
+              .wf-l1   { stroke-dasharray:120; stroke-dashoffset:120; animation: wf-draw 0.35s ease 2.2s  forwards }
+              .wf-l2   { stroke-dasharray:100; stroke-dashoffset:100; animation: wf-draw 0.3s  ease 2.35s forwards }
+              .wf-bar  { opacity:0; animation: wf-fade 0.4s  ease 2.55s forwards }
+              .wf-tab  { opacity:0; animation: wf-fade 0.35s ease 2.75s forwards }
+              /* Web wireframe classes — dasharray matches actual element perimeters */
+              .wf-web-hdr  { stroke-dasharray:300; stroke-dashoffset:300; animation: wf-draw 0.55s ease 1.0s  forwards }
+              .wf-web-hero { stroke-dasharray:560; stroke-dashoffset:560; animation: wf-draw 0.65s ease 1.4s  forwards }
+              .wf-web-c1   { stroke-dasharray:600; stroke-dashoffset:600; animation: wf-draw 0.6s  ease 1.75s forwards }
+              .wf-web-c2   { stroke-dasharray:270; stroke-dashoffset:270; animation: wf-draw 0.45s ease 2.1s  forwards }
+              .wf-web-l1   { stroke-dasharray:270; stroke-dashoffset:270; animation: wf-draw 0.4s  ease 2.3s  forwards }
+              .wf-web-l2   { stroke-dasharray:290; stroke-dashoffset:290; animation: wf-draw 0.35s ease 2.5s  forwards }
+              .wf-web-bar  { opacity:0; animation: wf-fade 0.4s ease 2.7s forwards }
+              .wf-dot1 { animation: wf-pulse-bar 1.2s ease 0.0s infinite }
+              .wf-dot2 { animation: wf-pulse-bar 1.2s ease 0.2s infinite }
+              .wf-dot3 { animation: wf-pulse-bar 1.2s ease 0.4s infinite }
+            `}</style>
+            <div style={{ display: 'flex', gap: 56, alignItems: 'center', maxWidth: 780, width: '100%' }}>
+
+              {/* Wireframe animation */}
+              <div key={wfAnimKey} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+                {platform === 'web' ? (
+                  <svg width="260" height="180" viewBox="0 0 260 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Browser shell */}
+                    <rect className="wf-phone" x="4" y="4" width="252" height="172" rx="10" stroke="#222222" strokeWidth="2.5" />
+                    {/* Browser top bar */}
+                    <line className="wf-web-hdr" x1="4" y1="28" x2="256" y2="28" stroke="#dddddd" strokeWidth="1.2" />
+                    {/* Traffic lights */}
+                    <circle className="wf-web-hdr" cx="18" cy="16" r="4" stroke="#dddddd" strokeWidth="1.2" />
+                    <circle className="wf-web-hdr" cx="30" cy="16" r="4" stroke="#dddddd" strokeWidth="1.2" />
+                    <circle className="wf-web-hdr" cx="42" cy="16" r="4" stroke="#dddddd" strokeWidth="1.2" />
+                    {/* URL bar */}
+                    <rect className="wf-web-hdr" x="70" y="10" width="120" height="12" rx="6" stroke="#eeeeee" strokeWidth="1.2" />
+                    {/* Nav bar */}
+                    <rect className="wf-web-hero" x="12" y="34" width="236" height="22" rx="4" stroke="#cccccc" strokeWidth="1.4" />
+                    <rect className="wf-web-hero" x="18" y="39" width="40" height="12" rx="2" stroke="#aaaaaa" strokeWidth="1.2" />
+                    <line className="wf-web-hero" x1="160" y1="39" x2="190" y2="39" stroke="#dddddd" strokeWidth="1.2" />
+                    <line className="wf-web-hero" x1="196" y1="39" x2="218" y2="39" stroke="#dddddd" strokeWidth="1.2" />
+                    <rect className="wf-web-hero" x="224" y="38" width="18" height="14" rx="3" stroke="#aaaaaa" strokeWidth="1.2" />
+                    {/* Hero banner */}
+                    <rect className="wf-web-c1" x="12" y="62" width="236" height="46" rx="6" stroke="#aaaaaa" strokeWidth="1.6" />
+                    <line className="wf-web-c1" x1="22" y1="76" x2="100" y2="76" stroke="#cccccc" strokeWidth="1.3" />
+                    <line className="wf-web-c1" x1="22" y1="86" x2="76" y2="86" stroke="#dddddd" strokeWidth="1.2" />
+                    <rect className="wf-web-c1" x="192" y="72" width="48" height="20" rx="4" stroke="#bbbbbb" strokeWidth="1.3" />
+                    {/* Three content cards */}
+                    <rect className="wf-web-c2" x="12" y="116" width="72" height="48" rx="5" stroke="#bbbbbb" strokeWidth="1.4" />
+                    <line className="wf-web-c2" x1="18" y1="130" x2="66" y2="130" stroke="#cccccc" strokeWidth="1.2" />
+                    <line className="wf-web-c2" x1="18" y1="140" x2="50" y2="140" stroke="#dddddd" strokeWidth="1.1" />
+                    <rect className="wf-web-c2" x="94" y="116" width="72" height="48" rx="5" stroke="#bbbbbb" strokeWidth="1.4" />
+                    <line className="wf-web-c2" x1="100" y1="130" x2="148" y2="130" stroke="#cccccc" strokeWidth="1.2" />
+                    <line className="wf-web-c2" x1="100" y1="140" x2="132" y2="140" stroke="#dddddd" strokeWidth="1.1" />
+                    <rect className="wf-web-l1" x="176" y="116" width="72" height="48" rx="5" stroke="#bbbbbb" strokeWidth="1.4" />
+                    <line className="wf-web-l1" x1="182" y1="130" x2="230" y2="130" stroke="#cccccc" strokeWidth="1.2" />
+                    <line className="wf-web-l1" x1="182" y1="140" x2="214" y2="140" stroke="#dddddd" strokeWidth="1.1" />
+                    {/* Footer */}
+                    <line className="wf-web-l2" x1="4" y1="166" x2="256" y2="166" stroke="#eeeeee" strokeWidth="1" />
+                    <line className="wf-web-bar" x1="90" y1="171" x2="170" y2="171" stroke="#dddddd" strokeWidth="1.2" />
+                  </svg>
+                ) : (
+                  <svg width="148" height="268" viewBox="0 0 148 268" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Phone shell */}
+                    <rect className="wf-phone" x="4" y="4" width="140" height="260" rx="20" stroke="#222222" strokeWidth="2.5" />
+                    {/* Notch */}
+                    <rect className="wf-hdr" x="50" y="4" width="48" height="10" rx="5" stroke="#cccccc" strokeWidth="1.5" />
+                    {/* Status bar dots */}
+                    <rect className="wf-hdr" x="16" y="22" width="32" height="4" rx="2" stroke="#dddddd" strokeWidth="1.2" />
+                    <rect className="wf-hdr" x="100" y="22" width="28" height="4" rx="2" stroke="#dddddd" strokeWidth="1.2" />
+                    {/* Hero card */}
+                    <rect className="wf-hero" x="16" y="38" width="116" height="68" rx="10" stroke="#aaaaaa" strokeWidth="1.8" />
+                    <line className="wf-hero" x1="28" y1="56" x2="90" y2="56" stroke="#cccccc" strokeWidth="1.4" />
+                    <line className="wf-hero" x1="28" y1="68" x2="72" y2="68" stroke="#dddddd" strokeWidth="1.2" />
+                    <rect className="wf-hero" x="28" y="80" width="48" height="14" rx="4" stroke="#bbbbbb" strokeWidth="1.4" />
+                    {/* Two stat cards */}
+                    <rect className="wf-c1" x="16" y="118" width="52" height="52" rx="8" stroke="#bbbbbb" strokeWidth="1.6" />
+                    <line className="wf-c1" x1="26" y1="134" x2="58" y2="134" stroke="#cccccc" strokeWidth="1.2" />
+                    <line className="wf-c1" x1="26" y1="144" x2="46" y2="144" stroke="#dddddd" strokeWidth="1.2" />
+                    <rect className="wf-c2" x="80" y="118" width="52" height="52" rx="8" stroke="#bbbbbb" strokeWidth="1.6" />
+                    <line className="wf-c2" x1="90" y1="134" x2="122" y2="134" stroke="#cccccc" strokeWidth="1.2" />
+                    <line className="wf-c2" x1="90" y1="144" x2="110" y2="144" stroke="#dddddd" strokeWidth="1.2" />
+                    {/* List item lines */}
+                    <line className="wf-l1" x1="16" y1="184" x2="132" y2="184" stroke="#dddddd" strokeWidth="1.3" />
+                    <line className="wf-l2" x1="16" y1="198" x2="100" y2="198" stroke="#eeeeee" strokeWidth="1.2" />
+                    {/* Progress bar */}
+                    <rect className="wf-bar" x="16" y="214" width="116" height="7" rx="3.5" fill="#eeeeee" />
+                    <rect className="wf-bar" x="16" y="214" width="70" height="7" rx="3.5" fill="#222222" />
+                    {/* Tab divider */}
+                    <line className="wf-tab" x1="4" y1="234" x2="144" y2="234" stroke="#eeeeee" strokeWidth="1" />
+                    {/* Tab icons */}
+                    <rect className="wf-tab" x="22" y="242" width="20" height="18" rx="3" fill="#eeeeee" />
+                    <rect className="wf-tab" x="64" y="242" width="20" height="18" rx="3" fill="#222222" />
+                    <rect className="wf-tab" x="106" y="242" width="20" height="18" rx="3" fill="#eeeeee" />
+                  </svg>
+                )}
+                {/* Animated dots */}
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <div className="wf-dot1" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#cccccc' }} />
+                  <div className="wf-dot2" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#cccccc' }} />
+                  <div className="wf-dot3" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#cccccc' }} />
+                </div>
+              </div>
+
+              {/* Right: info + steps */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 22 }}>
+                <div>
+                  <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.04em', color: '#111111', marginBottom: 6 }}>
+                    정확한 시안을 위해 분석 중입니다
+                  </h2>
+                  <p style={{ fontSize: 14, color: '#888888', lineHeight: 1.55 }}>선택하신 내용을 바탕으로 맞춤형 질문지를 만들고 있어요</p>
+                </div>
+
+                {/* Logo + Design system row */}
+                {(logoDataUrl || designPreset !== 'none') && (
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    {logoDataUrl && (
+                      <div style={{ padding: '10px 14px', borderRadius: 12, backgroundColor: '#f7f7f7', border: '1px solid #eeeeee', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 80 }}>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em' }}>Logo</p>
+                        <img src={logoDataUrl} alt="logo" style={{ height: 28, maxWidth: 72, objectFit: 'contain', borderRadius: 4 }} />
+                      </div>
+                    )}
+                    {designPreset !== 'none' && (
+                      <div style={{ flex: 1, padding: '10px 14px', borderRadius: 12, backgroundColor: '#f7f7f7', border: '1px solid #eeeeee' }}>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>Design System</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <div style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: DESIGN_PRESETS[designPreset].color ?? '#888', flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#111111' }}>{DESIGN_PRESETS[designPreset].label}</span>
+                          <span style={{ fontSize: 12, color: '#888888' }}>{DESIGN_PRESETS[designPreset].description}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Brief preview */}
+                <div style={{ padding: '14px 18px', borderRadius: 12, backgroundColor: '#f7f7f7', border: '1px solid #eeeeee' }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>기획서</p>
+                  <p style={{ fontSize: 13, color: '#444444', lineHeight: 1.65, maxHeight: 72, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const }}>{brief}</p>
+                </div>
+
+                {/* Step indicators */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    { label: '요청사항 파악 완료', done: true },
+                    ...(logoDataUrl ? [{ label: '브랜드 로고 인식 완료', done: true }] : []),
+                    ...(designPreset !== 'none' ? [{ label: `${DESIGN_PRESETS[designPreset].label} 가이드라인 적용 완료`, done: true }] : []),
+                    { label: '맞춤형 질문지 생성 중...', done: false, active: true },
+                  ].map((item, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: item.done ? '#111111' : '#f0f0f0', border: item.active ? '1.5px solid #dddddd' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {item.done && <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="2,5.5 4,7.5 8,3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        {item.active && <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid #aaaaaa', borderTopColor: '#111111', animation: 'wf-spin 0.75s linear infinite' }} />}
+                      </div>
+                      <span style={{ fontSize: 13, color: item.done ? '#111111' : '#999999', fontWeight: item.active ? 500 : 400, letterSpacing: '-0.1px' }}>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 1 && !isAnalyzing && (
           <div className="max-w-5xl mx-auto w-full px-8 py-12">
             <div className="mb-10">
               <h1 className="text-[28px] font-bold mb-2" style={{ letterSpacing: '-0.05em', color: F.ink }}>UI 시안 만들기</h1>
@@ -1764,7 +2668,7 @@ export default function StudioPage() {
                     Design System <span className="ml-2 text-[13px] font-normal" style={{ color: F.inkMuted }}>선택사항</span>
                   </label>
                   <div className="grid grid-cols-2 gap-2">
-                    {(['airbnb', 'framer', 'ktds', 'uber'] as const).map(key => {
+                    {(Object.keys(DESIGN_PRESETS).filter(k => k !== 'none') as DesignPreset[]).map(key => {
                       const preset = DESIGN_PRESETS[key]
                       const isActive = designPreset === key
                       return (
@@ -1949,22 +2853,56 @@ export default function StudioPage() {
 // ─── Device frames ────────────────────────────────────────────────────────────
 
 function MobileFrame({ children, scale = 1 }: { children: React.ReactNode; scale?: number }) {
-  const frameW = 426
-  const frameH = 920
+  const frameW = 408
+  const frameH = 934
   const scaledW = Math.round(frameW * scale)
   const scaledH = Math.round(frameH * scale)
+  const now = new Date()
+  const timeStr = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
   return (
     <div className="shrink-0" style={{ width: scaledW, height: scaledH, position: 'relative' }}>
       <div style={{ position: 'absolute', top: 0, left: 0, width: frameW, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-        <div className="relative" style={{ borderRadius: 52, background: '#1a1a1a', padding: '12px 12px 16px', boxShadow: '0 40px 100px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08) inset, 0 0 0 2px #000 inset' }}>
-          {/* Dynamic Island */}
-          <div style={{ position: 'absolute', top: 22, left: '50%', transform: 'translateX(-50%)', width: 126, height: 37, background: '#000', borderRadius: 20, zIndex: 10, boxShadow: '0 0 0 1.5px #2a2a2a' }} />
-          {/* Screen — iOS 17: 402×874 */}
-          <div style={{ borderRadius: 40, overflow: 'hidden', width: 402, height: 874 }}>
-            {children}
+        <div className="relative" style={{ borderRadius: 46, background: '#1c1c1c', padding: '9px 9px 9px', boxShadow: '0 0 0 1px rgba(255,255,255,0.07) inset, 0 0 0 2px #000 inset' }}>
+          {/* Volume up — right (Android/Pixel) */}
+          <div style={{ position: 'absolute', top: 120, right: -3, width: 3, height: 36, background: '#2e2e2e', borderRadius: 9999 }} />
+          {/* Volume down — right */}
+          <div style={{ position: 'absolute', top: 166, right: -3, width: 3, height: 36, background: '#2e2e2e', borderRadius: 9999 }} />
+          {/* Power — right, below volume */}
+          <div style={{ position: 'absolute', top: 224, right: -3, width: 3, height: 56, background: '#2e2e2e', borderRadius: 9999 }} />
+          {/* Screen — 390×916 (390px = AI 생성 기준, 916 = 48 statusbar + 844 content + 24 nav) */}
+          <div style={{ borderRadius: 37, overflow: 'hidden', width: 390, height: 916, display: 'flex', flexDirection: 'column' }}>
+            {/* Android Material You Status Bar — 48px (Figma node 102:3 실측) */}
+            <div style={{ flexShrink: 0, height: 48, background: '#fff', display: 'flex', alignItems: 'center', paddingLeft: 17, paddingRight: 14 }}>
+              {/* Dot indicator (Figma: Ellipse 1, 4×4px) */}
+              <div style={{ width: 4, height: 4, background: '#1c1b14', borderRadius: 9999, marginRight: 13, flexShrink: 0 }} />
+              {/* Time — Roboto Medium 14px, opacity 0.6 (Figma node 102:4) */}
+              <span style={{ fontSize: 14, fontWeight: 500, fontFamily: 'Roboto, sans-serif', color: '#1c1b14', opacity: 0.6, letterSpacing: 0 }}>{timeStr}</span>
+              <div style={{ flex: 1 }} />
+              {/* Signal — filled wedge 17×13 (Figma node 102:6) */}
+              <svg width="17" height="13" viewBox="0 0 17 13" fill="none" style={{ marginRight: 4 }}>
+                <path d="M17 0 L17 13 L0 13 Z" fill="#1c1b14"/>
+              </svg>
+              {/* WiFi — filled arcs 14×14 (Figma node 102:7) */}
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: 4 }}>
+                <path d="M7 2.5C4.5 2.5 2.2 3.5 0.5 5.2L2 6.7C3.3 5.3 5.1 4.5 7 4.5s3.7.8 5 2.2l1.5-1.5C11.8 3.5 9.5 2.5 7 2.5z" fill="#1c1b14"/>
+                <path d="M7 6.5C5.5 6.5 4.2 7.1 3.2 8.1l1.5 1.5C5.3 9 6.1 8.5 7 8.5s1.7.5 2.3 1.1l1.5-1.5C9.8 7.1 8.5 6.5 7 6.5z" fill="#1c1b14"/>
+                <circle cx="7" cy="12.5" r="1.5" fill="#1c1b14"/>
+              </svg>
+              {/* Battery — solid filled with terminal (Figma node 102:8 Union) */}
+              <svg width="17" height="13" viewBox="0 0 19 13" fill="none">
+                <rect x="0" y="1.5" width="15" height="10" rx="2" fill="#1c1b14"/>
+                <path d="M16 4.5v4a2 2 0 0 0 0-4z" fill="#1c1b14"/>
+              </svg>
+            </div>
+            {/* App content area */}
+            <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+              {children}
+            </div>
+            {/* Android gesture nav — indicator 70×3px, borderRadius 21 (Figma 실측) */}
+            <div style={{ flexShrink: 0, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
+              <div style={{ width: 70, height: 3, background: 'rgba(0,0,0,0.2)', borderRadius: 21 }} />
+            </div>
           </div>
-          {/* Home indicator */}
-          <div style={{ margin: '8px auto 0', width: 134, height: 5, background: 'rgba(255,255,255,0.35)', borderRadius: 9999 }} />
         </div>
       </div>
     </div>
@@ -1976,15 +2914,41 @@ function TabletFrame({ children, scale = 0.7 }: { children: React.ReactNode; sca
   const frameH = 1218
   const scaledW = Math.round(frameW * scale)
   const scaledH = Math.round(frameH * scale)
+  const now = new Date()
+  const timeStr = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
   return (
     <div className="shrink-0" style={{ width: scaledW, height: scaledH, position: 'relative' }}>
       <div style={{ position: 'absolute', top: 0, left: 0, width: frameW, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
         <div className="relative" style={{ borderRadius: 24, background: '#1a1a1a', padding: '12px 12px 16px', boxShadow: '0 40px 100px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08) inset, 0 0 0 2px #000 inset' }}>
-          {/* Home indicator */}
+          {/* Side button */}
           <div style={{ position: 'absolute', top: '50%', left: 6, transform: 'translateY(-50%)', width: 4, height: 60, background: '#2a2a2a', borderRadius: 9999 }} />
           {/* Screen — iPad Air 10.9": 834×1194 */}
-          <div style={{ borderRadius: 14, overflow: 'hidden', width: 834, height: 1194 }}>
-            {children}
+          <div style={{ borderRadius: 14, overflow: 'hidden', width: 834, height: 1194, display: 'flex', flexDirection: 'column' }}>
+            {/* iPadOS Status Bar — real element, 24px */}
+            <div style={{ flexShrink: 0, height: 24, display: 'flex', alignItems: 'center', paddingLeft: 20, paddingRight: 16, background: '#000' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, fontFamily: '-apple-system, SF Pro Display, sans-serif', color: '#fff' }}>{timeStr}</span>
+              <div style={{ flex: 1 }} />
+              <svg width="14" height="10" viewBox="0 0 17 12" fill="none" style={{ marginRight: 5 }}>
+                <rect x="0" y="7" width="3" height="5" rx="1" fill="white"/>
+                <rect x="4.5" y="4.5" width="3" height="7.5" rx="1" fill="white"/>
+                <rect x="9" y="2" width="3" height="10" rx="1" fill="white"/>
+                <rect x="13.5" y="0" width="3" height="12" rx="1" fill="white"/>
+              </svg>
+              <svg width="14" height="10" viewBox="0 0 16 12" fill="none" style={{ marginRight: 5 }}>
+                <path d="M8 9.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z" fill="white"/>
+                <path d="M3.5 6.5C4.8 5.2 6.3 4.5 8 4.5s3.2.7 4.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                <path d="M1 3.5C3 1.5 5.4.5 8 .5s5 1 7 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+              </svg>
+              <svg width="22" height="10" viewBox="0 0 25 12" fill="none">
+                <rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="white" strokeOpacity="0.35"/>
+                <rect x="2" y="2" width="17" height="8" rx="2" fill="white"/>
+                <path d="M23 4v4a2 2 0 0 0 0-4z" fill="white" fillOpacity="0.4"/>
+              </svg>
+            </div>
+            {/* App content area — below status bar, no overlap */}
+            <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+              {children}
+            </div>
           </div>
           {/* Home bar */}
           <div style={{ margin: '8px auto 0', width: 120, height: 5, background: 'rgba(255,255,255,0.35)', borderRadius: 9999 }} />
@@ -1998,16 +2962,26 @@ function DesktopFrame({ children, scale = 0.6 }: { children: React.ReactNode; sc
   const scaledW = Math.round(1440 * scale)
   const scaledH = Math.round(1024 * scale)
   return (
-    <div className="shrink-0" style={{ width: scaledW + 2, borderRadius: 12, background: '#e8e8e8', padding: '0 1px 1px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-      {/* Browser chrome */}
-      <div style={{ height: 40, background: '#d4d4d4', borderRadius: '12px 12px 0 0', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 6 }}>
-        <div style={{ width: 12, height: 12, borderRadius: 9999, background: '#ff5f57' }} />
-        <div style={{ width: 12, height: 12, borderRadius: 9999, background: '#ffbd2e' }} />
-        <div style={{ width: 12, height: 12, borderRadius: 9999, background: '#28c840' }} />
-        <div style={{ flex: 1, margin: '0 12px', height: 24, background: 'rgba(255,255,255,0.6)', borderRadius: 6 }} />
+    <div className="shrink-0" style={{ width: scaledW, borderRadius: 12, overflow: 'hidden', border: '0.5px solid rgba(0,0,0,0.13)' }}>
+      {/* macOS Sequoia title bar */}
+      <div style={{ height: 32, background: '#ebebeb', display: 'flex', alignItems: 'center', padding: '0 14px', gap: 8, borderBottom: '0.5px solid rgba(0,0,0,0.08)', position: 'relative' }}>
+        {/* Traffic lights */}
+        <div style={{ width: 13, height: 13, borderRadius: 9999, background: '#ff5f57' }} />
+        <div style={{ width: 13, height: 13, borderRadius: 9999, background: '#febc2e' }} />
+        <div style={{ width: 13, height: 13, borderRadius: 9999, background: '#28c840' }} />
+        {/* Centered toolbar area */}
+        <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 60, height: 20, background: 'rgba(0,0,0,0.06)', borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5 2l3 3-3 3" stroke="rgba(0,0,0,0.35)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </div>
+          <div style={{ width: 160, height: 20, background: 'rgba(0,0,0,0.05)', borderRadius: 5, display: 'flex', alignItems: 'center', paddingLeft: 7, gap: 5 }}>
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><rect x="1.5" y="4.5" width="7" height="5" rx="1.2" stroke="rgba(0,0,0,0.3)" strokeWidth="1.1"/><path d="M3 4.5V3a2 2 0 0 1 4 0v1.5" stroke="rgba(0,0,0,0.3)" strokeWidth="1.1" strokeLinecap="round"/></svg>
+            <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)', fontFamily: '-apple-system, SF Pro Text, sans-serif', letterSpacing: 0.1 }}>localhost:3000</span>
+          </div>
+        </div>
       </div>
       {/* Viewport */}
-      <div style={{ width: scaledW, height: scaledH, overflow: 'hidden', borderRadius: '0 0 11px 11px', background: '#fff' }}>
+      <div style={{ width: scaledW, height: scaledH, overflow: 'hidden', background: '#fff' }}>
         {children}
       </div>
     </div>
@@ -2016,7 +2990,7 @@ function DesktopFrame({ children, scale = 0.6 }: { children: React.ReactNode; sc
 
 // ─── Properties panel ─────────────────────────────────────────────────────────
 
-function PropertiesPanel({ styles, onUpdate }: { styles: ElementStyles | null; onUpdate: (prop: string, val: string) => void }) {
+function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange }: { styles: ElementStyles | null; onUpdate: (prop: string, val: string) => void; onCreonReplace?: () => void; onIconChange?: () => void }) {
   if (!styles) {
     return (
       <div className="w-72 shrink-0 border-l border-[rgba(0,0,0,0.09)] bg-white flex flex-col items-center justify-center text-center p-8">
@@ -2032,7 +3006,8 @@ function PropertiesPanel({ styles, onUpdate }: { styles: ElementStyles | null; o
   const bg = rgbToHex(styles.backgroundColor)
 
   return (
-    <div className="w-72 shrink-0 border-l border-[rgba(0,0,0,0.09)] bg-white overflow-y-auto text-[13px]">
+    <div className="w-72 shrink-0 border-l border-[rgba(0,0,0,0.09)] bg-white flex flex-col text-[13px]">
+      <div className="flex-1 overflow-y-auto">
       {/* Element label */}
       <div className="px-4 py-3 border-b border-[rgba(0,0,0,0.07)] flex items-center gap-2">
         <span className="text-[13px] font-mono bg-[#f0f0f0] text-[#666666] px-1.5 py-0.5 rounded">&lt;{styles.tagName}&gt;</span>
@@ -2101,6 +3076,187 @@ function PropertiesPanel({ styles, onUpdate }: { styles: ElementStyles | null; o
         <PropRow label="Border"><EditField value={fmtVal(styles.borderWidth)} suffix="px" prop="borderWidth" onUpdate={onUpdate} /></PropRow>
         <PropRow label="Radius"><EditField value={fmtVal(styles.borderRadius)} suffix="px" prop="borderRadius" onUpdate={onUpdate} /></PropRow>
       </Section>
+      </div>
+
+      {(onCreonReplace || onIconChange) && (
+        <div className="px-3 py-3 border-t border-[rgba(0,0,0,0.07)] flex flex-col gap-2 shrink-0">
+          {onCreonReplace && (
+            <button
+              onClick={onCreonReplace}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-semibold"
+              style={{ backgroundColor: '#111111', color: '#ffffff', border: 'none', cursor: 'pointer' }}
+            >
+              <ImageIcon size={13} />
+              Creon에서 변경
+            </button>
+          )}
+          {onIconChange && (
+            <button
+              onClick={onIconChange}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-semibold"
+              style={{ backgroundColor: '#f0f0f0', color: '#111111', border: '1px solid rgba(0,0,0,0.09)', cursor: 'pointer' }}
+            >
+              <Shapes size={13} />
+              아이콘 변경
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Icon Picker ──────────────────────────────────────────────────────────────
+
+// Fallback icons shown instantly while full list loads
+const FALLBACK_ICONS = [
+  'home', 'search', 'menu', 'close', 'settings', 'person', 'favorite', 'star',
+  'add', 'edit', 'delete', 'share', 'arrow_back', 'arrow_forward', 'check',
+  'notifications', 'shopping_cart', 'email', 'phone', 'camera',
+]
+
+// Module-level cache so re-opening the panel doesn't re-fetch
+let _iconListCache: string[] | null = null
+
+async function fetchMaterialIconNames(): Promise<string[]> {
+  if (_iconListCache) return _iconListCache
+
+  const SESSION_KEY = 'aide_material_icons_v1'
+  try {
+    const cached = sessionStorage.getItem(SESSION_KEY)
+    if (cached) {
+      _iconListCache = JSON.parse(cached)
+      return _iconListCache!
+    }
+  } catch { /* ignore */ }
+
+  const res = await fetch(
+    'https://raw.githubusercontent.com/google/material-design-icons/master/variablefont/MaterialSymbolsOutlined%5BFILL%2CGRAD%2Copsz%2Cwght%5D.codepoints'
+  )
+  const text = await res.text()
+  const icons = text.trim().split('\n')
+    .map(line => line.split(' ')[0].trim())
+    .filter(Boolean)
+    .sort()
+
+  _iconListCache = icons
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(icons)) } catch { /* quota exceeded */ }
+  return icons
+}
+
+function IconPickerPanel({ pickedIcon, onPick, onApply, onCancel }: {
+  pickedIcon: string | null
+  onPick: (name: string) => void
+  onApply: () => void
+  onCancel: () => void
+}) {
+  const [query, setQuery] = useState('')
+  const [allIcons, setAllIcons] = useState<string[]>(_iconListCache ?? FALLBACK_ICONS)
+  const [loading, setLoading] = useState(!_iconListCache)
+
+  useEffect(() => {
+    const id = 'aide-material-symbols'
+    if (!document.getElementById(id)) {
+      const link = document.createElement('link')
+      link.id = id
+      link.rel = 'stylesheet'
+      link.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0'
+      document.head.appendChild(link)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (_iconListCache) return
+    fetchMaterialIconNames()
+      .then(icons => { setAllIcons(icons); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return q ? allIcons.filter(n => n.includes(q)) : allIcons
+  }, [query, allIcons])
+
+  return (
+    <div
+      className="fixed right-4 top-[60px] bottom-4 z-30 flex flex-col overflow-hidden bg-white border border-[rgba(0,0,0,0.09)] w-72"
+      style={{ borderRadius: '14px', boxShadow: 'rgba(0,0,0,0.08) 0 0 0 1px, rgba(0,0,0,0.12) 0 8px 24px 0' }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[rgba(0,0,0,0.07)] shrink-0">
+        <span className="text-[14px] font-semibold text-[#111111]">아이콘 변경</span>
+        <button onClick={onCancel} className="text-[#666666] hover:text-[#111111] transition-colors">
+          <X size={15} />
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="px-3 py-2 border-b border-[rgba(0,0,0,0.07)] shrink-0">
+        <input
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="아이콘 검색..."
+          className="w-full bg-[#f0f0f0] text-[13px] text-[#111111] placeholder:text-[#999999] px-3 py-1.5 outline-none"
+          style={{ borderRadius: '8px', border: '1px solid rgba(0,0,0,0.09)' }}
+        />
+      </div>
+
+      {/* Current pick preview */}
+      {pickedIcon && (
+        <div className="px-4 py-2 border-b border-[rgba(0,0,0,0.07)] flex items-center gap-2 bg-[#f8f8f8] shrink-0">
+          <span className="material-symbols-outlined" style={{ fontSize: '22px', color: '#0055ff' }}>{pickedIcon}</span>
+          <span className="text-[13px] text-[#0055ff] font-medium">{pickedIcon}</span>
+        </div>
+      )}
+
+      {/* Icon grid */}
+      <div className="flex-1 overflow-y-auto px-2 py-2">
+        {loading && (
+          <div className="flex items-center justify-center gap-2 py-6 text-[13px] text-[#888888]">
+            <Spinner />
+            <span>아이콘 불러오는 중...</span>
+          </div>
+        )}
+        <div className="grid gap-0.5" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
+          {filtered.map(name => (
+            <button
+              key={name}
+              title={name}
+              onClick={() => onPick(name)}
+              className="flex flex-col items-center justify-center gap-0.5 py-2 rounded-lg transition-all"
+              style={pickedIcon === name
+                ? { backgroundColor: '#0055ff15', outline: '1.5px solid #0055ff' }
+                : { backgroundColor: 'transparent' }
+              }
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: pickedIcon === name ? '#0055ff' : '#333333' }}>{name}</span>
+            </button>
+          ))}
+        </div>
+        {filtered.length === 0 && (
+          <p className="text-center text-[13px] text-[#999999] py-8">검색 결과 없음</p>
+        )}
+      </div>
+
+      {/* Apply / Cancel */}
+      <div className="px-3 py-3 border-t border-[rgba(0,0,0,0.07)] flex gap-2 shrink-0">
+        <button
+          onClick={onCancel}
+          className="flex-1 py-2 text-[13px] font-medium border transition-all"
+          style={{ borderRadius: '8px', backgroundColor: '#f0f0f0', borderColor: 'rgba(0,0,0,0.09)', color: '#666666' }}
+        >
+          취소
+        </button>
+        <button
+          onClick={onApply}
+          disabled={!pickedIcon}
+          className="flex-1 py-2 text-[13px] font-medium border transition-all disabled:opacity-40"
+          style={{ borderRadius: '8px', backgroundColor: '#111111', borderColor: '#111111', color: '#ffffff' }}
+        >
+          적용
+        </button>
+      </div>
     </div>
   )
 }
@@ -2522,55 +3678,4 @@ function DesignSystemCardPreview({ preset }: { preset: DesignPreset }) {
   )
 }
 
-function ImageExpandModal({ image, letter, onClose }: { image: string; letter: string; onClose: () => void }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-8"
-      style={{ backgroundColor: 'rgba(0,0,0,0.88)' }}
-      onClick={onClose}
-    >
-      <div className="relative flex flex-col items-center gap-3 max-h-full max-w-full" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between w-full px-1">
-          <span className="text-white/70 text-[13px] font-medium">시안 {letter}</span>
-          <button onClick={onClose} className="flex items-center gap-1 text-white/60 hover:text-white transition-colors text-[13px]">
-            <X size={15} /> 닫기
-          </button>
-        </div>
-        <img
-          src={image}
-          alt={`시안 ${letter}`}
-          className="max-h-[85vh] max-w-[90vw] object-contain rounded-xl"
-          style={{ boxShadow: '0 8px 48px rgba(0,0,0,0.5)' }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function ExpandingOverlay() {
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ backgroundColor: 'rgba(245,245,245,0.94)', backdropFilter: 'blur(4px)' }}>
-      <div className="flex flex-col items-center gap-6 text-center">
-        <div className="size-16 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.06)', border: '2px solid rgba(0,0,0,0.12)' }}>
-          <Sparkles size={28} className="text-[#111111] animate-pulse" />
-        </div>
-        <div>
-          <h2 className="text-[20px] font-bold text-[#111111] mb-1" style={{ letterSpacing: '-0.03em' }}>선택한 시안으로 프로토타입을 완성하고 있습니다</h2>
-          <p className="text-[14px] text-[#666666]">서브 화면과 내비게이션을 추가하고 있습니다</p>
-        </div>
-        <div className="w-64 bg-[#f0f0f0] h-1.5 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full"
-            style={{ width: '40%', backgroundColor: '#0055ff', animation: 'aide-bar 1.4s ease-in-out infinite' }}
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
