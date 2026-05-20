@@ -55,7 +55,9 @@ function guessPlatform(item: { platform?: 'mobile' | 'web'; brief: string; html:
 const BRIDGE_SCRIPT = `<script data-aide-inject="1">
 (function(){
   // 1. Block <a> link navigation (allow #anchors only)
+  //    Skip [data-screen] subtrees — prototype router handles those in bubble phase
   document.addEventListener('click',function(e){
+    if(e.target.closest&&e.target.closest('[data-screen]'))return;
     var el=e.target;
     while(el&&el.tagName){
       if(el.tagName==='A'){
@@ -1186,7 +1188,7 @@ export default function StudioPage() {
       const res = await fetch('/api/refine', {
         method: 'POST',
         headers: apiHeaders(),
-        body: JSON.stringify({ html: result.html, message: userMsg, brief, designMd: effectiveDesignMd }),
+        body: JSON.stringify({ html: result.html, message: userMsg, brief, designMd: effectiveDesignMd, logoDataUrl }),
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
@@ -2303,7 +2305,7 @@ export default function StudioPage() {
               }}
             >
               {isMobile ? (
-                <MobileFrame scale={zoom / 100}>
+                <MobileFrame scale={zoom / 100} darkMode={darkMode}>
                   <iframe
                     ref={iframeRef}
                     srcDoc={displayHtml}
@@ -2846,13 +2848,15 @@ export default function StudioPage() {
 
 // ─── Device frames ────────────────────────────────────────────────────────────
 
-function MobileFrame({ children, scale = 1 }: { children: React.ReactNode; scale?: number }) {
+function MobileFrame({ children, scale = 1, darkMode = false }: { children: React.ReactNode; scale?: number; darkMode?: boolean }) {
   const frameW = 408
   const frameH = 934
   const scaledW = Math.round(frameW * scale)
   const scaledH = Math.round(frameH * scale)
   const now = new Date()
   const timeStr = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
+  const statusBg = darkMode ? '#0f0f10' : '#fff'
+  const iconColor = darkMode ? '#fff' : '#1c1b14'
   return (
     <div className="shrink-0" style={{ width: scaledW, height: scaledH, position: 'relative' }}>
       <div style={{ position: 'absolute', top: 0, left: 0, width: frameW, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
@@ -2866,26 +2870,26 @@ function MobileFrame({ children, scale = 1 }: { children: React.ReactNode; scale
           {/* Screen — 390×916 (390px = AI 생성 기준, 916 = 48 statusbar + 844 content + 24 nav) */}
           <div style={{ borderRadius: 37, overflow: 'hidden', width: 390, height: 916, display: 'flex', flexDirection: 'column' }}>
             {/* Android Material You Status Bar — 48px (Figma node 102:3 실측) */}
-            <div style={{ flexShrink: 0, height: 48, background: '#fff', display: 'flex', alignItems: 'center', paddingLeft: 17, paddingRight: 14 }}>
+            <div style={{ flexShrink: 0, height: 48, background: statusBg, display: 'flex', alignItems: 'center', paddingLeft: 17, paddingRight: 14, transition: 'background 0.3s' }}>
               {/* Dot indicator (Figma: Ellipse 1, 4×4px) */}
-              <div style={{ width: 4, height: 4, background: '#1c1b14', borderRadius: 9999, marginRight: 13, flexShrink: 0 }} />
+              <div style={{ width: 4, height: 4, background: iconColor, borderRadius: 9999, marginRight: 13, flexShrink: 0 }} />
               {/* Time — Roboto Medium 14px, opacity 0.6 (Figma node 102:4) */}
-              <span style={{ fontSize: 14, fontWeight: 500, fontFamily: 'Roboto, sans-serif', color: '#1c1b14', opacity: 0.6, letterSpacing: 0 }}>{timeStr}</span>
+              <span style={{ fontSize: 14, fontWeight: 500, fontFamily: 'Roboto, sans-serif', color: iconColor, opacity: 0.6, letterSpacing: 0 }}>{timeStr}</span>
               <div style={{ flex: 1 }} />
               {/* Signal — filled wedge 17×13 (Figma node 102:6) */}
               <svg width="17" height="13" viewBox="0 0 17 13" fill="none" style={{ marginRight: 4 }}>
-                <path d="M17 0 L17 13 L0 13 Z" fill="#1c1b14"/>
+                <path d="M17 0 L17 13 L0 13 Z" fill={iconColor}/>
               </svg>
               {/* WiFi — filled arcs 14×14 (Figma node 102:7) */}
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: 4 }}>
-                <path d="M7 2.5C4.5 2.5 2.2 3.5 0.5 5.2L2 6.7C3.3 5.3 5.1 4.5 7 4.5s3.7.8 5 2.2l1.5-1.5C11.8 3.5 9.5 2.5 7 2.5z" fill="#1c1b14"/>
-                <path d="M7 6.5C5.5 6.5 4.2 7.1 3.2 8.1l1.5 1.5C5.3 9 6.1 8.5 7 8.5s1.7.5 2.3 1.1l1.5-1.5C9.8 7.1 8.5 6.5 7 6.5z" fill="#1c1b14"/>
-                <circle cx="7" cy="12.5" r="1.5" fill="#1c1b14"/>
+                <path d="M7 2.5C4.5 2.5 2.2 3.5 0.5 5.2L2 6.7C3.3 5.3 5.1 4.5 7 4.5s3.7.8 5 2.2l1.5-1.5C11.8 3.5 9.5 2.5 7 2.5z" fill={iconColor}/>
+                <path d="M7 6.5C5.5 6.5 4.2 7.1 3.2 8.1l1.5 1.5C5.3 9 6.1 8.5 7 8.5s1.7.5 2.3 1.1l1.5-1.5C9.8 7.1 8.5 6.5 7 6.5z" fill={iconColor}/>
+                <circle cx="7" cy="12.5" r="1.5" fill={iconColor}/>
               </svg>
               {/* Battery — solid filled with terminal (Figma node 102:8 Union) */}
               <svg width="17" height="13" viewBox="0 0 19 13" fill="none">
-                <rect x="0" y="1.5" width="15" height="10" rx="2" fill="#1c1b14"/>
-                <path d="M16 4.5v4a2 2 0 0 0 0-4z" fill="#1c1b14"/>
+                <rect x="0" y="1.5" width="15" height="10" rx="2" fill={iconColor}/>
+                <path d="M16 4.5v4a2 2 0 0 0 0-4z" fill={iconColor}/>
               </svg>
             </div>
             {/* App content area */}
@@ -2893,8 +2897,8 @@ function MobileFrame({ children, scale = 1 }: { children: React.ReactNode; scale
               {children}
             </div>
             {/* Android gesture nav — indicator 70×3px, borderRadius 21 (Figma 실측) */}
-            <div style={{ flexShrink: 0, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
-              <div style={{ width: 70, height: 3, background: 'rgba(0,0,0,0.2)', borderRadius: 21 }} />
+            <div style={{ flexShrink: 0, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: statusBg, transition: 'background 0.3s' }}>
+              <div style={{ width: 70, height: 3, background: darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)', borderRadius: 21 }} />
             </div>
           </div>
         </div>

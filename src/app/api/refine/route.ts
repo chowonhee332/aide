@@ -5,10 +5,10 @@ export const maxDuration = 120
 
 export async function POST(req: NextRequest) {
   try {
-    const { html, message, brief, designMd } = await req.json()
+    const { html, message, brief, designMd, logoDataUrl } = await req.json()
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
 
-    let text = await refineUI(html, message, brief, designMd, apiKey)
+    let text = await refineUI(html, message, brief, designMd, apiKey, logoDataUrl)
     text = await resolveImagePlaceholders(text, { apiKey })
 
     if (!text.includes('<html') && !text.includes('<!DOCTYPE')) {

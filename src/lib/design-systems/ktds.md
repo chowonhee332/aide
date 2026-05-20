@@ -15,25 +15,25 @@ colors:
   surface:              "#ffffff"
   surface-alt:          "#f7f7f8"
   # Neutral Text
-  text:                 "#16171a"
+  text:                 "#171719"
   text-neutral:         "rgba(46,47,51,0.88)"
-  text-alternative:     "rgba(53,54,58,0.61)"
-  text-assistive:       "rgba(53,54,58,0.28)"
+  text-alternative:     "rgba(55,56,60,0.61)"
+  text-assistive:       "rgba(55,56,60,0.28)"
   text-strong:          "#000000"
   # Neutral Border
-  border:               "rgba(112,115,120,0.35)"
-  border-neutral:       "rgba(112,115,120,0.28)"
-  border-alt:           "rgba(112,115,120,0.16)"
+  border:               "rgba(112,115,124,0.35)"
+  border-neutral:       "rgba(112,115,124,0.28)"
+  border-alt:           "rgba(112,115,124,0.16)"
   # Neutral Fill
-  fill:                 "rgba(112,115,120,0.22)"
-  fill-neutral:         "rgba(112,115,120,0.12)"
-  fill-alt:             "rgba(112,115,120,0.08)"
+  fill:                 "rgba(112,115,124,0.22)"
+  fill-neutral:         "rgba(112,115,124,0.12)"
+  fill-alt:             "rgba(112,115,124,0.08)"
   # Icon
-  icon:                 "#16171a"
+  icon:                 "#171719"
   icon-neutral:         "rgba(46,47,51,0.88)"
   # Interaction States
   surface-disabled:     "#f4f4f5"
-  text-disabled:        "rgba(53,54,58,0.35)"
+  text-disabled:        "rgba(55,56,60,0.35)"
   surface-inactive:     "#eaebec"
   # Status
   positive:             "#00c244"
@@ -542,21 +542,21 @@ Copy this `:root` block verbatim — Gemini must not alter these values:
   --color-primary-fill-neutral: #f2f5f9;
   --color-surface: #ffffff;
   --color-surface-alt: #f7f7f8;
-  --color-text: #16171a;
+  --color-text: #171719;
   --color-text-neutral: rgba(46,47,51,0.88);
-  --color-text-alt: rgba(53,54,58,0.61);
-  --color-text-assistive: rgba(53,54,58,0.28);
-  --color-border: rgba(112,115,120,0.35);
-  --color-border-alt: rgba(112,115,120,0.16);
-  --color-fill: rgba(112,115,120,0.22);
-  --color-fill-neutral: rgba(112,115,120,0.12);
-  --color-fill-alt: rgba(112,115,120,0.08);
+  --color-text-alt: rgba(55,56,60,0.61);
+  --color-text-assistive: rgba(55,56,60,0.28);
+  --color-border: rgba(112,115,124,0.35);
+  --color-border-alt: rgba(112,115,124,0.16);
+  --color-fill: rgba(112,115,124,0.22);
+  --color-fill-neutral: rgba(112,115,124,0.12);
+  --color-fill-alt: rgba(112,115,124,0.08);
   --color-positive: #00c244;
   --color-caution: #ff9200;
   --color-negative: #ff4242;
   --color-info: #0066ff;
   --color-surface-disabled: #f4f4f5;
-  --color-text-disabled: rgba(53,54,58,0.35);
+  --color-text-disabled: rgba(55,56,60,0.35);
   --color-surface-inactive: #eaebec;
 
   /* Spacing — 8px base (4px substep allowed) */
@@ -604,15 +604,15 @@ Copy this `:root` block verbatim — Gemini must not alter these values:
   --md-sys-color-secondary: #155dd8;
   --md-sys-color-on-secondary: #ffffff;
   --md-sys-color-secondary-container: #f2f5f9;
-  --md-sys-color-on-secondary-container: #16171a;
+  --md-sys-color-on-secondary-container: #171719;
   --md-sys-color-surface: #ffffff;
-  --md-sys-color-on-surface: #16171a;
+  --md-sys-color-on-surface: #171719;
   --md-sys-color-surface-variant: #f7f7f8;
   --md-sys-color-on-surface-variant: rgba(46,47,51,0.88);
   --md-sys-color-background: #ffffff;
-  --md-sys-color-on-background: #16171a;
-  --md-sys-color-outline: rgba(112,115,120,0.35);
-  --md-sys-color-outline-variant: rgba(112,115,120,0.16);
+  --md-sys-color-on-background: #171719;
+  --md-sys-color-outline: rgba(112,115,124,0.35);
+  --md-sys-color-outline-variant: rgba(112,115,124,0.16);
   --md-sys-color-error: #ff4242;
   --md-sys-color-on-error: #ffffff;
   --md-sys-color-error-container: #feecec;
@@ -672,38 +672,38 @@ Copy this `:root` block verbatim — Gemini must not alter these values:
   :root {
     --color-primary: #1a75ff;
     --color-primary-text: #1a75ff;
-    --color-primary-fill-neutral: #01020c;
-    --color-surface: #1a1b1d;
-    --color-surface-alt: #0b0c0e;
+    --color-primary-fill-neutral: #02060e;
+    --color-surface: #1b1c1e;
+    --color-surface-alt: #0f0f10;
     --color-text: #f7f7f8;
-    --color-text-neutral: rgba(247,247,248,0.88);
-    --color-text-alt: rgba(247,247,248,0.61);
-    --color-text-assistive: rgba(247,247,248,0.28);
-    --color-border: rgba(112,115,120,0.52);
-    --color-border-alt: rgba(112,115,120,0.28);
-    --color-fill: rgba(112,115,120,0.30);
-    --color-fill-neutral: rgba(112,115,120,0.20);
-    --color-fill-alt: rgba(112,115,120,0.12);
-    --color-surface-disabled: rgba(112,115,120,0.16);
-    --color-text-disabled: rgba(247,247,248,0.35);
-    --color-surface-inactive: #28292c;
+    --color-text-neutral: rgba(194,196,200,0.88);
+    --color-text-alt: rgba(174,176,182,0.61);
+    --color-text-assistive: rgba(174,176,182,0.28);
+    --color-border: rgba(112,115,124,0.52);
+    --color-border-alt: rgba(112,115,124,0.35);
+    --color-fill: rgba(112,115,124,0.35);
+    --color-fill-neutral: rgba(112,115,124,0.16);
+    --color-fill-alt: rgba(112,115,124,0.12);
+    --color-surface-disabled: #2e2f33;
+    --color-text-disabled: rgba(174,176,182,0.35);
+    --color-surface-inactive: #333438;
     --color-positive: #1ed45a;
     --color-caution: #ffa938;
     --color-negative: #ff6363;
     --color-info: #3385ff;
     --md-sys-color-primary: #1a75ff;
     --md-sys-color-on-primary: #ffffff;
-    --md-sys-color-primary-container: #01020c;
+    --md-sys-color-primary-container: #02060e;
     --md-sys-color-on-primary-container: #1a75ff;
     --md-sys-color-secondary: #0f4dab;
-    --md-sys-color-surface: #1a1b1d;
+    --md-sys-color-surface: #1b1c1e;
     --md-sys-color-on-surface: #f7f7f8;
-    --md-sys-color-surface-variant: #0b0c0e;
-    --md-sys-color-on-surface-variant: rgba(247,247,248,0.88);
-    --md-sys-color-background: #1a1b1d;
+    --md-sys-color-surface-variant: #0f0f10;
+    --md-sys-color-on-surface-variant: rgba(194,196,200,0.88);
+    --md-sys-color-background: #1b1c1e;
     --md-sys-color-on-background: #f7f7f8;
-    --md-sys-color-outline: rgba(112,115,120,0.52);
-    --md-sys-color-outline-variant: rgba(112,115,120,0.28);
+    --md-sys-color-outline: rgba(112,115,124,0.52);
+    --md-sys-color-outline-variant: rgba(112,115,124,0.35);
     --md-sys-color-error: #ff6363;
     --md-sys-color-error-container: #750404;
   }
@@ -775,14 +775,14 @@ Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학
 #### Cool Neutral (UI Neutral)
 | Step | Value |
 |------|-------|
-| /5   | `#0b0c0e` |
-| /10  | `#16171a` |
-| /15  | `#1a1b1d` |
+| /5   | `#0f0f10` |
+| /10  | `#171719` |
+| /15  | `#1b1c1e` |
 | /20  | `#28292c` |
-| /25  | `#35363a` |
+| /25  | `#37383c` |
 | /30  | `#45464b` |
 | /40  | `#595b62` |
-| /50  | `#707378` |
+| /50  | `#70737c` |
 | /60  | `#878a93` |
 | /70  | `#989ba2` |
 | /80  | `#aeb0b6` |
@@ -816,52 +816,52 @@ Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학
 #### Primary
 | Token                  | Value |
 |------------------------|-------|
-| Primary/Text/default   | `#155dd8` |
-| Primary/Text/neutral   | `#4891ff` |
-| Primary/Fill/default   | `#1a75ff` |
-| Primary/Fill/neutral   | `#f2f5f9` |
-| Primary/Border/default | `#1a75ff` |
-| Primary/Border/neutral | `#66a3ff` |
-| Primary/Icon/default   | `#1a75ff` |
-| Primary/Icon/neutral   | `#4891ff` |
+| Primary/Text/default   | `#4891ff` |
+| Primary/Text/neutral   | `#1a75ff` |
+| Primary/Fill/default   | `#f2f5f9` |
+| Primary/Fill/neutral   | `#1a75ff` |
+| Primary/Border/default | `#66a3ff` |
+| Primary/Border/neutral | `#1a75ff` |
+| Primary/Icon/default   | `#4891ff` |
+| Primary/Icon/neutral   | `#1a75ff` |
 
 #### Neutral
 | Token                      | Value |
 |----------------------------|-------|
-| Neutral/Text/default       | `#16171a` |
+| Neutral/Text/default       | `#171719` |
 | Neutral/Text/neutral       | `rgba(46,47,51,0.88)` |
-| Neutral/Text/alternative   | `rgba(53,54,58,0.61)` |
-| Neutral/Text/assistive     | `rgba(53,54,58,0.28)` |
+| Neutral/Text/alternative   | `rgba(55,56,60,0.61)` |
+| Neutral/Text/assistive     | `rgba(55,56,60,0.28)` |
 | Neutral/Text/strong        | `#000000` |
 | Neutral/Surface/default    | `#ffffff` |
 | Neutral/Surface/alternative| `#f7f7f8` |
-| Neutral/Border/default     | `rgba(112,115,120,0.35)` |
-| Neutral/Border/neutral     | `rgba(112,115,120,0.28)` |
-| Neutral/Border/alternative | `rgba(112,115,120,0.16)` |
-| Neutral/Icon/default       | `#16171a` |
+| Neutral/Border/default     | `rgba(112,115,124,0.35)` |
+| Neutral/Border/neutral     | `rgba(112,115,124,0.28)` |
+| Neutral/Border/alternative | `rgba(112,115,124,0.16)` |
+| Neutral/Icon/default       | `#171719` |
 | Neutral/Icon/neutral       | `rgba(46,47,51,0.88)` |
-| Neutral/Fill/default       | `rgba(112,115,120,0.22)` |
-| Neutral/Fill/neutral       | `rgba(112,115,120,0.12)` |
-| Neutral/Fill/alternative   | `rgba(112,115,120,0.08)` |
-| Neutral/Fill/strong        | `rgba(112,115,120,0.35)` |
+| Neutral/Fill/default       | `rgba(112,115,124,0.22)` |
+| Neutral/Fill/neutral       | `rgba(112,115,124,0.12)` |
+| Neutral/Fill/alternative   | `rgba(112,115,124,0.08)` |
+| Neutral/Fill/strong        | `rgba(112,115,124,0.35)` |
 
 #### Interaction
 | Token                        | Value |
 |------------------------------|-------|
 | Interaction/Text/inactive    | `#989ba2` |
-| Interaction/Text/disabled    | `rgba(53,54,58,0.35)` |
+| Interaction/Text/disabled    | `rgba(55,56,60,0.35)` |
 | Interaction/Surface/inactive | `#eaebec` |
 | Interaction/Surface/disabled | `#f4f4f5` |
-| Interaction/Border/inactive  | `#c2c4c8` |
-| Interaction/Border/disabled  | `#dbdcdf` |
-| Interaction/Fill/inactive    | `rgba(112,115,120,0.22)` |
-| Interaction/Fill/disabled    | `rgba(112,115,120,0.12)` |
-| Interaction/Dimmer/dimmer    | `rgba(22,23,26,0.52)` |
+| Interaction/Border/inactive  | `#e1e2e4` |
+| Interaction/Border/disabled  | `#eaebec` |
+| Interaction/Fill/inactive    | `rgba(112,115,124,0.22)` |
+| Interaction/Fill/disabled    | `rgba(112,115,124,0.12)` |
+| Interaction/Dimmer/dimmer    | `rgba(23,23,25,0.52)` |
 
 #### Status (Light)
 | Category | Text/default | Fill/default | Fill/neutral | Border/default |
 |----------|-------------|-------------|--------------|---------------|
-| Normal   | `#595b62`   | `#45464b`   | `#eaebec`    | `#707378` |
+| Normal   | `#595b62`   | `#45464b`   | `#eaebec`    | `#70737c` |
 | Positive | `#009632`   | `#00c244`   | `#d9ffe6`    | `#00c244` |
 | Info     | `#0054d1`   | `#0066ff`   | `#eaf2fe`    | `#0066ff` |
 | Caution  | `#d47800`   | `#ff9200`   | `#fef4e6`    | `#ff9200` |
@@ -872,27 +872,55 @@ Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학
 ### 시맨틱 토큰 — Dark Mode
 
 #### Primary (Dark)
-| Token                  | Value |
-|------------------------|-------|
-| Primary/Text/default   | `#1a75ff` |
-| Primary/Fill/default   | `#0f4dab` |
-| Primary/Fill/neutral   | `#01020c` |
-| Primary/Border/default | `#4891ff` |
-| Primary/Icon/default   | `#1a75ff` |
+| Token                      | Value |
+|----------------------------|-------|
+| Primary/Text/default       | `#1a75ff` |
+| Primary/Text/neutral       | `#1253b5` |
+| Primary/Fill/default       | `#1253b5` |
+| Primary/Fill/neutral       | `#02060e` |
+| Primary/Border/default     | `#4891ff` |
+| Primary/Border/neutral     | `#1253b5` |
+| Primary/Icon/default       | `#1a75ff` |
+| Primary/Icon/neutral       | `#1253b5` |
 
 #### Neutral (Dark)
 | Token                      | Value |
 |----------------------------|-------|
 | Neutral/Text/default       | `#f7f7f8` |
+| Neutral/Text/neutral       | `rgba(194,196,200,0.88)` |
+| Neutral/Text/alternative   | `rgba(174,176,182,0.61)` |
+| Neutral/Text/assistive     | `rgba(174,176,182,0.28)` |
 | Neutral/Text/strong        | `#ffffff` |
-| Neutral/Surface/default    | `#1a1b1d` |
-| Neutral/Surface/alternative| `#0b0c0e` |
-| Neutral/Border/default     | `rgba(112,115,120,0.52)` |
+| Neutral/Surface/default    | `#1b1c1e` |
+| Neutral/Surface/alternative| `#0f0f10` |
+| Neutral/Border/default     | `rgba(112,115,124,0.52)` |
+| Neutral/Border/neutral     | `rgba(112,115,124,0.43)` |
+| Neutral/Border/alternative | `rgba(112,115,124,0.35)` |
+| Neutral/Icon/default       | `#f7f7f8` |
+| Neutral/Icon/neutral       | `rgba(194,196,200,0.88)` |
+| Neutral/Fill/default       | `rgba(112,115,124,0.35)` |
+| Neutral/Fill/neutral       | `rgba(112,115,124,0.16)` |
+| Neutral/Fill/alternative   | `rgba(112,115,124,0.12)` |
+| Neutral/Fill/strong        | `rgba(112,115,124,0.43)` |
+
+#### Interaction (Dark)
+| Token                        | Value |
+|------------------------------|-------|
+| Interaction/Text/inactive    | `#5a5c63` |
+| Interaction/Text/disabled    | `rgba(174,176,182,0.35)` |
+| Interaction/Surface/inactive | `#333438` |
+| Interaction/Surface/disabled | `#2e2f33` |
+| Interaction/Border/inactive  | `#37383c` |
+| Interaction/Border/disabled  | `#333438` |
+| Interaction/Fill/inactive    | `rgba(112,115,124,0.22)` |
+| Interaction/Fill/disabled    | `rgba(112,115,124,0.12)` |
+| Interaction/Dimmer/dimmer    | `rgba(23,23,25,0.74)` |
 
 #### Status (Dark)
 | Category | Text/default | Fill/default | Fill/neutral | Border/default |
 |----------|-------------|-------------|--------------|---------------|
-| Positive | `#00c244`   | `#1ed45a`   | `#004517`    | `#1ed45a` |
+| Normal   | `#70737c`   | `#5a5c63`   | `#292a2d`    | `#878a93` |
+| Positive | `#00bf40`   | `#1ed45a`   | `#004517`    | `#1ed45a` |
 | Info     | `#0066ff`   | `#3385ff`   | `#002966`    | `#3385ff` |
 | Caution  | `#ff9200`   | `#ffa938`   | `#663a00`    | `#ffa938` |
 | Negative | `#ffb5b5`   | `#ff6363`   | `#750404`    | `#ff6363` |

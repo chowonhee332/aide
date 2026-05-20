@@ -1022,9 +1022,10 @@ ${buildQualityRules()}
   return html
 }
 
-export async function refineUI(html: string, message: string, brief: string, designMd?: string, apiKey?: string): Promise<string> {
+export async function refineUI(html: string, message: string, brief: string, designMd?: string, apiKey?: string, logoDataUrl?: string | null): Promise<string> {
   const TINY_GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
-  const safeHtml = html.replace(/data:[^;]+;base64,[A-Za-z0-9+/]+=*/g, TINY_GIF)
+  const logoSwapped = logoDataUrl ? html.split(logoDataUrl).join('__LOGO_DATA_URL__') : html
+  const safeHtml = logoSwapped.replace(/data:[^;]+;base64,[A-Za-z0-9+/]+=*/g, TINY_GIF)
   const hasMultiScreen = safeHtml.includes('aide-screen');
 
   const prompt = `당신은 기존 HTML UI를 수정하는 전문 UI 개발자입니다.
@@ -1044,7 +1045,7 @@ ${hasMultiScreen ? `- 이 HTML은 멀티스크린 프로토타입입니다 — .
 ` : ''}- 요청된 부분만 수정하고 나머지 스타일·스크립트·구조는 100% 보존
 - --color-primary CSS 변수와 브랜드 컬러 유지
 - 한국어 더미 데이터 유지 (영어로 변환 금지)
-- 응답은 <!DOCTYPE html> 또는 <html로 시작하는 완전한 HTML 파일만 출력 (마크다운 블록·설명 금지)
+${logoDataUrl ? '- HTML에 `__LOGO_DATA_URL__`이 포함된 img 태그가 있습니다 — 이 태그를 절대 삭제하거나 src 값을 변경하지 마세요\n' : ''}- 응답은 <!DOCTYPE html> 또는 <html로 시작하는 완전한 HTML 파일만 출력 (마크다운 블록·설명 금지)
 
 ## ★ 수정 시 품질 유지 기준
 > 수정 요청 외의 기존 품질을 절대 낮추지 말 것. 아래는 기존 퀄리티를 지키기 위한 기준이다.
@@ -1052,7 +1053,11 @@ ${buildQualityRules()}`;
 
   const text = (await generatePro(prompt, apiKey)).trim();
   const mdMatch = text.match(/```(?:html)?\n?([\s\S]*?)```/);
-  return mdMatch ? mdMatch[1].trim() : text;
+  let result = mdMatch ? mdMatch[1].trim() : text;
+  if (logoDataUrl) {
+    result = result.split('__LOGO_DATA_URL__').join(logoDataUrl)
+  }
+  return result;
 }
 
 export async function analyzeTweaks(html: string, brief: string, apiKey?: string): Promise<TweakSpec> {

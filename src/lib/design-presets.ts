@@ -181,6 +181,59 @@ const RICH_META: Record<string, Omit<DesignPresetMeta, 'md'>> = {
       { name: 'full', value: '9999px' },
     ],
   },
+  shopify: {
+    label: 'Shopify',
+    color: '#95bf47',
+    description: '커머스 플랫폼 — 시네마틱 블랙 캔버스, 알로에 그린 액센트',
+    palette: [
+      { name: 'Canvas Night', hex: '#000000' },
+      { name: 'Canvas Cream', hex: '#fbfbf5' },
+      { name: 'Aloe', hex: '#c1fbd4' },
+      { name: 'Pistachio', hex: '#d4f9e0' },
+    ],
+    fonts: { headline: 'Neue Haas Grotesk Display', body: 'Inter' },
+    traits: ['dual-track canvas', 'pill buttons', 'editorial type'],
+    typographyScale: [
+      { name: 'Display XXL', size: '96px', weight: 330 },
+      { name: 'Display XL', size: '70px', weight: 330 },
+      { name: 'Display LG', size: '55px', weight: 330 },
+      { name: 'Body LG', size: '18px', weight: 400 },
+      { name: 'Body', size: '16px', weight: 400 },
+      { name: 'Caption', size: '13px', weight: 400 },
+    ],
+    radiusTokens: [
+      { name: 'pill', value: '9999px' },
+      { name: 'md', value: '8px' },
+      { name: 'sm', value: '4px' },
+    ],
+  },
+  uber: {
+    label: 'Uber',
+    color: '#000000',
+    description: '모빌리티 플랫폼 — 흑백 듀엣, 기하학적 산스세리프, 필 버튼',
+    palette: [
+      { name: 'Ink', hex: '#000000' },
+      { name: 'Canvas', hex: '#ffffff' },
+      { name: 'Canvas Soft', hex: '#efefef' },
+      { name: 'Mute', hex: '#afafaf' },
+    ],
+    fonts: { headline: 'UberMove', body: 'UberMoveText' },
+    traits: ['monochrome', 'pill radius 999px', 'bold type', 'urban editorial'],
+    typographyScale: [
+      { name: 'Display XXL', size: '52px', weight: 700 },
+      { name: 'Display XL', size: '36px', weight: 700 },
+      { name: 'Display LG', size: '32px', weight: 700 },
+      { name: 'Display MD', size: '24px', weight: 700 },
+      { name: 'Body LG', size: '18px', weight: 500 },
+      { name: 'Body', size: '16px', weight: 400 },
+      { name: 'Caption', size: '13px', weight: 400 },
+    ],
+    radiusTokens: [
+      { name: 'pill', value: '999px' },
+      { name: 'md', value: '8px' },
+      { name: 'sm', value: '4px' },
+    ],
+  },
 }
 
 // ktds first, then alphabetical for the rest
