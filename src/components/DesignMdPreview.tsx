@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { ArrowLeft, Check } from 'lucide-react'
 
 interface DesignMdPreviewProps {
@@ -8,6 +9,7 @@ interface DesignMdPreviewProps {
   screenshot?: string
   onApply: () => void
   onBack: () => void
+  variant?: 'dark' | 'light'
 }
 
 interface ParsedDesign {
@@ -179,7 +181,8 @@ function DocSection({ label, children, noBorder }: { label: string; children: Re
   )
 }
 
-export function DesignMdPreview({ md, url, screenshot, onApply, onBack }: DesignMdPreviewProps) {
+export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant = 'dark' }: DesignMdPreviewProps) {
+  const [tab, setTab] = useState<'preview' | 'source'>('preview')
   const d = parseDesignMd(md)
 
   const categorized = d.colors.reduce<{
@@ -202,29 +205,62 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack }: Design
   const hasShapes = d.rounded.filter(r => r.name !== 'none' && r.name !== 'full').length > 0
   const hasComponents = !!(d.buttonPrimary?.bg || d.buttonSecondary?.bg)
 
+  const isDark = variant === 'dark'
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
       {/* Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <button
           onClick={onBack}
           style={{
-            display: 'flex', alignItems: 'center', gap: '4px',
+            display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0,
             background: 'none', border: 'none', cursor: 'pointer',
-            color: 'rgba(255,255,255,0.35)', fontSize: '12px', padding: '2px 0',
+            color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.4)',
+            fontSize: '12px', padding: '2px 0',
           }}
         >
           <ArrowLeft size={12} />
           다시 입력
         </button>
+
+        {/* Tabs */}
+        <div style={{
+          display: 'flex', flex: 1,
+          backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.06)',
+          borderRadius: '8px', padding: '3px', gap: '2px',
+        }}>
+          {(['preview', 'source'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              style={{
+                flex: 1, padding: '5px 0', borderRadius: '5px', border: 'none',
+                cursor: 'pointer', fontSize: '11px', fontWeight: 600,
+                fontFamily: 'inherit', transition: 'all 0.15s',
+                backgroundColor: tab === t
+                  ? (isDark ? 'rgba(255,255,255,0.12)' : '#ffffff')
+                  : 'transparent',
+                color: tab === t
+                  ? (isDark ? '#ffffff' : '#111111')
+                  : (isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)'),
+                boxShadow: tab === t && !isDark ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              }}
+            >
+              {t === 'preview' ? '미리보기' : 'MD 소스'}
+            </button>
+          ))}
+        </div>
+
         <button
           onClick={onApply}
           style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
+            display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0,
             padding: '8px 14px', borderRadius: '100px',
             border: 'none', cursor: 'pointer',
-            backgroundColor: 'rgba(255,255,255,0.9)', color: '#111111',
+            backgroundColor: isDark ? 'rgba(255,255,255,0.9)' : '#111111',
+            color: isDark ? '#111111' : '#ffffff',
             fontSize: '12px', fontWeight: 600, letterSpacing: '-0.12px',
           }}
         >
@@ -238,212 +274,223 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack }: Design
         backgroundColor: '#ffffff',
         borderRadius: '14px',
         overflow: 'hidden',
-        maxHeight: '500px',
-        overflowY: 'auto',
-        border: '1px solid rgba(255,255,255,0.08)',
+        maxHeight: isDark ? '500px' : 'none',
+        overflowY: isDark ? 'auto' : 'visible',
+        border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #eeeeee',
         scrollbarWidth: 'thin',
         scrollbarColor: '#e0e0e0 transparent',
       }}>
-
-        {/* Hero */}
-        <div style={{
-          padding: '24px 24px 20px',
-          borderBottom: '1px solid #f0f0f0',
-          display: 'flex', gap: '14px', alignItems: 'flex-start',
-        }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{
-              color: '#bbb', fontSize: '9px', fontWeight: 700,
-              letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px',
-            }}>
-              Design System
-            </p>
-            <h2 style={{
-              color: '#111', fontSize: '18px', fontWeight: 700,
-              letterSpacing: '-0.6px', lineHeight: 1.15, marginBottom: '10px',
-            }}>
-              {d.name}
-            </h2>
-            {d.overviewText && (
-              <p style={{
-                color: '#666', fontSize: '11px', lineHeight: 1.6,
-                letterSpacing: '-0.11px', marginBottom: '10px',
-                display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-              } as React.CSSProperties}>
-                {d.overviewText}
-              </p>
-            )}
-            <p style={{ color: '#ccc', fontSize: '10px', letterSpacing: '-0.1px' }}>
-              {domainLabel}
-            </p>
-          </div>
-          {screenshot && (
+        {tab === 'source' ? (
+          <pre style={{
+            margin: 0, padding: '20px',
+            fontSize: '11px', lineHeight: 1.65,
+            color: '#666666', fontFamily: 'ui-monospace, Menlo, monospace',
+            whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          }}>
+            {md}
+          </pre>
+        ) : (
+          <>
+            {/* Hero */}
             <div style={{
-              width: '80px', flexShrink: 0,
-              borderRadius: '8px', overflow: 'hidden',
-              border: '1px solid #f0f0f0',
+              padding: '24px 24px 20px',
+              borderBottom: '1px solid #f0f0f0',
+              display: 'flex', gap: '14px', alignItems: 'flex-start',
             }}>
-              <img
-                src={screenshot} alt="site preview"
-                style={{ width: '100%', display: 'block', objectFit: 'cover', objectPosition: 'top' }}
-              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{
+                  color: '#bbb', fontSize: '9px', fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px',
+                }}>
+                  Design System
+                </p>
+                <h2 style={{
+                  color: '#111', fontSize: '18px', fontWeight: 700,
+                  letterSpacing: '-0.6px', lineHeight: 1.15, marginBottom: '10px',
+                }}>
+                  {d.name}
+                </h2>
+                {d.overviewText && (
+                  <p style={{
+                    color: '#666', fontSize: '11px', lineHeight: 1.6,
+                    letterSpacing: '-0.11px', marginBottom: '10px',
+                    display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  } as React.CSSProperties}>
+                    {d.overviewText}
+                  </p>
+                )}
+                <p style={{ color: '#ccc', fontSize: '10px', letterSpacing: '-0.1px' }}>
+                  {domainLabel}
+                </p>
+              </div>
+              {screenshot && (
+                <div style={{
+                  width: '80px', flexShrink: 0,
+                  borderRadius: '8px', overflow: 'hidden',
+                  border: '1px solid #f0f0f0',
+                }}>
+                  <img
+                    src={screenshot} alt="site preview"
+                    style={{ width: '100%', display: 'block', objectFit: 'cover', objectPosition: 'top' }}
+                  />
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Colors */}
-        {hasColors && (
-          <DocSection label="Colors">
-            {d.colorsHeadline && (
-              <p style={{
-                color: '#333', fontSize: '13px', fontWeight: 600,
-                letterSpacing: '-0.4px', marginBottom: '16px', lineHeight: 1.3,
-              }}>
-                {d.colorsHeadline}
-              </p>
-            )}
-            {brandColors.length > 0 && (
-              <>
-                <p style={{ color: '#bbb', fontSize: '9px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '10px' }}>
-                  Brand &amp; Accent
-                </p>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '18px' }}>
-                  {brandColors.map(c => <ColorSwatch key={c.key} colorKey={c.key} value={c.value} />)}
-                </div>
-              </>
-            )}
-            {categorized.surface.length > 0 && (
-              <>
-                <p style={{ color: '#bbb', fontSize: '9px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '10px' }}>
-                  Surface
-                </p>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '18px' }}>
-                  {categorized.surface.map(c => <ColorSwatch key={c.key} colorKey={c.key} value={c.value} />)}
-                </div>
-              </>
-            )}
-            {categorized.text.length > 0 && (
-              <>
-                <p style={{ color: '#bbb', fontSize: '9px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '10px' }}>
-                  Text &amp; Hairlines
-                </p>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  {categorized.text.map(c => <ColorSwatch key={c.key} colorKey={c.key} value={c.value} />)}
-                </div>
-              </>
-            )}
-          </DocSection>
-        )}
-
-        {/* Typography */}
-        {hasTypography && (
-          <DocSection label="Typography">
-            <p style={{
-              color: '#333', fontSize: '13px', fontWeight: 600,
-              letterSpacing: '-0.4px', marginBottom: '4px',
-            }}>
-              {fontName}
-            </p>
-            {d.typographyNote && (
-              <p style={{ color: '#999', fontSize: '11px', marginBottom: '18px', lineHeight: 1.5 }}>
-                {d.typographyNote}
-              </p>
-            )}
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {d.typography.slice(0, 7).map((t, i) => (
-                <div
-                  key={t.name}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '52px 1fr 44px',
-                    alignItems: 'baseline',
-                    gap: '12px',
-                    padding: '9px 0',
-                    borderTop: i === 0 ? 'none' : '1px solid #f5f5f5',
-                  }}
-                >
-                  <span style={{
-                    color: '#ccc', fontSize: '8px', fontWeight: 700,
-                    letterSpacing: '0.06em', textTransform: 'uppercase',
+            {/* Colors */}
+            {hasColors && (
+              <DocSection label="Colors">
+                {d.colorsHeadline && (
+                  <p style={{
+                    color: '#333', fontSize: '13px', fontWeight: 600,
+                    letterSpacing: '-0.4px', marginBottom: '16px', lineHeight: 1.3,
                   }}>
-                    {t.name}
-                  </span>
-                  <span style={{
-                    color: '#111', overflow: 'hidden', whiteSpace: 'nowrap',
-                    fontFamily: `"${fontName}", -apple-system, BlinkMacSystemFont, sans-serif`,
-                    fontSize: t.fontSize, fontWeight: t.fontWeight, lineHeight: 1.2,
-                  }}>
-                    {TYPE_SAMPLES[t.name] ?? t.name}
-                  </span>
-                  <span style={{ color: '#ccc', fontSize: '9px', textAlign: 'right', fontFamily: 'monospace' }}>
-                    {t.fontSize}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </DocSection>
-        )}
+                    {d.colorsHeadline}
+                  </p>
+                )}
+                {brandColors.length > 0 && (
+                  <>
+                    <p style={{ color: '#bbb', fontSize: '9px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '10px' }}>
+                      Brand &amp; Accent
+                    </p>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '18px' }}>
+                      {brandColors.map(c => <ColorSwatch key={c.key} colorKey={c.key} value={c.value} />)}
+                    </div>
+                  </>
+                )}
+                {categorized.surface.length > 0 && (
+                  <>
+                    <p style={{ color: '#bbb', fontSize: '9px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '10px' }}>
+                      Surface
+                    </p>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '18px' }}>
+                      {categorized.surface.map(c => <ColorSwatch key={c.key} colorKey={c.key} value={c.value} />)}
+                    </div>
+                  </>
+                )}
+                {categorized.text.length > 0 && (
+                  <>
+                    <p style={{ color: '#bbb', fontSize: '9px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '10px' }}>
+                      Text &amp; Hairlines
+                    </p>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      {categorized.text.map(c => <ColorSwatch key={c.key} colorKey={c.key} value={c.value} />)}
+                    </div>
+                  </>
+                )}
+              </DocSection>
+            )}
 
-        {/* Shapes */}
-        {hasShapes && (
-          <DocSection label="Shapes" noBorder={!hasComponents}>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              {d.rounded
-                .filter(r => r.name !== 'none')
-                .slice(0, 6)
-                .map(r => (
-                  <div key={r.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+            {/* Typography */}
+            {hasTypography && (
+              <DocSection label="Typography">
+                <p style={{
+                  color: '#333', fontSize: '13px', fontWeight: 600,
+                  letterSpacing: '-0.4px', marginBottom: '4px',
+                }}>
+                  {fontName}
+                </p>
+                {d.typographyNote && (
+                  <p style={{ color: '#999', fontSize: '11px', marginBottom: '18px', lineHeight: 1.5 }}>
+                    {d.typographyNote}
+                  </p>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {d.typography.slice(0, 7).map((t, i) => (
+                    <div
+                      key={t.name}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '52px 1fr 44px',
+                        alignItems: 'baseline',
+                        gap: '12px',
+                        padding: '9px 0',
+                        borderTop: i === 0 ? 'none' : '1px solid #f5f5f5',
+                      }}
+                    >
+                      <span style={{
+                        color: '#ccc', fontSize: '8px', fontWeight: 700,
+                        letterSpacing: '0.06em', textTransform: 'uppercase',
+                      }}>
+                        {t.name}
+                      </span>
+                      <span style={{
+                        color: '#111', overflow: 'hidden', whiteSpace: 'nowrap',
+                        fontFamily: `"${fontName}", -apple-system, BlinkMacSystemFont, sans-serif`,
+                        fontSize: t.fontSize, fontWeight: t.fontWeight, lineHeight: 1.2,
+                      }}>
+                        {TYPE_SAMPLES[t.name] ?? t.name}
+                      </span>
+                      <span style={{ color: '#ccc', fontSize: '9px', textAlign: 'right', fontFamily: 'monospace' }}>
+                        {t.fontSize}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </DocSection>
+            )}
+
+            {/* Shapes */}
+            {hasShapes && (
+              <DocSection label="Shapes" noBorder={!hasComponents}>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  {d.rounded
+                    .filter(r => r.name !== 'none')
+                    .slice(0, 6)
+                    .map(r => (
+                      <div key={r.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                        <div style={{
+                          width: '52px', height: '34px',
+                          borderRadius: r.value,
+                          border: '1.5px solid #e0e0e0',
+                          backgroundColor: '#f8f8f8',
+                        }} />
+                        <span style={{ color: '#bbb', fontSize: '8px', textAlign: 'center', fontFamily: 'monospace' }}>
+                          {r.value}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </DocSection>
+            )}
+
+            {/* Components */}
+            {hasComponents && (
+              <DocSection label="Components" noBorder>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {d.buttonPrimary?.bg && (
                     <div style={{
-                      width: '52px', height: '34px',
-                      borderRadius: r.value,
-                      border: '1.5px solid #e0e0e0',
-                      backgroundColor: '#f8f8f8',
-                    }} />
-                    <span style={{ color: '#bbb', fontSize: '8px', textAlign: 'center', fontFamily: 'monospace' }}>
-                      {r.value}
-                    </span>
-                  </div>
-                ))}
-            </div>
-          </DocSection>
-        )}
-
-        {/* Components */}
-        {hasComponents && (
-          <DocSection label="Components" noBorder>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {d.buttonPrimary?.bg && (
-                <div style={{
-                  padding: '9px 20px',
-                  borderRadius: d.buttonPrimary.radius || '8px',
-                  backgroundColor: d.buttonPrimary.bg,
-                  color: d.buttonPrimary.text || '#ffffff',
-                  fontSize: '13px', fontWeight: 600,
-                  fontFamily: `"${fontName}", sans-serif`,
-                  letterSpacing: '-0.13px',
-                }}>
-                  Primary Button
+                      padding: '9px 20px',
+                      borderRadius: d.buttonPrimary.radius || '8px',
+                      backgroundColor: d.buttonPrimary.bg,
+                      color: d.buttonPrimary.text || '#ffffff',
+                      fontSize: '13px', fontWeight: 600,
+                      fontFamily: `"${fontName}", sans-serif`,
+                      letterSpacing: '-0.13px',
+                    }}>
+                      Primary Button
+                    </div>
+                  )}
+                  {d.buttonSecondary && (d.buttonSecondary.bg || d.buttonPrimary?.bg) && (
+                    <div style={{
+                      padding: '9px 20px',
+                      borderRadius: d.buttonSecondary.radius || '8px',
+                      backgroundColor: d.buttonSecondary.bg || 'transparent',
+                      color: d.buttonSecondary.text || d.buttonPrimary?.bg || '#111',
+                      fontSize: '13px', fontWeight: 600,
+                      fontFamily: `"${fontName}", sans-serif`,
+                      letterSpacing: '-0.13px',
+                      border: `1.5px solid ${d.buttonSecondary.text || d.buttonPrimary?.bg || '#ddd'}`,
+                    }}>
+                      Secondary Button
+                    </div>
+                  )}
                 </div>
-              )}
-              {d.buttonSecondary && (d.buttonSecondary.bg || d.buttonPrimary?.bg) && (
-                <div style={{
-                  padding: '9px 20px',
-                  borderRadius: d.buttonSecondary.radius || '8px',
-                  backgroundColor: d.buttonSecondary.bg || 'transparent',
-                  color: d.buttonSecondary.text || d.buttonPrimary?.bg || '#111',
-                  fontSize: '13px', fontWeight: 600,
-                  fontFamily: `"${fontName}", sans-serif`,
-                  letterSpacing: '-0.13px',
-                  border: `1.5px solid ${d.buttonSecondary.text || d.buttonPrimary?.bg || '#ddd'}`,
-                }}>
-                  Secondary Button
-                </div>
-              )}
-            </div>
-          </DocSection>
+              </DocSection>
+            )}
+          </>
         )}
-
       </div>
     </div>
   )

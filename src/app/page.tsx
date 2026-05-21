@@ -6,6 +6,7 @@ import {
   ArrowUp, ArrowRight, Sparkles, MessageSquare, Layers, Sliders, FileText, Upload, X,
   ChevronLeft, ChevronRight, Check, ChevronDown, Zap, Palette, MousePointer2, Share2,
   Clock, Trash2, ExternalLink, Link2, KeyRound,
+  RefreshCw, Download,
 } from 'lucide-react'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import Grainient from '@/components/Grainient'
@@ -546,7 +547,7 @@ export default function Home() {
 
   const [brief, setBrief] = useState('')
   const [platform, setPlatform] = useState<'mobile' | 'web'>('mobile')
-  const [designPreset, setDesignPreset] = useState<DesignPreset>('ktds')
+  const [designPreset, setDesignPreset] = useState<DesignPreset>('none')
   const [designPanelOpen, setDesignPanelOpen] = useState(false)
   const [designMdContent, setDesignMdContent] = useState<string | null>(null)
   const [designMdFileName, setDesignMdFileName] = useState<string | null>(null)
@@ -555,6 +556,7 @@ export default function Home() {
   const [urlError, setUrlError] = useState<string | null>(null)
   const [urlPreviewMd, setUrlPreviewMd] = useState<string | null>(null)
   const [urlPreviewScreenshot, setUrlPreviewScreenshot] = useState<string | null>(null)
+  const [appliedUrlScreenshot, setAppliedUrlScreenshot] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const refImageInputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -581,8 +583,87 @@ export default function Home() {
   const [extractingColors, setExtractingColors] = useState(false)
   const logoInputRef = useRef<HTMLInputElement>(null)
 
+  // URL → design.md 생성 전용 모달 state
+  const [genMdModalOpen, setGenMdModalOpen] = useState(false)
+  const [genMdUrl, setGenMdUrl] = useState('')
+  const [genMdAnalyzing, setGenMdAnalyzing] = useState(false)
+  const [genMdError, setGenMdError] = useState<string | null>(null)
+  const [genMdResult, setGenMdResult] = useState<string | null>(null)
+  const [genMdScreenshot, setGenMdScreenshot] = useState<string | null>(null)
+  const [genMdCopied, setGenMdCopied] = useState(false)
+  const [genMdCaptureStatus, setGenMdCaptureStatus] = useState<'full' | 'partial' | 'blocked' | null>(null)
+
   const scroll = (dir: 'left' | 'right') => {
     scrollRef.current?.scrollBy({ left: dir === 'right' ? 380 : -380, behavior: 'smooth' })
+  }
+
+  const handleGenMdAnalyze = async () => {
+    if (!genMdUrl.trim() || genMdAnalyzing) return
+    setGenMdAnalyzing(true)
+    setGenMdError(null)
+    setGenMdResult(null)
+    setGenMdScreenshot(null)
+    setGenMdCaptureStatus(null)
+    try {
+      const storedKey = localStorage.getItem('aide_gemini_api_key') ?? ''
+      const res = await fetch('/api/analyze-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(storedKey && { 'x-gemini-key': storedKey }) },
+        body: JSON.stringify({ url: genMdUrl.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setGenMdError(data.error ?? '분석 실패')
+        return
+      }
+      setGenMdResult(data.designMd)
+      setGenMdScreenshot(data.screenshot ?? null)
+      setGenMdCaptureStatus(data.captureStatus ?? null)
+    } catch {
+      setGenMdError('네트워크 오류가 발생했습니다.')
+    } finally {
+      setGenMdAnalyzing(false)
+    }
+  }
+
+  const handleGenMdDownload = () => {
+    if (!genMdResult) return
+    const blob = new Blob([genMdResult], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'design.md'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleGenMdCopy = async () => {
+    if (!genMdResult) return
+    await navigator.clipboard.writeText(genMdResult)
+    setGenMdCopied(true)
+    setTimeout(() => setGenMdCopied(false), 2000)
+  }
+
+  const handleGenMdUseInStudio = () => {
+    if (!genMdResult) return
+    setDesignMdContent(genMdResult)
+    setDesignMdFileName(genMdUrl.trim())
+    setDesignPreset('none')
+    setAppliedUrlScreenshot(genMdScreenshot)
+    setGenMdModalOpen(false)
+    setGenMdResult(null)
+    setGenMdScreenshot(null)
+    setGenMdCaptureStatus(null)
+    setGenMdUrl('')
+  }
+
+  const closeGenMdModal = () => {
+    setGenMdModalOpen(false)
+    setGenMdUrl('')
+    setGenMdError(null)
+    setGenMdResult(null)
+    setGenMdScreenshot(null)
+    setGenMdCaptureStatus(null)
   }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -630,6 +711,7 @@ export default function Home() {
     setUrlError(null)
     setUrlPreviewMd(null)
     setUrlPreviewScreenshot(null)
+    setAppliedUrlScreenshot(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -663,6 +745,7 @@ export default function Home() {
     setDesignMdContent(urlPreviewMd)
     setDesignMdFileName(urlInput.trim())
     setDesignPreset('none')
+    setAppliedUrlScreenshot(urlPreviewScreenshot)
     setUrlPreviewMd(null)
     setUrlPreviewScreenshot(null)
     setDesignPanelOpen(false)
@@ -764,6 +847,219 @@ export default function Home() {
         .marquee-left { animation: marquee-left 32s linear infinite; display: flex; width: max-content; }
         .marquee-right { animation: marquee-right 28s linear infinite; display: flex; width: max-content; }
       `}</style>
+
+      {/* ── URL → design.md 생성 모달 ── */}
+      {genMdModalOpen && (
+        <div
+          onClick={closeGenMdModal}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            backgroundColor: 'rgba(0,0,0,0.72)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '24px',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: '640px',
+              backgroundColor: '#ffffff', borderRadius: '24px',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.2)',
+              overflow: 'hidden', display: 'flex', flexDirection: 'column',
+              maxHeight: 'calc(100vh - 48px)',
+            }}
+          >
+            {/* 헤더 */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '20px 24px', borderBottom: `1px solid ${F.hairlineSoft}`, flexShrink: 0,
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                  <FileText size={16} color={F.primary} />
+                  <span style={{ fontWeight: 700, fontSize: '16px', color: F.ink, letterSpacing: '-0.5px' }}>
+                    design.md 자동 생성
+                  </span>
+                </div>
+                <p style={{ color: F.inkMuted, fontSize: '13px', margin: 0, letterSpacing: '-0.13px' }}>
+                  서비스 URL만 넣으면 AI가 디자인 시스템 파일을 만들어드려요
+                </p>
+              </div>
+              <button
+                onClick={closeGenMdModal}
+                style={{
+                  width: '32px', height: '32px', borderRadius: '50%', border: 'none',
+                  backgroundColor: F.surface2, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}
+              >
+                <X size={14} color={F.inkMuted} />
+              </button>
+            </div>
+
+            {/* 본문 */}
+            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
+              {!genMdResult ? (
+                <>
+                  {/* URL 입력 */}
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: genMdError ? '8px' : '0' }}>
+                    <input
+                      type="text"
+                      value={genMdUrl}
+                      onChange={e => { setGenMdUrl(e.target.value); setGenMdError(null) }}
+                      onKeyDown={e => e.key === 'Enter' && handleGenMdAnalyze()}
+                      placeholder="서비스 URL 입력 (예: ktds.com, toss.im)"
+                      autoFocus
+                      style={{
+                        flex: 1, padding: '12px 14px', borderRadius: '12px',
+                        border: genMdError ? '1.5px solid rgba(255,80,80,0.5)' : `1.5px solid ${F.hairline}`,
+                        backgroundColor: F.surface1, color: F.ink,
+                        fontSize: '14px', fontFamily: 'inherit', outline: 'none',
+                        letterSpacing: '-0.14px',
+                      }}
+                    />
+                    <button
+                      onClick={handleGenMdAnalyze}
+                      disabled={!genMdUrl.trim() || genMdAnalyzing}
+                      style={{
+                        padding: '12px 20px', borderRadius: '12px', flexShrink: 0,
+                        border: 'none',
+                        cursor: genMdUrl.trim() && !genMdAnalyzing ? 'pointer' : 'default',
+                        backgroundColor: genMdUrl.trim() && !genMdAnalyzing ? F.ink : F.surface2,
+                        color: genMdUrl.trim() && !genMdAnalyzing ? '#fff' : 'rgba(0,0,0,0.25)',
+                        fontSize: '14px', fontWeight: 600, letterSpacing: '-0.14px',
+                        transition: 'all 0.15s', whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {genMdAnalyzing ? '분석 중…' : '생성하기'}
+                    </button>
+                  </div>
+
+                  {genMdError && (
+                    <p style={{ color: 'rgba(220,50,50,0.85)', fontSize: '12px', margin: '8px 0 0', letterSpacing: '-0.12px' }}>
+                      {genMdError}
+                    </p>
+                  )}
+
+                  {/* 로딩 상태 */}
+                  {genMdAnalyzing && (
+                    <div style={{
+                      marginTop: '24px', padding: '32px', borderRadius: '16px',
+                      backgroundColor: F.surface1, border: `1px solid ${F.hairlineSoft}`,
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px',
+                    }}>
+                      <div style={{
+                        width: '40px', height: '40px', borderRadius: '50%',
+                        border: `3px solid ${F.hairlineSoft}`,
+                        borderTopColor: F.primary,
+                        animation: 'spin 0.9s linear infinite',
+                      }} />
+                      <div style={{ textAlign: 'center' }}>
+                        <p style={{ color: F.ink, fontSize: '14px', fontWeight: 600, margin: '0 0 4px', letterSpacing: '-0.14px' }}>
+                          웹사이트를 분석하고 있어요
+                        </p>
+                        <p style={{ color: F.inkMuted, fontSize: '13px', margin: 0, letterSpacing: '-0.13px' }}>
+                          색상, 타이포그래피, 레이아웃을 읽는 중입니다
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 안내 */}
+                  {!genMdAnalyzing && !genMdError && (
+                    <div style={{
+                      marginTop: '16px', padding: '16px', borderRadius: '12px',
+                      backgroundColor: `${F.primary}08`, border: `1px solid ${F.primary}15`,
+                    }}>
+                      <p style={{ color: F.inkMuted, fontSize: '12px', margin: 0, lineHeight: 1.6, letterSpacing: '-0.12px' }}>
+                        AI가 사이트를 스크린샷하고 색상·폰트·컴포넌트 패턴을 추출해<br />
+                        Google Stitch 규격의 design.md 파일을 생성합니다.
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* 보안 차단 경고 배너 */}
+                  {genMdCaptureStatus === 'blocked' && (
+                    <div style={{
+                      marginBottom: '12px', padding: '12px 14px', borderRadius: '10px',
+                      backgroundColor: 'rgba(255, 160, 0, 0.08)', border: '1px solid rgba(255, 160, 0, 0.3)',
+                      display: 'flex', gap: '10px', alignItems: 'flex-start',
+                    }}>
+                      <span style={{ fontSize: '16px', lineHeight: 1, flexShrink: 0 }}>⚠️</span>
+                      <div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: 600, color: '#b45309', letterSpacing: '-0.12px' }}>
+                          보안으로 인해 사이트 직접 확인 불가
+                        </p>
+                        <p style={{ margin: 0, fontSize: '11.5px', color: '#92400e', lineHeight: 1.55, letterSpacing: '-0.1px' }}>
+                          Cloudflare 또는 봇 차단으로 실제 디자인을 캡처하지 못했습니다.
+                          로고에서 추출된 브랜드 컬러와 범용 디자인시스템을 기반으로 생성했습니다.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {genMdCaptureStatus === 'partial' && (
+                    <div style={{
+                      marginBottom: '12px', padding: '10px 14px', borderRadius: '10px',
+                      backgroundColor: 'rgba(59, 130, 246, 0.06)', border: '1px solid rgba(59, 130, 246, 0.2)',
+                      display: 'flex', gap: '8px', alignItems: 'center',
+                    }}>
+                      <span style={{ fontSize: '14px', flexShrink: 0 }}>ℹ️</span>
+                      <p style={{ margin: 0, fontSize: '11.5px', color: '#1e40af', lineHeight: 1.5, letterSpacing: '-0.1px' }}>
+                        CSS 소스 추출이 제한되어 스크린샷 기반으로 분석했습니다.
+                      </p>
+                    </div>
+                  )}
+
+                  <DesignMdPreview
+                    md={genMdResult}
+                    url={genMdUrl}
+                    screenshot={genMdScreenshot ?? undefined}
+                    onApply={handleGenMdUseInStudio}
+                    onBack={() => { setGenMdResult(null); setGenMdScreenshot(null); setGenMdCaptureStatus(null) }}
+                    variant="light"
+                  />
+                </>
+              )}
+            </div>
+
+            {/* 푸터 액션 */}
+            {genMdResult && (
+              <div style={{
+                padding: '16px 24px', borderTop: `1px solid ${F.hairlineSoft}`,
+                display: 'flex', gap: '8px', flexShrink: 0, justifyContent: 'flex-end',
+              }}>
+                <button
+                  onClick={handleGenMdDownload}
+                  style={{
+                    padding: '10px 16px', borderRadius: '10px',
+                    border: `1px solid ${F.hairline}`, backgroundColor: '#fff',
+                    color: F.ink, fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                    letterSpacing: '-0.13px', display: 'flex', alignItems: 'center', gap: '6px',
+                  }}
+                >
+                  <Download size={13} />
+                  .md 저장
+                </button>
+                <button
+                  onClick={handleGenMdCopy}
+                  style={{
+                    padding: '10px 16px', borderRadius: '10px',
+                    border: `1px solid ${F.hairline}`, backgroundColor: '#fff',
+                    color: genMdCopied ? '#00a060' : F.ink, fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                    letterSpacing: '-0.13px', display: 'flex', alignItems: 'center', gap: '6px',
+                    transition: 'color 0.15s',
+                  }}
+                >
+                  {genMdCopied ? <Check size={13} /> : <Share2 size={13} />}
+                  {genMdCopied ? '복사됨' : '복사'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── 레퍼런스 이미지 전체보기 모달 ── */}
       {refPreviewOpen && refPageImage && (
@@ -1018,26 +1314,32 @@ export default function Home() {
             padding: '22px 22px 16px',
             boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
           }}>
-            {designPreset !== 'none' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '5px',
-                  padding: '4px 10px 4px 9px', borderRadius: '100px',
-                  border: `1px solid ${F.hairlineSoft}`, backgroundColor: '#ffffff',
-                  color: 'rgba(0,0,0,0.7)', fontSize: '12px', fontWeight: 500,
-                }}>
-                  <FileText size={11} />
-                  <span>{designPreset}.md</span>
-                  <button
-                    onClick={() => setDesignPreset('none')}
-                    style={{ display: 'flex', alignItems: 'center', border: 'none', background: 'none', cursor: 'pointer', color: 'rgba(0,0,0,0.4)', padding: 0, marginLeft: '2px' }}
-                  >
-                    <X size={11} />
-                  </button>
+            {(designPreset !== 'none' || designButtonLabel) && (() => {
+              const isUrl = !!designButtonLabel && (designButtonLabel.startsWith('http://') || designButtonLabel.startsWith('https://'))
+              const chipLabel = designButtonLabel
+                ? (isUrl ? (() => { try { return new URL(designButtonLabel).hostname.replace(/^www\./, '') } catch { return designButtonLabel } })() : designButtonLabel)
+                : `${designPreset}.md`
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '5px',
+                    padding: '4px 10px 4px 9px', borderRadius: '100px',
+                    border: `1px solid ${F.hairlineSoft}`, backgroundColor: '#ffffff',
+                    color: 'rgba(0,0,0,0.7)', fontSize: '12px', fontWeight: 500,
+                  }}>
+                    <FileText size={11} />
+                    <span>{chipLabel}</span>
+                    <button
+                      onClick={designButtonLabel ? clearDesign : () => setDesignPreset('none')}
+                      style={{ display: 'flex', alignItems: 'center', border: 'none', background: 'none', cursor: 'pointer', color: 'rgba(0,0,0,0.4)', padding: 0, marginLeft: '2px' }}
+                    >
+                      <X size={11} />
+                    </button>
+                  </div>
+                  <span style={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)' }}>이 design.md 파일의 디자인 시스템 사용</span>
                 </div>
-                <span style={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)' }}>이 design.md 파일의 디자인 시스템 사용</span>
-              </div>
-            )}
+              )
+            })()}
             <textarea
               value={brief}
               onChange={e => setBrief(e.target.value)}
@@ -1131,49 +1433,33 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* DESIGN.md chip */}
-                {designButtonLabel ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <button
-                      onClick={() => setDesignPanelOpen(v => !v)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '5px',
-                        padding: '0 12px 0 13px', borderRadius: '100px', height: '38px',
-                        border: 'none', backgroundColor: 'rgba(0,0,0,0.08)',
-                        color: 'rgba(0,0,0,0.65)', fontSize: '13px', fontWeight: 500,
-                        cursor: 'pointer', letterSpacing: '-0.13px',
-                      }}
-                    >
-                      <FileText size={11} />
-                      {designButtonLabel}
-                    </button>
-                    <button
-                      onClick={clearDesign}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: '22px', height: '22px', borderRadius: '50%',
-                        border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#555555',
-                      }}
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => { setDesignPanelOpen(v => !v); setBrandPanelOpen(false) }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '5px',
-                      padding: '0 13px', height: '38px', borderRadius: '100px',
-                      border: 'none',
-                      backgroundColor: 'rgba(0,0,0,0.08)',
-                      color: 'rgba(0,0,0,0.55)', fontSize: '13px', fontWeight: 500,
-                      cursor: 'pointer', letterSpacing: '-0.13px', transition: 'all 0.15s',
-                    }}
-                  >
-                    <FileText size={11} />
-                    design.md
-                  </button>
-                )}
+                {/* DESIGN.md button */}
+                <button
+                  onClick={() => {
+                    const isOpening = !designPanelOpen
+                    if (isOpening && designMdFileName?.startsWith('http') && designMdContent) {
+                      setUrlInput(designMdFileName)
+                      setUrlPreviewMd(designMdContent)
+                      setUrlPreviewScreenshot(appliedUrlScreenshot)
+                    } else if (!isOpening) {
+                      setUrlPreviewMd(null)
+                      setUrlPreviewScreenshot(null)
+                    }
+                    setDesignPanelOpen(v => !v)
+                    setBrandPanelOpen(false)
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '5px',
+                    padding: '0 13px', height: '38px', borderRadius: '100px',
+                    border: 'none',
+                    backgroundColor: 'rgba(0,0,0,0.08)',
+                    color: 'rgba(0,0,0,0.55)', fontSize: '13px', fontWeight: 500,
+                    cursor: 'pointer', letterSpacing: '-0.13px', transition: 'all 0.15s',
+                  }}
+                >
+                  <FileText size={11} />
+                  design.md
+                </button>
 
                 {/* Brand button */}
                 {(brandLogo !== null || brandColors.length > 0) ? (
@@ -1374,18 +1660,20 @@ export default function Home() {
                       onChange={e => { setUrlInput(e.target.value); setUrlError(null) }}
                       onKeyDown={e => e.key === 'Enter' && handleUrlAnalyze()}
                       placeholder="타사 서비스 URL 붙여넣기 (예: airbnb.com)"
+                      disabled={urlAnalyzing}
                       style={{
                         flex: 1, padding: '10px 12px', borderRadius: '10px',
-                        border: urlError ? '1px solid rgba(255,80,80,0.5)' : `1px solid ${F.hairline}`,
-                        backgroundColor: F.surface2, color: F.ink,
+                        border: urlError ? '1px solid rgba(255,80,80,0.5)' : urlAnalyzing ? `1px solid ${F.primary}` : `1px solid ${F.hairline}`,
+                        backgroundColor: urlAnalyzing ? 'rgba(0,85,255,0.04)' : F.surface2, color: F.ink,
                         fontSize: '13px', fontFamily: 'inherit', outline: 'none',
-                        letterSpacing: '-0.13px',
+                        letterSpacing: '-0.13px', transition: 'all 0.2s',
                       }}
                     />
                     <button
                       onClick={handleUrlAnalyze}
                       disabled={!urlInput.trim() || urlAnalyzing}
                       style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
                         padding: '10px 14px', borderRadius: '10px', flexShrink: 0,
                         border: 'none', cursor: urlInput.trim() && !urlAnalyzing ? 'pointer' : 'default',
                         backgroundColor: urlInput.trim() && !urlAnalyzing ? F.ink : F.surface2,
@@ -1394,9 +1682,20 @@ export default function Home() {
                         transition: 'all 0.15s', whiteSpace: 'nowrap',
                       }}
                     >
+                      {urlAnalyzing && (
+                        <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" strokeOpacity="0.3" />
+                          <path d="M21 12a9 9 0 00-9-9" />
+                        </svg>
+                      )}
                       {urlAnalyzing ? '분석 중…' : '분석하기'}
                     </button>
                   </div>
+                  {urlAnalyzing && (
+                    <p style={{ fontSize: '11px', color: F.primary, marginTop: '6px', letterSpacing: '-0.11px', opacity: 0.7 }}>
+                      페이지를 열고 디자인 토큰을 추출하고 있습니다 (10~30초)
+                    </p>
+                  )}
                   {urlError && (
                     <p style={{ color: 'rgba(255,80,80,0.8)', fontSize: '12px', marginTop: '6px', letterSpacing: '-0.12px' }}>
                       {urlError}
@@ -1553,9 +1852,25 @@ export default function Home() {
             </div>
           )}
 
-          <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '13px', marginTop: '14px', letterSpacing: '-0.13px' }}>
-            Enter로 전송 · Shift+Enter로 줄바꿈
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '13px', letterSpacing: '-0.13px', margin: 0 }}>
+              Enter로 전송 · Shift+Enter로 줄바꿈
+            </p>
+            <div style={{ width: '1px', height: '12px', backgroundColor: 'rgba(255,255,255,0.2)' }} />
+            <button
+              onClick={() => setGenMdModalOpen(true)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'rgba(255,255,255,0.85)', fontSize: '13px', letterSpacing: '-0.13px',
+                display: 'flex', alignItems: 'center', gap: '5px', padding: 0,
+                fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: '3px',
+                textDecorationColor: 'rgba(255,255,255,0.3)',
+              }}
+            >
+              <FileText size={12} />
+              design.md 없으신가요? URL로 자동 생성하기
+            </button>
+          </div>
         </main>
       </section>
 

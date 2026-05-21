@@ -9,6 +9,7 @@ import {
 import { cn } from '@/lib/utils'
 import DotField from '@/components/DotField'
 import type { Question, QuestionnaireResponse, TweakSpec, TweakVariable, AppDomain } from '@/lib/gemini'
+import { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY } from '@/lib/domain-constants'
 import { getVariantStyles, getVariantInfo } from '@/lib/variant-refs'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import { saveHistoryItem, compressThumbnail, loadHistory, deleteHistoryItem, type HistoryItem } from '@/lib/history'
@@ -397,12 +398,69 @@ function ExpandingOverlay({ image, platform, variantLabel }: { image?: string; p
   )
 }
 
+// ─── Parse custom design.md YAML frontmatter ─────────────────────────────────
+
+function parseCustomDesignMdMeta(md: string): {
+  color: string
+  palette: { name: string; hex: string }[]
+  fonts: { headline: string; body: string }
+  isDark: boolean
+} | null {
+  if (!md.startsWith('---\n')) return null
+  const end = md.indexOf('\n---\n', 4)
+  if (end === -1) return null
+  const yaml = md.slice(4, end)
+
+  const colorEntries: { name: string; hex: string }[] = []
+  const colorLineRe = /^  (\w+):\s*["']?(#[0-9a-fA-F]{3,8})["']?/gm
+  let m: RegExpExecArray | null
+  while ((m = colorLineRe.exec(yaml)) !== null) {
+    colorEntries.push({ name: m[1], hex: m[2] })
+  }
+
+  const primaryEntry = colorEntries.find(e => e.name === 'primary')
+  const color = primaryEntry?.hex ?? '#6366f1'
+
+  const paletteNames = ['primary', 'secondary', 'surface', 'background', 'error', 'accent', 'tertiary']
+  const palette: { name: string; hex: string }[] = []
+  for (const name of paletteNames) {
+    const e = colorEntries.find(e => e.name === name)
+    if (e && !palette.some(p => p.hex === e.hex)) {
+      palette.push({ name: name.charAt(0).toUpperCase() + name.slice(1), hex: e.hex })
+    }
+    if (palette.length >= 4) break
+  }
+  if (palette.length === 0) palette.push({ name: 'Primary', hex: color })
+
+  const fontFamilyMatch = yaml.match(/^  fontFamily:\s*["']?([^"'\n]+)["']?/m)
+  const fontFamily = fontFamilyMatch ? fontFamilyMatch[1].trim().split(',')[0].trim() : 'sans-serif'
+  const fonts = { headline: fontFamily, body: fontFamily }
+
+  const bgEntry = colorEntries.find(e => e.name === 'background')
+  let isDark = false
+  if (bgEntry) {
+    const h = bgEntry.hex.replace('#', '')
+    if (h.length >= 6) {
+      const lum = parseInt(h.slice(0, 2), 16) * 0.299 + parseInt(h.slice(2, 4), 16) * 0.587 + parseInt(h.slice(4, 6), 16) * 0.114
+      isDark = lum < 100
+    }
+  }
+
+  return { color, palette, fonts, isDark }
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function StudioPage() {
   const [step, setStep] = useState<Step>(1)
   const [platform, setPlatform] = useState<'mobile' | 'web'>('mobile')
-  const [designPreset, setDesignPreset] = useState<DesignPreset>('ktds')
+  const [designPreset, setDesignPreset] = useState<DesignPreset>('none')
+  const [customDesignMd, setCustomDesignMd] = useState<string | null>(null)
+  const customDesignMdName = customDesignMd
+    ? (customDesignMd.match(/name:\s*["']?([^"'\n]+)["']?/)?.[1]?.trim() ?? 'Custom')
+    : null
+  const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
+
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null)
   const [logoLoading, setLogoLoading] = useState(false)
   const [brandColors, setBrandColors] = useState<string[]>([])
@@ -564,7 +622,7 @@ export default function StudioPage() {
 
     const preset: DesignPreset = (presetParam && presetParam in DESIGN_PRESETS)
       ? presetParam as DesignPreset
-      : 'ktds'
+      : 'none'
 
     setBrief(briefParam)
     setDesignPreset(preset)
@@ -578,19 +636,22 @@ export default function StudioPage() {
       try { setBrandColors(JSON.parse(brandColorsFromStorage)) } catch { /* ignore */ }
     }
 
-    const effectiveDesignMd = DESIGN_PRESETS[preset].md
+    const customMdFromStorage = params.get('hasDesignMd') === '1' ? sessionStorage.getItem('designMd') : null
+    if (customMdFromStorage) setCustomDesignMd(customMdFromStorage)
+
+    const effectiveDesignMdForAnalyze = customMdFromStorage ?? DESIGN_PRESETS[preset].md
     setIsAnalyzing(true)
     setAnalyzeError('')
     fetch('/api/analyze', {
       method: 'POST',
       headers: apiHeaders(),
-      body: JSON.stringify({ designMd: effectiveDesignMd, brief: briefParam, platform: platformParam }),
+      body: JSON.stringify({ designMd: effectiveDesignMdForAnalyze, brief: briefParam, platform: platformParam }),
     })
       .then(res => res.json())
       .then(data => {
         if (data.error) throw new Error(data.error)
         setQuestionnaire(data)
-        setAnswers({})
+        setAnswers(data.domain ? { domain: DOMAIN_KEY_TO_LABEL[data.domain as AppDomain] ?? '기타' } : {})
         setStep(2)
       })
       .catch(err => setAnalyzeError(err instanceof Error ? err.message : '오류가 발생했습니다'))
@@ -919,7 +980,7 @@ export default function StudioPage() {
 
   const handleAnalyze = async () => {
     if (!brief.trim()) return
-    const effectiveDesignMd = DESIGN_PRESETS[designPreset].md
+    const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
     setIsAnalyzing(true)
     setAnalyzeError('')
     try {
@@ -931,7 +992,7 @@ export default function StudioPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setQuestionnaire(data)
-      setAnswers({})
+      setAnswers(data.domain ? { domain: DOMAIN_KEY_TO_LABEL[data.domain as AppDomain] ?? '기타' } : {})
       setStep(2)
     } catch (err) {
       setAnalyzeError(err instanceof Error ? err.message : '오류가 발생했습니다')
@@ -957,7 +1018,7 @@ export default function StudioPage() {
 
   const handleGenerate = async () => {
     if (!questionnaire) return
-    const effectiveDesignMd = DESIGN_PRESETS[designPreset].md
+    const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
     setIsGenerating(true)
     setIsGeneratingB(false)
     setIsGeneratingC(false)
@@ -968,8 +1029,10 @@ export default function StudioPage() {
     try {
       const referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
       const modelId = sessionStorage.getItem('aide_model') ?? undefined
-      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, platform, modelId, heroImagePrompt: questionnaire.heroImageDecision?.generate ? questionnaire.heroImageDecision.prompt : undefined }
-      const variantStyles = getVariantStyles((questionnaire.domain ?? 'other') as AppDomain)
+      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, platform, modelId, heroImagePrompt: questionnaire.heroImageDecision?.generate ? questionnaire.heroImageDecision.prompt : undefined, heroSubject: questionnaire.heroImageDecision?.heroSubject || undefined }
+      const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
+      const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
+      const variantStyles = getVariantStyles(effectiveDomain)
       const headers = apiHeaders()
 
       const saveVariantHistory = (result: GenerateResult) => {
@@ -988,50 +1051,47 @@ export default function StudioPage() {
         }
       }
 
-      // 시안 A 먼저 생성
-      const resA = await fetch('/api/generate', { method: 'POST', headers, body: JSON.stringify({ ...baseParams, variantStyle: variantStyles[0] }) })
-      const jsonA = await resA.json()
-      if (jsonA.error) throw new Error(jsonA.error)
-
-      if (generationIdRef.current !== genId) return
-      setMainVariants([jsonA as GenerateResult, null, null])
-      saveVariantHistory(jsonA as GenerateResult)
-
-      // 시안 B (3초 딜레이), 완료 후 시안 C 순차 생성
+      // 시안 A, B, C 병렬 동시 생성
       bgFetchAbortRef.current?.abort()
       const abort = new AbortController()
       bgFetchAbortRef.current = abort
 
-      setTimeout(async () => {
-        if (generationIdRef.current !== genId || abort.signal.aborted) return
-        try {
-          setIsGeneratingB(true)
-          const resB = await fetch('/api/generate', { method: 'POST', headers, body: JSON.stringify({ ...baseParams, variantStyle: variantStyles[1] }), signal: abort.signal })
-          const jsonB = await resB.json()
-          setIsGeneratingB(false)
-          if (generationIdRef.current !== genId || abort.signal.aborted) return
-          if (!jsonB.error) {
-            setMainVariants(prev => [prev[0], jsonB as GenerateResult, prev[2]])
-            saveVariantHistory(jsonB as GenerateResult)
-            setIsGeneratingC(true)
-            try {
-              const resC = await fetch('/api/generate', { method: 'POST', headers, body: JSON.stringify({ ...baseParams, variantStyle: variantStyles[2] }), signal: abort.signal })
-              const jsonC = await resC.json()
-              if (generationIdRef.current === genId && !abort.signal.aborted && !jsonC.error) {
-                setMainVariants(prev => [prev[0], prev[1], jsonC as GenerateResult])
-                saveVariantHistory(jsonC as GenerateResult)
-              }
-            } finally {
-              setIsGeneratingC(false)
-            }
-          }
-        } catch (e) {
-          if ((e as Error)?.name !== 'AbortError') {
-            setIsGeneratingB(false)
-            setIsGeneratingC(false)
-          }
-        }
-      }, 3000)
+      setIsGeneratingB(true)
+      setIsGeneratingC(true)
+
+      const fetchVariant = (variantStyle: string) =>
+        fetch('/api/generate', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ ...baseParams, variantStyle }),
+          signal: abort.signal,
+        }).then(r => r.json())
+
+      const [pA, pB, pC] = [
+        fetchVariant(variantStyles[0]),
+        fetchVariant(variantStyles[1]),
+        fetchVariant(variantStyles[2]),
+      ]
+
+      pA.then((json) => {
+        if (generationIdRef.current !== genId || abort.signal.aborted || json.error) return
+        setMainVariants(prev => [json as GenerateResult, prev[1], prev[2]])
+        saveVariantHistory(json as GenerateResult)
+      })
+
+      pB.then((json) => {
+        if (generationIdRef.current !== genId || abort.signal.aborted || json.error) return
+        setMainVariants(prev => [prev[0], json as GenerateResult, prev[2]])
+        saveVariantHistory(json as GenerateResult)
+      }).finally(() => setIsGeneratingB(false))
+
+      pC.then((json) => {
+        if (generationIdRef.current !== genId || abort.signal.aborted || json.error) return
+        setMainVariants(prev => [prev[0], prev[1], json as GenerateResult])
+        saveVariantHistory(json as GenerateResult)
+      }).finally(() => setIsGeneratingC(false))
+
+      await Promise.allSettled([pA, pB, pC])
     } catch (err) {
       setGenerateError(err instanceof Error ? err.message : '오류가 발생했습니다')
     } finally {
@@ -1045,7 +1105,7 @@ export default function StudioPage() {
     bgFetchAbortRef.current?.abort()
     bgFetchAbortRef.current = null
     setIsGeneratingB(false); setIsGeneratingC(false)
-    const effectiveDesignMd = DESIGN_PRESETS[designPreset].md
+    const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
     setIsExpandingPrototype(true)
     setPickedVariantIdx(idx)
     setGenerateError('')
@@ -1137,7 +1197,7 @@ export default function StudioPage() {
     setEditMode(false); setChatMessages([]); setChatInput('')
     setHistoryA([]); setHistoryIndexA(-1); setHistoryB([]); setHistoryIndexB(-1)
     setShareOpen(false); setZoomOpen(false); setZoom(60)
-    setDesignPreset('ktds'); setLogoDataUrl(null); setLogoLoading(false); setBrandColors([])
+    setDesignPreset('none'); setLogoDataUrl(null); setLogoLoading(false); setBrandColors([])
     setMainVariants([null, null, null]); setPickedVariantIdx(null)
     setIsGeneratingB(false); setIsGeneratingC(false); setIsExpandingPrototype(false)
     setScreens([]); setActiveScreenId('')
@@ -1148,7 +1208,7 @@ export default function StudioPage() {
 
   const handleRetryVariant = async (idx: 1 | 2) => {
     if (!questionnaire) return
-    const effectiveDesignMd = DESIGN_PRESETS[designPreset].md
+    const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
     const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, platform }
     const headers = apiHeaders()
     const genId = generationIdRef.current
@@ -1184,7 +1244,7 @@ export default function StudioPage() {
     setChatMessages(prev => [...prev, { role: 'user', content: userMsg }])
     setIsRefining(true)
     try {
-      const effectiveDesignMd = DESIGN_PRESETS[designPreset].md
+      const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
       const res = await fetch('/api/refine', {
         method: 'POST',
         headers: apiHeaders(),
@@ -1301,7 +1361,7 @@ export default function StudioPage() {
   // ─── Step 3: Generation canvas view ──────────────────────────────────────
   if (step === 3) {
     const preset = DESIGN_PRESETS[designPreset]
-    const hasDesign = designPreset !== 'none' && !!preset.palette
+    const hasDesign = (designPreset !== 'none' && !!preset.palette) || !!customDesignMd
     const isAnyGenerating = isGenerating || isGeneratingB || isGeneratingC
 
     return (
@@ -1362,31 +1422,35 @@ export default function StudioPage() {
             <div style={{ width: 252, flexShrink: 0, borderRight: '1px solid rgba(0,0,0,0.09)', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', padding: '24px 20px' }}>
               {selectedCard === 'design-md' ? (() => {
                 const preset = DESIGN_PRESETS[designPreset]
+                const sidebarMeta = customDesignMd ? parseCustomDesignMdMeta(customDesignMd) : null
+                const sidebarPalette = sidebarMeta?.palette ?? preset.palette
+                const sidebarFonts = sidebarMeta?.fonts ?? preset.fonts
+                const sidebarColor = sidebarMeta?.color ?? preset.color
+                const sidebarLabel = customDesignMdName ?? preset.label
                 return (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0, overflow: 'hidden' }}>
                     {/* Header */}
                     <div style={{ paddingBottom: 18, borderBottom: '1px solid rgba(0,0,0,0.07)', marginBottom: 18 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9 }}>
-                        {designPreset !== 'none' && preset.color && (
-                          <div style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: preset.color, flexShrink: 0 }} />
-                        )}
-                        {designPreset === 'none' && (
+                        {sidebarColor ? (
+                          <div style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: sidebarColor, flexShrink: 0 }} />
+                        ) : (
                           <div style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: '#f4f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                           </div>
                         )}
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#111111', letterSpacing: '-0.3px', lineHeight: 1.2 }}>{preset.label}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#111111', letterSpacing: '-0.3px', lineHeight: 1.2 }}>{sidebarLabel}</span>
                       </div>
-                      <p style={{ fontSize: 12, color: '#888888', lineHeight: 1.55, letterSpacing: '-0.1px' }}>{preset.description}</p>
+                      <p style={{ fontSize: 12, color: '#888888', lineHeight: 1.55, letterSpacing: '-0.1px' }}>{customDesignMd ? 'custom design.md' : preset.description}</p>
                     </div>
 
                     <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
                       {/* Color palette */}
-                      {preset.palette && preset.palette.length > 0 && (
+                      {sidebarPalette && sidebarPalette.length > 0 && (
                         <div>
                           <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>컬러 팔레트</p>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                            {preset.palette.map(swatch => (
+                            {sidebarPalette.map(swatch => (
                               <div key={swatch.hex} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <div style={{ width: 22, height: 22, borderRadius: 6, backgroundColor: swatch.hex, border: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }} />
                                 <div>
@@ -1400,17 +1464,17 @@ export default function StudioPage() {
                       )}
 
                       {/* Fonts */}
-                      {preset.fonts && (
+                      {sidebarFonts && (
                         <div>
                           <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>타이포그래피</p>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span style={{ fontSize: 11, color: '#aaaaaa' }}>Headline</span>
-                              <span style={{ fontSize: 11.5, fontWeight: 600, color: '#333333' }}>{preset.fonts.headline}</span>
+                              <span style={{ fontSize: 11.5, fontWeight: 600, color: '#333333' }}>{sidebarFonts.headline}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span style={{ fontSize: 11, color: '#aaaaaa' }}>Body</span>
-                              <span style={{ fontSize: 11.5, fontWeight: 600, color: '#333333' }}>{preset.fonts.body}</span>
+                              <span style={{ fontSize: 11.5, fontWeight: 600, color: '#333333' }}>{sidebarFonts.body}</span>
                             </div>
                           </div>
                         </div>
@@ -1583,10 +1647,11 @@ export default function StudioPage() {
           <style>{`@keyframes aide-bar{0%{transform:translateX(-150%)}100%{transform:translateX(500%)}}`}</style>
 
           {/* DESIGN.md text card */}
-          {hasDesign && preset.md && (() => {
-            const rawMd = preset.md.startsWith('---\n')
-              ? (() => { const end = preset.md.indexOf('\n---\n', 4); return end !== -1 ? preset.md.slice(end + 5) : preset.md })()
-              : preset.md
+          {hasDesign && (customDesignMd || preset.md) && (() => {
+            const activeMd = customDesignMd ?? preset.md
+            const rawMd = activeMd.startsWith('---\n')
+              ? (() => { const end = activeMd.indexOf('\n---\n', 4); return end !== -1 ? activeMd.slice(end + 5) : activeMd })()
+              : activeMd
 
             function parseMdInline(text: string): React.ReactNode[] {
               return text.split(/(\*\*[^*]+\*\*|`[^`\n]+`)/).map((s, j) => {
@@ -1641,7 +1706,7 @@ export default function StudioPage() {
                 <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888888" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                   <span style={{ fontSize: 12, fontWeight: 600, color: '#111111' }}>DESIGN.md</span>
-                  <span style={{ fontSize: 11, color: '#aaaaaa', marginLeft: 2 }}>{preset.label}</span>
+                  <span style={{ fontSize: 11, color: '#aaaaaa', marginLeft: 2 }}>{customDesignMdName ?? preset.label}</span>
                 </div>
                 <div data-card-scroll="design-md" style={{ overflowY: 'auto', padding: '14px 14px 18px', flex: 1 }}>
                   {segs.map(seg => {
@@ -1684,7 +1749,11 @@ export default function StudioPage() {
 
           {/* Design system card — grid visualization */}
           {hasDesign ? (() => {
-            const isDark = designPreset === 'linear'
+            const customMeta = customDesignMd ? parseCustomDesignMdMeta(customDesignMd) : null
+            const effectivePalette = (customMeta?.palette ?? preset.palette) ?? [{ name: 'Primary', hex: '#6366f1' }]
+            const effectiveFonts = (customMeta?.fonts ?? preset.fonts) ?? { headline: 'sans-serif', body: 'sans-serif' }
+            const effectiveColor = (customMeta?.color ?? preset.color) ?? '#6366f1'
+            const isDark = customMeta?.isDark ?? (designPreset === 'linear')
             const outerBg = isDark ? '#111111' : '#e8e8eb'
             const cellBg = isDark ? '#1a1a1a' : '#ffffff'
             const gridLine = isDark ? '#272727' : '#e0e0e3'
@@ -1720,13 +1789,13 @@ export default function StudioPage() {
 
                 {/* Header */}
                 <div style={{ padding: '10px 14px', borderBottom: border, display: 'flex', alignItems: 'center', gap: 8, backgroundColor: cellBg }}>
-                  <Sparkles size={11} style={{ color: preset.color }} />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: ink }}>{preset.label} Style Plan</span>
+                  <Sparkles size={11} style={{ color: effectiveColor }} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: ink }}>{customDesignMdName ?? preset.label} Style Plan</span>
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: 5, alignItems: 'center' }}>
                     {(['A', 'B', 'C'] as const).map((l, i) => {
                       const v = mainVariants[i]
                       const loading = i === 0 ? isGenerating : i === 1 ? isGeneratingB : isGeneratingC
-                      return <div key={l} style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: v ? '#22c55e' : loading ? preset.color : isDark ? '#2a2a2a' : '#e0e0e0', transition: 'background-color 0.3s' }} />
+                      return <div key={l} style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: v ? '#22c55e' : loading ? effectiveColor : isDark ? '#2a2a2a' : '#e0e0e0', transition: 'background-color 0.3s' }} />
                     })}
                   </div>
                 </div>
@@ -1736,7 +1805,7 @@ export default function StudioPage() {
 
                   {/* Col 1: Color swatches + tint strips */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {preset.palette!.map(swatch => {
+                    {effectivePalette.map(swatch => {
                       const tints = genTints(swatch.hex)
                       const onSwatch = isLightHex(swatch.hex) ? '#111111' : '#ffffff'
                       return (
@@ -1756,11 +1825,11 @@ export default function StudioPage() {
                   {/* Col 2: Typography */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {([
-                      { label: 'Headline', font: preset.fonts!.headline, size: 64, weight: 700 },
-                      { label: 'Body',     font: preset.fonts!.body,     size: 52, weight: 400 },
-                      { label: 'Label',    font: preset.fonts!.body,     size: 42, weight: 500 },
-                      { label: 'Caption',  font: preset.fonts!.body,     size: 34, weight: 400 },
-                    ] as const).slice(0, preset.palette!.length).map(({ label, font, size, weight }, i) => (
+                      { label: 'Headline', font: effectiveFonts.headline, size: 64, weight: 700 },
+                      { label: 'Body',     font: effectiveFonts.body,     size: 52, weight: 400 },
+                      { label: 'Label',    font: effectiveFonts.body,     size: 42, weight: 500 },
+                      { label: 'Caption',  font: effectiveFonts.body,     size: 34, weight: 400 },
+                    ] as const).slice(0, effectivePalette.length).map(({ label, font, size, weight }, i) => (
                       <div key={i} style={{ backgroundColor: cellBg, padding: '10px 12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 4 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <span style={{ fontSize: 9, fontWeight: 500, color: muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
@@ -1776,7 +1845,7 @@ export default function StudioPage() {
                     {/* Buttons */}
                     <div style={{ backgroundColor: cellBg, padding: '10px 10px', flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
-                        <button style={{ backgroundColor: preset.color, color: '#fff', border: 'none', borderRadius: 6, padding: '6px 4px', fontSize: 9, fontWeight: 600, cursor: 'default' }}>Primary</button>
+                        <button style={{ backgroundColor: effectiveColor, color: '#fff', border: 'none', borderRadius: 6, padding: '6px 4px', fontSize: 9, fontWeight: 600, cursor: 'default' }}>Primary</button>
                         <button style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.07)', color: ink, border: 'none', borderRadius: 6, padding: '6px 4px', fontSize: 9, fontWeight: 500, cursor: 'default' }}>Secondary</button>
                         <button style={{ backgroundColor: 'transparent', color: ink, border: `1px solid ${isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.22)'}`, borderRadius: 6, padding: '6px 4px', fontSize: 9, fontWeight: 500, cursor: 'default' }}>Outline</button>
                         <button style={{ backgroundColor: 'transparent', color: ink, border: 'none', borderRadius: 6, padding: '6px 4px', fontSize: 9, fontWeight: 500, cursor: 'default' }}>Ghost</button>
@@ -1787,7 +1856,7 @@ export default function StudioPage() {
                     {/* Dividers */}
                     <div style={{ backgroundColor: cellBg, padding: '10px 10px', display: 'flex', alignItems: 'center', flex: 1 }}>
                       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <div style={{ height: 1.5, borderRadius: 2, backgroundColor: preset.color, width: '100%' }} />
+                        <div style={{ height: 1.5, borderRadius: 2, backgroundColor: effectiveColor, width: '100%' }} />
                         <div style={{ height: 1.5, borderRadius: 2, backgroundColor: isDark ? '#2a2a2a' : '#e4e4e4', width: '75%' }} />
                         <div style={{ height: 1.5, borderRadius: 2, backgroundColor: isDark ? '#2a2a2a' : '#e4e4e4', width: '50%' }} />
                       </div>
@@ -1795,14 +1864,14 @@ export default function StudioPage() {
 
                     {/* Toggle + checkbox + radio */}
                     <div style={{ backgroundColor: cellBg, padding: '10px 10px', display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-                      <div style={{ width: 32, height: 18, borderRadius: 9, backgroundColor: preset.color, display: 'flex', alignItems: 'center', padding: '0 2px' }}>
+                      <div style={{ width: 32, height: 18, borderRadius: 9, backgroundColor: effectiveColor, display: 'flex', alignItems: 'center', padding: '0 2px' }}>
                         <div style={{ width: 14, height: 14, borderRadius: '50%', backgroundColor: '#fff', marginLeft: 'auto' }} />
                       </div>
-                      <div style={{ width: 14, height: 14, borderRadius: 3, backgroundColor: preset.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: 14, height: 14, borderRadius: 3, backgroundColor: effectiveColor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </div>
-                      <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${preset.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: preset.color }} />
+                      <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${effectiveColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: effectiveColor }} />
                       </div>
                     </div>
 
@@ -1830,7 +1899,7 @@ export default function StudioPage() {
                     <div style={{ backgroundColor: cellBg, padding: '0 10px', flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1 }}>
                       {[100, 75, 55].map((w, i) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 0', borderBottom: i < 2 ? (isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)') : 'none' }}>
-                          <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: i === 0 ? preset.color : subtle, flexShrink: 0 }} />
+                          <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: i === 0 ? effectiveColor : subtle, flexShrink: 0 }} />
                           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
                             <div style={{ height: 6, borderRadius: 3, backgroundColor: isDark ? '#2a2a2a' : '#e8e8e8', width: `${w}%` }} />
                             <div style={{ height: 4, borderRadius: 3, backgroundColor: isDark ? '#222' : '#f0f0f0', width: `${Math.round(w * 0.6)}%` }} />
@@ -1841,7 +1910,7 @@ export default function StudioPage() {
 
                     {/* Badge + chips */}
                     <div style={{ backgroundColor: cellBg, padding: '10px 10px', flex: 1, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                      <div style={{ backgroundColor: preset.color, color: '#fff', borderRadius: 4, padding: '2px 7px', fontSize: 9, fontWeight: 600 }}>New</div>
+                      <div style={{ backgroundColor: effectiveColor, color: '#fff', borderRadius: 4, padding: '2px 7px', fontSize: 9, fontWeight: 600 }}>New</div>
                       <div style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)', borderRadius: 20, padding: '2px 8px', fontSize: 9 }}>Filter</div>
                       <div style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)', borderRadius: 20, padding: '2px 8px', fontSize: 9 }}>Sort</div>
                     </div>
@@ -1860,7 +1929,7 @@ export default function StudioPage() {
                 {/* Footer: progress bar */}
                 <div style={{ padding: '9px 14px', borderTop: border, display: 'flex', alignItems: 'center', gap: 8, backgroundColor: cellBg }}>
                   <div style={{ flex: 1, height: 2, backgroundColor: isDark ? '#1e1e1e' : '#f0f0f0', borderRadius: 2, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: '40%', backgroundColor: preset.color, borderRadius: 2, animation: 'aide-bar 1.4s ease-in-out infinite' }} />
+                    <div style={{ height: '100%', width: '40%', backgroundColor: effectiveColor, borderRadius: 2, animation: 'aide-bar 1.4s ease-in-out infinite' }} />
                   </div>
                   <span style={{ fontSize: 10, color: muted }}>{isAnyGenerating ? '생성 중...' : '완료'}</span>
                 </div>
@@ -2594,7 +2663,7 @@ export default function StudioPage() {
                 </div>
 
                 {/* Logo + Design system row */}
-                {(logoDataUrl || designPreset !== 'none') && (
+                {(logoDataUrl || designPreset !== 'none' || !!customDesignMd) && (
                   <div style={{ display: 'flex', gap: 10 }}>
                     {logoDataUrl && (
                       <div style={{ padding: '10px 14px', borderRadius: 12, backgroundColor: '#f7f7f7', border: '1px solid #eeeeee', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 80 }}>
@@ -2602,13 +2671,13 @@ export default function StudioPage() {
                         <img src={logoDataUrl} alt="logo" style={{ height: 28, maxWidth: 72, objectFit: 'contain', borderRadius: 4 }} />
                       </div>
                     )}
-                    {designPreset !== 'none' && (
+                    {(designPreset !== 'none' || !!customDesignMd) && (
                       <div style={{ flex: 1, padding: '10px 14px', borderRadius: 12, backgroundColor: '#f7f7f7', border: '1px solid #eeeeee' }}>
                         <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>Design System</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <div style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: DESIGN_PRESETS[designPreset].color ?? '#888', flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#111111' }}>{DESIGN_PRESETS[designPreset].label}</span>
-                          <span style={{ fontSize: 12, color: '#888888' }}>{DESIGN_PRESETS[designPreset].description}</span>
+                          <div style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: customDesignMd ? '#6366f1' : (DESIGN_PRESETS[designPreset].color ?? '#888'), flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#111111' }}>{customDesignMdName ?? DESIGN_PRESETS[designPreset].label}</span>
+                          <span style={{ fontSize: 12, color: '#888888' }}>{customDesignMd ? 'custom design.md' : DESIGN_PRESETS[designPreset].description}</span>
                         </div>
                       </div>
                     )}
@@ -2626,7 +2695,7 @@ export default function StudioPage() {
                   {[
                     { label: '요청사항 파악 완료', done: true },
                     ...(logoDataUrl ? [{ label: '브랜드 로고 인식 완료', done: true }] : []),
-                    ...(designPreset !== 'none' ? [{ label: `${DESIGN_PRESETS[designPreset].label} 가이드라인 적용 완료`, done: true }] : []),
+                    ...(designPreset !== 'none' || !!customDesignMd ? [{ label: `${customDesignMdName ?? DESIGN_PRESETS[designPreset].label} 가이드라인 적용 완료`, done: true }] : []),
                     { label: '맞춤형 질문지 생성 중...', done: false, active: true },
                   ].map((item, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -2697,7 +2766,7 @@ export default function StudioPage() {
                     })}
                   </div>
                   <p className="text-[13px]" style={{ color: F.inkMuted }}>
-                    {designPreset === 'none' ? 'AI가 브랜드에 맞는 디자인 시스템을 직접 설계합니다' : `${DESIGN_PRESETS[designPreset].label} 가이드라인을 적용합니다`}
+                    {(designPreset === 'none' && !customDesignMd) ? 'AI가 브랜드에 맞는 디자인 시스템을 직접 설계합니다' : `${customDesignMdName ?? DESIGN_PRESETS[designPreset].label} 가이드라인을 적용합니다`}
                   </p>
                 </div>
 
@@ -2760,12 +2829,12 @@ export default function StudioPage() {
                   onFocusCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairline }}
                   onBlurCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairlineSoft }}
                 >
-                  {designPreset !== 'none' && (
+                  {(designPreset !== 'none' || !!customDesignMd) && (
                     <div className="flex items-center gap-2 px-4 pt-3">
                       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px]" style={{ backgroundColor: F.surface1, border: `1px solid ${F.hairlineSoft}`, color: F.ink }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                        <span>{designPreset}.md</span>
-                        <button onClick={() => setDesignPreset('none')} className="flex items-center" style={{ color: F.inkMuted }}>
+                        <span>{customDesignMdName ?? designPreset}.md</span>
+                        <button onClick={() => { setDesignPreset('none'); setCustomDesignMd(null) }} className="flex items-center" style={{ color: F.inkMuted }}>
                           <X size={11} />
                         </button>
                       </div>
@@ -2775,8 +2844,8 @@ export default function StudioPage() {
                   <textarea
                     value={brief}
                     onChange={e => setBrief(e.target.value.slice(0, 2000))}
-                    placeholder={designPreset !== 'none'
-                      ? `${DESIGN_PRESETS[designPreset].label} 디자인 시스템을 활용하여 어떤 화면을 만들고 싶으신가요?\n\n예시:\n${DESIGN_PRESETS[designPreset].label} 스타일로 대시보드를 만들어주세요. 주요 지표와 사용자 활동을 한눈에 볼 수 있어야 합니다.`
+                    placeholder={(designPreset !== 'none' || !!customDesignMd)
+                      ? `${customDesignMdName ?? DESIGN_PRESETS[designPreset].label} 디자인 시스템을 활용하여 어떤 화면을 만들고 싶으신가요?\n\n예시:\n${customDesignMdName ?? DESIGN_PRESETS[designPreset].label} 스타일로 대시보드를 만들어주세요. 주요 지표와 사용자 활동을 한눈에 볼 수 있어야 합니다.`
                       : `어떤 화면을 만들고 싶으신가요?\n\n예시:\n피트니스 앱의 홈 화면을 만들어주세요. 오늘의 운동 목표와 진행 상황을 볼 수 있어야 합니다.`}
                     className="flex-1 p-4 text-sm resize-none leading-relaxed bg-transparent outline-none"
                     style={{ color: F.ink }}
@@ -2829,7 +2898,7 @@ export default function StudioPage() {
               </div>
             )}
 
-            <PrimaryButton onClick={handleGenerate} disabled={isGenerating} loading={isGenerating} loadingText="시안 A를 생성하고 있습니다... (60~90초 소요)">
+            <PrimaryButton onClick={handleGenerate} disabled={isGenerating} loading={isGenerating} loadingText="시안 A/B/C를 생성하고 있습니다... (60~90초 소요)">
               <Sparkles size={16} /> UI 시안 생성하기
             </PrimaryButton>
 
@@ -3543,7 +3612,14 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
 function QuestionCard({ index, question, answer, onAnswer }: {
   index: number; question: Question; answer: string | string[] | undefined; onAnswer: (value: string) => void
 }) {
+  const isDomainQuestion = question.id === 'domain'
+  const isDomainOther = isDomainQuestion && typeof answer === 'string' && (answer === '기타' || answer.startsWith('기타: '))
+  const customDomainText = isDomainOther && typeof answer === 'string' && answer.startsWith('기타: ')
+    ? answer.slice('기타: '.length)
+    : ''
+
   const isSelected = (value: string) => {
+    if (isDomainQuestion && value === '기타') return isDomainOther
     if (!answer) return false
     if (Array.isArray(answer)) return answer.includes(value)
     return answer === value
@@ -3597,6 +3673,19 @@ function QuestionCard({ index, question, answer, onAnswer }: {
               </button>
             )}
           </div>
+        )}
+        {isDomainOther && (
+          <input
+            type="text"
+            value={customDomainText}
+            onChange={e => onAnswer(e.target.value ? `기타: ${e.target.value}` : '기타')}
+            className="mt-2 w-full bg-[#f0f0f0] border px-3 py-2 text-sm text-[#111111] placeholder:text-[#999999]"
+            style={{ borderRadius: '8px', outline: 'none', borderColor: 'rgba(0,0,0,0.09)' }}
+            placeholder="예: 부동산, 물류, 교육 등..."
+            autoFocus
+            onFocus={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.35)' }}
+            onBlur={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.09)' }}
+          />
         )}
         {question.type === 'multi' && <p className="text-[13px] text-[#666666] mt-2">복수 선택 가능</p>}
       </div>

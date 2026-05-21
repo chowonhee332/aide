@@ -1,12 +1,15 @@
 import { GoogleGenAI } from '@google/genai';
 import fs from 'fs';
 import path from 'path';
+import { type AppDomain, DOMAIN_KEY_TO_LABEL } from './domain-constants';
+export type { AppDomain } from './domain-constants';
+export { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY } from './domain-constants';
 
 function getAi(apiKey?: string) {
   return new GoogleGenAI({ apiKey: apiKey || process.env.GEMINI_API_KEY! })
 }
 
-async function generatePro(prompt: string, apiKey?: string, model = 'gemini-3.1-pro-preview'): Promise<string> {
+async function generatePro(prompt: string, apiKey?: string, model = 'gemini-3.5-flash'): Promise<string> {
   const ai = getAi(apiKey)
   console.log('[gemini] generatePro start, model=', model, 'prompt length=', prompt.length)
   try {
@@ -36,24 +39,10 @@ async function generatePro(prompt: string, apiKey?: string, model = 'gemini-3.1-
   }
 }
 
-async function generateFlash(prompt: string, apiKey?: string): Promise<string> {
-  const ai = getAi(apiKey)
-  const res = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt,
-    config: {
-      temperature: 0.7,
-      maxOutputTokens: 8192,
-      httpOptions: { timeout: 90_000 },
-    },
-  });
-  return res.text ?? '';
-}
-
 async function generateFlashNoThinking(prompt: string, apiKey?: string): Promise<string> {
   const ai = getAi(apiKey)
   const res = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.5-flash',
     contents: prompt,
     config: {
       temperature: 0.5,
@@ -65,7 +54,7 @@ async function generateFlashNoThinking(prompt: string, apiKey?: string): Promise
   return res.text ?? '';
 }
 
-async function generateProWithImage(prompt: string, imageBase64: string, mimeType: string, apiKey?: string, model = 'gemini-3.1-pro-preview'): Promise<string> {
+async function generateProWithImage(prompt: string, imageBase64: string, mimeType: string, apiKey?: string, model = 'gemini-3.5-flash'): Promise<string> {
   const ai = getAi(apiKey)
   console.log('[gemini] generateProWithImage start, model=', model, 'prompt length=', prompt.length)
   try {
@@ -106,7 +95,7 @@ async function generateProWithImage(prompt: string, imageBase64: string, mimeTyp
 async function generateFlashWithImage(prompt: string, imageBase64: string, mimeType: string, apiKey?: string): Promise<string> {
   const ai = getAi(apiKey)
   const res = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.5-flash',
     contents: [
       {
         role: 'user',
@@ -125,8 +114,31 @@ async function generateFlashWithImage(prompt: string, imageBase64: string, mimeT
   return res.text ?? '';
 }
 
-export async function analyzeUrlToDesignMd(screenshotBase64: string, url: string, apiKey?: string): Promise<string> {
-  const prompt = `You are a design system expert. Analyze the provided screenshot of "${url}" and extract its design system as a DESIGN.md file.
+export interface UrlSourceData {
+  cssVariables: string
+  fontFamilies: string
+  htmlClasses: string
+  computedStyles: string
+}
+
+export async function analyzeUrlToDesignMd(
+  screenshotBase64: string,
+  url: string,
+  sourceData?: UrlSourceData,
+  apiKey?: string,
+  captureStatus?: 'full' | 'partial' | 'blocked',
+): Promise<string> {
+  const sourceSection = sourceData
+    ? `\n\n## Extracted Source Code Data\n\nUse this raw source data as the PRIMARY source of truth for tokens — these are actual computed values from the browser, not visual estimates.\n\n### Computed Element Styles (MOST ACCURATE — use these for color/typography tokens)\n\`\`\`\n${sourceData.computedStyles || '(none found)'}\n\`\`\`\n\n### CSS Custom Properties (Design Tokens)\n\`\`\`\n${sourceData.cssVariables || '(none found)'}\n\`\`\`\n\n### Font Family Declarations\n\`\`\`\n${sourceData.fontFamilies || '(none found)'}\n\`\`\`\n\n### HTML Class Patterns (Tailwind / CSS modules)\n\`\`\`\n${sourceData.htmlClasses || '(none found)'}\n\`\`\`\n`
+    : ''
+
+  const accessNote = captureStatus === 'blocked'
+    ? `\n\n⚠️ SECURITY BLOCK DETECTED: This site blocked automated access (Cloudflare / 403 / bot protection). The screenshot may show an error or security page, NOT the real site design. You CANNOT see the actual product UI.\n\nFallback strategy — apply ALL of the following:\n1. Extract any brand/logo colors visible in the screenshot (even from a partial logo or favicon). Use those as primary/secondary.\n2. Infer the industry from the URL domain name (e.g., ".bank" → finance; "shop" → commerce).\n3. Build a clean, professional generic design system appropriate for that industry.\n4. Use system fonts (Pretendard, Noto Sans KR, or Inter) as the typography fallback.\n5. In the DESIGN.md description field, explicitly note: "보안 차단으로 인해 실제 사이트 디자인을 확인할 수 없어 로고 색상 추출 + 범용 디자인시스템으로 생성됨".\n`
+    : captureStatus === 'partial'
+    ? `\n\n⚠️ LIMITED SOURCE ACCESS: CSS extraction was restricted (cross-origin or dynamic rendering). Rely primarily on the screenshot for visual color/font analysis.\n`
+    : ''
+
+  const prompt = `You are a design system expert. Analyze the provided screenshot of "${url}" AND the extracted source code data below to produce an accurate DESIGN.md file.${accessNote}${sourceSection}
 
 Output ONLY the raw DESIGN.md content — no explanations, no code fences, no markdown wrappers. Start directly with the YAML frontmatter.
 
@@ -234,8 +246,11 @@ components:
 - DON'T: [another thing to avoid]
 
 Rules for analysis:
-- Use ONLY hex colors (no rgb/rgba). Approximate rgba to the nearest hex.
+- If CSS custom properties are provided, extract exact hex/token values from them directly — do NOT estimate visually.
+- If Tailwind classes are present (e.g. bg-blue-500, rounded-lg, text-sm), infer the design scale from them.
+- Use ONLY hex colors (no rgb/rgba). Convert rgba to the nearest opaque hex.
 - Detect the dominant color palette from backgrounds, CTAs, and text.
+- Use CSS font-family declarations when available; fall back to visual inference.
 - Infer font sizes from visual hierarchy (display > h1 > body > caption).
 - Detect border-radius from buttons and cards.
 - Be specific and accurate — this will be used to generate UI.`;
@@ -259,9 +274,8 @@ export interface HeroImageDecision {
   generate: boolean;
   reason: string;
   prompt: string;
+  heroSubject?: string;
 }
-
-export type AppDomain = 'finance' | 'commerce' | 'health' | 'food' | 'productivity' | 'social' | 'travel' | 'education' | 'entertainment' | 'business' | 'other';
 
 export interface QuestionnaireResponse {
   questions: Question[];
@@ -281,6 +295,15 @@ function loadPlatformGuide(platform: PlatformType): string {
   }
 }
 
+function loadDefaultDesignMd(): string {
+  try {
+    const filePath = path.join(process.cwd(), 'src', 'lib', 'default-design.md');
+    return fs.readFileSync(filePath, 'utf-8');
+  } catch {
+    return '';
+  }
+}
+
 export interface GenerateParams {
   designMd: string;
   brief: string;
@@ -294,6 +317,7 @@ export interface GenerateParams {
   platform?: PlatformType;
   modelId?: string;
   heroImagePrompt?: string;
+  heroSubject?: string;
 }
 
 export interface TweakVariable {
@@ -319,42 +343,16 @@ export interface TweakSpec {
 }
 
 export async function analyzeAndGenerateQuestions(
-  designMd: string,
+  _designMd: string,
   brief: string,
   platform?: 'mobile' | 'web',
   apiKey?: string,
 ): Promise<QuestionnaireResponse> {
-  const platformLabel = platform === 'web' ? '웹 (데스크탑)' : '모바일 앱'
   const prompt = `
-당신은 제품 기획자입니다. 기획서를 분석해 UI 시안을 생성하기 위한 질문지를 만드세요.
-
-## 디자인 시스템
-${designMd || '(없음 — AI가 브랜드를 새로 설계)'}
+당신은 제품 기획자입니다. 기획서를 분석해 아래 세 가지만 추출하세요.
 
 ## 기획서
 ${brief}
-
-## 핵심 원칙
-이 질문지를 받는 사람은 **UX 디자이너가 아닙니다**. 기획자·PM·개발자·창업자입니다.
-따라서 아래 항목은 AI(디자인 시스템 + Material Design 가이드라인)가 자동 결정합니다 — 절대 질문하지 마세요:
-- 네비게이션 패턴 (상단/하단 탭, 햄버거 메뉴 등)
-- 버튼 스타일, 코너 radius, 색상 팔레트
-- 타이포그래피 스케일, 간격 값
-- 인터랙션·애니메이션 방식
-- 레이아웃 그리드, 콘텐츠 밀도 수치
-
-## 질문 대상
-오직 **"무엇을 보여줄 것인가"** 에 관한 것만 질문합니다:
-- 이 화면의 핵심 목적/주요 기능
-- 보여줄 콘텐츠의 종류와 성격
-- 주된 사용자 행동 (구매, 조회, 공유 등)
-- 서비스 성격·분위기 (전문적, 친근한, 고급스러운 등) — 비전문가 언어로
-
-## 질문지 생성 규칙
-- 4~6개 질문 (기획서에서 불명확한 것만, 명확한 건 질문 금지)
-- 옵션은 3~5개, 일반인이 직관적으로 이해할 수 있는 표현
-- 한국어 작성
-- 플랫폼(${platformLabel}) 관련 질문 금지 — 이미 결정됨
 
 ## 3D 히어로 이미지 판단
 
@@ -369,14 +367,19 @@ ${brief}
 **generate: false 조건 (하나라도 해당하면):**
 - 내부 대시보드 / 관리자 툴 / B2B 엔터프라이즈
 - 모바일 앱 메인화면 (랜딩이 아닌 실제 앱)
-- 플랫폼 = mobile (모바일 앱이면 무조건 false)
+- 플랫폼 = ${platform === 'web' ? 'web' : 'mobile'} (모바일 앱이면 무조건 false)
 - 정보 조회·CRUD·폼 위주 서비스
 - 커뮤니티·SNS·뉴스 피드 서비스
 
-generate: true일 때 prompt는 **영어**로, 3D 제품/서비스 시각화에 적합한 프롬프트 작성:
-- 스타일: photorealistic 3D render, studio lighting, clean background
-- 브랜드 컬러·서비스 성격 반영
-- 예: "3D render of a sleek smartphone with glowing blue UI, floating above white surface, soft caustic lighting, product hero shot, 4K"
+generate: true일 때:
+- prompt는 **영어**로, 3D 제품/서비스 시각화에 적합한 프롬프트 작성:
+  - 스타일: photorealistic 3D render, studio lighting, clean background
+  - 예: "3D render of a sleek smartphone with glowing blue UI, floating above white surface, soft caustic lighting, product hero shot, 4K"
+- heroSubject는 이 서비스를 상징하는 **단일 오브젝트**를 **영어 명사구** 2~5단어로 작성:
+  - 예: "a sleek smartphone", "a credit card", "a running shoe", "a delivery box", "a laptop with UI"
+  - 반드시 isometric 3D 아이콘으로 표현 가능한 구체적 사물이어야 함
+
+generate: false일 때: heroSubject는 빈 문자열("")로 설정
 
 ## 도메인 분류
 
@@ -400,30 +403,65 @@ generate: true일 때 prompt는 **영어**로, 3D 제품/서비스 시각화에 
   "heroImageDecision": {
     "generate": false,
     "reason": "판단 근거 한 줄",
-    "prompt": ""
-  },
-  "questions": [
-    {
-      "id": "main_action",
-      "question": "사용자가 이 화면에서 가장 먼저 하는 행동은?",
-      "description": "핵심 기능을 전면에 배치하기 위해 필요합니다",
-      "type": "single",
-      "options": ["검색·탐색", "콘텐츠 감상", "정보 입력", "구매·결제"],
-      "hasDecideForMe": true
-    }
-  ]
+    "prompt": "",
+    "heroSubject": ""
+  }
 }
-
-type: "single"(1개), "multi"(복수), "text"(자유입력)
-hasDecideForMe: true → "AI가 결정" 옵션 추가
 `;
 
-  const text = await generateFlash(prompt, apiKey);
+  const text = await generateFlashNoThinking(prompt, apiKey);
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Failed to parse questionnaire JSON');
 
-  return JSON.parse(jsonMatch[0]);
+  const parsed = JSON.parse(jsonMatch[0]) as { projectSummary: string; domain: AppDomain; heroImageDecision?: HeroImageDecision };
+
+  const inferredDomainLabel = parsed.domain ? (DOMAIN_KEY_TO_LABEL[parsed.domain] ?? '기타') : '기타'
+
+  const fixedQuestions: Question[] = [
+    {
+      id: 'service_type',
+      question: '서비스 성격이 어떻게 되나요?',
+      description: '사용자 타입에 따라 UI 밀도와 정보 구조가 달라집니다',
+      type: 'single',
+      options: ['B2C — 일반 사용자 대상', 'B2B — 기업/업무용'],
+    },
+    {
+      id: 'domain',
+      question: '서비스 도메인(업종)은 무엇인가요?',
+      description: `AI가 "${inferredDomainLabel}"로 추론했습니다. 다르다면 변경해 주세요`,
+      type: 'single',
+      options: Object.values(DOMAIN_KEY_TO_LABEL),
+    },
+    {
+      id: 'target_audience',
+      question: '주 사용자층은 누구인가요?',
+      description: '타겟층에 맞게 폰트 크기, 네비게이션 복잡도, 시각적 톤을 조정합니다',
+      type: 'single',
+      options: ['10~20대 청소년·청년', '20~40대 일반 직장인', '40~60대 장년층', '전문가·파워유저'],
+    },
+    {
+      id: 'home_emphasis',
+      question: '홈 화면에서 가장 강조하고 싶은 것은?',
+      description: '히어로 섹션 구성과 첫 화면 핵심 콘텐츠가 결정됩니다',
+      type: 'single',
+      options: ['핵심 지표·KPI (숫자·대시보드)', '콘텐츠 탐색·피드 (리스트·카드)', '빠른 실행·CTA (버튼·검색)', '최근 활동·히스토리'],
+    },
+    {
+      id: 'mood',
+      question: '서비스의 전체 분위기·무드는?',
+      description: '색상 톤, 타이포그래피, 컴포넌트 스타일 방향이 결정됩니다',
+      type: 'single',
+      options: ['전문적·신뢰감 (블루·그레이 계열)', '친근하고 따뜻한 (오렌지·그린 계열)', '세련되고 고급스러운 (다크·미니멀)', '활기차고 젊은 (비비드 컬러)'],
+    },
+  ]
+
+  return {
+    projectSummary: parsed.projectSummary,
+    domain: parsed.domain,
+    heroImageDecision: parsed.heroImageDecision,
+    questions: fixedQuestions,
+  }
 }
 
 function extractDesignMdForPrompt(designMd: string): string {
@@ -497,23 +535,107 @@ export async function resolveImagePlaceholders(
   return result
 }
 
+function buildCreon3DPrompt(subject: string): string {
+  const lines: string[] = []
+  lines.push(`🚨🚨🚨 CRITICAL STYLE REQUIREMENT 🚨🚨🚨`)
+  lines.push(`You MUST generate this icon in the EXACT same visual style as the reference Creon 3D icon sheet.`)
+  lines.push(`The style is NON-NEGOTIABLE and must be applied to ANY subject, regardless of what the subject is.`)
+  lines.push(`STYLE CHARACTERISTICS (MANDATORY FOR ALL ICONS):`)
+  lines.push(`- Smooth, glossy plastic material with high-gloss finish`)
+  lines.push(`- Isometric 3D perspective (35deg tilt, 35deg pan, orthographic lens)`)
+  lines.push(`- Soft, uniform lighting with no harsh shadows`)
+  lines.push(`- Color palette: Dominant blue (#2962FF), secondary blue (#4FC3F7), white (#FFFFFF), warm accent yellow (#FFD45A)`)
+  lines.push(`- Pillowy, inflated, soft-volume forms with rounded edges (85% fillet)`)
+  lines.push(`- Chibi/stylized proportions, simplified anatomy`)
+  lines.push(`- Floating subject with no ground contact`)
+  lines.push(`- TRANSPARENT background (no background, pure alpha channel PNG — no white fill, no color fill)`)
+  lines.push(`- Single hero subject, minimal composition`)
+  lines.push(`- No photographic realism, no textures, no noise, no grain`)
+  lines.push(`- Consistent rendering quality matching the reference sheet exactly`)
+  lines.push(``)
+  lines.push(`SUBJECT: Generate an isometric 3D icon of ${subject || 'a friendly robot'}.`)
+  lines.push(`📐 OUTPUT REQUIREMENT: Output must be exactly 1024x576 pixels (16:9 landscape). Never return a square or 1024x1024 image. Maintain landscape orientation with width greater than height.`)
+  lines.push(``)
+  lines.push(`🔒 STYLE CONSISTENCY ENFORCEMENT:`)
+  lines.push(`- The visual style described above is ABSOLUTE and must be applied to this specific subject.`)
+  lines.push(`- Do NOT adapt the style to the subject - adapt the subject to the style.`)
+  lines.push(`- Every icon must look like it came from the same design system, regardless of what it represents.`)
+  lines.push(`- Maintain the exact same material properties, lighting setup, color palette, and rendering quality.`)
+  lines.push(`🎨 COLOR SPECIFICATION:`)
+  lines.push(`Background: TRANSPARENT (alpha channel, no fill — output PNG must have no background).`)
+  lines.push(`Color palette (MUST USE): dominant blue #2962FF, secondary blue #4FC3F7, neutral white #FFFFFF, warm accent #FFD45A used sparingly.`)
+  lines.push(`⚠️ Apply these colors while maintaining the exact style. The color palette is part of the style identity.`)
+  lines.push(`💎 MATERIALS (MANDATORY): primary material smooth high-gloss plastic, secondary material matte pastel plastic, accents translucent frosted plastic, surface detail no noise, no texture, no scratches.`)
+  lines.push(`📦 FORM (MANDATORY): pillowy, inflated, soft-volume forms, rounded with 85% fillet zero sharp corners, chibi/stylized simplified anatomy, squash-and-stretch for friendliness, clean seamless.`)
+  lines.push(`💡 LIGHTING (MANDATORY): soft global illumination, dual top-front softboxes with faint rim light, highlights broad glossy bloom no hard speculars, shadows internal occlusion only no ground shadow, exposure balanced no high contrast.`)
+  return lines.join('\n')
+}
+
+function loadCreonRefImages(): Array<{ inlineData: { data: string; mimeType: string } }> {
+  const refsDir = path.join(process.cwd(), 'src', 'lib', 'creon-refs')
+  const files = ['reference_1.png', 'reference_2.png', 'reference_3.png']
+  const parts: Array<{ inlineData: { data: string; mimeType: string } }> = []
+  for (const file of files) {
+    try {
+      const data = fs.readFileSync(path.join(refsDir, file))
+      parts.push({ inlineData: { data: data.toString('base64'), mimeType: 'image/png' } })
+    } catch {
+      // skip missing ref
+    }
+  }
+  return parts
+}
+
+async function removeImageBackground(base64: string): Promise<string> {
+  try {
+    console.log('[gemini] removeBackground: importing library...')
+    const { removeBackground } = await import('@imgly/background-removal-node')
+    console.log('[gemini] removeBackground: calling with data URI, base64 length=', base64.length)
+    const dataUri = `data:image/png;base64,${base64}`
+    const blob = await removeBackground(dataUri)
+    console.log('[gemini] removeBackground: done, blob.size=', blob.size, 'blob.type=', blob.type)
+    const arrayBuffer = await blob.arrayBuffer()
+    const result = Buffer.from(arrayBuffer).toString('base64')
+    console.log('[gemini] removeBackground: converted, result length=', result.length)
+    return result
+  } catch (err) {
+    console.error('[gemini] removeImageBackground FAILED:', {
+      message: err instanceof Error ? err.message : String(err),
+      name: err instanceof Error ? err.constructor.name : typeof err,
+      stack: err instanceof Error ? err.stack?.split('\n').slice(0, 5).join('\n') : undefined,
+    })
+    return base64
+  }
+}
+
 export async function generateHeroImage(
-  prompt: string,
+  subject: string,
   apiKey?: string,
 ): Promise<{ base64: string; mimeType: string } | null> {
   try {
     const ai = getAi(apiKey)
+    const prompt = buildCreon3DPrompt(subject)
+    const refImages = loadCreonRefImages()
+    const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [
+      { text: prompt },
+      ...refImages,
+    ]
     const res = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
-      contents: prompt,
+      model: 'gemini-2.5-flash-image',
+      contents: { parts },
       config: {
-        responseModalities: ['TEXT', 'IMAGE'],
+        responseModalities: ['IMAGE'],
+        temperature: 1,
+        imageConfig: { aspectRatio: '16:9', imageSize: '2K' },
         httpOptions: { timeout: 120_000 },
       },
     })
     for (const part of res.candidates?.[0]?.content?.parts ?? []) {
       if (part.inlineData?.data) {
-        return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType ?? 'image/png' }
+        const rawBase64 = part.inlineData.data
+        console.log('[gemini] 3D image generated, removing background...')
+        const cleanBase64 = await removeImageBackground(rawBase64)
+        return { base64: cleanBase64, mimeType: 'image/png' }
       }
     }
     return null
@@ -606,6 +728,17 @@ function buildQualityRules(heroImagePrompt?: string): string {
 - [ ] 각 카드에 주 정보 + 부가 설명 + 메타 정보(날짜·상태·수치) 3가지 이상 포함
 - [ ] 상단 히어로 영역 + 중간 본문 + 하단 네비/액션 구조 명확히 존재
 
+**⑪ 모바일 앱 히어로 필수 체크리스트**
+- [ ] 홈 화면에 height 240~280px 히어로 배너 존재하는가?
+- [ ] 히어로 배경이 gradient (흰색 단색 금지)인가?
+- [ ] %%IMG_1%% 캐릭터 일러스트가 히어로 우측에 position:absolute right:0 bottom:0 으로 배치됐는가?
+- [ ] 부유 아이콘 배지 3개 이상이 캐릭터 주변에 산재되어 있는가?
+- [ ] Floating 데이터 카드가 히어로 bottom 음수값으로 삐져나오는가?
+- [ ] Floating 카드에 핵심 수치(크게) + 상태 뱃지(아이콘+텍스트)가 있는가?
+- [ ] 히어로 하단에 도트 페이지네이터가 있는가?
+- [ ] 히어로 다음 섹션이 2열 카드 그리드로 시작하는가?
+- [ ] 전체 배경색이 #f0f4ff~#f5f7fa 계열 (흰색 단독 금지)인가?
+
 ### 더미 데이터 (실제처럼 풍부하게)
 - 한국어 실감나는 이름, 금액, 날짜, 설명문
 - 다양한 상태값 (완료/진행중/대기, 높음/중간/낮음 등)
@@ -624,14 +757,17 @@ function buildQualityRules(heroImagePrompt?: string): string {
 
 **사진·썸네일** (실제 이미지가 들어갈 자리):
 
-**[AI 생성 이미지 — 최대 3개]** 화면에서 가장 눈에 띄는 대형 이미지 (상품 대표 이미지, 카드 메인 사진 등):
+**[AI 생성 이미지 — 최대 3개]** 화면에서 가장 눈에 띄는 대형 이미지:
 - 플레이스홀더 형식: %%IMG_1:영문 설명%%, %%IMG_2:영문 설명%%, %%IMG_3:영문 설명%%
 - 영문 설명은 Google Stitch 스타일로 상세하게 작성: 피사체, 조명, 구도, 분위기 포함 (1~2문장, 따옴표 사용 금지)
-- 예시:
-  - 케이크 → %%IMG_1:A modern corporate aesthetic product shot of a slice of decadent chocolate cake on a minimalist white plate. Soft warm diffused lighting, clean centered composition, high-end cafe catalog style.%%
-  - 음식 메뉴 → %%IMG_2:A professional food photography shot of Korean bibimbap in a stone bowl, overhead view, vibrant colors, restaurant menu style.%%
-  - 피트니스 → %%IMG_3:A dynamic fitness photo of a person doing yoga on a rooftop at sunrise, motivational and energetic atmosphere.%%
-- img 태그 src에 플레이스홀더를 그대로 삽입 (절대 수정 금지): <img src="%%IMG_1:설명...%%" style="width:100%;height:100%;object-fit:cover;" />
+- **모바일 홈 히어로용 %%IMG_1%% — 반드시 앱 도메인에 맞는 3D 일러스트 캐릭터로 작성:**
+  - 헬스/의료 → %%IMG_1:A cheerful 3D illustrated elderly woman in a light blue sweater holding a tablet, standing on a bright garden path with soft sunlight. Cartoon-style 3D render, pastel colors, transparent-friendly white background, mobile app hero illustration style.%%
+  - 피트니스/운동 → %%IMG_1:A 3D illustrated athletic person in sportswear doing a stretching pose with a bright smile. Vibrant pastel colors, clean light background, cartoon-style 3D mobile app hero character.%%
+  - 금융/자산 → %%IMG_1:A confident 3D illustrated business person in a suit with floating coins and upward trend arrows around them. Clean pastel blue background, cartoon 3D style, mobile app hero illustration.%%
+  - 쇼핑/커머스 → %%IMG_1:A 3D illustrated cheerful person holding shopping bags with colorful items floating around. Soft pastel background, cartoon 3D render, vibrant mobile app illustration style.%%
+  - 음식/배달 → %%IMG_1:A 3D illustrated delivery person on a scooter with a large food bag, warm sunset background with floating food icons. Cartoon-style 3D render, pastel colors, mobile app hero illustration.%%
+  - 일반(기본) → %%IMG_1:A friendly 3D illustrated character relevant to the app's purpose, standing confidently with relevant props floating around. Soft pastel background, clean cartoon 3D render, vibrant mobile app hero style.%%
+- img 태그 src에 플레이스홀더를 그대로 삽입 (절대 수정 금지): <img src="%%IMG_1:설명...%%" style="width:100%;height:100%;object-fit:contain;" />
 - 3개 초과 이미지는 아래 LoremFlickr 방식 사용
 
 **[LoremFlickr — 소형 썸네일]** 프로필 사진, 리스트 소형 이미지 등 반복 아이템:
@@ -639,18 +775,65 @@ function buildQualityRules(heroImagePrompt?: string): string {
 - 예시: https://loremflickr.com/80/80/portrait, https://loremflickr.com/200/150/food
 - 카드·리스트 아이템마다 서로 다른 키워드로 다양하게 사용 (모두 같은 URL 금지)
 
-**히어로 카드·배너** (KPI, 요약 정보, 강조 섹션):
-- primary 단색 배경 또는 subtle gradient 허용 (예: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 70%, #000)))
-- 흰색 텍스트, 진행 바 등 위에 올리는 UI 요소 자유롭게 사용 가능
-- 단, 전체 배경이나 일반 카드에 화려한 그라데이션 남발 금지 — 히어로 1개에만 제한
+**히어로 카드·배너 — 레이어드 합성 패턴 (모바일 홈 화면 필수)**
+
+모바일 홈 히어로 섹션은 반드시 아래 레이어링 구조로 구현한다. 단순 배경+텍스트 배너 절대 금지:
+
+\`\`\`html
+<!-- ✅ 올바른 히어로 합성 패턴 -->
+<div class="hero-banner" style="position:relative; height:260px; background:linear-gradient(160deg,#dbeafe 0%,#eff6ff 60%,#ffffff 100%); overflow:visible;">
+
+  <!-- 레이어 1: 부유 아이콘 배지 (앱 도메인 관련 소형 아이콘, position:absolute로 산재) -->
+  <div style="position:absolute;top:24px;right:90px;width:36px;height:36px;background:#fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;">
+    <span class="material-symbols-outlined" style="font-size:18px;color:var(--color-primary);">favorite</span>
+  </div>
+  <div style="position:absolute;top:60px;right:48px;width:36px;height:36px;background:#fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;">
+    <span class="material-symbols-outlined" style="font-size:18px;color:#10b981;">monitor_heart</span>
+  </div>
+
+  <!-- 레이어 2: 3D 일러스트 캐릭터 (우측 배치, 히어로 하단에 닿도록) -->
+  <img src="%%IMG_1:앱 도메인 맞는 3D 캐릭터 설명...%%" style="position:absolute;right:0;bottom:0;height:220px;object-fit:contain;" />
+
+  <!-- 레이어 3: Floating 데이터 카드 (히어로 아래로 삐져나와 다음 섹션과 겹침 — z-index 필수) -->
+  <div style="position:absolute;bottom:-52px;left:16px;right:130px;background:#fff;border-radius:16px;padding:16px;box-shadow:0 8px 28px rgba(0,0,0,0.13);z-index:10;">
+    <p style="font-size:12px;color:#64748b;margin:0 0 4px;">주요 지표 레이블</p>
+    <p style="font-size:32px;font-weight:800;color:#0f172a;margin:0;line-height:1.1;">핵심 수치</p>
+    <p style="font-size:11px;color:#94a3b8;margin:4px 0 8px;">단위 또는 설명</p>
+    <!-- 상태 뱃지 -->
+    <span style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;font-size:12px;font-weight:600;padding:4px 10px;border-radius:9999px;">
+      <span class="material-symbols-outlined" style="font-size:14px;">warning</span> 상태: 주의
+    </span>
+  </div>
+
+  <!-- 도트 페이지네이터 -->
+  <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:6px;">
+    <span style="width:20px;height:6px;border-radius:3px;background:var(--color-primary);"></span>
+    <span style="width:6px;height:6px;border-radius:50%;background:rgba(0,0,0,0.2);"></span>
+    <span style="width:6px;height:6px;border-radius:50%;background:rgba(0,0,0,0.2);"></span>
+  </div>
+</div>
+<!-- 히어로와 다음 섹션 사이: floating 카드 높이만큼 margin-top 확보 -->
+<div style="margin-top:68px; padding:0 16px;">
+  <!-- 이후 2열 그리드 카드 섹션 등 -->
+</div>
+\`\`\`
+
+**히어로 합성 핵심 원칙:**
+- 일러스트 캐릭터는 **반드시** position:absolute right:0 bottom:0 으로 배치 — 히어로 우측에 꽉 차게
+- Floating 데이터 카드는 **반드시** bottom 음수값으로 히어로 아래로 삐져나오게 — 층감 핵심
+- 부유 아이콘 배지는 캐릭터 주변에 3~4개 산재 — 앱 도메인 관련 아이콘으로
+- 히어로 배경은 top→bottom 밝은 그라데이션 (white 기반 금지 — 아이보리/연파랑/연초록 계열)
+- ❌ 금지: 히어로에 텍스트만 있는 구성
+- ❌ 금지: 이미지 없이 그라데이션 배경만 있는 구성
+- ❌ 금지: 데이터 카드가 히어로 안에 갇혀 있는 구성 (반드시 아래로 삐져나와야 함)
 ${heroImagePrompt ? `
 **3D 히어로 이미지 (이미 생성됨 — 반드시 사용):**
 - 히어로 섹션 최상단 전체 영역에 아래 플레이스홀더를 <img> 태그 src로 정확히 삽입:
-  <img src="%%HERO_3D_IMAGE%%" alt="hero" style="width:100%;height:100%;object-fit:contain;border-radius:inherit;" />
+  <img src="%%HERO_3D_IMAGE%%" alt="hero" style="width:100%;height:100%;object-fit:contain;" />
 - %%HERO_3D_IMAGE%% 플레이스홀더를 절대 수정하거나 다른 URL로 교체하지 마세요
 - 이 섹션에 Unsplash 이미지 사용 금지 (3D 이미지가 대체함)
 - 이미지 위에 텍스트 오버레이 또는 반투명 그라데이션 레이어 추가 가능
-- %%HERO_3D_IMAGE%% 이미지를 감싸는 컨테이너에는 box-shadow 금지 — 카드 그림자와 중복되어 어색함. background도 transparent로 설정
+- %%HERO_3D_IMAGE%% 이미지를 감싸는 컨테이너: box-shadow 금지, 별도 background 속성 절대 추가 금지 (카드 배경이 자연스럽게 보임)
 ` : ''}
 **데이터 시각화 (Chart.js):**
 - 대시보드·통계 화면에서 차트가 반드시 필요한 경우에만 사용
@@ -668,7 +851,9 @@ ${heroImagePrompt ? `
 }
 
 export async function generateUI(params: GenerateParams, apiKey?: string): Promise<string> {
-  const { designMd, brief, answers, projectSummary, logoDataUrl, brandColors, mainOnly = false, variantStyle, referenceImageBase64, platform, modelId, heroImagePrompt } = params;
+  const { designMd, brief, answers, projectSummary, logoDataUrl, brandColors, mainOnly = false, variantStyle, referenceImageBase64, platform, modelId, heroImagePrompt, heroSubject } = params;
+  const isBVariantUI = typeof variantStyle === 'string' && variantStyle.includes('시안 B')
+  const effectiveHeroImagePrompt = isBVariantUI ? (heroSubject || heroImagePrompt || 'product hero') : heroImagePrompt
 
   const safeAnswers = answers ?? {};
   const answersText = Object.entries(safeAnswers)
@@ -679,8 +864,48 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
     Array.isArray(v) ? v.some(s => String(s).includes('다양하게 보기')) : String(v).includes('다양하게 보기')
   )
 
-  const hasDesignSystem = !!designMd;
-  const isMd3Base = hasDesignSystem && /md3Base:\s*true/.test(designMd);
+  const str = (key: string) => (typeof safeAnswers[key] === 'string' ? safeAnswers[key] as string : '')
+  const serviceType = str('service_type')
+  const targetAudience = str('target_audience')
+  const homeEmphasis = str('home_emphasis')
+  const mood = str('mood')
+
+  const serviceTypeRule = serviceType.includes('B2C')
+    ? '- 서비스 성격(B2C): 비주얼 임팩트 강조, 감성적 히어로 섹션, 직관적 원터치 UX, 친근한 언어와 일러스트 활용'
+    : serviceType.includes('B2B')
+    ? '- 서비스 성격(B2B): 정보 밀도 높은 대시보드, 데이터 테이블·차트 중심, 전문 용어 허용, 컴팩트 레이아웃'
+    : ''
+  const targetRule = targetAudience.includes('10~20대')
+    ? '- 타겟층(청소년·청년): 비비드 컬러, 큰 이미지·비주얼, 짧은 텍스트, 소셜 공유 요소 배치'
+    : targetAudience.includes('40~60대')
+    ? '- 타겟층(장년층): body 폰트 최소 16px, 단순한 네비게이션, 높은 명도 대비, 대형 버튼(min-height 56px), 큰 아이콘'
+    : targetAudience.includes('전문가')
+    ? '- 타겟층(전문가): 정보 밀도 최대화, 데이터 시각화 적극 활용, 고급 필터·정렬 기능, 컴팩트 UI'
+    : ''
+  const homeEmphasisRule = homeEmphasis.includes('핵심 지표')
+    ? '- 홈 강조(KPI): 히어로에 KPI 숫자 56~72px bold 배치, 서브 KPI 카드 3개 이상, 트렌드 차트 필수, 전월 대비 변화량 표시'
+    : homeEmphasis.includes('콘텐츠 탐색')
+    ? '- 홈 강조(콘텐츠): 카드 그리드 또는 피드 레이아웃, 이미지 썸네일 강조, 카테고리 필터 칩, 6개 이상 아이템 노출'
+    : homeEmphasis.includes('빠른 실행')
+    ? '- 홈 강조(CTA): 히어로에 대형 CTA 버튼 또는 검색창 최상단 배치, 바로가기 퀵 액션 그리드(2×3 또는 2×4), 최소 텍스트'
+    : homeEmphasis.includes('최근 활동')
+    ? '- 홈 강조(히스토리): 타임라인 또는 활동 피드 섹션 상단 배치, 각 항목에 상태 배지·시간 표시, 빠른 재진입 버튼'
+    : ''
+  const moodRule = mood.includes('전문적')
+    ? '- 무드(전문적·신뢰감): 블루·네이비·그레이 계열 색상, 클린 라인, 작은 border-radius, 데이터 중심 레이아웃'
+    : mood.includes('친근')
+    ? '- 무드(친근·따뜻한): 오렌지·그린·피치 계열 색상, 큰 border-radius(16~24px), 친절한 일러스트·아이콘, 부드러운 그림자'
+    : mood.includes('고급')
+    ? '- 무드(세련·고급스러운): 다크 배경 또는 미니멀 화이트, 섬세한 그라데이션, 여백 극대화, 얇고 세련된 타이포그래피'
+    : mood.includes('활기')
+    ? '- 무드(활기·젊은): 비비드 프라이머리 컬러, 굵고 큰 타이포그래피, 그라데이션 히어로, 동적인 레이아웃'
+    : ''
+
+  const structuredAnswerRules = [serviceTypeRule, targetRule, homeEmphasisRule, moodRule].filter(Boolean).join('\n')
+
+  const effectiveDesignMd = designMd || loadDefaultDesignMd();
+  const hasDesignSystem = !!effectiveDesignMd;
+  const isMd3Base = hasDesignSystem && /md3Base:\s*true/.test(effectiveDesignMd);
 
   const effectivePlatform: PlatformType = platform ?? 'mobile';
   const platformLabel = effectivePlatform === 'web' ? '웹/데스크탑' : '모바일 앱';
@@ -784,7 +1009,7 @@ ${effectivePlatform !== 'web' ? `[BottomSheet]
 ` : ''}` : effectivePlatform === 'web' ? 'Google, Stripe, Linear 수준의 완성도 높은 웹 UI를 만드세요.' : '네이티브 모바일 앱 수준의 UI를 만드세요 (Material Design 3 기반).'}
 
 ## 디자인 시스템${hasDesignSystem ? ' ← 이 섹션의 모든 토큰·규칙을 코드에 그대로 반영할 것' : ''}
-${extractDesignMdForPrompt(designMd) || '없음 — 아래 플랫폼 가이드라인과 기획서를 기반으로 최적화된 디자인을 만드세요.'}
+${extractDesignMdForPrompt(effectiveDesignMd) || '없음 — 아래 플랫폼 가이드라인과 기획서를 기반으로 최적화된 디자인을 만드세요.'}
 ${hasDesignSystem ? `
 > **체크리스트 — 코드 작성 전 반드시 확인**
 > - [ ] ${hasBrandColors ? '⛔ colors 토큰 무시 → [브랜드 컬러] 섹션의 값으로 CSS 변수 선언했는가?' : 'colors 토큰을 CSS 변수로 선언했는가?'}
@@ -815,6 +1040,7 @@ ${brief}
 
 ## 사용자 선택 옵션
 ${answersText || '(선택 없음 — AI가 최적의 방향으로 결정)'}
+${structuredAnswerRules ? `\n## 답변 기반 디자인 지침 (반드시 적용)\n${structuredAnswerRules}` : ''}
 
 ## AI 자율 디자인 결정 원칙
 사용자 답변에 없는 모든 디자인 결정은 아래 우선순위로 AI가 자율 판단합니다:
@@ -828,11 +1054,11 @@ ${answersText || '(선택 없음 — AI가 최적의 방향으로 결정)'}
 ## 플랫폼별 구현 가이드
 ${platformGuide}
 
-${buildQualityRules(heroImagePrompt)}
+${buildQualityRules(effectiveHeroImagePrompt)}
 
 ${mainOnly ? `### 단일 메인 화면 (비교 선택용)
 기획서의 핵심 메인 화면 1개만 구현하세요.
-- 앱에서 가장 중요한 홈/대시보드 화면
+- ${effectivePlatform === 'web' ? '서비스에서 가장 중요한 홈/대시보드 화면 (웹 레이아웃 — 1440px 기준)' : '앱에서 가장 중요한 홈/대시보드 화면'}
 - aide-screen 클래스, 라우터 스크립트 불필요
 - 한 화면에 담기는 레이아웃 (overflow: hidden)
 ` : `### 멀티스크린 프로토타입 (필수)
@@ -860,7 +1086,7 @@ ${mainOnly ? `### 단일 메인 화면 (비교 선택용)
 </script>
 \`\`\`
 
-**화면 예시 (앱 기준, 기획서에 맞게 구성):**
+**화면 예시 (${effectivePlatform === 'web' ? '웹 기준' : '앱 기준'}, 기획서에 맞게 구성):**
 - screen-home: 홈/대시보드
 - screen-list: 목록/피드/탐색
 - screen-detail: 상세보기/주문/작성
@@ -878,6 +1104,12 @@ ${variantStyle ? `---
 
 ## 디자인 방향 (이 시안의 핵심 차별점 — 반드시 충실히 반영)
 ${variantStyle}
+${effectivePlatform === 'web' ? `
+⛔ 웹 플랫폼 강제 오버라이드 (위 시안 방향보다 우선):
+- 캔버스: 1440px 너비, body에 max-width 제한 없이 풀 와이드 레이아웃
+- 내비게이션: 위 시안에 '하단 탭바' 명시되어 있어도 ⛔ 절대 사용 금지 → NavigationRail(좌측 240px 고정) 반드시 사용
+- 모바일 앱 크롬 금지: 상태바, 홈 인디케이터, 스와이프 영역 등 모바일 전용 UI 요소 사용 금지
+- 12컬럼 그리드 (gutter 24px), 우측 패널·사이드바·멀티 컬럼 레이아웃 적극 활용` : ''}
 ` : hasExplore ? `---
 
 ## 다양한 시안 탐색 모드 (필수)

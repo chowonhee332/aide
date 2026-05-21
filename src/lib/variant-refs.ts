@@ -82,6 +82,7 @@ const PHILOSOPHY_B = `임팩트 히어로형 (시안 B) — Robinhood·Stripe·N
 - 최상단 히어로 카드: var(--color-primary) 배경, 흰 텍스트, border-radius: var(--rounded-2xl), box-shadow: 0 16px 48px rgba(0,0,0,0.18)
 - 핵심 KPI: 72px font-weight:900 white, 히어로 카드 상단 절반 차지
 - 히어로 내부: KPI 아래 메인 차트 또는 진행 바(흰색 30% 투명도 배경)
+- ⚠️ 필수: 히어로 카드 내 <img src="%%HERO_3D_IMAGE%%" style="..."> 를 반드시 포함 — 없으면 유효하지 않은 B 시안. 이 플레이스홀더는 Creon 3D 아이콘으로 자동 대체됨
 - 나머지 카드: var(--color-surface) bg, 그림자 elevated, border-radius: var(--rounded-xl)
 - 섹션 제목: 17px 700, var(--color-text), 카드 간격 var(--spacing-base)
 - 하단 탭바: var(--color-surface) bg + 그림자, 활성 아이콘 var(--color-primary)

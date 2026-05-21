@@ -23,9 +23,11 @@ export async function POST(req: NextRequest) {
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
     console.log('[generate] step1: params parsed, starting generateUI')
 
+    const isBVariant = typeof params.variantStyle === 'string' && params.variantStyle.includes('시안 B')
+    const heroSubjectForGen = params.heroSubject || params.heroImagePrompt || 'a friendly robot'
     const [html, heroImage] = await Promise.all([
       generateUI(params, apiKey),
-      params.heroImagePrompt ? generateHeroImage(params.heroImagePrompt, apiKey) : Promise.resolve(null),
+      isBVariant ? generateHeroImage(heroSubjectForGen, apiKey) : Promise.resolve(null),
     ])
 
     const finalHtml = await resolveImagePlaceholders(html, { heroImageData: heroImage, apiKey })
