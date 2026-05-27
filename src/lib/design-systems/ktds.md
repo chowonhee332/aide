@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: KTDS Design System
-description: "KT DS 엔터프라이즈 UI 시스템 — Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학으로 한다. 화이트 서피스(#ffffff)와 쿨 뉴트럴 구조 위에 Primary Blue(#1a75ff)를 유일한 인터랙션 강조색으로 사용한다. 버튼은 8px 라운드 사각형(pill 절대 금지), 입력 필드 52px, 카드 16px 라운드에 subtle shadow. 페이지 배경은 반드시 primary-fill-neutral(#F2F5F9), 카드/컴포넌트 배경은 surface(#ffffff). Pretendard 폰트. 모바일=하단 탭 바(NavBottom), 데스크탑=좌측 레일(NavSide, 240px). 패키지: @ktds-ui/components (일반 컴포넌트), @ktds-ui/layout (레이아웃 컴포넌트: SideNavigation·Header·Footer·Content·ContentTitle·SplitLayout), Toast는 @ktds-ui/context/ToastContext. Carousel은 swiper 별도 설치, Chart는 chart.js 별도 설치."
+description: "KT DS 엔터프라이즈 UI 시스템 — Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학으로 한다. 최종 기준은 DSCore Storybook(https://dscore-ui.ktds.co.kr/)에 게시된 stable Docs이다. 화이트 서피스(#ffffff)와 쿨 뉴트럴 구조 위에 Primary Blue(#1a75ff)를 유일한 인터랙션 강조색으로 사용한다. 버튼은 8px 라운드 사각형(pill 절대 금지), 입력 필드 기본 32px·small 24px·large 40px, 카드는 서비스 프로필에 따라 B2B border-only / B2C shadow-only로 적용한다. 페이지 배경은 반드시 primary-fill-neutral(#F2F5F9), 카드/컴포넌트 배경은 surface(#ffffff). Pretendard 폰트. 모바일=하단 탭 바(NavBottom), 데스크탑=좌측 레일(NavSide, 240px). 패키지: @ktds-ui/components (일반 컴포넌트), @ktds-ui/layout (레이아웃 컴포넌트: SideNavigation·Header·Footer·Content·ContentTitle·SplitLayout), Toast는 @ktds-ui/context/ToastContext. Carousel은 swiper 별도 설치, Chart는 chart.js 별도 설치."
 
 colors:
   # Brand Primary
@@ -138,6 +138,7 @@ spacing:
 
 shadows:
   1: "0px 1px 3px rgba(0,0,0,0.16)"    # --dsx-shadow-1 · Card subtle
+  b2c-card: "0px 5px 10px rgba(0,0,0,0.05)"  # --dsx-shadow-b2c-card · B2C Card
   2: "0px 3px 4px rgba(0,0,0,0.16)"    # --dsx-shadow-2 · Button FAB
   3: "0px 8px 20px rgba(0,0,0,0.10)"   # --dsx-shadow-3 · Dropdown / Tooltip
   4: "0px 18px 28px rgba(0,0,0,0.08)"  # --dsx-shadow-4 · Drawer / Side panel
@@ -227,30 +228,30 @@ components:
   input-default:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
-    typography: "{typography.body-lg}"
+    typography: "{typography.body-md}"
     rounded: "{rounded.md}"
-    height: 52px
+    height: "L=40px / M=32px / S=24px"
     border: "1px solid {colors.border}"
   input-focused:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
-    typography: "{typography.body-lg}"
+    typography: "{typography.body-md}"
     rounded: "{rounded.md}"
-    height: 52px
+    height: "L=40px / M=32px / S=24px"
     border: "1px solid {colors.primary-border}"
   input-error:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
-    typography: "{typography.body-lg}"
+    typography: "{typography.body-md}"
     rounded: "{rounded.md}"
-    height: 52px
+    height: "L=40px / M=32px / S=24px"
     border: "1px solid {colors.negative}"
   input-disabled:
     backgroundColor: "{colors.surface-disabled}"
     textColor: "{colors.text-disabled}"
-    typography: "{typography.body-lg}"
+    typography: "{typography.body-md}"
     rounded: "{rounded.md}"
-    height: 52px
+    height: "L=40px / M=32px / S=24px"
     border: "1px solid {colors.border-alt}"
   textarea-default:
     backgroundColor: "{colors.surface}"
@@ -428,28 +429,28 @@ components:
   select-default:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
-    typography: "{typography.body-lg}"
+    typography: "{typography.body-md}"
     rounded: "{rounded.md}"
-    height: 52px
+    height: "L=40px / M=32px / S=24px"
     border: "1px solid {colors.border}"
   select-filled:
     backgroundColor: "{colors.fill-alt}"
     textColor: "{colors.text}"
     rounded: "{rounded.md}"
-    height: 52px
+    height: "L=40px / M=32px / S=24px"
     border: "none"
   select-ghost:
     backgroundColor: "transparent"
     textColor: "{colors.text}"
     rounded: "{rounded.md}"
-    height: 52px
+    height: "L=40px / M=32px / S=24px"
     border: "none"
   select-focused:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
-    typography: "{typography.body-lg}"
+    typography: "{typography.body-md}"
     rounded: "{rounded.md}"
-    height: 52px
+    height: "L=40px / M=32px / S=24px"
     border: "1px solid {colors.primary-border}"
   slider-default:
     trackColor: "{colors.fill-neutral}"
@@ -809,8 +810,8 @@ responsive:
   grid:
     mobile: "1열"
     mobile-large: "2열"
-    tablet: "3열, gap:24px"
-    desktop: "4열, gap:32px, max-width:1280px, main-content margin-left:240px"
+    tablet: "3열, card gap:20px"
+    desktop: "4열, card gap:20px, max-width:1280px, main-content margin-left:240px"
 ---
 
 ## Overview
@@ -823,27 +824,84 @@ Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학
 
 ---
 
+## Source of Truth
+
+이 문서는 **DSCore Storybook 최종 문서**를 기준으로 유지한다.
+
+- 기준 URL: `https://dscore-ui.ktds.co.kr/`
+- 확인일: 2026-05-27
+- 기준 문서: Storybook `index.json`의 `type: docs` 항목과 각 `iframe.html?viewMode=docs&id=...` 문서
+- 컴포넌트 상태: Storybook에 stable Docs로 노출된 항목은 사용 가능 컴포넌트로 본다. 로컬 소스 확인 여부보다 Storybook 문서를 우선한다.
+- 단, B2B/B2C 카드 표면 정책처럼 서비스 적용을 위해 추가한 규칙은 **KTDS 적용 프로필 확장 규칙**으로 별도 표기한다.
+
+### Storybook Docs Inventory
+
+#### Foundations
+
+`Colors`, `Typography`, `Iconography`, `Layout`, `Interaction`, `Object Style`
+
+#### Design Tokens
+
+`Color`, `Font`, `Icon`, `Spacing`, `Border`, `Shadow`, `Transition`
+
+#### Typography
+
+`Heading`, `Text`, `Text List`, `Link`, `Mark`
+
+#### Components
+
+`Accordion`, `Admonition`, `Alert Dialog`, `Anchor`, `Avatar`, `Badge`, `Bottom Sheet`, `Breadcrumb`, `Button`, `Button: FAB`, `Card`, `Carousel`, `Chart`, `Checkbox`, `Chip`, `Date Picker`, `Dialog`, `Drawer`, `Dropdown Menu`, `Editor`, `Empty`, `FileUploader`, `Input`, `List`, `Loading`, `Navigation: Bottom`, `Navigation: Side`, `Navigation: Top`, `Pagination`, `Radio`, `Rate`, `Select`, `Slider`, `Stepper`, `Switch`, `Tab: Menu Tab`, `TabList`, `Table`, `Tag`, `Textarea`, `Toast`, `Tooltip`, `Tree Menu`
+
+---
+
 ## Package Imports
 
-모든 컴포넌트는 `@ktds-ui/components`에서 import한다. Toast·Alert Dialog만 예외.
+모든 일반 컴포넌트는 `@ktds-ui/components`에서 import한다. Toast·Alert Dialog만 context 패키지를 사용한다.
 
 ```ts
-// 일반 컴포넌트 (소스 확인 기준)
+// Storybook stable Docs 기준 컴포넌트 + 관련 헬퍼(ButtonArea, Stack, FormItem 등)
 import {
+  Accordion,
+  Admonition,
+  Anchor,
+  Avatar,
+  Badge,
+  Breadcrumb,
   Button, ButtonArea, Stack,
+  Card,
+  Carousel,
+  Chart,
+  Checkbox, CheckboxGroup,
+  Chip,
+  DatePicker,
+  Dialog,
+  Drawer,
+  DropdownMenu,
+  Editor,
+  Empty,
   Fab,
-  Icon, IconButton,
-  Input, Textarea, Select, DatePicker,
-  Checkbox, CheckboxGroup, Radio, RadioGroup, Switch, Chip, Badge, Tag, Avatar,
-  Card, Tooltip, Table, Pagination,
-  Progress, Breadcrumb, Admonition,
-  Loading, Dialog, Rate, FileUploader,
-  Anchor, Combobox, DropdownMenu, TreeMenu, Chart,
-  NavBottom, TabList, MenuTab, Popover, Form, FormItem,
-  AlertDialog, Empty,
+  FileUploader,
+  Form, FormItem,
   Heading, Text, Link, Mark,
+  Icon, IconButton,
+  Input,
+  List,
+  Loading,
+  NavBottom, NavSide, NavTop,
+  Pagination,
+  Radio, RadioGroup,
+  Rate,
+  Select,
+  Slider,
+  Stepper,
+  Switch,
+  Tablist, MenuTab,
+  Table,
+  Tag,
+  Textarea,
+  Tooltip,
+  TreeMenu,
 } from '@ktds-ui/components';
-// ⚠️ Storybook 기준 추가 컴포넌트(소스 미확인): Accordion, Drawer, Slider, Stepper, Carousel, BottomSheet, List
 
 // Toast — 별도 context 패키지
 import { useToast } from '@ktds-ui/context/ToastContext';
@@ -867,6 +925,8 @@ import {
 npm install swiper    # Carousel 사용 시
 npm install chart.js  # Chart 사용 시
 ```
+
+**Bottom Sheet 사용:** Storybook 기준 Bottom Sheet는 별도 `BottomSheet` import가 아니라 `Drawer`의 `placement="bottom"` 패턴으로 구현한다.
 
 ---
 
@@ -1127,7 +1187,7 @@ KTDS의 레이아웃은 **8px 기본 그리드**를 중심으로 모든 spacing�
 KTDS는 그림자와 구분선을 시각적 장식이 아닌 **레이어 계층 신호**로 사용한다. B2B와 B2C는 정보 밀도와 감성 톤이 다르므로 카드 분리 방식도 다르게 적용한다.
 
 - **B2B 카드 기본면**: `border: 1px solid var(--color-border-alt)`만 사용하고 shadow는 사용하지 않는다. 업무 화면에서는 테이블·폼·필터가 많아 shadow보다 약한 구분선이 더 안정적이다.
-- **B2C 카드 기본면**: border 없이 `--dsx-shadow-1`만 사용한다. 소비자 서비스에서는 표면이 가볍게 떠 보이는 표현이 더 자연스럽다.
+- **B2C 카드 기본면**: border 없이 `--dsx-shadow-b2c-card`만 사용한다. 소비자 서비스에서는 표면이 가볍게 떠 보이는 표현이 더 자연스럽다.
 - **금지**: 카드에 border와 shadow를 동시에 적용하지 않는다. 두 신호가 겹치면 컨테이너가 과하게 무거워 보인다.
 - **레벨 2 (FAB)**: 페이지 위에 떠 있는 주요 액션 버튼. 고정 위치(fixed)이므로 스크롤 콘텐츠와 명확히 분리되어야 한다.
 - **레벨 3 (Dropdown·Tooltip)**: 짧은 수명의 팝업. 과도한 그림자는 닫힘을 방해하므로 blur 반경을 20px로 제한한다.
@@ -1138,7 +1198,8 @@ DSX 공식 그림자 토큰 (`--dsx-shadow-*`):
 | Level | CSS Variable | Shadow | Usage |
 |-------|-------------|--------|-------|
 | 0 | — | none | Flat surface, list items |
-| 1 | `--dsx-shadow-1` | `0px 1px 3px rgba(0,0,0,0.16)` | B2C Card subtle |
+| 1 | `--dsx-shadow-1` | `0px 1px 3px rgba(0,0,0,0.16)` | Card subtle base |
+| B2C card | `--dsx-shadow-b2c-card` | `0px 5px 10px rgba(0,0,0,0.05)` | B2C Card |
 | 2 | `--dsx-shadow-2` | `0px 3px 4px rgba(0,0,0,0.16)` | Button FAB |
 | 3 | `--dsx-shadow-3` | `0px 8px 20px rgba(0,0,0,0.10)` | Dropdown, Tooltip |
 | 4 | `--dsx-shadow-4` | `0px 18px 28px rgba(0,0,0,0.08)` | Drawer, Side panel |
@@ -1187,7 +1248,7 @@ DSX 공식 전환 토큰 (`--dsx-transition-*`):
 KTDS 컴포넌트 시스템은 **엔터프라이즈 업무 흐름 효율성**을 최우선으로 설계되었다. 모든 컴포넌트 명세는 상태(default·hover·focused·disabled)를 명시적으로 구분해 인터랙션 피드백이 예측 가능하도록 한다.
 
 - **48px 버튼 높이**: WCAG 2.5.5 Target Size 기준(44px)보다 높게 설정해 모바일 터치 오류를 줄인다. 경험적으로 한국 사용자는 빠른 탭 습관으로 작은 버튼에서 오터치율이 높다.
-- **52px 입력 필드**: 버튼(48px)보다 4px 높아 시각적으로 입력 영역임이 구분된다. outlined 변형이 기본인 이유는, filled 변형이 disabled 상태와 구분하기 어렵다는 사용성 테스트 결과에서 비롯되었다.
+- **Input/Select 높이 체계**: Storybook props 기준 `size`는 `small` / `large`만 노출되며, 미지정 기본 상태가 32px이다. 실제 높이는 small 24px, default 32px, large 40px를 사용한다. outlined 변형이 기본이다.
 - **내비게이션 분리(Mobile/Tablet/Desktop)**: NavBottom(모바일)·NavTop(태블릿)·NavSide(데스크탑)를 각각 별개의 컴포넌트로 유지한다. 하나의 반응형 컴포넌트로 통합할 경우 복잡한 조건 분기가 생겨 유지보수 비용이 증가했다.
 - **Toast vs Alert Dialog 분리**: 비차단(non-blocking) 알림은 Toast(`useToast`), 사용자 확인이 필요한 파괴적 행동(삭제·초기화)은 Alert Dialog(`useAlert`)를 사용한다. 두 패턴을 혼용하면 사용자가 경고 심각도를 구분하지 못한다.
 
@@ -1204,7 +1265,7 @@ import { Button } from '@ktds-ui/components';
 | prop | type | default | values |
 |------|------|---------|--------|
 | `variant` | string | `'outline'` | primary secondary outline ghost negative normal |
-| `size` | string | — | small large |
+| `size` | string | `'default'` | small default large |
 | `prefixIcon` | string | — | 아이콘 name (앞) |
 | `suffixIcon` | string | — | 아이콘 name (뒤) |
 | `iconOnly` | string | — | 아이콘 name — 아이콘만 표시 (children은 스크린리더용 숨김 텍스트) |
@@ -1221,7 +1282,7 @@ button-disabled:   bg={colors.surface-disabled}  text={colors.text-disabled}  r=
 button-fab:        r={rounded.full}
 ```
 
-**Size variants:** `small` / `large` (미설정 시 표준 48px)
+**Size variants:** `small` / `default` / `large` (Storybook 기본값은 `default`)
 
 ### Input Field
 
@@ -1231,7 +1292,7 @@ import { Input } from '@ktds-ui/components';
 Props:
   variant:    'outlined' | 'filled'    (default: 'outlined')
   type:       'text' | 'password' | 'tel' | 'url' | 'search' | 'email'  (default: 'text')
-  size:       'small' | 'large'
+  size:       'small' | 'large'             (small=24px, default=32px, large=40px)
   full:       bool                     (width 100%)
   clearable:  bool                     (default: false — 지우기 버튼 표시)
   reveal:     bool                     (default: false — type='password'일 때 보기 버튼)
@@ -1244,10 +1305,13 @@ Props:
 ```
 
 ```
-input-default:   h=52px  r={rounded.md}  border=1px {colors.border}
-input-focused:   border=1px {colors.primary-border}
-input-error:     border=1px {colors.negative}
-input-disabled:  bg={colors.surface-disabled}  text={colors.text-disabled}
+input-size-large:  h=40px
+input-size-default: h=32px  (size 미지정)
+input-size-small:  h=24px
+input-default:     r={rounded.md}  border=1px {colors.border}
+input-focused:     border=1px {colors.primary-border}
+input-error:       border=1px {colors.negative}
+input-disabled:    bg={colors.surface-disabled}  text={colors.text-disabled}
 Label: body-md / {colors.text-neutral}  (input 위에 배치)
 Placeholder: {colors.text-assistive}
 ```
@@ -1303,7 +1367,7 @@ Props:
 card-default:
   bg={colors.surface}  r={rounded.xl}  p=20px
   B2B: border=1px solid {colors.border-alt}  shadow=none
-  B2C: border=none  shadow=var(--dsx-shadow-1)
+  B2C: border=none  shadow=var(--dsx-shadow-b2c-card)
   Do not combine border and shadow on the same card.
 ```
 
@@ -1453,10 +1517,10 @@ Props:
 
 DSCore에는 두 가지 탭 컴포넌트가 있다:
 
-#### TabList (일반 탭, 모바일/데스크탑)
+#### Tablist (일반 탭, 모바일/데스크탑)
 
 ```
-import { TabList } from '@ktds-ui/components';
+import { Tablist } from '@ktds-ui/components';
 
 Props:
   data*:       [{ key: string, label: string, content: node }]
@@ -1674,7 +1738,7 @@ import { Select } from '@ktds-ui/components';
 Props:
   variant:     'outlined' | 'filled' | 'ghost'  (default: 'outlined')
   options:     [{ value: string | number, label: node }]
-  size:        'small' | 'large'
+  size:        'small' | 'large'             (small=24px, default=32px, large=40px)
   full:        bool            (width 100%)
   disabled:    bool            (default: false)
   invalid:     bool            (default: false)
@@ -1682,10 +1746,13 @@ Props:
 ```
 
 ```
-select-default:  h=52px  r={rounded.md}  border=1px {colors.border}  bg={colors.surface}
-select-filled:   bg={colors.fill-alt}  border=none
-select-ghost:    bg=transparent  border=none
-select-focused:  border=1px {colors.primary-border}
+select-size-large:  h=40px
+select-size-default: h=32px  (size 미지정)
+select-size-small:  h=24px
+select-default:     r={rounded.md}  border=1px {colors.border}  bg={colors.surface}
+select-filled:      bg={colors.fill-alt}  border=none
+select-ghost:       bg=transparent  border=none
+select-focused:     border=1px {colors.primary-border}
 Chevron icon:    20px  {colors.icon-neutral}
 Option list:     bg={colors.surface}  shadow=var(--dsx-shadow-3)  r={rounded.md}
 Option hover:    bg={colors.fill-alt}
@@ -2257,7 +2324,7 @@ Props:
   chartInfo:     object    (doughnut 추가 정보)
   className
 
-데이터 차트 컬러 팔레트 (실제 소스 기준):
+데이터 차트 컬러 팔레트 (프로젝트 예시 팔레트):
 ['#69A5FF', '#FF8C8C', '#FFC06E', '#88F03E', '#9E86FC']
 ```
 
@@ -2773,12 +2840,12 @@ export const MasterDetailPage = () => (
 
 ---
 
-### Pattern 03 — 마스터/탭 디테일 (SplitLayout + TabList)
+### Pattern 03 — 마스터/탭 디테일 (SplitLayout + Tablist)
 
-좌측 목록 + 우측 탭 상세. 오른쪽 영역에 `TabList`로 복수 탭 콘텐츠.
+좌측 목록 + 우측 탭 상세. 오른쪽 영역에 `Tablist`로 복수 탭 콘텐츠.
 
 ```tsx
-import { Table, Pagination, TabList } from '@ktds-ui/components';
+import { Table, Pagination, Tablist } from '@ktds-ui/components';
 import { ContentTitle, SplitLayout } from '@ktds-ui/layout';
 
 const [activeTab, setActiveTab] = useState('tab-1');
@@ -2795,7 +2862,7 @@ const tabData = [
     <Pagination totalResults={total} options={['sizes', 'jump']} setPage={setPage} />
   </article>
   <article>
-    <TabList activeTabKey={activeTab} onTabChange={setActiveTab} data={tabData} />
+    <Tablist activeTabKey={activeTab} onTabChange={setActiveTab} data={tabData} />
   </article>
 </SplitLayout>
 ```
@@ -2910,7 +2977,7 @@ import { Heading, Chart, Table, Progress } from '@ktds-ui/components';
 ### 콜랩스 전략
 
 - **Navigation**: 모바일(≤ 767px) → `NavBottom` 하단 · 태블릿 → `NavTop` 상단 · 데스크탑 → `NavSide` 240px 좌측
-- **Card Grid**: 데스크탑 3–4열 → 태블릿 2열 → 모바일 1열 (`gap=var(--spacing-base)`)
+- **Card Grid**: 데스크탑 3–4열 → 태블릿 2열 → 모바일 1열. 카드 간격은 모바일 `var(--spacing-base)`(16px), 태블릿 이상 `var(--spacing-md)`(20px)로 고정한다.
 - **Modal/Dialog**: 데스크탑 `modal-default` max-width 480px 중앙 · 모바일 `bottom-sheet-default` 전환 권장
 - **Table**: 모바일에서 가로 스크롤 허용 — `overflow-x: auto` 래퍼 사용
 - **Form**: 데스크탑 max-width 480px 중앙 카드 · 모바일 전체폭
@@ -2941,9 +3008,9 @@ import { Heading, Chart, Table, Progress } from '@ktds-ui/components';
 
 ---
 
-## Known Gaps
+## Storybook Priority & Project Extensions
 
-문서에 명시되지 않은 경우 아래 규칙으로 추론하라:
+Storybook Docs에 명시된 import, props, token 값을 최우선으로 사용한다. Storybook에 없는 값은 임의로 만들지 말고, 아래처럼 **프로젝트 적용 규칙**으로 명확히 분리된 경우에만 사용한다.
 
 > **색상 토큰 이중 표현 주의:** YAML `colors:` 블록의 hex 값은 흰 배경 기준 근사치다. 실제 CSS는 `var(--color-*)` 변수를 사용하며 rgba 반투명 값을 포함한다. 코드 작성 시 반드시 CSS 변수를 사용하고, hex 직접 사용 금지.
 > | YAML hex (근사) | CSS `var(--color-*)` (실제) |
@@ -2957,14 +3024,15 @@ import { Heading, Chart, Table, Progress } from '@ktds-ui/components';
 > | `fill-neutral: "#dfe0e2"` | `rgba(112,115,124,0.12)` |
 > | `fill-alt: "#e9eaeb"` | `rgba(112,115,124,0.08)` |
 
-- **데이터 차트/그래프**: 실제 소스 기준 컬러 팔레트 → `['#69A5FF', '#FF8C8C', '#FFC06E', '#88F03E', '#9E86FC']` (Blue → Red → Orange → Green → Purple 순서)
+- **데이터 차트/그래프**: `Chart`의 공식 API는 Storybook Docs 기준 `chartLabel`, `chartType`, `chartData`, `chartOptions`, `chartInfo`, `className`이다. 컬러 배열 `['#69A5FF', '#FF8C8C', '#FFC06E', '#88F03E', '#9E86FC']`는 프로젝트 예시 팔레트로만 사용한다.
 - **로딩 스피너**: `border: 3px solid var(--color-border-alt)` + `border-top-color: var(--color-primary)` + `border-radius: 50%` + rotate animation 700ms linear infinite
 - **아이콘 크기**: 16px (인라인/캡션), 20px (body), 24px (heading/list), 40px (empty state)
 - **포커스 링**: `outline: 2px solid var(--color-primary)` + `outline-offset: 2px`
 - **z-index 레이어**: 기본 콘텐츠 0 → Sticky 헤더 100 → Dropdown 200 → Modal/Dialog 300 → Snackbar/Toast 400 → Tooltip 500
 - **애니메이션 타이밍**: hover/press `var(--dsx-transition-base)` · expand/collapse `var(--dsx-transition-collapse)` · fade `var(--dsx-transition-fade)` · popover `var(--dsx-transition-popover)`
-- **소스 미확인 컴포넌트** (Storybook 목록에는 존재하나 현재 소스 미수록): `Accordion`, `BottomSheet`, `List`, `Drawer`, `Slider`, `Stepper`, `Carousel`. 사용 시 CSS 클래스 패턴(`dsx-Accordion-*` 등)으로 추론하여 구현하되 React API는 확정 불가.
-- **Editor 컴포넌트**: Storybook에 등록되어 있으나 현재 소스가 스텁(`export const Editor = () => {}`). 실제 API 미확정 — 직접 구현하거나 별도 에디터 라이브러리(Toast UI, Quill 등) 사용 권장.
+- **Storybook stable 컴포넌트 우선:** `Accordion`, `List`, `Drawer`, `Slider`, `Stepper`, `Carousel` 등은 Storybook Docs 기준으로 사용 가능 컴포넌트다. 구현 시 각 Storybook 문서의 import/props/guideline을 우선한다.
+- **Bottom Sheet 구현:** Storybook 기준 Bottom Sheet는 `Drawer` 컴포넌트에 `placement="bottom"`을 지정해 구현한다.
+- **Editor 컴포넌트:** Storybook Docs에 등록되어 있으므로 사용 가능 목록에는 포함한다. 단, 실제 에디터 기능 범위와 플러그인 정책은 프로젝트 적용 전 Storybook 예제와 제품 정책을 함께 확인한다.
 
 ---
 
@@ -3063,6 +3131,7 @@ Copy this `:root` block verbatim — AI must not alter these values:
 
   /* Shadows (DSX official) */
   --dsx-shadow-1: 0px 1px 3px rgba(0,0,0,0.16);
+  --dsx-shadow-b2c-card: 0px 5px 10px rgba(0,0,0,0.05);
   --dsx-shadow-2: 0px 3px 4px rgba(0,0,0,0.16);
   --dsx-shadow-3: 0px 8px 20px rgba(0,0,0,0.10);
   --dsx-shadow-4: 0px 18px 28px rgba(0,0,0,0.08);
@@ -3079,11 +3148,11 @@ Copy this `:root` block verbatim — AI must not alter these values:
 
 **Spacing rules:** card padding = `var(--spacing-md)` (20px) · mobile container padding = `var(--spacing-base)` (16px) · tablet container = `var(--spacing-lg)` (24px) · desktop container = `var(--spacing-2xl)` (40px) · card gap mobile = `var(--spacing-base)` (16px) · card gap tablet+ = `var(--spacing-md)` (20px).
 
-**Component heights:** Primary button = 48px · Input field = 52px · List item min-height = 56px · Tab Bar icon area = 48px. All touch targets minimum 44px.
+**Component heights:** Primary button = 48px · Input/Select = L 40px / M 32px / S 24px · List item min-height = 56px · Tab Bar icon area = 48px. 터치 환경에서는 44px 이상의 wrapper 또는 Large size 사용을 권장한다.
 
 **Button-primary spec:** height 48px · padding `var(--spacing-lg)` horizontal (24px) · radius `var(--rounded-md)` (8px) · bg `var(--color-primary)` · color white.
 
-**Card spec:** B2B card = `border: 1px solid var(--color-border-alt)` + `box-shadow: none`; B2C card = `border: 0` + `box-shadow: var(--dsx-shadow-1)`. Border와 shadow를 한 카드에 동시에 적용하지 않는다.
+**Card spec:** B2B card = `border: 1px solid var(--color-border-alt)` + `box-shadow: none`; B2C card = `border: 0` + `box-shadow: var(--dsx-shadow-b2c-card)`. Border와 shadow를 한 카드에 동시에 적용하지 않는다.
 
 **Pretendard font CDN — HTML `<head>`에 반드시 포함:**
 ```html
@@ -3822,6 +3891,7 @@ import { IconButton } from '@ktds-ui/components';
 | Token | Value |
 |-------|-------|
 | `--dsx-shadow-1` | `0px 1px 3px rgba(0,0,0,.16)` |
+| `--dsx-shadow-b2c-card` | `0px 5px 10px rgba(0,0,0,.05)` |
 | `--dsx-shadow-2` | `0px 3px 4px rgba(0,0,0,.16)` |
 | `--dsx-shadow-3` | `0px 8px 20px rgba(0,0,0,.1)` |
 | `--dsx-shadow-4` | `0px 18px 28px rgba(0,0,0,.08)` |
@@ -3913,6 +3983,7 @@ import { IconButton } from '@ktds-ui/components';
 
   /* === DSX Shadows === */
   --dsx-shadow-1: 0px 1px 3px rgba(0,0,0,0.16);
+  --dsx-shadow-b2c-card: 0px 5px 10px rgba(0,0,0,0.05);
   --dsx-shadow-2: 0px 3px 4px rgba(0,0,0,0.16);
   --dsx-shadow-3: 0px 8px 20px rgba(0,0,0,0.10);
   --dsx-shadow-4: 0px 18px 28px rgba(0,0,0,0.08);
