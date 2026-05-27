@@ -480,6 +480,27 @@ generate: false일 때: heroSubject는 빈 문자열("")로 설정
   }
 }
 
+function buildCssRootFromYaml(yamlContent: string): string {
+  const lines: string[] = [];
+
+  const parseSection = (sectionName: string, prefix: string) => {
+    const re = new RegExp(`^${sectionName}:\\s*\\n((?:[ \\t]+\\S[^\\n]*\\n?)*)`, 'm');
+    const m = yamlContent.match(re);
+    if (!m) return;
+    for (const line of m[1].split('\n')) {
+      const kv = line.match(/^[ \t]+([^:#\n][^:\n]*):\s*["']?([^"'\n]+?)["']?\s*$/);
+      if (kv) lines.push(`  --${prefix}-${kv[1].trim()}: ${kv[2].trim()};`);
+    }
+  };
+
+  parseSection('colors', 'color');
+  parseSection('spacing', 'spacing');
+  parseSection('rounded', 'rounded');
+
+  if (lines.length === 0) return '';
+  return `## CSS Implementation\n:root {\n${lines.join('\n')}\n}`;
+}
+
 function extractDesignMdForPrompt(designMd: string): string {
   if (!designMd) return designMd;
 
@@ -489,7 +510,10 @@ function extractDesignMdForPrompt(designMd: string): string {
 
   // Extract CSS Implementation section — pre-built :root {} block with all CSS variables
   const cssMatch = designMd.match(/##\s*CSS Implementation\b[\s\S]*?(?=\n## |\s*$)/);
-  const cssBlock = cssMatch ? cssMatch[0].trim() : '';
+  // If no CSS Implementation section exists, auto-generate one from YAML tokens
+  const cssBlock = cssMatch
+    ? cssMatch[0].trim()
+    : (yamlMatch ? buildCssRootFromYaml(yamlMatch[1]) : '');
 
   // Priority order: YAML tokens first → CSS vars block → remaining prose
   const parts: string[] = [];

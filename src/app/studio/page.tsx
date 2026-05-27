@@ -671,10 +671,12 @@ export default function StudioPage() {
     const effectiveDesignMdForAnalyze = customMdFromStorage ?? DESIGN_PRESETS[preset].md
     setIsAnalyzing(true)
     setAnalyzeError('')
+    const autoStartAbort = new AbortController()
     fetch('/api/analyze', {
       method: 'POST',
       headers: apiHeaders(),
       body: JSON.stringify({ designMd: effectiveDesignMdForAnalyze, brief: briefParam, platform: platformParam }),
+      signal: autoStartAbort.signal,
     })
       .then(res => res.json())
       .then(data => {
@@ -683,8 +685,12 @@ export default function StudioPage() {
         setAnswers(data.domain ? { domain: DOMAIN_KEY_TO_LABEL[data.domain as AppDomain] ?? '기타' } : {})
         setStep(2)
       })
-      .catch(err => setAnalyzeError(err instanceof Error ? err.message : '오류가 발생했습니다'))
+      .catch(err => {
+        if (err.name === 'AbortError') return
+        setAnalyzeError(err instanceof Error ? err.message : '오류가 발생했습니다')
+      })
       .finally(() => setIsAnalyzing(false))
+    return () => autoStartAbort.abort()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -1736,11 +1742,11 @@ export default function StudioPage() {
         })()}
 
         {/* Canvas: all cards laid out on the dotted surface */}
-        <div ref={canvasAreaRef} className="flex-1 overflow-hidden relative" onClick={() => setSelectedCard(null)}>
-          <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+        <div ref={canvasAreaRef} className="flex-1 overflow-hidden relative isolate" onClick={() => setSelectedCard(null)}>
+          <div className="absolute inset-0 pointer-events-none" style={{ zIndex: -1 }}>
             <DotField />
           </div>
-          <div ref={canvasTransformRef} style={{ transformOrigin: '0 0', display: 'flex', alignItems: 'flex-start', gap: 24, padding: 40, width: 'max-content', position: 'relative', zIndex: 1 }}>
+          <div ref={canvasTransformRef} style={{ transformOrigin: '0 0', display: 'flex', alignItems: 'flex-start', gap: 24, padding: 40, width: 'max-content' }}>
           <style>{`@keyframes aide-bar{0%{transform:translateX(-150%)}100%{transform:translateX(500%)}}`}</style>
 
           {/* DESIGN.md text card */}
@@ -2023,13 +2029,6 @@ export default function StudioPage() {
                   </div>
                 </div>
 
-                {/* Footer: progress bar */}
-                <div style={{ padding: '9px 14px', borderTop: border, display: 'flex', alignItems: 'center', gap: 8, backgroundColor: cellBg }}>
-                  <div style={{ flex: 1, height: 2, backgroundColor: isDark ? '#1e1e1e' : '#f0f0f0', borderRadius: 2, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: '40%', backgroundColor: effectiveColor, borderRadius: 2, animation: 'aide-bar 1.4s ease-in-out infinite' }} />
-                  </div>
-                  <span style={{ fontSize: 10, color: muted }}>{isAnyGenerating ? '생성 중...' : '완료'}</span>
-                </div>
               </div>
             )
           })() : (
@@ -2470,15 +2469,13 @@ export default function StudioPage() {
           </div>
 
           {/* Center: preview */}
-          <div ref={studioAreaRef} className="flex-1 overflow-hidden relative flex flex-col items-center justify-center">
-            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+          <div ref={studioAreaRef} className="flex-1 overflow-hidden relative isolate flex flex-col items-center justify-center">
+            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: -1 }}>
               <DotField />
             </div>
             <div
               ref={studioTransformRef}
               style={{
-                position: 'relative',
-                zIndex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -3268,7 +3265,6 @@ function ResponsiveFrame({
   const frameH = platform === 'mobile' ? 844 : 1024
   const scaledW = Math.round(previewWidth * scale)
   const scaledH = Math.round(frameH * scale)
-  const chromeH = 32
 
   const getBreakpoint = (w: number) => {
     if (w < 480) return { label: 'Mobile', color: '#22c55e' }
@@ -3328,23 +3324,6 @@ function ResponsiveFrame({
             background: '#fff',
           }}
         >
-          {/* 브라우저 크롬 바 */}
-          <div
-            style={{
-              height: chromeH,
-              background: '#ebebeb',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '0 12px',
-              gap: 6,
-              borderBottom: '0.5px solid rgba(0,0,0,0.08)',
-              flexShrink: 0,
-            }}
-          >
-            <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#ff5f57' }} />
-            <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#febc2e' }} />
-            <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#28c840' }} />
-          </div>
           {/* 콘텐츠 클립 영역 */}
           <div style={{ width: scaledW, height: scaledH, overflow: 'hidden', position: 'relative' }}>
             {isDragging && (
@@ -3372,7 +3351,7 @@ function ResponsiveFrame({
           title="드래그하여 너비 조절"
           style={{
             width: 20,
-            height: scaledH + chromeH,
+            height: scaledH,
             cursor: 'ew-resize',
             display: 'flex',
             alignItems: 'center',

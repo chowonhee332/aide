@@ -156,8 +156,8 @@ const DotField = memo<DotFieldProps>(({
 
     function onMouseMove(e: MouseEvent) {
       const s = sizeRef.current
-      mouseRef.current.x = e.clientX
-      mouseRef.current.y = e.clientY
+      mouseRef.current.x = e.clientX - s.offsetX + window.scrollX
+      mouseRef.current.y = e.clientY - s.offsetY + window.scrollY
       mouseRef.current.isInside = true
     }
     
