@@ -1468,9 +1468,6 @@ export default function StudioPage() {
           backgroundColor: '#f4f4f6',
         }}
       >
-        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-          <DotField />
-        </div>
         {isExpandingPrototype && <ExpandingOverlay image={pickedVariantIdx !== null ? (mainVariants[pickedVariantIdx]?.image ?? undefined) : undefined} platform={platform} variantLabel={pickedVariantIdx !== null ? ['시안 A','시안 B','시안 C'][pickedVariantIdx] : undefined} />}
 
         {/* Header */}
@@ -1740,7 +1737,10 @@ export default function StudioPage() {
 
         {/* Canvas: all cards laid out on the dotted surface */}
         <div ref={canvasAreaRef} className="flex-1 overflow-hidden relative" onClick={() => setSelectedCard(null)}>
-          <div ref={canvasTransformRef} style={{ transformOrigin: '0 0', display: 'flex', alignItems: 'flex-start', gap: 24, padding: 40, width: 'max-content' }}>
+          <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+            <DotField />
+          </div>
+          <div ref={canvasTransformRef} style={{ transformOrigin: '0 0', display: 'flex', alignItems: 'flex-start', gap: 24, padding: 40, width: 'max-content', position: 'relative', zIndex: 1 }}>
           <style>{`@keyframes aide-bar{0%{transform:translateX(-150%)}100%{transform:translateX(500%)}}`}</style>
 
           {/* DESIGN.md text card */}
@@ -2147,9 +2147,6 @@ export default function StudioPage() {
   if (step === 4 && result) {
     return (
       <div className="h-screen overflow-hidden flex flex-col text-[#111111] relative" style={{ fontFamily: "'Inter', -apple-system, sans-serif", backgroundColor: '#f4f4f6' }}>
-        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-          <DotField />
-        </div>
 
         {/* Tab bar */}
         <div className="h-11 border-b border-[rgba(0,0,0,0.09)] flex items-stretch shrink-0 bg-white">
@@ -2474,9 +2471,14 @@ export default function StudioPage() {
 
           {/* Center: preview */}
           <div ref={studioAreaRef} className="flex-1 overflow-hidden relative flex flex-col items-center justify-center">
+            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+              <DotField />
+            </div>
             <div
               ref={studioTransformRef}
               style={{
+                position: 'relative',
+                zIndex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
