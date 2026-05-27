@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { Browser } from 'puppeteer'
-import { generateUI, generateHeroImage, resolveImagePlaceholders } from '@/lib/gemini'
+import { generateUI, resolveImagePlaceholders } from '@/lib/gemini'
 
 export const maxDuration = 180
 
@@ -23,15 +23,12 @@ export async function POST(req: NextRequest) {
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
     console.log('[generate] step1: params parsed, starting generateUI')
 
-    const isBVariant = typeof params.variantStyle === 'string' && params.variantStyle.includes('시안 B')
-    const heroSubjectForGen = params.heroSubject || params.heroImagePrompt
-    const [html, heroImage] = await Promise.all([
-      generateUI(params, apiKey),
-      (isBVariant && !!heroSubjectForGen) ? generateHeroImage(heroSubjectForGen, apiKey) : Promise.resolve(null),
-    ])
-
-    const finalHtml = await resolveImagePlaceholders(html, { heroImageData: heroImage, apiKey })
-    console.log('[generate] step2: html generated, length=', finalHtml.length, heroImage ? '(3D hero included)' : '')
+    const html = await generateUI(params, apiKey)
+    const finalHtml = await resolveImagePlaceholders(html, {
+      heroImagePrompt: params.heroSubject || params.heroImagePrompt,
+      apiKey,
+    })
+    console.log('[generate] step2: html generated, length=', finalHtml.length)
 
     const puppeteer = await import('puppeteer')
     browser = await puppeteer.default.launch({
@@ -66,7 +63,7 @@ export async function POST(req: NextRequest) {
     })
 
     console.log('[generate] step6: screenshot done')
-    return NextResponse.json({ html: finalHtml, image: `data:image/png;base64,${screenshot}`, has3dHero: !!heroImage })
+    return NextResponse.json({ html: finalHtml, image: `data:image/png;base64,${screenshot}`, has3dHero: html.includes('%%HERO_3D_IMAGE') })
   } catch (err) {
     const name = err instanceof Error ? err.name : 'unknown'
     const message = err instanceof Error ? err.message : String(err)

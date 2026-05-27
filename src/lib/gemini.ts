@@ -12,7 +12,7 @@ function getAi(apiKey?: string) {
 
 async function fetchUnsplashUrl(keyword: string, width: number, height: number): Promise<string | null> {
   const accessKey = process.env.UNSPLASH_ACCESS_KEY
-  if (!accessKey) return null
+  if (!accessKey) return `https://source.unsplash.com/${width}x${height}/?${encodeURIComponent(keyword)}`
   try {
     const res = await fetch(
       `https://api.unsplash.com/photos/random?query=${encodeURIComponent(keyword)}&orientation=landscape&client_id=${accessKey}`,
@@ -228,13 +228,14 @@ components:
     typography: "{typography.body-md}"
     rounded: "{rounded.md}"
     padding: "0 {spacing.base}"
-    height: "52px"
+    height: "[detected height token or observed px]"
   card:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.on-surface}"
     rounded: "{rounded.xl}"
     padding: "{spacing.md}"
-    shadow: "0 2px 12px rgba(0,0,0,0.07)"
+    border: "[detected border if used]"
+    shadow: "[detected shadow if used]"
 ---
 
 # [Site Name] Design System
@@ -366,16 +367,20 @@ export interface TweakSpec {
 }
 
 export async function analyzeAndGenerateQuestions(
-  _designMd: string,
+  designMd: string,
   brief: string,
   platform?: 'mobile' | 'web',
   apiKey?: string,
 ): Promise<QuestionnaireResponse> {
+  const designSystemContext = designMd?.trim()
+    ? `\n## 선택된 디자인 시스템 요약\n아래 DESIGN.md는 최종 UI의 스타일 기준입니다. 질문은 색상·라운드·컴포넌트 스타일을 다시 묻지 말고, 서비스 내용과 화면 구성에 필요한 의사결정만 물어보세요.\n\`\`\`md\n${designMd.slice(0, 4000)}\n\`\`\`\n`
+    : ''
   const prompt = `
 당신은 제품 기획자입니다. 기획서를 분석해 아래 세 가지만 추출하세요.
 
 ## 기획서
 ${brief}
+${designSystemContext}
 
 ## 3D 히어로 이미지 판단
 
@@ -540,35 +545,31 @@ export async function resolveImagePlaceholders(
   const { heroImagePrompt, heroImageData, apiKey } = options
   let result = html
 
-  if (result.includes('%%HERO_3D_IMAGE%%')) {
+  const heroMatches = [...result.matchAll(/%%HERO_3D_IMAGE(?::([^%]+))?%%/g)]
+  if (heroMatches.length > 0) {
+    const background = heroMatches[0][1]?.trim() || '#ffffff'
     let heroImg = heroImageData ?? null
     if (!heroImg && heroImagePrompt) {
-      heroImg = await generateHeroImage(heroImagePrompt, apiKey)
+      heroImg = await generateHeroImage(heroImagePrompt, apiKey, background)
     }
-    if (heroImg) {
-      result = result.split('%%HERO_3D_IMAGE%%').join(`data:${heroImg.mimeType};base64,${heroImg.base64}`)
-    } else {
-      result = result.split('%%HERO_3D_IMAGE%%').join(
-        'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
-      )
+    const heroSrc = heroImg
+      ? `data:${heroImg.mimeType};base64,${heroImg.base64}`
+      : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+    for (const match of heroMatches) {
+      result = result.split(match[0]).join(heroSrc)
     }
   }
 
   const imgMatches = [...result.matchAll(/%%IMG_\d+:([^%]+)%%/g)].slice(0, 3)
   if (imgMatches.length > 0) {
-    const generatedImgs = await Promise.all(
-      imgMatches.map(m => generateHeroImage(m[1].trim(), apiKey))
+    const urls = await Promise.all(
+      imgMatches.map(m => fetchUnsplashUrl(m[1].trim(), 900, 600))
     )
     for (let i = 0; i < imgMatches.length; i++) {
       const full = imgMatches[i][0]
       const desc = imgMatches[i][1].trim()
-      const img = generatedImgs[i]
-      if (img) {
-        result = result.split(full).join(`data:${img.mimeType};base64,${img.base64}`)
-      } else {
-        const keyword = desc.split(/\s+/).find((w: string) => w.length > 3)?.toLowerCase() ?? 'product'
-        result = result.split(full).join(`https://picsum.photos/seed/${keyword}/400/400`)
-      }
+      const keyword = desc.split(/\s+/).find((w: string) => w.length > 3)?.toLowerCase() ?? 'product'
+      result = result.split(full).join(urls[i] ?? `https://source.unsplash.com/900x600/?${encodeURIComponent(keyword)}`)
     }
   }
 
@@ -583,93 +584,26 @@ export async function resolveImagePlaceholders(
       const keyword = thumbMatches[i][1].trim()
       const w = thumbMatches[i][2]
       const h = thumbMatches[i][3]
-      const url = urls[i] ?? `https://picsum.photos/seed/${keyword}/${w}/${h}`
+      const url = urls[i] ?? `https://source.unsplash.com/${w}x${h}/?${encodeURIComponent(keyword)}`
       result = result.split(full).join(url)
     }
-  }
-
-  // 클라이언트 사이드 초고속 이미지 배경 제거 (Chroma Key) 스크립트 주입
-  const chromakeyScript = `
-<script>
-(function() {
-  function removeImageBg(img) {
-    if (img.dataset.bgRemoved) return;
-    img.dataset.bgRemoved = "true";
-    if (!img.src || img.src.indexOf('data:image') !== 0) return;
-    const tempImg = new Image();
-    tempImg.onload = function() {
-      const canvas = document.createElement("canvas");
-      canvas.width = tempImg.naturalWidth;
-      canvas.height = tempImg.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(tempImg, 0, 0);
-      try {
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
-        const corners = [[0, 0], [canvas.width - 1, 0], [0, canvas.height - 1], [canvas.width - 1, canvas.height - 1]];
-        let bgR = 0, bgG = 0, bgB = 0;
-        corners.forEach(([x, y]) => {
-          const idx = (y * canvas.width + x) * 4;
-          bgR += data[idx]; bgG += data[idx+1]; bgB += data[idx+2];
-        });
-        bgR /= 4; bgG /= 4; bgB /= 4;
-        if (bgR > 200 && bgG > 200 && bgB > 200) {
-          for (let i = 0; i < data.length; i += 4) {
-            const r = data[i], g = data[i+1], b = data[i+2];
-            const dist = Math.sqrt((r - bgR)**2 + (g - bgG)**2 + (b - bgB)**2);
-            if (dist < 35 || (r > 245 && g > 245 && b > 245)) {
-              data[i+3] = 0;
-            }
-          }
-          ctx.putImageData(imgData, 0, 0);
-          img.src = canvas.toDataURL("image/png");
-        }
-      } catch (e) {
-        console.error("Canvas chroma key failed:", e);
-      }
-    };
-    tempImg.src = img.src;
-  }
-  function processImages() {
-    document.querySelectorAll("img").forEach(img => {
-      if (img.complete) removeImageBg(img);
-      else img.addEventListener("load", () => removeImageBg(img));
-    });
-  }
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", processImages);
-  } else {
-    processImages();
-  }
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach(mut => {
-      mut.addedNodes.forEach(node => {
-        if (node.tagName === "IMG") {
-          node.addEventListener("load", () => removeImageBg(node));
-          if (node.complete) removeImageBg(node);
-        } else if (node.querySelectorAll) {
-          node.querySelectorAll("img").forEach(img => {
-            img.addEventListener("load", () => removeImageBg(img));
-            if (img.complete) removeImageBg(img);
-          });
-        }
-      });
-    });
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-})();
-</script>`;
-
-  if (result.includes('</body>')) {
-    result = result.replace('</body>', chromakeyScript + '\n</body>');
-  } else {
-    result += chromakeyScript;
   }
 
   return result;
 }
 
-function buildCreon3DPrompt(subject: string): string {
+function normalizeHeroBackground(background?: string): string {
+  const bg = background?.trim()
+  if (!bg) return '#ffffff'
+  if (/^#[0-9a-fA-F]{3,8}$/.test(bg)) return bg
+  const lower = bg.toLowerCase()
+  if (lower.includes('primary') || lower.includes('blue')) return '#1A75FF'
+  if (lower.includes('white') || lower.includes('surface')) return '#ffffff'
+  return bg
+}
+
+function buildCreon3DPrompt(subject: string, backgroundColor = '#ffffff'): string {
+  const bg = normalizeHeroBackground(backgroundColor)
   const lines: string[] = []
   lines.push(`🚨🚨🚨 CRITICAL STYLE REQUIREMENT 🚨🚨🚨`)
   lines.push(`You MUST generate this icon in the EXACT same visual style as the reference Creon 3D icon sheet.`)
@@ -677,12 +611,13 @@ function buildCreon3DPrompt(subject: string): string {
   lines.push(`STYLE CHARACTERISTICS (MANDATORY FOR ALL ICONS):`)
   lines.push(`- Smooth, glossy plastic material with high-gloss finish`)
   lines.push(`- Isometric 3D perspective (35deg tilt, 35deg pan, orthographic lens)`)
-  lines.push(`- Soft, uniform lighting with no harsh shadows`)
+  lines.push(`- Soft, uniform lighting with no harsh shadows, plus a subtle grounding shadow`)
   lines.push(`- Color palette: Dominant blue (#2962FF), secondary blue (#4FC3F7), white (#FFFFFF), warm accent yellow (#FFD45A)`)
   lines.push(`- Pillowy, inflated, soft-volume forms with rounded edges (85% fillet)`)
   lines.push(`- Chibi/stylized proportions, simplified anatomy`)
-  lines.push(`- Floating subject with no ground contact`)
-  lines.push(`- Solid pure white background (flat white background, no gradient, no patterns, no grids, no checkerboard, absolute white #ffffff)`)
+  lines.push(`- Slightly floating or standing on an invisible white surface with a soft elliptical contact shadow`)
+  lines.push(`- Subtle light gray contact shadow below the subject, blurred, low opacity, matching the object footprint`)
+  lines.push(`- Solid flat background and invisible floor in exactly ${bg} (no gradient, no patterns, no grids, no checkerboard)`)
   lines.push(`- Single hero subject, minimal composition`)
   lines.push(`- No photographic realism, no textures, no noise, no grain`)
   lines.push(`- Consistent rendering quality matching the reference sheet exactly`)
@@ -696,12 +631,12 @@ function buildCreon3DPrompt(subject: string): string {
   lines.push(`- Every icon must look like it came from the same design system, regardless of what it represents.`)
   lines.push(`- Maintain the exact same material properties, lighting setup, color palette, and rendering quality.`)
   lines.push(`🎨 COLOR SPECIFICATION:`)
-  lines.push(`Background: Solid pure white (#ffffff, flat white background).`)
+  lines.push(`Background: Solid flat ${bg}. The 3D image background MUST exactly match the hero section background color used in the UI.`)
   lines.push(`Color palette (MUST USE): dominant blue #2962FF, secondary blue #4FC3F7, neutral white #FFFFFF, warm accent #FFD45A used sparingly.`)
   lines.push(`⚠️ Apply these colors while maintaining the exact style. The color palette is part of the style identity.`)
   lines.push(`💎 MATERIALS (MANDATORY): primary material smooth high-gloss plastic, secondary material matte pastel plastic, accents translucent frosted plastic, surface detail no noise, no texture, no scratches.`)
   lines.push(`📦 FORM (MANDATORY): pillowy, inflated, soft-volume forms, rounded with 85% fillet zero sharp corners, chibi/stylized simplified anatomy, squash-and-stretch for friendliness, clean seamless.`)
-  lines.push(`💡 LIGHTING (MANDATORY): soft global illumination, dual top-front softboxes with faint rim light, highlights broad glossy bloom no hard speculars, shadows internal occlusion only no ground shadow, exposure balanced no high contrast.`)
+  lines.push(`💡 LIGHTING (MANDATORY): soft global illumination, dual top-front softboxes with faint rim light, highlights broad glossy bloom no hard speculars, soft ambient occlusion plus a gentle ground/contact shadow visible on the ${bg} floor, no hard cast shadow, no dark shadow, exposure balanced no high contrast.`)
   return lines.join('\n')
 }
 
@@ -720,20 +655,14 @@ function loadCreonRefImages(): Array<{ inlineData: { data: string; mimeType: str
   return parts
 }
 
-async function removeImageBackground(base64: string): Promise<string> {
-  // 무거운 Node.js 로컬 AI 배경 제거 모델 라이브러리 대신,
-  // 클라이언트 사이드 Canvas 크로마키(Chroma Key) 스크립트 주입 방식으로 최적화 전환되었습니다.
-  // 이로 인해 서버리스 환경에서 크래시 및 타임아웃 위험이 없으며 속도가 500배 이상 단축됩니다.
-  return base64;
-}
-
 export async function generateHeroImage(
   subject: string,
   apiKey?: string,
+  backgroundColor = '#ffffff',
 ): Promise<{ base64: string; mimeType: string } | null> {
   try {
     const ai = getAi(apiKey)
-    const prompt = buildCreon3DPrompt(subject)
+    const prompt = buildCreon3DPrompt(subject, backgroundColor)
     const refImages = loadCreonRefImages()
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [
       { text: prompt },
@@ -751,10 +680,8 @@ export async function generateHeroImage(
     })
     for (const part of res.candidates?.[0]?.content?.parts ?? []) {
       if (part.inlineData?.data) {
-        const rawBase64 = part.inlineData.data
-        console.log('[gemini] 3D image generated, removing background...')
-        const cleanBase64 = await removeImageBackground(rawBase64)
-        return { base64: cleanBase64, mimeType: 'image/png' }
+        console.log('[gemini] 3D image generated with matched background:', normalizeHeroBackground(backgroundColor))
+        return { base64: part.inlineData.data, mimeType: 'image/png' }
       }
     }
     return null
@@ -785,24 +712,23 @@ export async function critiqueUI(
 
   const variantCriteria = variantLabel?.includes('A') ? `
 ## 시안 A 전용 추가 기준
-- A1. 흰 배경 + 데이터 테이블/정렬 리스트가 중심을 이루는가?
-- A2. KPI 숫자 4개 이상이 동일 크기로 가로 정렬된 영역이 있는가?
-- A3. 컬러 영역이 전체의 20% 이하인가? (데이터 중심 레이아웃)
-- A4. 차트가 있다면 라인/sparkline (컬러풀 막대 금지)?` : variantLabel?.includes('B') ? `
+- A1. 데이터, 목록, 상태, 비교 정보가 중심을 이루는가?
+- A2. 정보가 정렬/필터/그룹핑되어 빠르게 스캔되는가?
+- A3. 스타일 장식보다 업무적 명료성이 우선되는가?
+- A4. 차트가 있다면 디자인 시스템 토큰으로 정돈되어 있는가?` : variantLabel?.includes('B') ? `
 ## 시안 B 전용 추가 기준
-- B1. 히어로 카드가 흰 배경(var(--color-surface))인가? (컬러 배경 금지)
-- B2. %%HERO_3D_IMAGE%% 플레이스홀더 또는 실제 3D 이미지 자리가 히어로에 있는가?
-- B3. 히어로 내 56px 이상 헤드라인이 있는가?
-- B4. 가격·핵심 강조가 var(--color-primary) 컬러로 표시되는가?` : variantLabel?.includes('C') ? `
+- B1. 대표 메시지와 주요 CTA가 첫 화면에서 가장 명확한가?
+- B2. 전환에 필요한 가격/혜택/상태/다음 행동이 빠짐없이 보이는가?
+- B3. 3D/이미지를 쓰는 경우 DESIGN.md의 카드/서피스 규칙 안에서 배치했는가?
+- B4. A/C와 달리 행동 유도가 가장 강한 구조인가?` : variantLabel?.includes('C') ? `
 ## 시안 C 전용 추가 기준
-- C1. 상단 220px 이상 풀-블리드 히어로(무드 이미지·그라데이션·실사 사진)가 있는가?
-- C2. 히어로에 감성 카피 헤드라인(20~28px bold white)이 있는가?
-- C3. 카드 border-radius 20~28px (부드러운 곡선)?
-- C4. 이미지·일러스트가 화면에 2개 이상 배치되었는가?` : ''
+- C1. 추천, 카테고리, 이미지, 스토리 등 탐색 요소가 풍부한가?
+- C2. 서비스의 분위기와 맥락이 텍스트와 콘텐츠 구성으로 드러나는가?
+- C3. 카드/이미지/섹션 스타일이 DESIGN.md 규칙을 유지하는가?
+- C4. A/B와 달리 브랜드 탐색 경험이 가장 강한 구조인가?` : ''
 
-  const prompt = `당신은 Awwwards SOTD 심사위원이자 Dribbble·Behance 큐레이터입니다.
-아래 UI HTML을 Dribbble 인기 샷, Behance 피처드 프로젝트, Awwwards SOTD 기준으로 냉정하게 평가하세요.
-Pinterest 무드보드에 올릴 수 있는 비주얼 임팩트가 없으면 탈락입니다.${variantLabel ? `\n\n이 시안은 **${variantLabel}** 방향입니다.` : ''}
+  const prompt = `당신은 디자인 시스템 준수 여부를 검수하는 시니어 프로덕트 디자이너입니다.
+아래 UI HTML이 선택된 디자인 시스템의 토큰과 컴포넌트 규칙을 일관되게 쓰는지, 그리고 서비스 화면으로 충분히 완성되어 있는지 평가하세요.${variantLabel ? `\n\n이 시안은 **${variantLabel}** 방향입니다.` : ''}
 
 ## 기획서 요약
 ${brief.slice(0, 800)}
@@ -814,13 +740,26 @@ ${safeHtml.slice(0, 18000)}
 \`\`\`
 
 ## 공통 평가 기준 (각 항목 통과/실패 판정)
-1. **히어로 임팩트**: 첫 화면 상단 35%+가 시각적 임팩트 영역인가? (그라데이션·실사이미지·3D 오브젝트·KPI 숫자 중 하나 — Awwwards SOTD 기준)
-2. **타이포 계층**: 폰트 크기가 최소 4단계로 차이나는가? (Hero/Section/Card/Label — Dribbble 수준)
-3. **컬러 풍부도**: Primary 컬러가 3곳 이상에 적극 사용되었는가? (단순 버튼 1곳만 X)
-4. **카드 깊이**: 카드에 box-shadow가 적용되고 :hover 인터랙션이 정의되었는가?
-5. **정보 밀도**: 빈 영역 없이 콘텐츠로 채워졌는가? (KPI 4요소·리스트 아이템 풍부도)
-6. **시각 요소**: 이미지·아이콘·차트·뱃지가 충분히 활용되었는가? (Behance 피처드 수준)
-7. **CTA 명확도**: 주요 CTA가 시각적으로 두드러지는가? (accent 컬러·크기·위치)
+1. **디자인 시스템 준수**: 색상, 타이포그래피, spacing, radius, shadow, border가 CSS 변수와 DESIGN.md 토큰 중심으로 적용되었는가?
+2. **컴포넌트 일관성**: 버튼, 카드, 입력, 리스트, 내비게이션이 같은 디자인 시스템의 컴포넌트처럼 보이는가?
+3. **서비스 완성도**: 실제 서비스 화면처럼 핵심 정보, 메타 정보, 상태, CTA가 충분히 들어갔는가?
+4. **시안 차별성**: 이 시안의 방향(A 정보형 / B 전환형 / C 탐색형)이 레이아웃과 정보 구조로 드러나는가?
+5. **반응형 안정성**: 모바일/웹 플랫폼에 맞는 내비게이션과 레이아웃이 적용되었는가?
+6. **금지 사항**: 디자인 시스템에 없는 임의 hex, 임의 shadow, 임의 radius, 과한 그라데이션이 스타일을 덮어쓰지 않았는가?
+7. **CTA 명확도**: 주요 CTA가 디자인 시스템의 action 스타일로 명확히 보이는가?
+
+## 즉시 실패 처리할 레이아웃 결함
+- 한글이 세로로 한 글자씩 떨어져 보이거나 writing-mode/좁은 column 때문에 문장이 깨진 경우
+- 첫 화면의 절반 이상이 빈 흰 영역 또는 빈 카드로 남아 있는 경우
+- 음식/배달/커머스 화면인데 메뉴 이미지 대신 산, 바다, 노트북 같은 무관한 이미지가 들어간 경우
+- 3D 히어로 이미지가 메인 히어로 외 카드/리스트/썸네일 영역에 반복 사용된 경우
+- 히어로 배경색과 3D 이미지 배경색이 달라 카드보드 컷아웃처럼 보이는 경우
+- 3D 이미지 배경을 CSS filter, mix-blend-mode, canvas chroma key 등으로 제거하려는 코드가 포함된 경우
+- "star", "home" 같은 영어 placeholder 텍스트가 사용자에게 그대로 노출된 경우
+- emoji로 아이콘을 대신하거나, 같은 아이콘/이미지가 의미 없이 반복되는 경우
+- 하단 내비게이션이나 CTA가 콘텐츠를 가리거나 화면 밖으로 밀린 경우
+
+위 결함 중 하나라도 있으면 score는 최대 60점, verdict는 반드시 "needs_refinement"로 판정한다.
 ${variantCriteria}
 
 ## 출력 형식 (반드시 JSON)
@@ -841,9 +780,9 @@ ${variantCriteria}
 }
 \`\`\`
 
-- 78점 미만 = needs_refinement (Dribbble/Awwwards 기준은 높습니다)
+- 78점 미만 = needs_refinement
 - topIssues와 improvements는 가장 임팩트 큰 3가지만
-- 추상적 표현 금지 (예: "더 예쁘게" X → "히어로에 56px 이상 헤드라인 추가" O)
+- 추상적 표현 금지 (예: "더 예쁘게" X → "DESIGN.md의 headline 토큰으로 핵심 메시지 계층을 강화" O)
 - 응답은 JSON 코드블록만, 다른 설명 없이.`
 
   const text = await generatePro(prompt, apiKey, 'gemini-3.1-pro-preview')
@@ -858,24 +797,17 @@ function buildQualityRules(heroImagePrompt?: string, domain?: AppDomain): string
 ${domainBlock}
 ## 공통 품질 및 시각 계층 원칙
 
-1. **시각적 완성도 — Dribbble·Behance·Awwwards·Pinterest 수준 (CRITICAL)**
-   - **이 UI는 Dribbble 인기 샷, Behance 피처드 프로젝트, Awwwards SOTD, Pinterest 무드보드에 올라올 수 있는 수준이어야 합니다.** 평범하고 단조로운 결과물은 즉시 탈락입니다.
-   - **타이포그래피**: 최소 4단계 크기 계층 (48+px Hero / 22px 섹션제목 / 16px 카드제목 / 13px 레이블). 모든 텍스트가 같은 크기인 UI 절대 금지.
-   - **Hero 섹션 필수**: 첫 화면 상단 40~50%는 반드시 시각적 임팩트. 서비스 유형에 따라 선택:
-     • 대시보드/분석/B2B → primary 그라데이션 배경 + KPI 숫자 56~72px bold + 카드 세트
-     • B2C 소비자/커머스/푸드 → 대형 3D 캐릭터·마스코트·제품 이미지(뷰포트 40% 이상 차지) + 굵은 헤드라인 28~40px + 풀너비 accent CTA 버튼 — 흰 배경도 OK
-     • 순백 배경에 14~16px 텍스트만 있는 히어로 절대 금지 (이미지도 없고 컬러도 없으면 실패)
-   - **KPI 카드 세트**: 숫자(32~40px 800weight) + ↑↓ 증감 화살표 + 전기 대비 % + 서브레이블 4요소가 항상 한 세트.
-   - **차트 스타일링**: Chart.js 기본 스타일(회색 배경, 기본 폰트) 절대 사용 금지. primary 컬러 그라데이션 fill, 투명 배경, 커스텀 툴팁 필수.
-   - **리스트/피드**: 각 아이템은 아바타/썸네일 + 주제목 + 부제목 + 상태배지/점수 — 정보가 풍부한 리스트. 텍스트만 있는 단순 리스트 금지.
-   - **호버/인터랙션**: 카드 호버 시 transform: translateY(-2px) + 그림자 증가, 버튼 호버 시 brightness 변화, transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) 공통 적용.
-   - **컬러 사용**: Primary 컬러를 용감하게 사용 (배경, 그라데이션, 강조 배지 등). CTA 버튼 하나에만 쓰는 소극적 사용 금지.
+1. **선택한 DESIGN.md가 스타일의 최상위 기준 (CRITICAL)**
+   - 색상, 타이포그래피, 간격, 라운드, 카드, 입력, 버튼, 그림자, 내비게이션은 반드시 [디자인 시스템]에 정의된 토큰과 규칙을 따른다.
+   - DESIGN.md에 없는 임의의 hex, px, shadow, radius를 새로 만들지 않는다. 필요한 경우 가장 가까운 토큰을 선택한다.
+   - 시각적 완성도는 높이되, 선택한 디자인 시스템의 정체성을 바꾸는 장식(과한 그라데이션, 임의 shadow, 임의 pill, 임의 컬러)을 추가하지 않는다.
+   - 동일한 기획서라도 ktds.md를 선택하면 KTDS처럼, notion.md를 선택하면 Notion처럼, uber.md를 선택하면 Uber처럼 보여야 한다.
 
    **시각 계층 체크리스트:**
-   - [ ] 첫 화면이 흰 배경에 작은 텍스트로 시작하지 않는가? (Hero 임팩트 확인)
-   - [ ] 폰트 크기가 최소 4단계 계층으로 구분되는가?
-   - [ ] KPI 숫자가 32px 이상 굵게 표시되는가?
-   - [ ] 카드에 호버 효과가 있는가?
+   - [ ] 선택한 DESIGN.md의 색상/타입/간격/컴포넌트 규칙이 화면 전체에 일관되게 적용되는가?
+   - [ ] 핵심 정보와 주요 CTA가 명확히 보이는가?
+   - [ ] 리스트, 카드, 폼, 내비게이션이 서비스 목적에 맞게 충분한 정보를 담고 있는가?
+   - [ ] 반응형에서 정보 구조가 유지되는가?
 
 2. **디자인 시스템 토큰 100% 동적 상속 (MANDATORY)**
    - 임의의 px, hex, shadow 값을 프롬프트 수준에서 하드코딩하지 마십시오.
@@ -886,33 +818,55 @@ ${domainBlock}
    - 서비스 도메인과 기획서의 성격(예: 미니멀 브랜드 소개, 대시보드형 그리드, 리스트 피드, 폼 중심 페이지)에 부합하는 레이아웃 구조를 AI가 자율적으로 판단하여 짜야 합니다.
    - 획일화된 1열 리스트나 특정 히어로 템플릿의 강제 사용을 금지합니다.
 
-4. **아이콘 사용 규칙**
+4. **Composition Quality Layer — 허접한 시안 방지 (CRITICAL)**
+   - 디자인 시스템은 절대 변경하지 말고, 그 안에서 화면의 완성도를 높인다.
+   - 첫 화면에는 명확한 focal point를 하나 만든다. 사용자가 처음 보는 순간 무엇을 해야 하는지 보여야 한다.
+   - 주요 CTA는 한 화면에서 가장 빠르게 발견되어야 한다.
+   - 카드들은 같은 크기, 같은 간격, 같은 정렬 리듬을 가진다. 같은 성격의 카드가 제각각 흔들리면 실패다.
+   - 화면을 3개 영역으로 나눈다: 핵심 요약, 주요 행동, 보조 탐색.
+   - 정보가 많은 화면도 여백과 구분선을 이용해 스캔 가능하게 만든다.
+   - 모든 섹션은 실제 서비스 데이터처럼 구체적인 텍스트와 수치를 가진다.
+   - 빈 박스, 추상 카드, 의미 없는 아이콘 나열을 금지한다.
+   - 첫 화면은 반드시 3개 이상의 의미 있는 영역으로 구성한다: 상단 내비/검색, 핵심 가치 또는 요약, 주요 콘텐츠 리스트/카드, 하단 액션/내비.
+   - 한 화면의 절반 이상을 빈 공간, 빈 카드, 흰 배경으로 남기지 않는다. 여백은 의도적인 그룹핑에만 사용한다.
+   - 모든 카드/리스트는 실제 서비스 데이터처럼 제목, 설명, 가격/상태/시간/평점 등 메타 정보, 액션을 포함한다.
+   - 한글 문장은 절대 세로로 한 글자씩 쌓지 않는다. writing-mode, text-orientation, 과도하게 좁은 텍스트 column 사용 금지.
+   - emoji를 아이콘이나 라벨로 사용하지 않는다. 아이콘은 Material Symbols를 쓰고, 텍스트는 실제 UI 카피로 작성한다.
+   - "star", "home", "BEST"만 덩그러니 보이는 placeholder성 문구 금지. 필요한 경우 "별점", "홈", "추천"처럼 자연스러운 한국어 UI 라벨을 사용한다.
+   - 음식/배달/커머스/여행 등 이미지가 중요한 도메인은 무관한 랜덤 이미지 금지. 반드시 브리프와 직접 관련된 placeholder 설명을 작성한다.
+   - 하단 내비게이션, floating CTA, 장바구니 버튼은 콘텐츠를 가리지 않도록 main content padding-bottom을 충분히 확보한다.
+
+5. **아이콘 사용 규칙**
    - 반드시 Google Material Symbols를 사용하십시오.
    - <head> 안에 반드시 포함: <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
    - 사용법: <span class="material-symbols-outlined" style="font-size:24px;">icon_name</span> (이모지 사용 금지, 공식 아이콘명 사용)
 
-5. **이미지 및 비주얼 처리 규칙**
-   - 화면에서 가장 눈에 띄는 대형 이미지(최대 3개)는 플레이스홀더 형식(%%IMG_1:영문 설명%%, %%IMG_2:영문 설명%%, %%IMG_3:영문 설명%%)을 사용하십시오. 영문 설명은 상세한 3D 캐릭터/일러스트 렌더링 스타일 등으로 작성하십시오.
-   - 소형 프로필이나 반복 카드 내 썸네일 등은 %%THUMB:keyword:width:height%% 형식의 플레이스홀더를 사용하십시오. keyword는 이미지 내용을 설명하는 영문 단어(예: pizza, sushi, burger), width/height는 픽셀 정수입니다. 카드마다 keyword를 다르게 지정해 이미지가 겹치지 않게 하십시오. (예: %%THUMB:pizza:400:300%%, %%THUMB:sushi:400:300%%, %%THUMB:burger:400:300%%)
+6. **이미지 및 비주얼 처리 규칙**
+   - 3D 이미지는 **메인 히어로 섹션에서 최대 1회만** 사용하십시오. 반복 카드, 추천 카드, 리스트 썸네일, 상세 이미지에는 3D 이미지 사용 금지.
+   - 히어로 외 대형 이미지와 콘텐츠 썸네일은 Unsplash 기반 플레이스홀더를 사용합니다.
+   - 화면에서 눈에 띄는 대형 실사 이미지는 플레이스홀더 형식(%%IMG_1:영문 설명%%, %%IMG_2:영문 설명%%, %%IMG_3:영문 설명%%)을 사용하십시오. 영문 설명은 실제 사진 검색에 적합한 구체적 상황/사물 키워드로 작성하십시오.
+   - 소형 프로필이나 반복 카드 내 썸네일 등은 %%THUMB:keyword:width:height%% 형식의 플레이스홀더를 사용하십시오. keyword는 이미지 내용을 설명하는 영문 명사(예: pizza, sushi, burger), width/height는 픽셀 정수입니다. 카드마다 keyword를 다르게 지정해 이미지가 겹치지 않게 하십시오. (예: %%THUMB:pizza:400:300%%, %%THUMB:sushi:400:300%%, %%THUMB:burger:400:300%%)
+   - keyword는 반드시 브리프와 직접 관련된 명사를 사용한다. 음식 배달이면 sandwich, salad, coffee, avocado처럼 음식 키워드만 사용하고 landscape, laptop, mountain, ocean 같은 무관한 키워드 금지.
    ${heroImagePrompt ? `
-   ⚠️ **3D 히어로 이미지 흰 배경 강제 규칙 (CRITICAL)**
-   - %%HERO_3D_IMAGE%%는 이미 생성된 **흰 배경 컷아웃 PNG**(투명 아님, 순백 #ffffff 배경)입니다.
-   - 따라서 히어로 카드의 배경은 **반드시 흰색** var(--color-surface)로 고정하십시오. 컬러 배경(primary 등) 위에 흰 배경 이미지를 올리면 카드보드 컷아웃처럼 어색해집니다.
-   - 히어로 카드 구조(이대로 사용):
-     <section style="background:var(--color-surface);border-radius:var(--rounded-2xl, 20px);padding:24px;box-shadow:0 16px 48px rgba(0,0,0,0.08);display:grid;grid-template-columns:1.1fr 1fr;gap:16px;align-items:center;overflow:hidden;">
+   ⚠️ **3D 히어로 이미지 배경 매칭 규칙 (CRITICAL)**
+   - %%HERO_3D_IMAGE%%는 메인 히어로에서 **정확히 1회만** 사용하십시오.
+   - 배경색을 반드시 플레이스홀더에 명시하십시오: 흰 배경이면 %%HERO_3D_IMAGE:#ffffff%%, primary blue 배경이면 %%HERO_3D_IMAGE:#1A75FF%%처럼 사용합니다.
+   - 히어로 섹션 CSS의 background 값과 %%HERO_3D_IMAGE:[색상]%%의 색상 값은 반드시 동일해야 합니다. 파란 히어로면 3D 이미지도 같은 파란 배경으로 생성됩니다.
+   - 3D 이미지는 투명 PNG가 아니며 배경 제거를 하지 않습니다. 따라서 이미지 배경과 히어로 배경을 맞추는 것이 필수입니다.
+   - 3D 오브젝트 아래에는 자연스러운 접지감을 위한 부드러운 그림자가 포함되어 있습니다. CSS filter, mix-blend-mode, overflow hidden 등으로 그림자를 지우거나 잘라내지 마십시오.
+   - 히어로 카드 구조(배경색은 이미지 플레이스홀더 색상과 동일하게 적용):
+     <section class="hero-with-image">
        <div>
          <!-- 헤드라인·서브카피·CTA 텍스트 영역 -->
-         <!-- 헤드라인: var(--color-text), 강조 일부만 var(--color-primary) -->
        </div>
-       <img src="%%HERO_3D_IMAGE%%" alt="hero" style="width:100%;height:auto;max-height:280px;object-fit:contain;" />
+       <img src="%%HERO_3D_IMAGE:#ffffff%%" alt="hero" style="width:100%;height:auto;max-height:280px;object-fit:contain;" />
      </section>
-   - %%HERO_3D_IMAGE%% 플레이스홀더를 절대 수정하거나 다른 URL로 교체하지 마십시오.
-   - 텍스트 색: 헤드라인·본문은 var(--color-text)(다크), 강조·가격·뱃지만 var(--color-primary). **흰 텍스트 사용 금지** (히어로 카드가 흰 배경이므로).
-   - 컬러 임팩트는 가격(28~40px var(--color-primary) bold), CTA 버튼(var(--color-primary) 풀너비), accent 뱃지로 확보하십시오.
+   - %%HERO_3D_IMAGE:[색상]%% 플레이스홀더를 절대 다른 URL이나 %%IMG%%로 교체하지 마십시오.
+   - 텍스트 색은 히어로 배경 명도에 맞춰 DESIGN.md의 text/inverse 토큰을 사용하십시오.
    - 모바일에서는 grid-template-columns: 1fr (이미지가 텍스트 아래 또는 위로 스택)으로 자동 대응하십시오.
    ` : ''}
    
-6. **데이터 시각화 (Chart.js) — 프리미엄 스타일 필수**
+7. **데이터 시각화 (Chart.js) — 프리미엄 스타일 필수**
    - 대시보드·통계 화면에서 차트가 반드시 필요한 경우에만 사용하십시오.
    - CDN: <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
    - **차트 스타일링 (기본값 절대 금지):**
@@ -948,16 +902,16 @@ ${domainBlock}
      fill: true, backgroundColor: areaGradient, borderColor: primaryColor, tension: 0.4, pointRadius: 0, pointHoverRadius: 6
      \`\`\`
 
-7. **반응형 레이아웃 — CSS @media 쿼리 (MANDATORY)**
+8. **반응형 레이아웃 — CSS @media 쿼리 (MANDATORY)**
    **이 HTML은 반응형 뷰어(iframe)에서 렌더링됩니다. iframe 너비가 실시간으로 변하므로, CSS @media 쿼리 없이는 반응형이 절대 동작하지 않습니다.**
 
    **브레이크포인트**: [디자인 시스템]의 \`responsive.breakpoints\` 값을 따르십시오.
    해당 섹션이 없으면 서비스 성격(B2C/B2B, 대상 디바이스)에 맞는 업계 표준 브레이크포인트를 AI가 자율 판단하십시오.
 
-   **공통 구조 (디자인 시스템 무관 — 반드시 적용):**
-   - Mobile / Tablet / Desktop 3단계 레이아웃 전환
-   - 내비게이션 3종(mobile용 / tablet용 / desktop용)을 HTML에 모두 작성하고, CSS @media로 전환
-   - 그리드 열 수가 브레이크포인트에 따라 자동 증가
+   **공통 구조:**
+   - DESIGN.md에 반응형/내비게이션 규칙이 있으면 그 규칙을 최우선으로 적용
+   - 규칙이 없을 때만 Mobile / Tablet / Desktop 3단계 레이아웃 전환을 자율 구성
+   - 그리드 열 수와 내비게이션 형태는 서비스 성격과 선택한 디자인 시스템에 맞게 결정
 
    **내비게이션 3종 세트 패턴 — [디자인 시스템].responsive의 breakpoint 값으로 대입:**
    \`\`\`css
@@ -991,10 +945,10 @@ ${domainBlock}
    \`\`\`
 
    체크리스트 (반드시 확인):
-   - [ ] mobile/tablet/desktop 내비게이션 3종 모두 HTML에 구현했는가?
-   - [ ] CSS @media 쿼리로 내비게이션이 브레이크포인트에 따라 전환되는가?
-   - [ ] 그리드가 mobile → tablet → desktop 순서로 열 수가 증가하는가?
-   - [ ] Desktop에서 side 내비게이션 너비만큼 main-content에 margin-left가 적용되는가?`;
+   - [ ] CSS @media 쿼리로 주요 레이아웃이 브레이크포인트에 따라 전환되는가?
+   - [ ] 모바일에서 가로 스크롤이나 잘림이 없는가?
+   - [ ] 데스크탑에서 콘텐츠 폭과 내비게이션이 안정적으로 배치되는가?
+   - [ ] DESIGN.md가 정의한 카드 gap, container padding, navigation 패턴을 우선했는가?`;
 }
 
 export async function generateUI(params: GenerateParams, apiKey?: string): Promise<string> {
@@ -1018,19 +972,19 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
   const mood = str('mood')
 
   const serviceTypeRule = serviceType.includes('B2C')
-    ? '- 서비스 성격(B2C): 히어로에 대형 캐릭터·3D 오브젝트·제품 이미지 필수(뷰포트 40%+), 하단 고정 풀너비 CTA(position:fixed;bottom:0;width:100%;height:56px;background:accent), 제품 카드는 이미지+이름+가격 3요소 필수, 선택 UI는 원형 이미지 칩+체크마크 패턴, 감성 카피 헤드라인 28~36px bold'
+    ? '- 서비스 성격(B2C): 탐색, 선택, 구매/예약/신청 흐름을 선명하게 구성한다. CTA, 제품/콘텐츠 카드, 선택 UI는 디자인 시스템의 컴포넌트와 토큰 규칙을 따른다.'
     : serviceType.includes('B2B')
     ? '- 서비스 성격(B2B): 정보 밀도 높은 대시보드, 데이터 테이블·차트 중심, 전문 용어 허용, 컴팩트 레이아웃'
     : ''
   const targetRule = targetAudience.includes('10~20대')
-    ? '- 타겟층(청소년·청년): 비비드 컬러, 큰 이미지·비주얼, 짧은 텍스트, 소셜 공유 요소 배치'
+    ? '- 타겟층(청소년·청년): 짧은 텍스트, 빠른 탐색, 공유/반응 요소를 우선하되 색상과 비주얼 톤은 디자인 시스템을 따른다.'
     : targetAudience.includes('40~60대')
-    ? '- 타겟층(장년층): body 폰트 최소 16px, 단순한 네비게이션, 높은 명도 대비, 대형 버튼(min-height 56px), 큰 아이콘'
+    ? '- 타겟층(장년층): 명확한 정보 구조, 읽기 쉬운 텍스트, 단순한 네비게이션, 충분한 터치 영역을 디자인 시스템 범위 안에서 확보한다.'
     : targetAudience.includes('전문가')
     ? '- 타겟층(전문가): 정보 밀도 최대화, 데이터 시각화 적극 활용, 고급 필터·정렬 기능, 컴팩트 UI'
     : ''
   const homeEmphasisRule = homeEmphasis.includes('핵심 지표')
-    ? '- 홈 강조(KPI): 히어로에 KPI 숫자 56~72px bold 배치, 서브 KPI 카드 3개 이상, 트렌드 차트 필수, 전월 대비 변화량 표시'
+    ? '- 홈 강조(KPI): 핵심 지표, 보조 지표, 추이, 변화량을 디자인 시스템의 typography/card/chart 규칙으로 명확히 보여준다.'
     : homeEmphasis.includes('콘텐츠 탐색')
     ? '- 홈 강조(콘텐츠): 카드 그리드 또는 피드 레이아웃, 이미지 썸네일 강조, 카테고리 필터 칩, 6개 이상 아이템 노출'
     : homeEmphasis.includes('빠른 실행')
@@ -1039,13 +993,13 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
     ? '- 홈 강조(히스토리): 타임라인 또는 활동 피드 섹션 상단 배치, 각 항목에 상태 배지·시간 표시, 빠른 재진입 버튼'
     : ''
   const moodRule = mood.includes('전문적')
-    ? '- 무드(전문적·신뢰감): 디자인 시스템의 primary 컬러를 절제하여 사용(CTA·active 상태에만), 작은 border-radius(8~12px), 정렬된 데이터 중심 레이아웃, 얇은 border 라인, 클린 타이포그래피. ⚠️ 컬러 계열을 새로 지정하지 말 것 — 반드시 디자인 시스템 토큰 따르기.'
+    ? '- 무드(전문적·신뢰감): 정렬된 데이터 중심 레이아웃과 절제된 강조를 사용하되, radius/border/shadow/color는 반드시 디자인 시스템 토큰을 따른다.'
     : mood.includes('친근')
-    ? '- 무드(친근·따뜻한): 디자인 시스템 primary 컬러를 따뜻하고 활기있게 활용(배경·CTA·뱃지 등 다양한 곳에), border-radius 20~28px(CTA pill 포함), 3D 캐릭터·귀여운 마스코트를 히어로에 배치, 말풍선 UI 활용, 부드러운 그림자, 카드 배경은 primary 컬러 5~10% 투명도 tint 활용 가능. ⚠️ 컬러 계열을 새로 지정하지 말 것 — 반드시 디자인 시스템 primary 토큰 따르기.'
+    ? '- 무드(친근·따뜻한): 안내 문구, 이미지/일러스트, 추천 흐름을 부드럽게 구성하되, 라운드·그림자·컬러 강도는 디자인 시스템 규칙을 벗어나지 않는다.'
     : mood.includes('고급')
-    ? '- 무드(세련·고급스러운): 디자인 시스템 primary 컬러를 미니멀하게 활용, 다크 배경(var(--color-text-on-dark)) 또는 미니멀 화이트 베이스 선택, 섬세한 그라데이션, 여백 극대화, 얇고 세련된 타이포그래피. ⚠️ 컬러 계열을 새로 지정하지 말 것 — 반드시 디자인 시스템 토큰 따르기.'
+    ? '- 무드(세련·고급스러운): 여백, 정돈된 타이포그래피, 낮은 장식 밀도로 고급감을 만들되, 배경/표면/컬러는 디자인 시스템 토큰을 따른다.'
     : mood.includes('활기')
-    ? '- 무드(활기·젊은): 디자인 시스템 primary 컬러를 high-saturation·풀강도로 적극 사용(히어로 전체·배경·그라데이션), 굵고 큰 타이포그래피, 동적인 레이아웃, 강한 그림자. ⚠️ 컬러 계열을 새로 지정하지 말 것 — 반드시 디자인 시스템 primary 토큰 따르기.'
+    ? '- 무드(활기·젊은): 빠른 리듬의 레이아웃과 명확한 강조를 사용하되, 임의 그라데이션/강한 그림자/새 컬러를 만들지 않고 디자인 시스템 토큰 안에서 표현한다.'
     : ''
 
   const structuredAnswerRules = [serviceTypeRule, targetRule, homeEmphasisRule, moodRule].filter(Boolean).join('\n')
@@ -1062,44 +1016,34 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
   const hasBrandColors = !!(brandColors && brandColors.length > 0);
 
   const prompt = `
-당신은 Figma, Linear, Notion, Stripe, Vercel 수준의 UI를 만드는 세계 최고 수준의 시니어 프로덕트 디자이너이자 프론트엔드 개발자입니다.
-당신이 만드는 UI는 **Dribbble 인기 샷**, **Behance 피처드 프로젝트**, **Awwwards SOTD**, **Pinterest 무드보드**에 올라올 수 있는 수준이어야 합니다.
-이 네 플랫폼에서 볼 수 있는 임팩트 있는 비주얼, 세련된 타이포그래피, 풍부한 컬러 사용, 정교한 레이아웃을 구현하세요. 평범하고 단조로운 UI는 실패입니다.
+당신은 선택된 DESIGN.md를 실제 제품 화면으로 옮기는 시니어 프로덕트 디자이너이자 프론트엔드 개발자입니다.
+가장 중요한 목표는 "어떤 서비스를 만들든 선택한 디자인 시스템처럼 보이게 만드는 것"입니다.
+ktds.md를 선택하면 KTDS 스타일, notion.md를 선택하면 Notion 스타일, uber.md를 선택하면 Uber 스타일이 전체 화면에 일관되게 적용되어야 합니다.
 
-## 🎨 시각적 완성도 기준 (모든 시안에 반드시 적용)
+## 🎨 시각적 완성도 기준
 
-### 타이포그래피 계층
-- **Hero/대형 숫자**: 48~72px, font-weight: 800, letter-spacing: -0.03em — 숨막히는 임팩트
-- **섹션 제목**: 20~28px, font-weight: 700, letter-spacing: -0.02em
-- **카드 제목**: 16~18px, font-weight: 600
-- **본문/레이블**: 13~14px, font-weight: 400, color: var(--color-text-alternative, var(--color-on-surface-variant))
-- **단조로운 폰트 크기(모두 14~16px) 절대 금지** — 최소 4단계 계층 필수
+### 디자인 시스템 우선
+- 색상, 폰트, 간격, 라운드, 카드, 입력, 버튼, 그림자는 [디자인 시스템]의 토큰과 컴포넌트 규칙을 최우선으로 적용한다.
+- 디자인 시스템에 없는 임의의 hex, px, radius, shadow를 새로 만들지 않는다.
+- A/B/C 시안 차이는 스타일 변경이 아니라 정보 구조, 강조점, 레이아웃 구성 차이로 만든다.
 
-### 색상 & 깊이
-- **Primary accent**: 배경, CTA, 강조 요소에 용감하게 사용 (버튼 하나에만 쓰는 소극적 사용 금지)
-- **히어로 임팩트**: 첫 화면의 히어로 영역은 반드시 시각적 임팩트 필수 — 시안 방향에 따라 그라데이션·실사 사진·3D 오브젝트·KPI 대형 숫자 중 하나 이상. 순백 배경에 작은 텍스트만 있는 히어로 절대 금지 (Awwwards 기준 즉시 탈락)
-- **카드 깊이**: box-shadow 2단계 — 기본(0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)), 호버(0 8px 24px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06))
-- **Accent 배지/태그**: 적어도 화면당 3~5개의 컬러 배지, 상태 태그, 강조 칩 사용
+### 타이포그래피와 계층
+- typography 토큰의 크기/굵기 계층을 사용해 제목, 섹션, 카드, 본문, 보조 텍스트를 명확히 구분한다.
+- 디자인 시스템에 정의된 타입 스케일 밖의 임의 크기를 만들지 않는다.
 
-### 레이아웃 세련도
-- **정보 밀도**: 여백이 목적 없이 비어있는 구간 금지. 스크롤 없이 보이는 영역의 80%가 콘텐츠
-- **KPI 카드**: 숫자 + 증감 화살표(↑↓) + 전월비 %(초록/빨강) + 서브레이블 — 4요소 세트 필수
-- **리스트 아이템**: 아바타/썸네일 + 주제목 + 부제목 + 메타정보(날짜·상태·점수) — 각 아이템이 정보 풍부
-- **차트**: 배경 투명, primary 컬러 그라데이션 fill, 깔끔한 그리드라인 (Chart.js 기본 스타일 절대 금지)
+### 레이아웃 완성도
+- 서비스 핵심 목적이 첫 화면에서 바로 이해되어야 한다.
+- 카드/리스트/폼/차트는 브리프에 필요한 경우에만 사용하고, 각 요소는 실제 서비스처럼 충분한 정보를 담는다.
+- 반응형은 플랫폼 가이드와 DESIGN.md의 breakpoint/navigation 규칙을 우선한다.
 
-### 인터랙션 세련도
-- 모든 카드/버튼: transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1)
-- 카드 호버: transform: translateY(-2px) + 그림자 강화
-- 버튼 호버: opacity 또는 brightness 변화
-- active 상태: 명확한 컬러 강조 (텍스트 색만 바꾸는 단순 active 금지)
+### 인터랙션
+- hover, active, disabled, focus는 DESIGN.md의 interaction/component state 규칙을 따른다.
+- 카드에 shadow나 border를 추가할 때도 DESIGN.md에 정의된 방식만 사용한다.
 
-### 🛒 B2C 소비자/커머스 앱 전용 패턴 (소비자 대상 앱에 반드시 적용)
-- **히어로 레이아웃**: 이미지/캐릭터 영역(height:45~55vw) + 브랜드 헤드라인(font-size:28~36px;font-weight:800) + 서브카피 + 풀너비 CTA 버튼(border-radius:16px;height:52px) 수직 스택
-- **선택/Picker UI**: 원형(border-radius:50%) 또는 정사각(border-radius:12px) 이미지 칩 가로 배열, 선택됨=border:2px solid var(--color-primary) + 우상단 ✓ 체크마크 오버레이
-- **단계별 진행**: "1. 스텝 제목 [필수]" — 넘버 배지(accent circle) + 스텝 제목 + 선택여부 배지 헤더로 각 스텝 명확히 구분
-- **하단 고정 CTA**: position:fixed;bottom:0;left:0;right:0;padding:12px 16px 28px;background:var(--color-surface);border-top:1px solid var(--color-border-alt) — 다음단계/주문하기 버튼 항상 가시
-- **말풍선 UI**: border-radius:16px + ::before 삼각형으로 캐릭터 말풍선 구현, 컨텍스트 가이드나 확인 메시지에 활용
-- **제품 가격 표시**: font-size:18~22px;font-weight:700;color:var(--color-primary) — accent 컬러로 가격 강조
+### 서비스 맥락
+- B2B는 정보 탐색, 비교, 업무 처리 속도를 우선한다.
+- B2C는 탐색, 선택, 구매/예약/신청 같은 전환 흐름을 우선한다.
+- 단, B2B/B2C 표현 방식도 선택한 DESIGN.md의 카드, 버튼, 컬러, 간격 규칙 안에서만 구성한다.
 
 ${hasDesignSystem ? `
 ╔══════════════════════════════════════════════════════════════╗
@@ -1135,11 +1079,9 @@ ${isMd3Base ? `
 - 모달: MD3 Dialog (max-width 480px)${effectivePlatform !== 'web' ? ' 또는 Bottom Sheet (모바일)' : ''}
 - 위의 --md-sys-color-*, --md-sys-shape-*, --md-sys-typescale-* CSS 변수를 MD3 컴포넌트 스타일링에 활용할 것
 
-⚠️ KTDS 치수 우선 — MD3 플랫폼 가이드 수치 완전 무시:
-- 버튼 height: ⛔ 48px 고정 (MD3 플랫폼 가이드의 40dp 절대 사용 금지)
-- 버튼 radius: ⛔ var(--rounded-md) 8px 고정 (MD3의 pill·20dp shape 절대 사용 금지)
-- Input height: ⛔ 52px 고정 (MD3의 56dp 절대 사용 금지)
-- 카드 radius: ⛔ var(--rounded-xl) 16px 고정 (MD3의 12dp 절대 사용 금지)
+⚠️ 디자인 시스템 치수 우선 — MD3 플랫폼 가이드 수치보다 DESIGN.md 토큰을 우선:
+- 버튼, 입력, 카드, 칩, 내비게이션의 height/radius/padding은 DESIGN.md의 components와 tokens 값을 따른다.
+- KTDS처럼 MD3 구조를 빌리되 자체 치수가 있는 시스템은 KTDS Storybook/ktds.md 값을 최종 기준으로 삼는다.
 - 폰트: ⛔ <head>에 반드시 Pretendard CDN 추가 (Material Symbols CDN과 별개로 필수):
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
   body { font-family: var(--font-sans); } 선언 필수
@@ -1155,14 +1097,14 @@ ${isMd3Base ? `
 
 [Input]
   wrapper: label(display:block; font-size:14px; font-weight:400; color:var(--color-text-neutral); margin-bottom:var(--spacing-xs)) + input
-  input  { height:52px; border-radius:var(--rounded-md); border:1px solid var(--color-border); padding:0 var(--spacing-base); font-size:16px; background:var(--color-surface); }
+  input height/radius/border/padding/font-size는 DESIGN.md의 input/select component spec을 그대로 따른다.
   ::placeholder { color:var(--color-text-assistive); }
   :focus { border-color:var(--color-primary-border); outline:none; }
   .error { border-color:var(--color-negative); }
   [disabled] { background:var(--color-surface-disabled); color:var(--color-text-disabled); }
 
 [Card]
-  { border-radius:var(--rounded-xl); padding:var(--spacing-md); background:var(--color-surface); border:1px solid var(--color-border-alt); box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+  카드 radius/padding/background/border/shadow는 DESIGN.md의 card spec을 그대로 따른다. border와 shadow를 함께 쓰지 말라는 규칙이 있으면 반드시 지킨다.
 
 [ListItem]
   { min-height:56px; padding:0 var(--spacing-base); border-bottom:1px solid var(--color-border-alt); display:flex; align-items:center; gap:var(--spacing-sm); }
@@ -1276,12 +1218,10 @@ ${extractDesignMdForPrompt(effectiveDesignMd) || '없음 — 아래 플랫폼 �
 ${hasDesignSystem ? `
 > **체크리스트 — 코드 작성 전 반드시 확인**
 > - [ ] ${hasBrandColors ? '⛔ colors 토큰 무시 → [브랜드 컬러] 섹션의 값으로 CSS 변수 선언했는가?' : 'colors 토큰을 CSS 변수로 선언했는가?'}
-> - [ ] components.button.variants.primary → height 48px, padding var(--spacing-lg), radius var(--rounded-md), bg var(--color-primary)?
-> - [ ] components.button.variants.secondary → height 48px, border 1px var(--color-primary-border), text var(--color-primary-text)?
-> - [ ] components.button.states.disabled → bg var(--color-surface-disabled), text var(--color-text-disabled)?
-> - [ ] components.input → height 52px, radius var(--rounded-md), label above(body2/var(--color-text-neutral)), focus=var(--color-primary-border), error=var(--color-negative)?
-> - [ ] components.card → radius var(--rounded-xl), padding var(--spacing-md), bg var(--color-surface), border 1px var(--color-border-alt), shadow?
-> - [ ] components.listItem → min-height 56px, paddingX var(--spacing-base), divider 1px var(--color-border-alt)?
+> - [ ] components.button 규칙을 DESIGN.md 그대로 적용했는가?
+> - [ ] components.input/select 규칙을 DESIGN.md 그대로 적용했는가?
+> - [ ] components.card 규칙을 DESIGN.md 그대로 적용했는가?
+> - [ ] components.listItem/navigation/dialog 등 필요한 컴포넌트를 DESIGN.md 기준으로 적용했는가?
 > - [ ] ${effectivePlatform === 'web' ? '⛔ 하단 탭바 사용했는가? → 있으면 즉시 제거. NavigationRail(좌측 240px 고정)로 교체 필수' : 'components.navigationBar → bg var(--color-surface), border-top 1px var(--color-border-alt), active=var(--color-primary)?'}
 > - [ ] 폰트 크기·굵기가 typography 토큰과 일치하는가?
 > - [ ] ${hasBrandColors ? '임의 색상 사용하지 않았는가? (브랜드 컬러 외 hex 금지)' : '⛔ CSS 속성에 #hex 직접 사용했는가? → 있으면 반드시 CSS 변수로 교체 (e.g., color: #333 → color: var(--color-text))'}
@@ -1290,7 +1230,7 @@ ${hasDesignSystem ? `
 ${isMd3Base ? `> - [ ] MD3 구조: 버튼·입력·카드·리스트·내비게이션이 MD3 컴포넌트 패턴을 따르는가?
 > - [ ] Input 레이블이 필드 위(above)에 배치되었는가? (인라인 placeholder-only 금지)
 > - [ ] --md-sys-color-* 변수가 :root에 선언되었는가?
-> - [ ] ⛔ KTDS 치수 준수: 버튼 48px·radius var(--rounded-md), Input 52px, 카드 var(--rounded-xl) 16px?
+> - [ ] ⛔ KTDS 치수 준수: 버튼/입력/카드/칩/내비게이션이 ktds.md의 최신 Storybook 기준과 일치하는가?
 > - [ ] ⛔ Pretendard CDN이 <head>에 포함되었는가? body에 font-family: var(--font-sans) 선언했는가?` : isMd3 ? `> - [ ] ⚠️ 버튼: height:40px, border-radius:9999px (pill) 적용했는가?
 > - [ ] ⚠️ 카드: border-radius:12px 적용했는가?
 > - [ ] ⚠️ --color-surface-container-* 변수가 :root에 선언되었는가?
@@ -1330,6 +1270,9 @@ ${mainOnly ? `### 단일 메인 화면 (비교 선택용)
 - ${effectivePlatform === 'web' ? '서비스에서 가장 중요한 홈/대시보드 화면 (웹 레이아웃 — 1440px 기준)' : '앱에서 가장 중요한 홈/대시보드 화면'}
 - aide-screen 클래스, 라우터 스크립트 불필요
 - 한 화면에 담기는 레이아웃 (overflow: hidden)
+- 첫 화면 안에 실제 서비스 콘텐츠가 충분히 보여야 한다. 상단 영역만 만들고 아래를 비워두면 실패.
+- ${effectivePlatform === 'mobile' ? '모바일 앱은 390px 내외 폭에서도 텍스트가 가로로 자연스럽게 읽혀야 한다. 세로 글자, 잘린 카드, 하단 내비와 겹친 콘텐츠는 실패.' : '웹 화면은 1440px 기준에서 좌우 컬럼, 카드 그리드, 리스트가 균형 있게 채워져야 한다.'}
+- 배달/커머스류 홈이면 최소한 검색/주소, 카테고리, 추천 메뉴 또는 가게 카드 여러 개, 가격/평점/시간, 장바구니/주문 액션이 첫 화면에 보여야 한다.
 ` : `### 멀티스크린 프로토타입 (필수)
 기획서를 분석해 **3~5개의 핵심 화면**을 하나의 HTML에 생성하세요.
 
@@ -1390,7 +1333,7 @@ ${effectivePlatform === 'web' ? `
 
 반드시 완전한 단일 HTML 파일로 응답하세요.
 - 모든 CSS를 <style> 태그 안에 작성
-- stock photo·외부 이미지 URL 사용 금지 (unsplash, pexels 등)
+- stock photo·외부 이미지 URL을 직접 작성하지 말고, 이미지가 필요한 곳에는 위 규칙의 %%HERO_3D_IMAGE:[색상]%% / %%IMG_n:설명%% / %%THUMB:keyword:width:height%% 플레이스홀더만 사용
 - Chart.js CDN은 허용
 - 응답은 반드시 \`\`\`html 코드블록으로 감싸기
 - 설명 텍스트 없이 코드만 출력
@@ -1398,26 +1341,26 @@ ${effectivePlatform === 'web' ? `
 `;
 
   const referenceSection = referenceImageBase64
-    ? `\n## 🎨 레퍼런스 이미지 — 스타일 강제 모방 (CRITICAL)
-첨부 이미지는 도달해야 할 디자인 어워드 품질의 벤치마크입니다. 다음 요소를 정밀하게 추출해 반영하세요:
+    ? `\n## 🎨 레퍼런스 이미지 — 구조 참고 (CRITICAL)
+첨부 이미지는 레이아웃과 콘텐츠 밀도 참고 자료입니다. 단, 색상·폰트·라운드·카드·그림자 규칙은 DESIGN.md를 최종 기준으로 유지하세요:
 
 **1. 시각적 톤·무드 추출**
 - 첨부 이미지의 전체 분위기(미니멀/임팩트/감성/플레이풀 중 어떤 것)를 파악하고 동일하게 재현
 - 사용된 일러스트·이미지의 스타일(3D 클레이/플랫 아이콘/실사 사진/그래픽 등) 그대로 차용
 - 캐릭터·마스코트가 보이면 비슷한 스타일의 일러스트 자리(%%IMG_1:캐릭터 설명%%) 마련
 
-**2. 색상·여백·타이포 추출**
-- 주요 컬러(특히 accent)의 채도·명도를 분석해 :root 변수에 반영
-- 카드/섹션 사이 여백·padding 비율을 그대로 따라잡기
-- 폰트 굵기 대비(예: 헤드라인 800w vs 본문 400w)와 크기 단계 모방
+**2. 여백·타이포 계층 참고**
+- 카드/섹션 사이의 정보 밀도와 레이아웃 리듬을 참고
+- 폰트 굵기와 크기 단계는 DESIGN.md typography 토큰 안에서만 재현
+- 첨부 이미지의 컬러를 DESIGN.md colors보다 우선하지 말 것
 
 **3. 레이아웃 구조 모방**
 - 헤더·히어로·콘텐츠·CTA·푸터 영역의 비율을 동일하게 잡기
 - 카드/리스트의 아이템 정렬 방식(원형 칩 가로 배열, 그리드, 스택 등) 그대로 재현
 - 하단 고정 CTA·말풍선·번호 배지 등 특징적 패턴이 있으면 반드시 포함
 
-⚠️ 절대 금지: 평범한 디폴트 카드 그리드로 회귀, 첨부 이미지에 있는 임팩트 요소(캐릭터·그라데이션 히어로·풀-블리드 이미지 등) 누락
-✅ 통과 기준: 생성된 UI를 첨부 이미지 옆에 나란히 놓았을 때 같은 디자이너가 만든 시리즈로 보일 것
+⚠️ 절대 금지: 첨부 이미지를 따라 하느라 DESIGN.md 스타일을 덮어쓰기
+✅ 통과 기준: 선택한 디자인 시스템 안에서 레퍼런스의 정보 구조와 완성도를 흡수한 화면
 `
     : ''
 
@@ -1453,7 +1396,7 @@ ${effectivePlatform === 'web' ? `
         }
         const needsRefine = critique.verdict === 'needs_refinement' || (typeof critique.score === 'number' && critique.score < 70)
         if (needsRefine && Array.isArray(critique.improvements) && critique.improvements.length > 0) {
-          const refineMessage = `디자인 어워드 심사위원이 지적한 개선 사항을 적용하세요 (점수: ${critique.score ?? '?'}/100):
+          const refineMessage = `디자인 시스템 검수자가 지적한 개선 사항을 적용하세요 (점수: ${critique.score ?? '?'}/100):
 
 지적된 문제:
 ${(critique.topIssues || []).map((s, i) => `${i + 1}. ${s}`).join('\n')}
@@ -1461,7 +1404,7 @@ ${(critique.topIssues || []).map((s, i) => `${i + 1}. ${s}`).join('\n')}
 반영할 개선:
 ${critique.improvements.map((s, i) => `${i + 1}. ${s}`).join('\n')}
 
-위 개선 사항을 모두 반영해 어워드 수준으로 끌어올리되, 기존 디자인 시스템 토큰·구조는 유지하세요.`
+위 개선 사항을 모두 반영하되, 기존 디자인 시스템 토큰·구조는 유지하세요.`
           html = await refineUI(html, refineMessage, brief, designMd, apiKey, logoDataUrl, domain)
         }
       }
@@ -1497,8 +1440,8 @@ export async function expandToPrototype(mainHtml: string, params: GenerateParams
     ? `GNB와 사이드바 사이의 <main> 또는 메인 콘텐츠 영역`
     : `앱바와 하단 탭바 사이의 스크롤 가능한 콘텐츠 영역`
 
-  const prompt = `당신은 Figma, Linear, Notion, Stripe 수준의 UI를 만드는 시니어 프로덕트 디자이너이자 프론트엔드 개발자입니다.
-아래 메인 화면의 디자인 퀄리티를 그대로 유지하면서 멀티스크린 프로토타입을 확장하세요. 서브 화면도 메인 화면과 동일한 디자인 어워드 포트폴리오 수준이어야 합니다.
+  const prompt = `당신은 선택한 디자인 시스템을 유지하면서 멀티스크린 프로토타입을 확장하는 시니어 프로덕트 디자이너이자 프론트엔드 개발자입니다.
+아래 메인 화면의 디자인 시스템, 컴포넌트 스타일, 정보 밀도를 그대로 유지하면서 서브 화면을 확장하세요.
 
 ## 메인 화면 HTML
 \`\`\`html
@@ -1582,8 +1525,8 @@ export async function refineUI(html: string, message: string, brief: string, des
   const safeHtml = logoSwapped.replace(/data:[^;]+;base64,[A-Za-z0-9+/]+=*/g, TINY_GIF)
   const hasMultiScreen = safeHtml.includes('aide-screen');
 
-  const prompt = `당신은 Figma, Linear, Stripe 수준의 UI를 유지·개선하는 시니어 프로덕트 디자이너입니다.
-요청된 수정 사항을 적용하되, 기존 디자인의 시각적 완성도를 절대 낮추지 마세요. 수정 후에도 디자인 어워드 포트폴리오 수준이어야 합니다.
+  const prompt = `당신은 선택한 디자인 시스템을 유지·개선하는 시니어 프로덕트 디자이너입니다.
+요청된 수정 사항을 적용하되, 기존 디자인 시스템의 토큰·컴포넌트·정보 구조를 절대 낮추지 마세요.
 
 ## 프로젝트 기획서
 ${brief}

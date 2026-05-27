@@ -473,6 +473,11 @@ function parseCustomDesignMdMeta(md: string): {
 
 export default function StudioPage() {
   const [step, setStep] = useState<Step>(1)
+  const [startedFromLanding, setStartedFromLanding] = useState(() => {
+    if (typeof window === 'undefined') return false
+    const params = new URLSearchParams(window.location.search)
+    return params.has('brief') && !params.has('historyId')
+  })
   const [platform, setPlatform] = useState<'mobile' | 'web'>('mobile')
   const [designPreset, setDesignPreset] = useState<DesignPreset>('none')
   const [customDesignMd, setCustomDesignMd] = useState<string | null>(null)
@@ -649,6 +654,7 @@ export default function StudioPage() {
     const platformParam = params.get('platform')
     if (!briefParam) return
 
+    setStartedFromLanding(true)
     const preset: DesignPreset = (presetParam && presetParam in DESIGN_PRESETS)
       ? presetParam as DesignPreset
       : 'none'
@@ -1131,7 +1137,7 @@ export default function StudioPage() {
         fetch('/api/generate', {
           method: 'POST',
           headers,
-          body: JSON.stringify({ ...baseParams, variantStyle }),
+          body: JSON.stringify({ ...baseParams, domain: effectiveDomain, variantStyle }),
           signal: abort.signal,
         }).then(r => r.json())
 
@@ -1258,6 +1264,7 @@ export default function StudioPage() {
   const handleReset = () => {
     tweakRequestHtmlRef.current = null
     setStep(1); setVariants([null, null]); setActiveVariant(0); setQuestionnaire(null)
+    setStartedFromLanding(false)
     setAnswers({}); setGenerateError(''); setAnalyzeError('')
     setSelectedStyles(null); setDarkMode(false); setBrandColor('#ff385c'); setDebouncedBrandColor('#ff385c')
     setTweakSpecA(null); setTweakSpecB(null)
@@ -1278,7 +1285,27 @@ export default function StudioPage() {
   const handleRetryVariant = async (idx: 1 | 2) => {
     if (!questionnaire) return
     const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
-    const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, platform }
+    const referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
+    const modelId = sessionStorage.getItem('aide_model') ?? undefined
+    const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
+    const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
+    const variantStyles = getVariantStyles(effectiveDomain)
+    const baseParams = {
+      designMd: effectiveDesignMd,
+      brief,
+      answers,
+      projectSummary: questionnaire.projectSummary,
+      logoDataUrl,
+      brandColors: brandColors.length > 0 ? brandColors : undefined,
+      mainOnly: true,
+      referenceImageBase64,
+      platform,
+      modelId,
+      heroImagePrompt: questionnaire.heroImageDecision?.generate ? questionnaire.heroImageDecision.prompt : undefined,
+      heroSubject: questionnaire.heroImageDecision?.heroSubject || undefined,
+      domain: effectiveDomain,
+      variantStyle: variantStyles[idx],
+    }
     const headers = apiHeaders()
     const genId = generationIdRef.current
     if (idx === 1) {
@@ -2203,7 +2230,7 @@ export default function StudioPage() {
                       setGnbHistory(updated)
                       if (isActive) {
                         if (updated.length > 0) loadHistoryItemIntoEditor(updated[0])
-                        else setStep(1)
+                        else { setStartedFromLanding(false); setStep(1) }
                       }
                     }}
                     style={{
@@ -2733,7 +2760,7 @@ export default function StudioPage() {
       <main className="flex-1 flex flex-col">
 
         {/* ── Step 1: Input ── */}
-        {step === 1 && isAnalyzing && (
+        {step === 1 && (isAnalyzing || startedFromLanding) && (
           <div className="flex-1 flex items-center justify-center px-8 py-16">
             <style>{`
               @keyframes wf-draw { to { stroke-dashoffset: 0 } }
@@ -2850,9 +2877,11 @@ export default function StudioPage() {
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 22 }}>
                 <div>
                   <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.04em', color: '#111111', marginBottom: 6 }}>
-                    정확한 시안을 위해 분석 중입니다
+                    {analyzeError ? '질문지 생성에 실패했습니다' : '정확한 시안을 위해 분석 중입니다'}
                   </h2>
-                  <p style={{ fontSize: 14, color: '#888888', lineHeight: 1.55 }}>선택하신 내용을 바탕으로 맞춤형 질문지를 만들고 있어요</p>
+                  <p style={{ fontSize: 14, color: '#888888', lineHeight: 1.55 }}>
+                    {analyzeError ? '입력 내용은 유지되어 있어요. 다시 시도하거나 세부 내용을 수정할 수 있습니다.' : '선택하신 내용을 바탕으로 맞춤형 질문지를 만들고 있어요'}
+                  </p>
                 </div>
 
                 {/* Logo + Design system row */}
@@ -2889,7 +2918,7 @@ export default function StudioPage() {
                     { label: '요청사항 파악 완료', done: true },
                     ...(logoDataUrl ? [{ label: '브랜드 로고 인식 완료', done: true }] : []),
                     ...(designPreset !== 'none' || !!customDesignMd ? [{ label: `${customDesignMdName ?? DESIGN_PRESETS[designPreset].label} 가이드라인 적용 완료`, done: true }] : []),
-                    { label: '맞춤형 질문지 생성 중...', done: false, active: true },
+                    { label: analyzeError ? '질문지 생성 실패' : '맞춤형 질문지 생성 중...', done: false, active: !analyzeError },
                   ].map((item, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: item.done ? '#111111' : '#f0f0f0', border: item.active ? '1.5px solid #dddddd' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -2900,12 +2929,35 @@ export default function StudioPage() {
                     </div>
                   ))}
                 </div>
+
+                {analyzeError && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: 'rgba(255,56,92,0.08)', border: '1px solid rgba(255,56,92,0.18)', color: F.primary, fontSize: 13, lineHeight: 1.55 }}>
+                      {analyzeError}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={handleAnalyze}
+                        disabled={!brief.trim() || isAnalyzing}
+                        style={{ height: 38, padding: '0 14px', borderRadius: 10, border: 'none', backgroundColor: F.ink, color: '#ffffff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        다시 시도
+                      </button>
+                      <button
+                        onClick={() => { setStartedFromLanding(false); setAnalyzeError('') }}
+                        style={{ height: 38, padding: '0 14px', borderRadius: 10, border: `1px solid ${F.hairline}`, backgroundColor: F.canvas, color: F.ink, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+                      >
+                        입력 내용 수정
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {step === 1 && !isAnalyzing && (
+        {step === 1 && !isAnalyzing && !startedFromLanding && (
           <div className="max-w-5xl mx-auto w-full px-8 py-12">
             <div className="mb-10">
               <h1 className="text-[28px] font-bold mb-2" style={{ letterSpacing: '-0.05em', color: F.ink }}>UI 시안 만들기</h1>
@@ -3067,7 +3119,7 @@ export default function StudioPage() {
                 <h1 className="text-[22px] font-bold mb-1" style={{ letterSpacing: '-0.05em' }}>세부 옵션 선택</h1>
                 <p className="text-[14px] text-[#666666]">{questionnaire.projectSummary}</p>
               </div>
-              <button onClick={() => setStep(1)} className="flex items-center gap-1.5 text-sm text-[#666666] hover:text-[#111111] transition-colors mt-1">
+              <button onClick={() => { setStartedFromLanding(false); setStep(1) }} className="flex items-center gap-1.5 text-sm text-[#666666] hover:text-[#111111] transition-colors mt-1">
                 <ArrowLeft size={14} /> 뒤로
               </button>
             </div>
@@ -4103,5 +4155,3 @@ function DesignSystemCardPreview({ preset }: { preset: DesignPreset }) {
     </div>
   )
 }
-
-
