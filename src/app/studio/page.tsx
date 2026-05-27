@@ -1468,7 +1468,7 @@ export default function StudioPage() {
           backgroundColor: '#f4f4f6',
         }}
       >
-        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: -1 }}>
+        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
           <DotField />
         </div>
         {isExpandingPrototype && <ExpandingOverlay image={pickedVariantIdx !== null ? (mainVariants[pickedVariantIdx]?.image ?? undefined) : undefined} platform={platform} variantLabel={pickedVariantIdx !== null ? ['시안 A','시안 B','시안 C'][pickedVariantIdx] : undefined} />}
