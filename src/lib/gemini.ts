@@ -745,7 +745,8 @@ export async function critiqueUI(
   html: string,
   brief: string,
   domain?: AppDomain,
-  apiKey?: string
+  apiKey?: string,
+  variantStyle?: string
 ): Promise<string> {
   const TINY_GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
   const safeHtml = html.replace(/data:[^;]+;base64,[A-Za-z0-9+/]+=*/g, TINY_GIF)
@@ -753,8 +754,31 @@ export async function critiqueUI(
     ? `\n도메인 벤치마크: ${getDomainGuidance(domain).split('\n')[0]}`
     : ''
 
-  const prompt = `당신은 디자인 어워드(Awwwards/CSS Design Awards/Webby) 심사위원입니다.
-아래 UI HTML을 어워드 수상작 기준으로 냉정하게 평가하세요. 평범한 UI는 탈락입니다.
+  const variantLabel = variantStyle?.includes('시안 A') ? 'A (정밀 정보형)'
+    : variantStyle?.includes('시안 B') ? 'B (임팩트 히어로형)'
+    : variantStyle?.includes('시안 C') ? 'C (감성 브랜드형)'
+    : null
+
+  const variantCriteria = variantLabel?.includes('A') ? `
+## 시안 A 전용 추가 기준
+- A1. 흰 배경 + 데이터 테이블/정렬 리스트가 중심을 이루는가?
+- A2. KPI 숫자 4개 이상이 동일 크기로 가로 정렬된 영역이 있는가?
+- A3. 컬러 영역이 전체의 20% 이하인가? (데이터 중심 레이아웃)
+- A4. 차트가 있다면 라인/sparkline (컬러풀 막대 금지)?` : variantLabel?.includes('B') ? `
+## 시안 B 전용 추가 기준
+- B1. 히어로 카드가 흰 배경(var(--color-surface))인가? (컬러 배경 금지)
+- B2. %%HERO_3D_IMAGE%% 플레이스홀더 또는 실제 3D 이미지 자리가 히어로에 있는가?
+- B3. 히어로 내 56px 이상 헤드라인이 있는가?
+- B4. 가격·핵심 강조가 var(--color-primary) 컬러로 표시되는가?` : variantLabel?.includes('C') ? `
+## 시안 C 전용 추가 기준
+- C1. 상단 220px 이상 풀-블리드 히어로(무드 이미지·그라데이션·실사 사진)가 있는가?
+- C2. 히어로에 감성 카피 헤드라인(20~28px bold white)이 있는가?
+- C3. 카드 border-radius 20~28px (부드러운 곡선)?
+- C4. 이미지·일러스트가 화면에 2개 이상 배치되었는가?` : ''
+
+  const prompt = `당신은 Awwwards SOTD 심사위원이자 Dribbble·Behance 큐레이터입니다.
+아래 UI HTML을 Dribbble 인기 샷, Behance 피처드 프로젝트, Awwwards SOTD 기준으로 냉정하게 평가하세요.
+Pinterest 무드보드에 올릴 수 있는 비주얼 임팩트가 없으면 탈락입니다.${variantLabel ? `\n\n이 시안은 **${variantLabel}** 방향입니다.` : ''}
 
 ## 기획서 요약
 ${brief.slice(0, 800)}
@@ -765,14 +789,15 @@ ${domainHint}
 ${safeHtml.slice(0, 18000)}
 \`\`\`
 
-## 평가 기준 (각 항목 통과/실패 판정)
-1. **히어로 임팩트**: 첫 화면 상단 35%+가 시각적 임팩트 영역인가? (그라데이션·캐릭터·대형 이미지·KPI 숫자 중 하나라도)
-2. **타이포 계층**: 폰트 크기가 최소 4단계로 차이나는가? (Hero/Section/Card/Label)
+## 공통 평가 기준 (각 항목 통과/실패 판정)
+1. **히어로 임팩트**: 첫 화면 상단 35%+가 시각적 임팩트 영역인가? (그라데이션·실사이미지·3D 오브젝트·KPI 숫자 중 하나 — Awwwards SOTD 기준)
+2. **타이포 계층**: 폰트 크기가 최소 4단계로 차이나는가? (Hero/Section/Card/Label — Dribbble 수준)
 3. **컬러 풍부도**: Primary 컬러가 3곳 이상에 적극 사용되었는가? (단순 버튼 1곳만 X)
 4. **카드 깊이**: 카드에 box-shadow가 적용되고 :hover 인터랙션이 정의되었는가?
 5. **정보 밀도**: 빈 영역 없이 콘텐츠로 채워졌는가? (KPI 4요소·리스트 아이템 풍부도)
-6. **시각 요소**: 이미지·아이콘·차트·뱃지가 충분히 활용되었는가?
+6. **시각 요소**: 이미지·아이콘·차트·뱃지가 충분히 활용되었는가? (Behance 피처드 수준)
 7. **CTA 명확도**: 주요 CTA가 시각적으로 두드러지는가? (accent 컬러·크기·위치)
+${variantCriteria}
 
 ## 출력 형식 (반드시 JSON)
 \`\`\`json
@@ -792,12 +817,12 @@ ${safeHtml.slice(0, 18000)}
 }
 \`\`\`
 
-- 70점 미만 = needs_refinement
+- 78점 미만 = needs_refinement (Dribbble/Awwwards 기준은 높습니다)
 - topIssues와 improvements는 가장 임팩트 큰 3가지만
 - 추상적 표현 금지 (예: "더 예쁘게" X → "히어로에 56px 이상 헤드라인 추가" O)
 - 응답은 JSON 코드블록만, 다른 설명 없이.`
 
-  const text = await generateFlashNoThinking(prompt, apiKey)
+  const text = await generatePro(prompt, apiKey, 'gemini-3.1-pro-preview')
   return text.trim()
 }
 
@@ -809,8 +834,8 @@ function buildQualityRules(heroImagePrompt?: string, domain?: AppDomain): string
 ${domainBlock}
 ## 공통 품질 및 시각 계층 원칙
 
-1. **시각적 완성도 — Figma/Linear/Stripe 수준 (CRITICAL)**
-   - **이 UI는 디자인 어워드 포트폴리오에 올릴 수 있는 수준이어야 합니다.** 평범하고 단조로운 결과물은 실패입니다.
+1. **시각적 완성도 — Dribbble·Behance·Awwwards·Pinterest 수준 (CRITICAL)**
+   - **이 UI는 Dribbble 인기 샷, Behance 피처드 프로젝트, Awwwards SOTD, Pinterest 무드보드에 올라올 수 있는 수준이어야 합니다.** 평범하고 단조로운 결과물은 즉시 탈락입니다.
    - **타이포그래피**: 최소 4단계 크기 계층 (48+px Hero / 22px 섹션제목 / 16px 카드제목 / 13px 레이블). 모든 텍스트가 같은 크기인 UI 절대 금지.
    - **Hero 섹션 필수**: 첫 화면 상단 40~50%는 반드시 시각적 임팩트. 서비스 유형에 따라 선택:
      • 대시보드/분석/B2B → primary 그라데이션 배경 + KPI 숫자 56~72px bold + 카드 세트
@@ -1014,7 +1039,8 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
 
   const prompt = `
 당신은 Figma, Linear, Notion, Stripe, Vercel 수준의 UI를 만드는 세계 최고 수준의 시니어 프로덕트 디자이너이자 프론트엔드 개발자입니다.
-당신이 만드는 UI는 디자인 에이전시 포트폴리오에 올릴 수 있는 수준이어야 합니다. 평범하고 단조로운 UI는 실패입니다.
+당신이 만드는 UI는 **Dribbble 인기 샷**, **Behance 피처드 프로젝트**, **Awwwards SOTD**, **Pinterest 무드보드**에 올라올 수 있는 수준이어야 합니다.
+이 네 플랫폼에서 볼 수 있는 임팩트 있는 비주얼, 세련된 타이포그래피, 풍부한 컬러 사용, 정교한 레이아웃을 구현하세요. 평범하고 단조로운 UI는 실패입니다.
 
 ## 🎨 시각적 완성도 기준 (모든 시안에 반드시 적용)
 
@@ -1027,7 +1053,7 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
 
 ### 색상 & 깊이
 - **Primary accent**: 배경, CTA, 강조 요소에 용감하게 사용 (버튼 하나에만 쓰는 소극적 사용 금지)
-- **그라데이션 히어로**: 첫 번째 화면의 히어로 영역은 반드시 그라데이션 배경 또는 solid accent 배경 사용 (전체 흰 배경 금지)
+- **히어로 임팩트**: 첫 화면의 히어로 영역은 반드시 시각적 임팩트 필수 — 시안 방향에 따라 그라데이션·실사 사진·3D 오브젝트·KPI 대형 숫자 중 하나 이상. 순백 배경에 작은 텍스트만 있는 히어로 절대 금지 (Awwwards 기준 즉시 탈락)
 - **카드 깊이**: box-shadow 2단계 — 기본(0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)), 호버(0 8px 24px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06))
 - **Accent 배지/태그**: 적어도 화면당 3~5개의 컬러 배지, 상태 태그, 강조 칩 사용
 
@@ -1392,7 +1418,7 @@ ${effectivePlatform === 'web' ? `
 
   if (params.criticalReview !== false) {
     try {
-      const critiqueRaw = await critiqueUI(html, brief, domain, apiKey)
+      const critiqueRaw = await critiqueUI(html, brief, domain, apiKey, variantStyle)
       const jsonMatch = critiqueRaw.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         const critique = JSON.parse(jsonMatch[0]) as {

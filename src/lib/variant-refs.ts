@@ -69,7 +69,7 @@ const DOMAIN_CONTEXT: Record<AppDomain, DomainContext> = {
   },
 };
 
-const PHILOSOPHY_A = `정밀 정보형 (시안 A) — 토스·Linear·Notion 스타일:
+const PHILOSOPHY_A = `정밀 정보형 (시안 A) — 토스·Linear·Notion 스타일 (Dribbble 대시보드 샷·Behance 데이터 시각화 피처드 수준):
 - 배경: var(--color-surface) 순백, 카드에 box-shadow: 0 1px 6px rgba(0,0,0,0.07)
 - 핵심 KPI: 52px bold, var(--color-text), 바로 아래 보조 텍스트 12px var(--color-text-alt)
 - 컬러 규칙: var(--color-primary)는 CTA 버튼·active 탭 아이콘·진행바에만. 나머지는 무채색
@@ -78,36 +78,67 @@ const PHILOSOPHY_A = `정밀 정보형 (시안 A) — 토스·Linear·Notion 스
 - 섹션 제목: 14px 600, var(--color-text), 상하 var(--spacing-sm) 여백
 - 전체 밀도: 정보를 계층적으로 쌓되 텍스트 줄 수를 최소화 — 숫자가 시각적으로 지배
 
+## Design DNA (시안 A CSS 패턴)
+\`\`\`css
+/* KPI 4-up 그리드 */
+.kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--color-border-alt); }
+.kpi-cell { background:var(--color-surface); padding:16px; }
+.kpi-value { font-size:52px; font-weight:700; color:var(--color-text); line-height:1; }
+.kpi-label { font-size:12px; color:var(--color-text-alt); margin-top:4px; }
+/* 데이터 테이블 */
+.data-table { width:100%; border-collapse:collapse; }
+.data-table td { padding:10px 12px; border-bottom:1px solid var(--color-border-alt); font-size:14px; }
+.data-table td.amount { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
+/* Sparkline accent */
+.sparkline-up { color:var(--color-primary); font-size:12px; font-weight:600; }
+\`\`\`
+
 ✅ 시안 A 합격 조건 (모두 충족해야 유효한 A 시안):
 - [ ] 흰 배경에 무채색 텍스트가 80% 이상을 차지 (컬러 영역은 20% 이하)
 - [ ] 데이터 테이블·정렬된 리스트가 최소 1개 (column 정렬·우측 정렬 숫자)
 - [ ] KPI 숫자 4개 이상이 같은 크기로 가로 정렬된 영역 존재
 - [ ] 카드 사이 구분이 border 라인 1px (그라데이션·강한 그림자 금지)
-- [ ] 차트가 있다면 라인 차트 또는 작은 sparkline (컬러풀 막대 차트 금지)`;
+- [ ] 차트가 있다면 라인 차트 또는 작은 sparkline (컬러풀 막대 차트 금지)
+- [ ] Dribbble에 올렸을 때 "깔끔한 대시보드 UI"로 즉시 인식될 것`;
 
-const PHILOSOPHY_B = `임팩트 히어로형 (시안 B) — Apple Product Hero·Stripe·Linear 스타일:
-- 최상단 히어로 카드: ⚠️ **흰 배경 강제** — var(--color-surface) 흰 배경, var(--color-text) 다크 텍스트, border-radius: var(--rounded-2xl, 20px), box-shadow: 0 16px 48px rgba(0,0,0,0.10)
-  • 흰 배경 강제 이유: 히어로에 들어갈 3D 이미지가 흰 배경 컷아웃 PNG이므로, 카드 배경이 컬러면 컷아웃처럼 어색하게 보임
-- 핵심 KPI/헤드라인: 56~72px font-weight:900 var(--color-text), 강조 키워드만 var(--color-primary)
-- 가격·CTA 강조: 가격은 32~48px var(--color-primary) bold로 컬러 임팩트 확보, CTA 버튼은 var(--color-primary) 풀너비
-- ⚠️ 필수: 히어로 카드 내 <img src="%%HERO_3D_IMAGE%%" style="width:100%;height:auto;max-height:280px;object-fit:contain;"> 를 반드시 포함. 이 플레이스홀더는 Creon 3D 아이콘(흰 배경 컷아웃)으로 자동 대체됨
-- 레이아웃: 히어로 카드 내부 grid-template-columns:1.1fr 1fr (좌측 텍스트, 우측 3D 이미지). 모바일은 1fr 단일 컬럼으로 스택
+const PHILOSOPHY_B = `임팩트 히어로형 (시안 B) — Apple Product Hero·Stripe·Linear 스타일 (Awwwards SOTD 히어로·Dribbble product shot 수준):
+- 최상단 히어로 카드: 3D 이미지 유무에 따라 배경 결정:
+  • 3D 이미지(%%HERO_3D_IMAGE%%) 있을 때 → **흰 배경** var(--color-surface): 3D PNG는 흰 배경 컷아웃이므로 컬러 배경이면 어색함
+  • 3D 이미지 없을 때 → **primary 그라데이션** 배경 + 흰 텍스트로 임팩트 극대화
+  border-radius: var(--rounded-2xl, 20px), box-shadow: 0 16px 48px rgba(0,0,0,0.10)
+- 핵심 KPI/헤드라인: 56~72px font-weight:900, 3D 있으면 var(--color-text) 다크·강조만 var(--color-primary), 3D 없으면 흰 텍스트
+- 가격·CTA 강조: 가격은 32~48px bold로 컬러 임팩트 확보, CTA 버튼은 var(--color-primary) 풀너비
+- ⚠️ 3D 이미지 있을 때: 히어로 카드 내 <img src="%%HERO_3D_IMAGE%%" style="width:100%;height:auto;max-height:280px;object-fit:contain;"> 반드시 포함
+- 레이아웃: 히어로 카드 내부 grid-template-columns:1.1fr 1fr (좌측 텍스트, 우측 이미지). 모바일은 1fr 단일 컬럼으로 스택
 - 나머지 카드: var(--color-surface) bg, 그림자 elevated, border-radius: var(--rounded-xl)
 - 섹션 제목: 17px 700, var(--color-text), 카드 간격 var(--spacing-base)
 - 하단 탭바: var(--color-surface) bg + 그림자, 활성 아이콘 var(--color-primary)
 - 전체 밀도: 히어로가 화면 상단 40%를 지배, 나머지는 서포팅 카드로 구성
 
-✅ 시안 B 합격 조건 (모두 충족해야 유효한 B 시안):
-- [ ] 첫 화면 상단 35~50%가 **흰 배경**의 히어로 카드 (컬러 배경 절대 금지)
-- [ ] 히어로 카드에 %%HERO_3D_IMAGE%% 플레이스홀더 포함 (3D 오브젝트 자리)
-- [ ] 히어로 내 대형 헤드라인 또는 숫자(56px 이상, 900w) — var(--color-text) 다크 텍스트
-- [ ] 가격 또는 핵심 강조 요소가 var(--color-primary) 컬러로 표시 (컬러 임팩트 확보)
-- [ ] 히어로 카드 box-shadow: 0 16px 48px rgba(0,0,0,0.10) 적용
-- [ ] 히어로 바로 아래 서포팅 카드 2~3개가 가로 정렬`;
+## Design DNA (시안 B CSS 패턴)
+\`\`\`css
+/* 히어로 카드 — 3D 없을 때 그라데이션 버전 */
+.hero-gradient { background:linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light, color-mix(in srgb, var(--color-primary) 70%, #fff)) 100%); color:#fff; }
+/* 히어로 카드 — 3D 있을 때 흰 배경 버전 */
+.hero-white { background:var(--color-surface); box-shadow:0 16px 48px rgba(0,0,0,0.10); }
+/* 핵심 KPI */
+.hero-kpi { font-size:clamp(48px,10vw,72px); font-weight:900; line-height:1; }
+/* 서포팅 카드 3열 */
+.support-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.support-card { background:var(--color-surface); border-radius:var(--rounded-xl); padding:16px; box-shadow:0 4px 12px rgba(0,0,0,0.07); }
+\`\`\`
 
-const PHILOSOPHY_C = `감성 브랜드형 (시안 C) — Airbnb·오늘의집·Spotify 스타일:
-- 상단 히어로: 무드 이미지 또는 var(--color-primary)→var(--color-primary-light) 그라데이션 전폭 배치, 높이 220px 이상
-- 히어로 내 텍스트: 감성 카피 20px 700 white + 서브카피 13px white/70%
+✅ 시안 B 합격 조건 (모두 충족해야 유효한 B 시안):
+- [ ] 첫 화면 상단 35~50%가 임팩트 히어로 카드 (3D 있으면 흰 배경, 없으면 primary 그라데이션)
+- [ ] 히어로 내 대형 헤드라인 또는 숫자(56px 이상, 900w)
+- [ ] 핵심 강조 요소가 컬러로 표시 (3D 있으면 primary, 없으면 흰 텍스트 + primary 버튼)
+- [ ] 히어로 카드 box-shadow: 0 16px 48px rgba(0,0,0,0.10) 적용
+- [ ] 히어로 바로 아래 서포팅 카드 2~3개가 가로 정렬
+- [ ] Awwwards에 올렸을 때 "대담한 제품 히어로" 또는 "임팩트 랜딩"으로 인식될 것`;
+
+const PHILOSOPHY_C = `감성 브랜드형 (시안 C) — Airbnb·오늘의집·Spotify 스타일 (Pinterest 무드보드·Behance 브랜드 아이덴티티 피처드 수준):
+- 상단 히어로: **실사 라이프스타일 사진(%%IMG_1:...%%) 우선** — 기획서에 3D/캐릭터가 명시된 경우만 %%HERO_3D_IMAGE%% 사용. 실사 이미지 없으면 var(--color-primary)→var(--color-primary-light) 그라데이션. 높이 220px 이상 전폭 배치
+- 히어로 내 텍스트: 감성 카피 20px 700 white + 서브카피 13px white/70%, 이미지 위에 다크 그라데이션 오버레이로 가독성 확보
 - 카드: var(--color-surface) bg, border-radius: var(--rounded-2xl), box-shadow: 0 4px 16px rgba(0,0,0,0.10), 여백 var(--spacing-lg-alt)
 - KPI: 40px 700 var(--color-primary), 숫자보다 의미 중심 레이블이 먼저
 - 컬러: 브랜드 컬러를 히어로·버튼·ring/badge에 적극 사용, 따뜻하거나 생동감 있는 팔레트
@@ -115,13 +146,30 @@ const PHILOSOPHY_C = `감성 브랜드형 (시안 C) — Airbnb·오늘의집·S
 - 전체 밀도: 이미지·무드가 먼저 눈에 들어오고, 수치는 두 번째로
 - ⛔ 폰 목업 절대 금지: 기기 실루엣·노치·홈 인디케이터 등 하드웨어 UI 요소로 HTML을 감싸지 말 것. body 자체가 앱 화면임
 
+## Design DNA (시안 C CSS 패턴)
+\`\`\`css
+/* 풀-블리드 히어로 (실사 이미지 또는 그라데이션) */
+.hero-c { position:relative; height:260px; border-radius:0 0 var(--rounded-2xl) var(--rounded-2xl); overflow:hidden; }
+.hero-c img { width:100%; height:100%; object-fit:cover; }
+.hero-c .overlay { position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.1) 60%); }
+.hero-c .copy { position:absolute; bottom:24px; left:20px; right:20px; color:#fff; }
+.hero-c .copy h1 { font-size:22px; font-weight:700; line-height:1.3; }
+/* 감성 카드 */
+.brand-card { border-radius:var(--rounded-2xl); overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,0.10); margin-bottom:20px; }
+.brand-card img { width:100%; aspect-ratio:16/9; object-fit:cover; }
+.brand-card .body { padding:16px 20px 20px; }
+/* CTA pill 버튼 */
+.cta-pill { display:block; width:100%; background:var(--color-primary); color:#fff; border-radius:100px; padding:16px; font-size:16px; font-weight:700; text-align:center; border:none; }
+\`\`\`
+
 ✅ 시안 C 합격 조건 (모두 충족해야 유효한 C 시안):
-- [ ] 상단 220px 이상의 풀-블리드 히어로 (무드 이미지 또는 그라데이션)
+- [ ] 상단 220px 이상의 풀-블리드 히어로 (실사 라이프스타일 이미지 우선, 없으면 그라데이션)
 - [ ] 히어로에 감성 카피 헤드라인 (서비스 가치 한 줄, 20~28px bold)
 - [ ] 카드 border-radius 20~28px (pill에 가까운 부드러운 곡선)
-- [ ] 일러스트·캐릭터·실사 이미지가 최소 2개 이상 화면에 배치
+- [ ] 실사 이미지·일러스트·캐릭터가 최소 2개 이상 화면에 배치
 - [ ] 카드 사이 여백이 24px 이상 (좁은 그리드 금지)
-- [ ] 풀너비 CTA 버튼이 화면 하단 또는 카드 내부에 존재`;
+- [ ] 풀너비 CTA 버튼이 화면 하단 또는 카드 내부에 존재
+- [ ] Pinterest에 핀했을 때 "라이프스타일 무드샷"으로 저장될 비주얼 퀄리티`;
 
 export function getVariantStyles(domain: AppDomain = 'other'): [string, string, string] {
   const ctx = DOMAIN_CONTEXT[domain] ?? DOMAIN_CONTEXT.other;
