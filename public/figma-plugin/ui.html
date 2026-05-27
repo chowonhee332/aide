@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'Inter', sans-serif;
+    font-size: 13px;
+    color: #1a1a1a;
+    background: #fff;
+    padding: 20px;
+  }
+  h1 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h1 .logo { font-size: 18px; }
+  .desc {
+    color: #666;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    font-size: 12px;
+  }
+  .drop-zone {
+    border: 2px dashed #ddd;
+    border-radius: 10px;
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: #fafafa;
+    margin-bottom: 16px;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: #0066ff;
+    background: #f0f5ff;
+  }
+  .drop-zone .icon { font-size: 32px; margin-bottom: 10px; }
+  .drop-zone p { font-size: 13px; color: #444; }
+  .drop-zone small { font-size: 11px; color: #999; }
+  .file-info {
+    display: none;
+    background: #f0f5ff;
+    border: 1px solid #cce0ff;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: #333;
+  }
+  .file-info.visible { display: block; }
+  .file-info strong { display: block; font-size: 13px; margin-bottom: 4px; color: #0044cc; }
+  .actions {
+    display: flex;
+    gap: 8px;
+  }
+  .btn {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s;
+  }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+  .btn-primary {
+    background: #0066ff;
+    color: white;
+  }
+  .btn-primary:not(:disabled):hover { background: #0052cc; }
+  .btn-secondary {
+    background: #f0f0f0;
+    color: #333;
+  }
+  .btn-secondary:hover { background: #e4e4e4; }
+  .progress {
+    display: none;
+    margin-top: 14px;
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+  }
+  .progress.visible { display: block; }
+  .progress-bar {
+    height: 4px;
+    background: #e0e0e0;
+    border-radius: 99px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: #0066ff;
+    border-radius: 99px;
+    width: 0%;
+    transition: width 0.3s;
+  }
+</style>
+</head>
+<body>
+  <h1><span class="logo">⬡</span> Aide — UI to Figma</h1>
+  <p class="desc">Aide에서 내보낸 디자인 JSON 파일을 선택하면<br>Figma에 화면이 자동으로 생성됩니다.</p>
+
+  <div class="drop-zone" id="dropZone">
+    <div class="icon">📂</div>
+    <p>JSON 파일을 드래그하거나 클릭하여 선택</p>
+    <small>aide-design-*.json 파일만 지원됩니다</small>
+    <input type="file" accept=".json" id="fileInput" style="display:none" />
+  </div>
+
+  <div class="file-info" id="fileInfo">
+    <strong id="fileName">파일명</strong>
+    <span id="fileDetails">0개 화면</span>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-secondary" id="cancelBtn">취소</button>
+    <button class="btn btn-primary" id="importBtn" disabled>Figma에 가져오기</button>
+  </div>
+
+  <div class="progress" id="progress">
+    <span id="progressText">화면을 생성하는 중...</span>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+
+<script>
+var fileData = null;
+
+var dropZone = document.getElementById('dropZone');
+var fileInput = document.getElementById('fileInput');
+var fileInfo = document.getElementById('fileInfo');
+var fileName = document.getElementById('fileName');
+var fileDetails = document.getElementById('fileDetails');
+var importBtn = document.getElementById('importBtn');
+var cancelBtn = document.getElementById('cancelBtn');
+var progress = document.getElementById('progress');
+var progressText = document.getElementById('progressText');
+var progressFill = document.getElementById('progressFill');
+
+dropZone.addEventListener('click', function() { fileInput.click(); });
+
+dropZone.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  dropZone.classList.add('drag-over');
+});
+
+dropZone.addEventListener('dragleave', function() {
+  dropZone.classList.remove('drag-over');
+});
+
+dropZone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  var file = e.dataTransfer.files[0];
+  if (file) readFile(file);
+});
+
+fileInput.addEventListener('change', function() {
+  var file = fileInput.files[0];
+  if (file) readFile(file);
+});
+
+function readFile(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      if (!data.screens || !Array.isArray(data.screens)) {
+        alert('올바른 Aide 디자인 파일이 아닙니다.');
+        return;
+      }
+      fileData = data;
+      fileName.textContent = file.name;
+      fileDetails.textContent = data.screens.length + '개 화면 · ' + (data.platform === 'web' ? '웹' : '모바일');
+      fileInfo.classList.add('visible');
+      importBtn.disabled = false;
+    } catch {
+      alert('JSON 파싱 오류가 발생했습니다.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+importBtn.addEventListener('click', function() {
+  if (!fileData) return;
+  importBtn.disabled = true;
+  cancelBtn.disabled = true;
+  progress.classList.add('visible');
+  progressText.textContent = '화면을 가져오는 중...';
+  progressFill.style.width = '30%';
+
+  setTimeout(function() {
+    progressFill.style.width = '70%';
+  }, 300);
+
+  parent.postMessage({ pluginMessage: { type: 'import', data: fileData } }, '*');
+});
+
+cancelBtn.addEventListener('click', function() {
+  parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*');
+});
+</script>
+</body>
+</html>

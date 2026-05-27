@@ -76,17 +76,34 @@ const PHILOSOPHY_A = `정밀 정보형 (시안 A) — 토스·Linear·Notion 스
 - 카드: border: 1px solid var(--color-border-alt), border-radius: var(--rounded-xl), 내부 패딩 var(--spacing-md)
 - 헤더: 브랜드명 16px semibold + 우측 아이콘, 아래 얇은 구분선 var(--color-border-alt)
 - 섹션 제목: 14px 600, var(--color-text), 상하 var(--spacing-sm) 여백
-- 전체 밀도: 정보를 계층적으로 쌓되 텍스트 줄 수를 최소화 — 숫자가 시각적으로 지배`;
+- 전체 밀도: 정보를 계층적으로 쌓되 텍스트 줄 수를 최소화 — 숫자가 시각적으로 지배
 
-const PHILOSOPHY_B = `임팩트 히어로형 (시안 B) — Robinhood·Stripe·Nike 스타일:
-- 최상단 히어로 카드: var(--color-primary) 배경, 흰 텍스트, border-radius: var(--rounded-2xl), box-shadow: 0 16px 48px rgba(0,0,0,0.18)
-- 핵심 KPI: 72px font-weight:900 white, 히어로 카드 상단 절반 차지
-- 히어로 내부: KPI 아래 메인 차트 또는 진행 바(흰색 30% 투명도 배경)
-- ⚠️ 필수: 히어로 카드 내 <img src="%%HERO_3D_IMAGE%%" style="..."> 를 반드시 포함 — 없으면 유효하지 않은 B 시안. 이 플레이스홀더는 Creon 3D 아이콘으로 자동 대체됨
+✅ 시안 A 합격 조건 (모두 충족해야 유효한 A 시안):
+- [ ] 흰 배경에 무채색 텍스트가 80% 이상을 차지 (컬러 영역은 20% 이하)
+- [ ] 데이터 테이블·정렬된 리스트가 최소 1개 (column 정렬·우측 정렬 숫자)
+- [ ] KPI 숫자 4개 이상이 같은 크기로 가로 정렬된 영역 존재
+- [ ] 카드 사이 구분이 border 라인 1px (그라데이션·강한 그림자 금지)
+- [ ] 차트가 있다면 라인 차트 또는 작은 sparkline (컬러풀 막대 차트 금지)`;
+
+const PHILOSOPHY_B = `임팩트 히어로형 (시안 B) — Apple Product Hero·Stripe·Linear 스타일:
+- 최상단 히어로 카드: ⚠️ **흰 배경 강제** — var(--color-surface) 흰 배경, var(--color-text) 다크 텍스트, border-radius: var(--rounded-2xl, 20px), box-shadow: 0 16px 48px rgba(0,0,0,0.10)
+  • 흰 배경 강제 이유: 히어로에 들어갈 3D 이미지가 흰 배경 컷아웃 PNG이므로, 카드 배경이 컬러면 컷아웃처럼 어색하게 보임
+- 핵심 KPI/헤드라인: 56~72px font-weight:900 var(--color-text), 강조 키워드만 var(--color-primary)
+- 가격·CTA 강조: 가격은 32~48px var(--color-primary) bold로 컬러 임팩트 확보, CTA 버튼은 var(--color-primary) 풀너비
+- ⚠️ 필수: 히어로 카드 내 <img src="%%HERO_3D_IMAGE%%" style="width:100%;height:auto;max-height:280px;object-fit:contain;"> 를 반드시 포함. 이 플레이스홀더는 Creon 3D 아이콘(흰 배경 컷아웃)으로 자동 대체됨
+- 레이아웃: 히어로 카드 내부 grid-template-columns:1.1fr 1fr (좌측 텍스트, 우측 3D 이미지). 모바일은 1fr 단일 컬럼으로 스택
 - 나머지 카드: var(--color-surface) bg, 그림자 elevated, border-radius: var(--rounded-xl)
 - 섹션 제목: 17px 700, var(--color-text), 카드 간격 var(--spacing-base)
 - 하단 탭바: var(--color-surface) bg + 그림자, 활성 아이콘 var(--color-primary)
-- 전체 밀도: KPI가 화면 상단 40%를 지배, 나머지는 서포팅 카드로 구성`;
+- 전체 밀도: 히어로가 화면 상단 40%를 지배, 나머지는 서포팅 카드로 구성
+
+✅ 시안 B 합격 조건 (모두 충족해야 유효한 B 시안):
+- [ ] 첫 화면 상단 35~50%가 **흰 배경**의 히어로 카드 (컬러 배경 절대 금지)
+- [ ] 히어로 카드에 %%HERO_3D_IMAGE%% 플레이스홀더 포함 (3D 오브젝트 자리)
+- [ ] 히어로 내 대형 헤드라인 또는 숫자(56px 이상, 900w) — var(--color-text) 다크 텍스트
+- [ ] 가격 또는 핵심 강조 요소가 var(--color-primary) 컬러로 표시 (컬러 임팩트 확보)
+- [ ] 히어로 카드 box-shadow: 0 16px 48px rgba(0,0,0,0.10) 적용
+- [ ] 히어로 바로 아래 서포팅 카드 2~3개가 가로 정렬`;
 
 const PHILOSOPHY_C = `감성 브랜드형 (시안 C) — Airbnb·오늘의집·Spotify 스타일:
 - 상단 히어로: 무드 이미지 또는 var(--color-primary)→var(--color-primary-light) 그라데이션 전폭 배치, 높이 220px 이상
@@ -95,7 +112,16 @@ const PHILOSOPHY_C = `감성 브랜드형 (시안 C) — Airbnb·오늘의집·S
 - KPI: 40px 700 var(--color-primary), 숫자보다 의미 중심 레이블이 먼저
 - 컬러: 브랜드 컬러를 히어로·버튼·ring/badge에 적극 사용, 따뜻하거나 생동감 있는 팔레트
 - 여백: 카드 간격 var(--spacing-lg-alt), 상하 패딩 여유 있게 — 숨 쉬는 레이아웃
-- 전체 밀도: 이미지·무드가 먼저 눈에 들어오고, 수치는 두 번째로`;
+- 전체 밀도: 이미지·무드가 먼저 눈에 들어오고, 수치는 두 번째로
+- ⛔ 폰 목업 절대 금지: 기기 실루엣·노치·홈 인디케이터 등 하드웨어 UI 요소로 HTML을 감싸지 말 것. body 자체가 앱 화면임
+
+✅ 시안 C 합격 조건 (모두 충족해야 유효한 C 시안):
+- [ ] 상단 220px 이상의 풀-블리드 히어로 (무드 이미지 또는 그라데이션)
+- [ ] 히어로에 감성 카피 헤드라인 (서비스 가치 한 줄, 20~28px bold)
+- [ ] 카드 border-radius 20~28px (pill에 가까운 부드러운 곡선)
+- [ ] 일러스트·캐릭터·실사 이미지가 최소 2개 이상 화면에 배치
+- [ ] 카드 사이 여백이 24px 이상 (좁은 그리드 금지)
+- [ ] 풀너비 CTA 버튼이 화면 하단 또는 카드 내부에 존재`;
 
 export function getVariantStyles(domain: AppDomain = 'other'): [string, string, string] {
   const ctx = DOMAIN_CONTEXT[domain] ?? DOMAIN_CONTEXT.other;
@@ -104,6 +130,81 @@ export function getVariantStyles(domain: AppDomain = 'other'): [string, string, 
     `${PHILOSOPHY_B}\n\n## 도메인 컨텍스트\n${ctx.b}`,
     `${PHILOSOPHY_C}\n\n## 도메인 컨텍스트\n${ctx.c}`,
   ];
+}
+
+type DomainPatternGuide = {
+  benchmark: string;
+  mustInclude: string[];
+  avoid: string[];
+};
+
+const DOMAIN_PATTERNS: Record<AppDomain, DomainPatternGuide> = {
+  finance: {
+    benchmark: '토스, 카카오뱅크, 뱅크샐러드, 로빈후드 수준의 금융 UI',
+    mustInclude: ['잔액·자산 KPI 카드 (52px+ bold)', '거래 내역 리스트 (날짜·금액 정렬)', '월별 트렌드 라인 차트 또는 sparkline', '상승/하락 컬러 인디케이터(녹색/빨강)'],
+    avoid: ['파스텔 톤·캐릭터 일러스트 (전문성 저하)', '비교표 없이 단일 숫자만 보여주기'],
+  },
+  commerce: {
+    benchmark: '무신사, 29CM, 쿠팡, 나이키 수준의 커머스 UI',
+    mustInclude: ['대형 제품 이미지 카드 (1:1 또는 4:3 aspect)', '가격 표시 18~22px bold accent 컬러', '카테고리 필터 칩 (가로 스크롤)', '제품 그리드 (2~3열) 또는 1열 풀너비 카드'],
+    avoid: ['텍스트만 있는 빈약한 제품 리스트', '가격이 작거나 회색으로 묻혀 보임'],
+  },
+  health: {
+    benchmark: '삼성헬스, 애플 피트니스, 스트라바, 캄 수준의 헬스·웰니스 UI',
+    mustInclude: ['원형 진행 링 또는 도넛 차트 (목표 달성률)', '운동·걸음수·칼로리 KPI 3개 이상', '주간/일간 활동 바 차트', '액티비티 색 코딩 (걷기·달리기·요가 등)'],
+    avoid: ['단순 텍스트 통계만 나열', '캐릭터 없이 무미건조한 데이터'],
+  },
+  food: {
+    benchmark: '배달의민족, 쿠팡이츠, 도미노피자, 마켓컬리 수준의 푸드·딜리버리 UI',
+    mustInclude: ['대형 음식 이미지 (정사각형 또는 16:9)', '가격·배달비·예상시간 메타 정보', '카테고리 칩 가로 스크롤', '추천/한정/할인 뱃지 (accent 컬러)'],
+    avoid: ['음식 이미지 없는 텍스트 메뉴', '배달 정보·가격 누락'],
+  },
+  productivity: {
+    benchmark: '노션, 리니어, 지라, 아사나 수준의 생산성 도구 UI',
+    mustInclude: ['작업 리스트/칸반 (상태 컬럼)', '진행률 바 또는 게이지', '담당자 아바타 + 우선순위 뱃지', '필터·정렬 컨트롤 (검색바 sticky)'],
+    avoid: ['텍스트만의 단순 리스트', '컬러 코딩 없는 상태 표시'],
+  },
+  social: {
+    benchmark: '인스타그램, 트위터, 틱톡, 비리얼 수준의 소셜 UI',
+    mustInclude: ['프로필 아바타 (원형) + 사용자명·시간 메타', '대형 콘텐츠(이미지/영상) 카드', '좋아요·댓글·공유 액션 아이콘 가로 정렬', '피드 스토리/하이라이트 (가로 스크롤 원형)'],
+    avoid: ['아바타·미디어 없이 텍스트만 나열', '액션 아이콘 누락'],
+  },
+  travel: {
+    benchmark: '에어비앤비, 부킹닷컴, 스카이스캐너, 클룩 수준의 여행 UI',
+    mustInclude: ['대형 목적지 이미지 (와이드 4:3 또는 16:9)', '가격·평점·후기수 메타', '필터/정렬 컨트롤 (날짜·인원·예산)', '맵 또는 위치 인디케이터'],
+    avoid: ['이미지 없는 텍스트 목적지 리스트', '평점·가격 누락'],
+  },
+  education: {
+    benchmark: '클래스101, 인프런, 듀오링고, 마스터클래스 수준의 교육 UI',
+    mustInclude: ['강좌 썸네일 카드 (16:9 비율)', '강사명·평점·수강생 수 메타', '진도율 바 또는 이수 뱃지', '카테고리 탭/필터 (장르별)'],
+    avoid: ['썸네일 없이 텍스트만의 강좌 리스트'],
+  },
+  entertainment: {
+    benchmark: '넷플릭스, 왓챠, 스포티파이, 멜론 수준의 엔터테인먼트 UI',
+    mustInclude: ['포스터/앨범 아트 카드 (2:3 또는 1:1)', '제목·러닝타임·장르 메타', '가로 스크롤 추천 섹션 (장르별 캐러셀)', '재생/저장 액션 버튼'],
+    avoid: ['포스터 이미지 없는 단순 리스트', '캐러셀 없이 일자 리스트만'],
+  },
+  business: {
+    benchmark: '세일즈포스, 허브스팟, 태블로, 노션 팀 수준의 비즈니스 SaaS UI',
+    mustInclude: ['KPI 대시보드 (4~6개 카드 그리드)', '라인 차트 또는 막대 차트 1개 이상', '데이터 테이블 (정렬 가능 컬럼)', '필터·기간 선택 컨트롤'],
+    avoid: ['차트 없는 단순 숫자 나열', '데이터 테이블 부재'],
+  },
+  other: {
+    benchmark: '디자인 어워드 수상작 수준의 범용 UI',
+    mustInclude: ['핵심 가치 헤드라인 (28~40px bold)', '서비스 핵심 기능 3개 이상 카드/섹션', '주요 CTA 버튼 (accent 컬러, 풀너비)', '이미지·일러스트·아이콘 시각 요소'],
+    avoid: ['텍스트만의 빈약한 화면', 'CTA 없는 정보 페이지'],
+  },
+};
+
+export function getDomainGuidance(domain: AppDomain = 'other'): string {
+  const p = DOMAIN_PATTERNS[domain] ?? DOMAIN_PATTERNS.other;
+  return `**도메인 벤치마크: ${p.benchmark}**
+
+이 도메인에 반드시 포함할 패턴 (누락 = 시안 실패):
+${p.mustInclude.map(s => `- ${s}`).join('\n')}
+
+이 도메인에서 피할 패턴:
+${p.avoid.map(s => `- ⛔ ${s}`).join('\n')}`;
 }
 
 type DomainEffects = {

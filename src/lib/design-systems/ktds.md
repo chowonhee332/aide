@@ -1,14 +1,19 @@
 ---
 version: alpha
 name: KTDS Design System
-description: "KT DS 엔터프라이즈 UI 시스템 — Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학으로 한다. 화이트 서피스(#ffffff)와 쿨 뉴트럴 구조 위에 Primary Blue(#1a75ff)를 유일한 인터랙션 강조색으로 사용한다. 버튼은 8px 라운드 사각형(pill 절대 금지), 입력 필드 52px, 카드 16px 라운드에 subtle shadow. 페이지 배경은 반드시 surface-alt(#f7f7f8), 카드/컴포넌트 배경은 surface(#ffffff). Pretendard 폰트. 모바일=하단 탭 바(NavBottom), 데스크탑=좌측 레일(NavSide, 240px). 패키지: @ktds-ui/components (대부분), Toast는 @ktds-ui/context/ToastContext. Carousel은 swiper 별도 설치, Chart는 chart.js 별도 설치."
+description: "KT DS 엔터프라이즈 UI 시스템 — Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학으로 한다. 화이트 서피스(#ffffff)와 쿨 뉴트럴 구조 위에 Primary Blue(#1a75ff)를 유일한 인터랙션 강조색으로 사용한다. 버튼은 8px 라운드 사각형(pill 절대 금지), 입력 필드 52px, 카드 16px 라운드에 subtle shadow. 페이지 배경은 반드시 primary-fill-neutral(#F2F5F9), 카드/컴포넌트 배경은 surface(#ffffff). Pretendard 폰트. 모바일=하단 탭 바(NavBottom), 데스크탑=좌측 레일(NavSide, 240px). 패키지: @ktds-ui/components (일반 컴포넌트), @ktds-ui/layout (레이아웃 컴포넌트: SideNavigation·Header·Footer·Content·ContentTitle·SplitLayout), Toast는 @ktds-ui/context/ToastContext. Carousel은 swiper 별도 설치, Chart는 chart.js 별도 설치."
 
 colors:
   # Brand Primary
   primary:              "#1a75ff"
   primary-text:         "#186ae8"
-  primary-fill-neutral: "#E8F1FF"
+  primary-text-neutral: "#4891ff"
+  primary-fill:         "#1a75ff"
+  primary-fill-neutral: "#F2F5F9"
   primary-border:       "#1a75ff"
+  primary-border-neutral: "#66a3ff"
+  primary-icon:         "#1a75ff"
+  primary-icon-neutral: "#4891ff"
   on-primary:           "#ffffff"
   # Neutral Surface
   surface:              "#ffffff"
@@ -201,6 +206,13 @@ components:
     rounded: "{rounded.md}"
     height: 48px
     padding: 0 24px
+  button-normal:
+    backgroundColor: "{colors.fill-neutral}"
+    textColor: "{colors.text-neutral}"
+    typography: "{typography.button-md}"
+    rounded: "{rounded.md}"
+    height: 48px
+    padding: 0 24px
   button-disabled:
     backgroundColor: "{colors.surface-disabled}"
     textColor: "{colors.text-disabled}"
@@ -277,30 +289,49 @@ components:
     rounded: "{rounded.full}"
     height: 32px
     padding: 0 12px
-  badge-positive:
+  badge-filled-primary:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.caption-lg}"
+    rounded: "{rounded.full}"
+    padding: 2px 8px
+  badge-filled-positive:
     backgroundColor: "{colors.positive}"
     textColor: "{colors.on-primary}"
     typography: "{typography.caption-lg}"
     rounded: "{rounded.full}"
     padding: 2px 8px
-  badge-negative:
+  badge-filled-negative:
     backgroundColor: "{colors.negative}"
     textColor: "{colors.on-primary}"
     typography: "{typography.caption-lg}"
     rounded: "{rounded.full}"
     padding: 2px 8px
-  badge-caution:
-    backgroundColor: "{colors.caution}"
-    textColor: "{colors.on-primary}"
+  badge-tint-primary:
+    backgroundColor: "{colors.primary-fill-neutral}"
+    textColor: "{colors.primary-text}"
     typography: "{typography.caption-lg}"
     rounded: "{rounded.full}"
     padding: 2px 8px
-  badge-info:
-    backgroundColor: "{colors.info}"
-    textColor: "{colors.on-primary}"
+  badge-outlined-primary:
+    backgroundColor: "transparent"
+    textColor: "{colors.primary}"
+    border: "1px solid {colors.primary}"
     typography: "{typography.caption-lg}"
     rounded: "{rounded.full}"
     padding: 2px 8px
+  badge-ghost-primary:
+    backgroundColor: "transparent"
+    textColor: "{colors.primary}"
+    typography: "{typography.caption-lg}"
+    rounded: "{rounded.full}"
+    padding: 2px 8px
+  badge-ring:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    rounded: "{rounded.full}"
+    border: "2px solid {colors.surface}"
+    note: "Avatar 우측 상단 위치 전용 (position prop 사용)"
   nav-bottom-default:
     backgroundColor: "{colors.surface}"
     borderTop: "1px solid {colors.border-alt}"
@@ -343,15 +374,9 @@ components:
     backgroundColor: "#28292c"
     textColor: "#ffffff"
     rounded: "{rounded.md}"
-  loading-static:
-    position: "static"
+  loading-default:
     defaultSize: "3"
-  loading-absolute:
-    position: "absolute"
-    defaultSize: "3"
-  loading-fixed:
-    position: "fixed"
-    defaultSize: "3"
+    sizes: ["1","2","3","4","5"]
   checkbox-default:
     backgroundColor: "{colors.surface}"
     rounded: "{rounded.xs}"
@@ -433,7 +458,7 @@ components:
     handleSize: 20px
     trackHeight: 4px
   datepicker-default:
-    format: "YYYY/MM/DD"
+    format: "YYYY-MM-DD"
     directInputDisabled: true
     supportsRange: true
   tab-bar:
@@ -575,27 +600,69 @@ components:
   divider-strong:
     backgroundColor: "{colors.border}"
     height: 1px
-  avatar-sm:
+  avatar-size-1:
+    backgroundColor: "{colors.fill-neutral}"
+    textColor: "{colors.text-neutral}"
+    typography: "{typography.caption-sm}"
+    rounded: "{rounded.full}"
+    width: 20px
+    height: 20px
+  avatar-size-2:
+    backgroundColor: "{colors.fill-neutral}"
+    textColor: "{colors.text-neutral}"
+    typography: "{typography.caption-sm}"
+    rounded: "{rounded.full}"
+    width: 24px
+    height: 24px
+  avatar-size-3:
+    backgroundColor: "{colors.fill-neutral}"
+    textColor: "{colors.text-neutral}"
+    typography: "{typography.caption-lg}"
+    rounded: "{rounded.full}"
+    width: 28px
+    height: 28px
+  avatar-size-4:
     backgroundColor: "{colors.fill-neutral}"
     textColor: "{colors.text-neutral}"
     typography: "{typography.caption-lg}"
     rounded: "{rounded.full}"
     width: 32px
     height: 32px
-  avatar-md:
+  avatar-size-5:
+    backgroundColor: "{colors.fill-neutral}"
+    textColor: "{colors.text-neutral}"
+    typography: "{typography.body-md}"
+    rounded: "{rounded.full}"
+    width: 36px
+    height: 36px
+  avatar-size-6:
     backgroundColor: "{colors.fill-neutral}"
     textColor: "{colors.text-neutral}"
     typography: "{typography.body-md}"
     rounded: "{rounded.full}"
     width: 40px
     height: 40px
-  avatar-lg:
+  avatar-size-7:
     backgroundColor: "{colors.fill-neutral}"
     textColor: "{colors.text-neutral}"
     typography: "{typography.body-lg}"
     rounded: "{rounded.full}"
     width: 48px
     height: 48px
+  avatar-size-8:
+    backgroundColor: "{colors.fill-neutral}"
+    textColor: "{colors.text-neutral}"
+    typography: "{typography.title-md}"
+    rounded: "{rounded.full}"
+    width: 56px
+    height: 56px
+  avatar-size-9:
+    backgroundColor: "{colors.fill-neutral}"
+    textColor: "{colors.text-neutral}"
+    typography: "{typography.headline-lg}"
+    rounded: "{rounded.full}"
+    width: 72px
+    height: 72px
   accordion-item:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
@@ -662,25 +729,26 @@ components:
     supportsCheckbox: true
     supportsRadio: true
   chart-default:
-    requiresPackage: "chart.js"
+    requiresPackage: "chart.js/auto"
     supportedTypes: ["line","bar","doughnut","pie"]
+    colorPalette: ["#69A5FF","#FF8C8C","#FFC06E","#88F03E","#9E86FC"]
   ex-list-page:
     description: "목록 페이지 — 섹션 헤더 + 필터 칩 행 + 카드 그리드 + 페이지네이션. 배경 surface-alt."
-    background: "{colors.surface-alt}"
+    background: "{colors.primary-fill-neutral}"
     header: "section-header-default"
     filter: "chip-default 그룹 + search-bar-default"
     content: "card-default 그리드 (모바일 1열 / 태블릿 2열 / 데스크탑 3–4열  gap={spacing.base}~{spacing.md})"
     footer: "pagination-item 중앙 정렬"
   ex-form-page:
     description: "폼 페이지 — 중앙 카드에 레이블+인풋 스택 + 제출 버튼. 최대 너비 480px, 모바일 전체폭."
-    background: "{colors.surface-alt}"
+    background: "{colors.primary-fill-neutral}"
     container: "card-default  max-width=480px"
     title: "{typography.title-md}"
     fields: "레이블(body-md/{colors.text-neutral}) + input-default 스택  gap={spacing.md}"
     actions: "button-primary 100% 너비 + button-ghost 취소(선택)"
   ex-dashboard:
     description: "대시보드 — 데스크탑 NavSide 240px + 스탯 카드 행 + 차트 + 목록/사이드. 모바일 NavBottom 하단."
-    background: "{colors.surface-alt}"
+    background: "{colors.primary-fill-neutral}"
     desktop-nav: "NavSide 240px 좌측 고정"
     stats: "card-default 행 2–4열  gap={spacing.md}"
     chart: "card-default 전체 너비 or 2/3"
@@ -688,13 +756,13 @@ components:
     mobile-nav: "nav-bottom-default 하단"
   ex-detail-page:
     description: "상세 페이지 — 브레드크럼 + 히어로 카드(전체폭) + 탭/아코디언 콘텐츠. 데스크탑 2/3+1/3 사이드."
-    background: "{colors.surface-alt}"
+    background: "{colors.primary-fill-neutral}"
     breadcrumb: "breadcrumb-item"
     hero: "card-default 전체 너비  {typography.headline-lg} + tag-default/badge-* + {typography.body-lg} + button-primary + button-outline"
     content: "accordion-item 목차 or tab-bar 콘텐츠  (데스크탑: 2/3 본문 + 1/3 사이드)"
   ex-auth-page:
     description: "인증 페이지 — 중앙 카드에 로고 + 인풋 2개 + 버튼. 최대 너비 400px."
-    background: "{colors.surface-alt}"
+    background: "{colors.primary-fill-neutral}"
     container: "card-default  max-width=400px"
     header: "브랜드 로고 중앙 정렬 + {typography.title-md}"
     fields: "input-default(이메일) + input-default(비밀번호)  gap={spacing.md}"
@@ -723,6 +791,26 @@ components:
     title: "{typography.title-md}  {colors.text}  mb={spacing.xs}"
     body: "{typography.body-md}  {colors.text-alternative}  mb={spacing.lg}"
     actions: "button-primary or button-outline  mt={spacing.md}"
+
+responsive:
+  breakpoints:
+    mobile: "< 480px"
+    mobile-large: "480–767px"
+    tablet: "768–1023px"
+    desktop: "≥ 1024px"
+  navigation:
+    mobile: ".nav-bottom (하단 탭바, position:fixed, bottom:0, left:0, right:0)"
+    tablet: ".nav-top (상단 내비, position:fixed, top:0, left:0, right:0, height:56px)"
+    desktop: ".nav-side (좌측 레일, position:fixed, left:0, top:0, width:240px, height:100vh)"
+  padding:
+    mobile: "16px"
+    tablet: "24px"
+    desktop: "40px"
+  grid:
+    mobile: "1열"
+    mobile-large: "2열"
+    tablet: "3열, gap:24px"
+    desktop: "4열, gap:32px, max-width:1280px, main-content margin-left:240px"
 ---
 
 ## Overview
@@ -740,26 +828,38 @@ Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학
 모든 컴포넌트는 `@ktds-ui/components`에서 import한다. Toast·Alert Dialog만 예외.
 
 ```ts
-// 일반 컴포넌트
+// 일반 컴포넌트 (소스 확인 기준)
 import {
   Button, ButtonArea, Stack,
   Fab,
   Icon, IconButton,
-  Input, Textarea, Select, Slider, DatePicker,
-  Checkbox, Radio, Toggle, Chip, Badge, Tag, Avatar,
-  Card, Accordion, Tooltip, Table, Pagination, Stepper,
-  ProgressBar, Skeleton, Breadcrumb, Divider, Alert, Admonition,
-  Loading, Drawer, Dialog, Carousel, Rate, FileUploader,
-  DropdownMenu, TreeMenu, Chart, NavBottom, NavSide, NavTop,
-  Tablist, MenuTab,
-  Heading, Text, TextList, Link, Mark,
+  Input, Textarea, Select, DatePicker,
+  Checkbox, CheckboxGroup, Radio, RadioGroup, Switch, Chip, Badge, Tag, Avatar,
+  Card, Tooltip, Table, Pagination,
+  Progress, Breadcrumb, Admonition,
+  Loading, Dialog, Rate, FileUploader,
+  Anchor, Combobox, DropdownMenu, TreeMenu, Chart,
+  NavBottom, TabList, MenuTab, Popover, Form, FormItem,
+  AlertDialog, Empty,
+  Heading, Text, Link, Mark,
 } from '@ktds-ui/components';
+// ⚠️ Storybook 기준 추가 컴포넌트(소스 미확인): Accordion, Drawer, Slider, Stepper, Carousel, BottomSheet, List
 
 // Toast — 별도 context 패키지
 import { useToast } from '@ktds-ui/context/ToastContext';
 
 // Alert Dialog — 별도 context 패키지
 import { useAlert } from '@ktds-ui/context/AlertContext';
+
+// 레이아웃 컴포넌트
+import {
+  SideNavigation,
+  Header,
+  Footer,
+  Content,
+  ContentTitle,
+  SplitLayout,
+} from '@ktds-ui/layout';
 ```
 
 **외부 패키지 추가 설치 필요:**
@@ -792,7 +892,7 @@ KTDS의 색상 전략은 **신뢰(Trust)와 명확성(Clarity)** 두 가지 원�
 | /50  | `#1a75ff` |
 | /60  | `#4891ff` |
 | /70  | `#66a3ff` |
-| /99  | `#E8F1FF` |
+| /99  | `#F2F5F9` |
 
 #### Cool Neutral (UI Neutral)
 | Step | Value |
@@ -829,6 +929,116 @@ KTDS의 색상 전략은 **신뢰(Trust)와 명확성(Clarity)** 두 가지 원�
 | Fill alt | `--color-fill-alt` | `rgba(112,115,124,0.08)` |
 
 > **토큰명 주의**: YAML/Stitch 스펙에서는 `text-alternative`로 표기하고, CSS 변수는 `--color-text-alt`(단축형)를 사용한다. `--color-text-alternative`는 존재하지 않는다.
+
+### 핵심 Semantic Tokens — Light
+
+#### Primary
+| 역할 | CSS Variable | Value |
+|------|-------------|-------|
+| Primary/Text/default | `--color-primary-text` | `#186ae8` |
+| Primary/Text/neutral | `--color-primary-text-neutral` | `#4891ff` |
+| Primary/Fill/default | `--color-primary-fill` | `#1a75ff` |
+| Primary/Fill/neutral (BG) | `--color-primary-fill-neutral` | `#F2F5F9` |
+| Primary/Border/default | `--color-primary-border` | `#1a75ff` |
+| Primary/Border/neutral | `--color-primary-border-neutral` | `#66a3ff` |
+| Primary/Icon/default | `--color-primary-icon` | `#1a75ff` |
+| Primary/Icon/neutral | `--color-primary-icon-neutral` | `#4891ff` |
+
+#### Neutral
+| 역할 | CSS Variable | Value |
+|------|-------------|-------|
+| Neutral/Text/default | `--color-text` | `#171719` |
+| Neutral/Text/neutral | `--color-text-neutral` | `rgba(46,47,51,0.88)` |
+| Neutral/Text/alternative | `--color-text-alt` | `rgba(55,56,60,0.61)` |
+| Neutral/Text/assistive | `--color-text-assistive` | `rgba(55,56,60,0.28)` |
+| Neutral/Text/strong | `--color-text-strong` | `#000000` |
+| Neutral/Surface/default | `--color-surface` | `#ffffff` |
+| Neutral/Surface/alternative | `--color-surface-alt` | `#f7f7f8` |
+| Neutral/Border/default | `--color-border` | `rgba(112,115,124,0.35)` |
+| Neutral/Border/neutral | `--color-border-neutral` | `rgba(112,115,124,0.28)` |
+| Neutral/Border/alternative | `--color-border-alt` | `rgba(112,115,124,0.16)` |
+| Neutral/Icon/default | `--color-icon` | `#171719` |
+| Neutral/Icon/neutral | `--color-icon-neutral` | `rgba(46,47,51,0.88)` |
+| Neutral/Fill/default | `--color-fill` | `rgba(112,115,124,0.22)` |
+| Neutral/Fill/neutral | `--color-fill-neutral` | `rgba(112,115,124,0.12)` |
+| Neutral/Fill/alternative | `--color-fill-alt` | `rgba(112,115,124,0.08)` |
+| Neutral/Fill/strong | `--color-fill-strong` | `rgba(112,115,124,0.35)` |
+
+#### Interaction
+| 역할 | CSS Variable | Value |
+|------|-------------|-------|
+| Interaction/Text/inactive | `--color-text-inactive` | `#989ba2` |
+| Interaction/Text/disabled | `--color-text-disabled` | `rgba(55,56,60,0.35)` |
+| Interaction/Surface/inactive | `--color-surface-inactive` | `#eaebec` |
+| Interaction/Surface/disabled | `--color-surface-disabled` | `#f4f4f5` |
+| Interaction/Border/inactive | `--color-border-inactive` | `#e1e2e4` |
+| Interaction/Border/disabled | `--color-border-disabled` | `#eaebec` |
+| Interaction/Fill/inactive | `--color-fill-inactive` | `rgba(112,115,124,0.22)` |
+| Interaction/Fill/disabled | `--color-fill-disabled` | `rgba(112,115,124,0.12)` |
+| Interaction/Dimmer/dimmer | `--color-dimmer` | `rgba(23,23,25,0.52)` |
+
+#### Inverse
+| 역할 | CSS Variable | Value |
+|------|-------------|-------|
+| Inverse/text-inverse | `--color-inverse-text` | `#f7f7f8` |
+| Inverse/Surface-inverse | `--color-inverse-surface` | `#1b1c1e` |
+| Inverse/fill-inverse | `--color-inverse-fill` | `rgba(112,115,124,0.22)` |
+| Inverse/icon-inverse | `--color-inverse-icon` | `#f7f7f8` |
+
+### 핵심 Semantic Tokens — Dark
+
+#### Primary
+| 역할 | CSS Variable | Value |
+|------|-------------|-------|
+| Primary/Text/default | `--color-primary-text` | `#1a75ff` |
+| Primary/Text/neutral | `--color-primary-text-neutral` | `#1253b5` |
+| Primary/Fill/default | `--color-primary-fill` | `#1253b5` |
+| Primary/Fill/neutral (BG) | `--color-primary-fill-neutral` | `#02060e` |
+| Primary/Border/default | `--color-primary-border` | `#4891ff` |
+| Primary/Border/neutral | `--color-primary-border-neutral` | `#1253b5` |
+| Primary/Icon/default | `--color-primary-icon` | `#1a75ff` |
+| Primary/Icon/neutral | `--color-primary-icon-neutral` | `#1253b5` |
+
+#### Neutral
+| 역할 | CSS Variable | Value |
+|------|-------------|-------|
+| Neutral/Text/default | `--color-text` | `#f7f7f8` |
+| Neutral/Text/neutral | `--color-text-neutral` | `rgba(194,196,200,0.88)` |
+| Neutral/Text/alternative | `--color-text-alt` | `rgba(174,176,182,0.61)` |
+| Neutral/Text/assistive | `--color-text-assistive` | `rgba(174,176,182,0.28)` |
+| Neutral/Text/strong | `--color-text-strong` | `#ffffff` |
+| Neutral/Surface/default | `--color-surface` | `#1b1c1e` |
+| Neutral/Surface/alternative | `--color-surface-alt` | `#0f0f10` |
+| Neutral/Border/default | `--color-border` | `rgba(112,115,124,0.52)` |
+| Neutral/Border/neutral | `--color-border-neutral` | `rgba(112,115,124,0.43)` |
+| Neutral/Border/alternative | `--color-border-alt` | `rgba(112,115,124,0.35)` |
+| Neutral/Icon/default | `--color-icon` | `#f7f7f8` |
+| Neutral/Icon/neutral | `--color-icon-neutral` | `rgba(194,196,200,0.88)` |
+| Neutral/Fill/default | `--color-fill` | `rgba(112,115,124,0.35)` |
+| Neutral/Fill/neutral | `--color-fill-neutral` | `rgba(112,115,124,0.16)` |
+| Neutral/Fill/alternative | `--color-fill-alt` | `rgba(112,115,124,0.12)` |
+| Neutral/Fill/strong | `--color-fill-strong` | `rgba(112,115,124,0.43)` |
+
+#### Interaction
+| 역할 | CSS Variable | Value |
+|------|-------------|-------|
+| Interaction/Text/inactive | `--color-text-inactive` | `#5a5c63` |
+| Interaction/Text/disabled | `--color-text-disabled` | `rgba(152,155,162,0.35)` |
+| Interaction/Surface/inactive | `--color-surface-inactive` | `#333438` |
+| Interaction/Surface/disabled | `--color-surface-disabled` | `#2e2f33` |
+| Interaction/Border/inactive | `--color-border-inactive` | `#37383c` |
+| Interaction/Border/disabled | `--color-border-disabled` | `#333438` |
+| Interaction/Fill/inactive | `--color-fill-inactive` | `rgba(112,115,124,0.22)` |
+| Interaction/Fill/disabled | `--color-fill-disabled` | `rgba(112,115,124,0.12)` |
+| Interaction/Dimmer/dimmer | `--color-dimmer` | `rgba(23,23,25,0.74)` |
+
+#### Inverse
+| 역할 | CSS Variable | Value |
+|------|-------------|-------|
+| Inverse/text-inverse | `--color-inverse-text` | `#171719` |
+| Inverse/Surface-inverse | `--color-inverse-surface` | `#f7f7f8` |
+| Inverse/fill-inverse | `--color-inverse-fill` | `rgba(112,115,124,0.08)` |
+| Inverse/icon-inverse | `--color-inverse-icon` | `#171719` |
 
 #### Status Alert Colors (Light)
 | Category | Background | Text |
@@ -914,9 +1124,11 @@ KTDS의 레이아웃은 **8px 기본 그리드**를 중심으로 모든 spacing�
 
 ## Elevation & Depth
 
-KTDS는 그림자를 시각적 장식이 아닌 **레이어 계층 신호**로 사용한다. 그림자가 강할수록 해당 요소가 페이지 맥락에서 독립적인 관심 요구임을 사용자에게 전달한다.
+KTDS는 그림자와 구분선을 시각적 장식이 아닌 **레이어 계층 신호**로 사용한다. B2B와 B2C는 정보 밀도와 감성 톤이 다르므로 카드 분리 방식도 다르게 적용한다.
 
-- **레벨 0–1 (flat)**: 리스트 아이템·카드 기본면 — 그림자 없이 Surface/Surface-alt 색상 차이로만 분리한다. 과도한 그림자는 엔터프라이즈 데이터 테이블을 복잡하게 만든다.
+- **B2B 카드 기본면**: `border: 1px solid var(--color-border-alt)`만 사용하고 shadow는 사용하지 않는다. 업무 화면에서는 테이블·폼·필터가 많아 shadow보다 약한 구분선이 더 안정적이다.
+- **B2C 카드 기본면**: border 없이 `--dsx-shadow-1`만 사용한다. 소비자 서비스에서는 표면이 가볍게 떠 보이는 표현이 더 자연스럽다.
+- **금지**: 카드에 border와 shadow를 동시에 적용하지 않는다. 두 신호가 겹치면 컨테이너가 과하게 무거워 보인다.
 - **레벨 2 (FAB)**: 페이지 위에 떠 있는 주요 액션 버튼. 고정 위치(fixed)이므로 스크롤 콘텐츠와 명확히 분리되어야 한다.
 - **레벨 3 (Dropdown·Tooltip)**: 짧은 수명의 팝업. 과도한 그림자는 닫힘을 방해하므로 blur 반경을 20px로 제한한다.
 - **레벨 4–6 (Drawer·Modal·Overlay)**: 사용자의 전체 주의를 요구하는 UI. 그림자가 클수록 배경 콘텐츠와의 깊이 차이를 강조해 "지금 이 레이어가 최상단"임을 인지시킨다.
@@ -926,7 +1138,7 @@ DSX 공식 그림자 토큰 (`--dsx-shadow-*`):
 | Level | CSS Variable | Shadow | Usage |
 |-------|-------------|--------|-------|
 | 0 | — | none | Flat surface, list items |
-| 1 | `--dsx-shadow-1` | `0px 1px 3px rgba(0,0,0,0.16)` | Card subtle |
+| 1 | `--dsx-shadow-1` | `0px 1px 3px rgba(0,0,0,0.16)` | B2C Card subtle |
 | 2 | `--dsx-shadow-2` | `0px 3px 4px rgba(0,0,0,0.16)` | Button FAB |
 | 3 | `--dsx-shadow-3` | `0px 8px 20px rgba(0,0,0,0.10)` | Dropdown, Tooltip |
 | 4 | `--dsx-shadow-4` | `0px 18px 28px rgba(0,0,0,0.08)` | Drawer, Side panel |
@@ -981,17 +1193,35 @@ KTDS 컴포넌트 시스템은 **엔터프라이즈 업무 흐름 효율성**을
 
 ### Button
 
+```tsx
+import { Button } from '@ktds-ui/components';
+
+<Button variant="primary">저장</Button>
+<Button variant="outline" size="small">취소</Button>
+<Button variant="negative" prefixIcon="delete">삭제</Button>
+```
+
+| prop | type | default | values |
+|------|------|---------|--------|
+| `variant` | string | `'outline'` | primary secondary outline ghost negative normal |
+| `size` | string | — | small large |
+| `prefixIcon` | string | — | 아이콘 name (앞) |
+| `suffixIcon` | string | — | 아이콘 name (뒤) |
+| `iconOnly` | string | — | 아이콘 name — 아이콘만 표시 (children은 스크린리더용 숨김 텍스트) |
+| `disabled` | bool | `false` | — |
+
 ```
 button-primary:    bg={colors.primary}       text=white               h=48px  px=24px  r={rounded.md}
 button-secondary:  bg={colors.fill-neutral}  text={colors.text}       h=48px  px=24px  r={rounded.md}
 button-outline:    bg=transparent  border=1px {colors.border}  text={colors.text}  h=48px  px=24px  r={rounded.md}
 button-ghost:      bg=transparent            text={colors.text}       h=48px  (no border)  px=12px
 button-negative:   bg={colors.negative}      text=white               h=48px  px=24px  r={rounded.md}
+button-normal:     bg={colors.fill-neutral}  text={colors.text-neutral}  h=48px  px=24px  r={rounded.md}
 button-disabled:   bg={colors.surface-disabled}  text={colors.text-disabled}  r={rounded.md}
 button-fab:        r={rounded.full}
 ```
 
-**Size variants:** `small` / `large` (default 없음 — 기본이 표준 48px)
+**Size variants:** `small` / `large` (미설정 시 표준 48px)
 
 ### Input Field
 
@@ -1030,9 +1260,10 @@ import { Textarea } from '@ktds-ui/components';
 Props:
   variant:    'outlined' | 'filled'  (default: 'outlined')
   rows:       number                 (default: 5)
-  maxLength:  number                 (default: 1000)
-  showCount:  bool                   (default: false — maxLength와 함께)
-  disabled, readOnly, placeholder, value, className
+  count:      number                 (default: 1000 — 최대 글자 수, 하단 카운터 자동 표시)
+  value:      string                 (controlled 입력값)
+  invalid:    bool                   (유효성 오류 상태)
+  disabled, readOnly, placeholder, className
 ```
 
 ```
@@ -1044,9 +1275,36 @@ Label: body-md  위에 배치 / 입력 최대 글자수 카운트 표시 가능
 ### Card
 
 ```
-card-default:  bg={colors.surface}  r={rounded.xl}  p=20px
-               border=1px {colors.border-alt}
-               shadow=var(--dsx-shadow-1)
+import { Card } from '@ktds-ui/components';
+
+Props:
+  variant:   'vertical' | 'horizontal'  (default: 'vertical')
+  media:     node  (img / iframe / video 등 미디어 영역)
+  children:  node  (카드 본문 콘텐츠)
+  float:     node  (플로팅 영역 — 주로 IconButton 배치)
+
+구조: dsx-Card-media → dsx-Card-content → dsx-Card-float
+```
+
+```tsx
+// 세로형 카드 (기본)
+<Card media={<img src="..." alt="..." />} float={<IconButton name="bookmark" />}>
+  <Heading level="4">카드 제목</Heading>
+  <Text>카드 설명 텍스트</Text>
+</Card>
+
+// 가로형 카드
+<Card variant="horizontal" media={<img src="..." alt="..." />}>
+  <Heading level="4">가로형 카드</Heading>
+</Card>
+```
+
+```
+card-default:
+  bg={colors.surface}  r={rounded.xl}  p=20px
+  B2B: border=1px solid {colors.border-alt}  shadow=none
+  B2C: border=none  shadow=var(--dsx-shadow-1)
+  Do not combine border and shadow on the same card.
 ```
 
 ### List Item
@@ -1058,16 +1316,75 @@ list-item-default:  min-h=56px  px=16px
                     Trailing chevron: 16px / {colors.text-neutral}
 ```
 
-### Status Badge / Chip
+### Badge
+
+상태 표시, 숫자 카운트, 아이콘 오버레이 등 다양한 배지 표현.
+
+```tsx
+import { Badge } from '@ktds-ui/components';
+
+<Badge variant="filled" accent="primary">NEW</Badge>
+<Badge variant="tint" accent="positive">승인</Badge>
+<Badge variant="outlined" accent="negative" size="small">오류</Badge>
+<Badge variant="ring" accent="primary" size="dot" />
+
+// Avatar 위에 위치 배지
+<Badge variant="filled" accent="primary" size="xsmall" position="topEnd">3</Badge>
+```
+
+| prop | type | default | values |
+|------|------|---------|--------|
+| `variant` | string | `'tint'` | filled tint outlined ghost ring |
+| `size` | string | `'medium'` | dot xsmall small medium large xlarge |
+| `accent` | string | — | primary positive negative caution info normal |
+| `round` | bool | — | pill 형태 강제 |
+| `position` | string | — | topStart topEnd bottomStart bottomEnd (상위 relative 기준 절대 위치) |
+| `prefixIcon` | string | — | 아이콘 name |
+| `suffixIcon` | string | — | 아이콘 name |
+| `iconOnly` | string | — | 아이콘 name — 아이콘만 표시 (`aria-label`로 children 사용) |
+| `children` | string | — | 배지 텍스트 (required) |
 
 ```
-r={rounded.full}
-badge-positive:  bg={colors.positive}  text=white
-badge-negative:  bg={colors.negative}  text=white
-badge-caution:   bg={colors.caution}   text=white
-badge-info:      bg={colors.info}      text=white
+variant=filled:   bg={accent 색상}  text=white  r={rounded.full}
+variant=tint:     bg={accent fill-neutral}  text={accent text}  r={rounded.full}
+variant=outlined: bg=transparent  border=1px {accent 색상}  text={accent 색상}  r={rounded.full}
+variant=ghost:    bg=transparent  text={accent 색상}  r={rounded.full}
+variant=ring:     bg={accent 색상}  border=2px solid {colors.surface}  r={rounded.full}
 
-chip-default:   border=1px {colors.border}  h=32px
+size=dot:    4×4px  (숫자 없는 알림 점)
+size=xsmall: 12×12px
+size=small:  16×16px
+size=medium: 20px (기본)
+size=large:  24px
+size=xlarge: 28px
+```
+
+### Chip (선택형 필터 태그)
+
+```
+import { Chip } from '@ktds-ui/components';
+
+Props:
+  id:          string   input id (미설정 시 랜덤 생성)
+  checked:     bool     controlled 체크 상태
+  label:       string   표시 텍스트
+  prefixIcon:  string   앞쪽 아이콘 name
+  suffixIcon:  string   뒤쪽 아이콘 name
+  onChange:    func     (checked: bool) => void  (controlled 시 필수)
+  disabled:    bool     비활성화
+```
+
+```tsx
+// uncontrolled
+<Chip label="전체" />
+<Chip label="승인" prefixIcon="checkCircle" />
+
+// controlled (checked + onChange 함께 사용)
+<Chip label="진행중" checked={filter === '진행중'} onChange={(v) => setFilter(v ? '진행중' : '')} />
+```
+
+```
+chip-default:   border=1px {colors.border}  h=32px  r={rounded.full}
 chip-selected:  bg={colors.primary-fill-neutral}  text={colors.primary-text}  border=1px {colors.primary}
 ```
 
@@ -1080,14 +1397,15 @@ import { NavBottom } from '@ktds-ui/components';
 
 Props:
   menuItems*: [{
-    icon,
-    label,
-    to | href | onClick,  // 셋 중 하나로 링크 처리
-    badge?,               // 선택적 badge 숫자
+    icon*:    string   아이콘 name
+    label*:   string   메뉴 레이블 (활성 비교 기준)
+    href?:    string   링크 URL (href 또는 onClick 중 하나)
+    badge?:   node     뱃지 노드 (Badge 컴포넌트 등)
+    onClick?: func     클릭 핸들러
   }]
-  className
+  className?: string
 
-제약: 최소 3개, 최대 5개 메뉴
+제약: 최소 3개, 최대 5개 메뉴 권장
 ```
 
 ```
@@ -1135,10 +1453,10 @@ Props:
 
 DSCore에는 두 가지 탭 컴포넌트가 있다:
 
-#### Tablist (일반 탭, 모바일/데스크탑)
+#### TabList (일반 탭, 모바일/데스크탑)
 
 ```
-import { Tablist } from '@ktds-ui/components';
+import { TabList } from '@ktds-ui/components';
 
 Props:
   data*:       [{ key: string, label: string, content: node }]
@@ -1180,23 +1498,103 @@ bottom-sheet-default: bg={colors.surface}  r={rounded.2xl} 상단만  px=16px py
 
 ### Dialog
 
+```tsx
+import { Dialog, Button } from '@ktds-ui/components';
+
+// 단순 텍스트 content
+<Dialog
+  isOpen={isOpen}
+  title="삭제 확인"
+  subTitle="주의 사항"
+  content="정말 삭제하시겠습니까?"
+  size="default"
+  onClose={() => setIsOpen(false)}
+  closeOnOutSide={false}
+  buttons={
+    <>
+      <Button size="large" onClick={() => setIsOpen(false)}>취소</Button>
+      <Button variant="negative" size="large" onClick={handleDelete}>삭제</Button>
+    </>
+  }
+/>
+
+// content를 render prop으로 — Form Grid 안에 넣을 때
+<Dialog
+  isOpen={isOpen}
+  title="코드그룹 등록"
+  subTitle="코드그룹에 대한 정보를 입력하세요"
+  size="large"
+  onClose={onClose}
+  content={() => (
+    <Form variant="grid" column={2}>
+      <FormItem label="코드그룹 ID" isRequired className="dsx-w-full"><Input full /></FormItem>
+      <FormItem label="코드그룹명" isRequired><Input full /></FormItem>
+      <FormItem label="사용여부" isRequired>
+        <RadioGroup value={radioValue} options={radioOptions} onChange={handleRadioChange} />
+      </FormItem>
+      <FormItem label="유효기간" isRequired>
+        <DatePicker dateRange />
+      </FormItem>
+    </Form>
+  )}
+  buttons={
+    <>
+      <Button size="large" onClick={onClose}>취소</Button>
+      <Button variant="primary" size="large" onClick={handleRegister}>등록</Button>
+    </>
+  }
+/>
 ```
-import { Dialog } from '@ktds-ui/components';
+
+| prop | type | default | values |
+|------|------|---------|--------|
+| `isOpen` | bool | — | (required) |
+| `title` | string | — | 다이얼로그 제목 |
+| `subTitle` | string | — | 서브 제목 |
+| `content` | node\|func | `''` | 본문 내용. 함수 전달 시 `content()` 호출 (render prop) |
+| `size` | string | `'default'` | default small large full |
+| `onClose` | func | — | 닫기 핸들러 |
+| `closeOnOutSide` | bool | `false` | 외부 클릭 시 닫힘 |
+| `buttons` | node | — | 하단 버튼 영역 JSX 노드 직접 전달 |
+
+```
+size=small:   max-w=320px
+size=default: max-w=480px
+size=large:   max-w=640px
+size=full:    width=100vw  height=100vh
+
+dialog-default:  bg={colors.surface}  r={rounded.xl}  p=24px
+                 shadow=var(--dsx-shadow-5)
+                 overlay: rgba(0,0,0,0.5)  z-index=300
+```
+
+### AlertDialog
+
+명령형(programmatic) 확인/취소 다이얼로그. 직접 렌더링하지 말고 **AlertContext의 `useAlert`** 훅으로 사용할 것.
+
+```
+import { AlertDialog } from '@ktds-ui/components';
 
 Props:
-  isOpen:        boolean
-  title:         string
-  subTitle:      string
-  content:       string
-  closeOnOutSide: boolean
+  title:     string   다이얼로그 제목
+  message:   string   본문 메시지
+  onConfirm: func     확인 버튼 콜백 (required)
+  onCancel:  func     취소 버튼 콜백 (없으면 취소 버튼 미표시)
 
-구조: 타이틀(최대 1줄) + 서브타이틀 + 콘텐츠 영역 + Cancel/Primary 버튼 행
+주의: isOpen prop 없음 — 마운트 즉시 표시됨.
+      #portal-root에 createPortal로 렌더링.
+      AlertContext를 통해 useAlert() 훅으로 호출하는 것이 권장 패턴.
 ```
 
-```
-dialog-default:  bg={colors.surface}  r={rounded.xl}  p=24px
-                 shadow=var(--dsx-shadow-5)  max-w=480px
-                 overlay: rgba(0,0,0,0.5)  z-index=300
+```tsx
+// 권장: AlertContext 사용
+const { showAlert } = useAlert();
+showAlert({
+  title: '삭제 확인',
+  message: '정말 삭제하시겠습니까?',
+  onConfirm: handleDelete,
+  onCancel: () => {},
+});
 ```
 
 ### Drawer
@@ -1243,19 +1641,29 @@ snackbar-default:  bg=#28292c  text=white  r={rounded.md}
 
 ### Loading
 
-```
+```tsx
 import { Loading } from '@ktds-ui/components';
 
-Props:
-  position:  'static' | 'absolute' | 'fixed'  (default: 'static')
-  size:      '1' | '2' | '3' | '4' | '5'     (default: '3')
-  isVisible: bool                              (default: true)
-  label:     string
-  className
+<Loading />
+<Loading size="5" label="데이터를 불러오는 중..." />
+```
 
-position='static':   일반 인라인 로딩 (콘텐츠 영역 내)
-position='absolute': 특정 컨테이너 기준 중앙 위치
-position='fixed':    페이지 전체 화면 중앙 위치
+| prop | type | default | values |
+|------|------|---------|--------|
+| `size` | string | `'3'` | '1' '2' '3' '4' '5' (1=최소, 5=최대) |
+| `label` | string | — | 접근성 및 표시 레이블 |
+| `className` | string | — | — |
+
+```
+Loading은 인라인 스피너만 렌더링 (position prop 없음).
+페이지 전체 로딩: Loading을 fixed overlay div 안에 직접 배치.
+컨테이너 로딩: absolute overlay div 안에 배치.
+
+스피너 스타일:
+  border: 3px solid var(--color-border-alt)
+  border-top-color: var(--color-primary)
+  border-radius: 50%
+  animation: rotate 700ms linear infinite
 ```
 
 ### Select / Dropdown
@@ -1312,10 +1720,10 @@ import { DatePicker } from '@ktds-ui/components';
 
 Props:
   dateRange:  bool             (기간 선택 모드, default: false)
-  value:      string | string[]  (YYYY/MM/DD 형식)
+  value:      string | string[]  (YYYY-MM-DD 형식)
   onChange:   func
-  minDate:    string           (YYYY/MM/DD)
-  maxDate:    string           (YYYY/MM/DD)
+  minDate:    string           (YYYY-MM-DD)
+  maxDate:    string           (YYYY-MM-DD)
   width:      string | number
 
 주의: 직접 텍스트 입력/편집 불가 — 달력 UI로만 선택 가능
@@ -1377,6 +1785,28 @@ radio-disabled:   border={colors.border-alt}  dot={colors.text-disabled}
 ### Toggle / Switch
 
 ```
+import { Switch } from '@ktds-ui/components';
+
+Props:
+  id:        string   input id (미설정 시 랜덤 생성)
+  checked:   bool     controlled 체크 상태
+  disabled:  bool     비활성화
+  onChange:  func     (event) => void
+  className: string
+
+동작: checked prop 없으면 uncontrolled (내부 state). checked 설정 시 controlled.
+```
+
+```tsx
+// uncontrolled
+<Switch onChange={(e) => console.log(e.target.checked)} />
+
+// controlled
+<Switch checked={isOn} onChange={(e) => setIsOn(e.target.checked)} />
+<Switch checked={isOn} disabled />
+```
+
+```
 Track:         48×28px  r={rounded.full}
 toggle-off:    track={colors.fill}  thumb=white 22px
 toggle-on:     track={colors.primary}  thumb=white 22px
@@ -1386,14 +1816,113 @@ toggle-disabled: track={colors.surface-disabled}  thumb={colors.surface-inactive
 ### Table
 
 ```
+import { Table } from '@ktds-ui/components';
+
+Props:
+  columns*:       array | object   헤더 정의. 각 항목: { label, field, width?, sort?, align?, childRow? }
+  data:           array            행 데이터 (default: [])
+  sort:           bool             전체 컬럼 정렬 버튼 활성화
+  selectionType:  'checkbox' | 'radio'   행 선택 타입
+  selectionField: string | string[]      링크로 표시할 field명 (클릭 시 onRowClick 호출)
+  horizonScroll:  bool             가로 스크롤 활성화
+  height:         number | string  테이블 최대 높이 (세로 스크롤)
+  align:          'left' | 'center' | 'right'   텍스트 정렬 (default: 'left')
+  children:       node             caption 텍스트 (접근성용 — default: 'table caption')
+  setRows:        func             선택된 행 데이터 콜백. checkbox → array, radio → object
+  onRowClick:     func             selectionField 링크 클릭 시 행 데이터 콜백
+
+columns 구조:
+  { label: string, field: string, width?: number|string, sort?: bool, align?: string, childRow?: column[] }
+  childRow로 중첩 헤더(멀티 레벨 th) 구성 가능
+```
+
+```tsx
+const columns = [
+  { label: '이름', field: 'name', width: 120 },
+  { label: '이메일', field: 'email' },
+  { label: '상태', field: 'status', align: 'center', width: 80 },
+];
+const data = [
+  { name: '홍길동', email: 'hong@example.com', status: '활성' },
+  { name: '김철수', email: 'kim@example.com', status: '비활성' },
+];
+
+// 기본 테이블
+<Table columns={columns} data={data}>사용자 목록</Table>
+
+// 정렬 + 체크박스 선택 + 높이 고정
+<Table
+  columns={columns}
+  data={data}
+  sort
+  selectionType="checkbox"
+  height={400}
+  setRows={(rows) => setSelectedRows(rows)}
+>
+  사용자 목록
+</Table>
+
+// 행 링크 + 클릭 콜백
+<Table
+  columns={columns}
+  data={data}
+  selectionField="name"
+  onRowClick={(row) => router.push(`/users/${row.id}`)}
+>
+  사용자 목록
+</Table>
+```
+
+```
 table-header:    bg={colors.surface-alt}  text={colors.text-neutral}  typography=caption-lg+weight600  h=44px  px=16px
                  border-bottom=1px {colors.border}
 table-row:       bg={colors.surface}  text={colors.text}  typography=body-md  min-h=48px  px=16px
                  border-bottom=1px {colors.border-alt}
 table-row-hover: bg={colors.fill-alt}
+table-row-selected: bg={colors.primary-fill-neutral}
+데이터 없을 때: Empty 컴포넌트 자동 표시 (variant="data", desc="데이터가 없습니다.")
 ```
 
 ### Pagination
+
+```
+import { Pagination } from '@ktds-ui/components';
+
+Props:
+  totalResults*:  number                총 결과 수 (필수)
+  variant:        'default' | 'outline' (default: 'default')
+  pageRange:      number                한 번에 표시되는 페이지 링크 수 (default: 5)
+  resultsPerPage: number                페이지당 결과 수 (default: 10)
+  page:           number                현재 페이지 (default: 1)
+  mode:           'basic' | 'ellipsis' 페이지 표시 방식 (default: 'basic')
+                                        basic: pageRange 단위로 이동
+                                        ellipsis: 현재 페이지 기준 ... 생략
+  options:        string[]              추가 기능 ['total', 'sizes', 'jump']
+                                        total: "총 N건" 표시
+                                        sizes: 페이지당 결과 수 Select
+                                        jump: 페이지 직접 이동 Input
+  pageSizes:      number[]              sizes 옵션의 선택지 (default: [10, 50, 100])
+  setPage:        func                  페이지 변경 콜백 (page: number) => void
+  setPageSize:    func                  페이지 크기 변경 콜백 (size: number) => void
+```
+
+```tsx
+// 기본
+<Pagination totalResults={250} setPage={setPage} />
+
+// 모든 옵션 + ellipsis 모드
+<Pagination
+  totalResults={1000}
+  page={currentPage}
+  resultsPerPage={pageSize}
+  mode="ellipsis"
+  pageRange={7}
+  options={['total', 'sizes', 'jump']}
+  pageSizes={[10, 25, 50, 100]}
+  setPage={setCurrentPage}
+  setPageSize={setPageSize}
+/>
+```
 
 ```
 pagination-item:          36×36px  r={rounded.sm}  text={colors.text}  typography=body-md
@@ -1414,6 +1943,21 @@ Connector: 1px {colors.border-alt}
 ### Progress Bar
 
 ```
+import { Progress } from '@ktds-ui/components';
+
+Props:
+  value*:    number   현재 값
+  max*:      number   최대 값
+  size:      '1' | '2' | '3'  (default: '3')  1=가장 가늘음, 3=두꺼움
+  className: string
+```
+
+```tsx
+<Progress value={60} max={100} />
+<Progress value={30} max={100} size="1" />
+```
+
+```
 progress-bar-default:  h=4px  r={rounded.full}
 Track: bg={colors.fill-neutral}
 Fill:  bg={colors.primary}
@@ -1423,9 +1967,38 @@ Animation: left → right  transition 300ms ease-out
 ### Breadcrumb
 
 ```
+import { Breadcrumb, BreadcrumbItem } from '@ktds-ui/components';
+
+<Breadcrumb>
+  <BreadcrumbItem href="/home" icon="home">홈</BreadcrumbItem>
+  <BreadcrumbItem href="/settings">설정</BreadcrumbItem>
+  <BreadcrumbItem current>사용자 관리</BreadcrumbItem>
+</Breadcrumb>
+
+// 항목이 많을 때 중간 생략
+<Breadcrumb showItems={2}>
+  <BreadcrumbItem href="/">홈</BreadcrumbItem>
+  ...여러 항목...
+  <BreadcrumbItem current>현재 페이지</BreadcrumbItem>
+</Breadcrumb>
+```
+
+Breadcrumb props:
+  children*:  node     BreadcrumbItem 목록
+  showItems:  number   표시할 마지막 N개 항목 (초과 시 중간 "..." 생략)
+  separator:  string   구분 아이콘 name (default: 'chevron')
+  className:  string
+
+BreadcrumbItem props:
+  children*:  node     레이블 텍스트 (required)
+  href:       string   링크 URL (없으면 <span> 렌더)
+  icon:       string   아이콘 name
+  current:    bool     현재 페이지 (aria-current="page", <em> 렌더)
+
+```
 breadcrumb-item:    text={colors.text-alternative}  typography=body-md
 breadcrumb-current: text={colors.text}  typography=label-lg
-Separator: "/" — {colors.text-assistive}  mx=8px
+Separator: chevron 아이콘  {colors.text-assistive}
 ```
 
 ### Tag
@@ -1438,10 +2011,34 @@ tag-primary:  bg={colors.primary-fill-neutral}  text={colors.primary-text}  r={r
 
 ### Avatar
 
+프로필 이미지 또는 이니셜 아바타. 이미지 없을 경우 배경+이니셜/아이콘으로 폴백.
+
+```tsx
+import { Avatar } from '@ktds-ui/components';
+
+<Avatar size="6" src="/user.jpg" label="홍길동" />
+<Avatar size="7" icon="smileFill" accent="primary" />
+<Avatar as="button" size="5" label="KD" badgeProps={{ icon: 'check', size: 'xsmall' }} />
 ```
-avatar-sm (32px): r={rounded.full}  bg={colors.fill-neutral}  typography=caption-lg
-avatar-md (40px): r={rounded.full}  bg={colors.fill-neutral}  typography=body-md
-avatar-lg (48px): r={rounded.full}  bg={colors.fill-neutral}  typography=body-lg
+
+| prop | type | default | values |
+|------|------|---------|--------|
+| `as` | string | `'span'` | span button |
+| `variant` | string | `'default'` | default ring |
+| `size` | string | `'6'` | '1' '2' '3' '4' '5' '6' '7' '8' '9' (20px ~ 72px) |
+| `src` | string | — | 이미지 URL |
+| `label` | string | — | 이니셜 또는 접근성 텍스트 |
+| `icon` | string | — | 아이콘 name (이미지/이니셜 없을 때) |
+| `disabled` | bool | — | — |
+| `accent` | string | — | primary positive negative caution info normal |
+| `badgeProps` | object | — | `{ icon, label, size }` — 아바타 우측 하단 배지 |
+| `className` | string | — | — |
+
+```
+size 참조:
+  '1'=20px  '2'=24px  '3'=28px  '4'=32px  '5'=36px
+  '6'=40px  '7'=48px  '8'=56px  '9'=72px
+variant=ring: border=2px solid {colors.primary}  (선택/활성 상태 강조)
 ```
 
 ### Accordion
@@ -1540,19 +2137,56 @@ Props:
 import { FileUploader } from '@ktds-ui/components';
 
 Props:
-  allowDrop:       bool           (Drag & Drop 허용)
-  uploadMsg:       string | node  (default: 'Drop files to upload')
-  maxFiles:        number         (default: 1)
-  maxFileSize:     number         (default: 10485760 = 10MB)
-  allowFileType:   array          (허용: xlsx,xls,docx,doc,pptx,ppt,txt,pdf,zip,jpg,jpeg,png,gif)
-  defaultFileList: array          (기존 업로드 파일 목록)
-  hideFileList:    bool           (파일 목록 숨김)
+  allowDrop:       bool    (Drag & Drop 허용, 기본: false)
+  uploadMsg:       string  (default: 'Drop files to upload' — allowDrop 시 표시)
+  maxFiles:        number  (default: 1)
+  maxFileSize:     number  (default: 10485760 = 10MB)
+  allowFileType:   array   (허용 확장자, default: xlsx,xls,docx,doc,pptx,ppt,txt,pdf,zip,jpg,jpeg,png,gif)
+  defaultFileList: array   (기존 업로드 파일 목록, {name, size} 형태)
   disabled:        bool
-  buttonProps:     { variant, size, text }
-  fileTypeMsg:     string         (확장자 안내 문구)
-  errMsg:          string         (외부 에러 메시지)
-  onUpload, onRemove, onDownload, onChange, onDrag
+  fileTypeMsg:     string  (확장자 안내 문구, allowDrop 없을 때 하단 표시)
+  errMsg:          string  (외부에서 전달하는 에러 메시지)
+  onUpload:  async func    (files: File[]) => void  (업로드 완료 시 uploadFileList 갱신)
+  onRemove:  async func    (file: File) => void
+  onDownload:      func    (file) => string  (다운로드 URL 반환)
+  onChange:        func    (files: File[]) => void  (선택 시 콜백)
 ```
+
+### Anchor
+
+페이지 내 섹션 이동을 위한 목차형 네비게이션. 스크롤 위치에 따라 활성 항목이 자동 갱신된다.
+
+```
+import { Anchor } from '@ktds-ui/components';
+
+Props:
+  title:      string    목차 제목 (dsx-Anchor-title)
+  list*:      [{ id: string, label: string }]  이동할 섹션 목록
+  onScroll:   func      스크롤/클릭 시 콜백 (id: string) => void
+  scrollType: 'auto' | 'instant' | 'smooth'  (default: 'smooth')
+
+동작: list[n].id는 페이지 내 요소의 id와 매핑됨.
+      스크롤하면 현재 뷰포트 위치 기준으로 data-state="active" 항목이 자동 변경됨.
+      클릭 시 해당 id 요소로 스크롤 이동 (scrollType 적용).
+```
+
+```tsx
+<Anchor
+  title="목차"
+  list={[
+    { id: 'section-1', label: '1. 개요' },
+    { id: 'section-2', label: '2. 상세 내용' },
+    { id: 'section-3', label: '3. 마무리' },
+  ]}
+  onScroll={(id) => console.log('active:', id)}
+/>
+
+// 각 섹션에 id 부여
+<section id="section-1">...</section>
+<section id="section-2">...</section>
+```
+
+---
 
 ### DropdownMenu
 
@@ -1584,9 +2218,29 @@ import { TreeMenu } from '@ktds-ui/components';
 Props:
   data:          array        (default: [])  부모/리프 노드 계층 구조
   selectionType: 'checkbox' | 'radio'
-  onSelect:      func
+  onSelect:      func          선택 변경 시 콜백 (items: number[]) => void
+  selectedMenu:  number        외부에서 선택 항목 제어 (controlled)
+
+data 노드 구조:
+  { key: number (required), label: string (required), icon?: string, children?: TreeNode[] }
 
 구조: 상위 노드(자식 있음, 접기/펼치기) + 리프 노드(자식 없음)
+depth별 padding: depth * 28 + 8px
+```
+
+```tsx
+<TreeMenu
+  data={[
+    { key: 1, label: '상위 메뉴', children: [
+      { key: 2, label: '하위 메뉴 A' },
+      { key: 3, label: '하위 메뉴 B', icon: 'folder' },
+    ]},
+    { key: 4, label: '단독 메뉴' },
+  ]}
+  selectionType="radio"
+  selectedMenu={2}
+  onSelect={(items) => console.log(items)}
+/>
 ```
 
 ### Chart
@@ -1603,9 +2257,609 @@ Props:
   chartInfo:     object    (doughnut 추가 정보)
   className
 
-데이터 차트 컬러 팔레트:
-Primary Blue → Lime #58cf04 → Cyan #00bdde → Light Blue #00aeff → Violet #6541f2 → Pink #f553da
+데이터 차트 컬러 팔레트 (실제 소스 기준):
+['#69A5FF', '#FF8C8C', '#FFC06E', '#88F03E', '#9E86FC']
 ```
+
+### Stack
+
+자식 요소를 가로(기본) 또는 세로로 나열하는 Flex 래퍼.
+
+```
+import { Stack } from '@ktds-ui/components';
+
+Props:
+  vertical:  bool   세로 정렬 (기본: 가로)
+  inline:    bool   inline-flex 모드
+  children*: node
+  className: string
+```
+
+```tsx
+// 가로 나열 (버튼 그룹)
+<Stack>
+  <Button variant="outline">취소</Button>
+  <Button variant="primary">저장</Button>
+</Stack>
+
+// 세로 나열
+<Stack vertical>
+  <Input label="이름" />
+  <Input label="이메일" />
+</Stack>
+```
+
+---
+
+### Combobox
+
+Select/Dropdown 트리거 버튼. DropdownMenu 내부 트리거로 사용되며 단독으로도 사용 가능.
+
+```
+import { Combobox } from '@ktds-ui/components';
+
+Props:
+  label:    string  (default: 'Dropdown Menu')
+  variant:  'outlined' | 'filled' | 'ghost'  (default: 'outlined')
+  expanded: bool    (default: false)  aria-expanded 연동
+  icon:     string  앞쪽 아이콘 name
+  onClick:  func
+  className: string
+```
+
+```tsx
+<Combobox label="옵션 선택" expanded={isOpen} onClick={() => setIsOpen(!isOpen)} />
+<Combobox label="필터" variant="ghost" icon="filter" expanded={false} />
+```
+
+---
+
+### CheckboxGroup
+
+여러 Checkbox를 하나의 그룹으로 관리. controlled/uncontrolled 모두 지원.
+
+```
+import { CheckboxGroup } from '@ktds-ui/components';
+
+Props:
+  options*:      [{ value: string, label: string, disabled?: bool }]
+  value:         string[]   controlled 선택값
+  defaultValue:  string[]   uncontrolled 초기값
+  name:          string     (미설정 시 랜덤 생성)
+  invalid:       bool       유효성 오류 상태
+  vertical:      bool       세로 정렬 (기본: 가로)
+  onChange:      func       (newValues: string[]) => void
+  className:     string
+```
+
+```tsx
+<CheckboxGroup
+  options={[
+    { value: 'a', label: '옵션 A' },
+    { value: 'b', label: '옵션 B' },
+    { value: 'c', label: '옵션 C', disabled: true },
+  ]}
+  defaultValue={['a']}
+  onChange={(values) => console.log(values)}
+/>
+
+// controlled
+<CheckboxGroup options={options} value={selected} onChange={setSelected} vertical />
+```
+
+---
+
+### RadioGroup
+
+여러 Radio를 하나의 그룹으로 관리. controlled/uncontrolled 모두 지원.
+
+```
+import { RadioGroup } from '@ktds-ui/components';
+
+Props:
+  options*:      [{ value: string, label: string, disabled?: bool }]
+  value:         string    controlled 선택값
+  defaultValue:  string    uncontrolled 초기값
+  name:          string    (미설정 시 랜덤 생성)
+  invalid:       bool      유효성 오류 상태
+  vertical:      bool      세로 정렬 (기본: 가로)
+  onChange:      func      (event, value: string) => void
+  className:     string
+```
+
+```tsx
+<RadioGroup
+  options={[
+    { value: 'yes', label: '예' },
+    { value: 'no', label: '아니오' },
+  ]}
+  defaultValue="yes"
+  onChange={(e, value) => console.log(value)}
+/>
+```
+
+---
+
+### Form / FormItem
+
+폼 레이아웃 컴포넌트. `Form`이 그리드/인라인 레이아웃을 제공하고, `FormItem`이 레이블+필드+에러 메시지를 묶는다.
+
+```
+import { Form, FormItem } from '@ktds-ui/components';
+
+Form Props:
+  children*:  node
+  onSubmit*:  func    (event.preventDefault 자동 처리)
+  variant:    'grid' | 'inline'  (default: 'inline')
+  column:     number             컬럼 수 (grid 모드, default: 1)
+
+FormItem Props:
+  label*:      string   레이블 텍스트
+  children*:   node     Input, Select, Checkbox 등 폼 필드
+  error:       string   에러 메시지 (입력 시 필드에 invalid 상태 자동 적용)
+  isRequired:  bool     필수 항목 표시 (*)
+  className:   string
+```
+
+```tsx
+// 그리드 폼 (2열)
+<Form variant="grid" column={2} onSubmit={handleSubmit}>
+  <FormItem label="이름" isRequired error={errors.name}>
+    <Input placeholder="이름 입력" value={name} onChange={(e) => setName(e.target.value)} />
+  </FormItem>
+  <FormItem label="이메일" isRequired error={errors.email}>
+    <Input type="email" placeholder="이메일 입력" value={email} onChange={(e) => setEmail(e.target.value)} />
+  </FormItem>
+  <FormItem label="성별">
+    <RadioGroup options={[{ value: 'm', label: '남' }, { value: 'f', label: '여' }]} />
+  </FormItem>
+</Form>
+
+// 인라인 폼
+<Form variant="inline" onSubmit={handleSubmit}>
+  <FormItem label="검색어">
+    <Input placeholder="검색어 입력" />
+  </FormItem>
+  <Button type="submit" variant="primary">검색</Button>
+</Form>
+```
+
+---
+
+### Popover
+
+트리거 요소 주변에 부동(floating) 레이어를 표시. `document.body`에 포털 렌더링.
+
+```
+import { Popover } from '@ktds-ui/components';
+
+Props:
+  children*:     node    팝오버 내용
+  trigger:       string | node  트리거 (string이면 내부 Button 생성, node면 cloneElement)
+  position:      'top' | 'bottom' | ['top'|'bottom', 'start'|'end']  (default: 'bottom')
+  isOpen:        bool    (default: false)  외부 제어
+  popoverState:  func    열림/닫힘 상태 콜백 (state: bool) => void
+  inactiveEvent: bool    트리거 클릭 이벤트 비활성화 (외부에서 직접 제어할 때)
+  className:     string
+
+동작:
+  - 뷰포트 가장자리 자동 위치 보정
+  - 외부 클릭 시 자동 닫힘
+  - Esc 키로 닫힘 + 트리거로 포커스 복귀
+  - 스크롤/리사이즈 시 위치 재계산
+```
+
+```tsx
+// 기본 사용
+<Popover trigger="설정 열기" position="bottom">
+  <div className="dsx-Popover-inner">
+    <Button variant="ghost">메뉴 1</Button>
+    <Button variant="ghost">메뉴 2</Button>
+  </div>
+</Popover>
+
+// 커스텀 트리거 + 외부 제어
+const [open, setOpen] = useState(false);
+<Popover
+  trigger={<Button variant="outline" suffixIcon="chevronBottom">사용자</Button>}
+  isOpen={open}
+  popoverState={setOpen}
+  position={['bottom', 'end']}
+>
+  <div className="dsx-Popover-inner">팝오버 내용</div>
+</Popover>
+```
+
+---
+
+## Layout Components
+
+Next.js 기반 페이지 레이아웃 구성 컴포넌트. `@ktds-ui/layout`에서 import.
+
+```ts
+import {
+  SideNavigation,
+  Header,
+  Footer,
+  Content,
+  ContentTitle,
+  SplitLayout,
+} from '@ktds-ui/layout';
+```
+
+### SideNavigation
+
+좌측 사이드 내비게이션. Next.js `usePathname` / `useRouter` 기반으로 현재 경로에 따라 활성 메뉴 자동 강조.
+
+```
+Props:
+  selectedMenu*:  object  현재 선택된 최상위 메뉴
+    {
+      label:    string
+      subMenu:  [
+        {
+          label:   string
+          path:    string
+          subMenu?: [{ label: string, path: string }]
+        }
+      ]
+    }
+```
+
+```tsx
+<SideNavigation
+  selectedMenu={{
+    label: '관리',
+    subMenu: [
+      { label: '사용자 목록', path: '/admin/users' },
+      { label: '권한 설정', path: '/admin/roles' },
+    ],
+  }}
+/>
+```
+
+---
+
+### Header
+
+상단 헤더. 검색(Popover), 사용자 메뉴(Popover), 비밀번호 변경(Dialog) 포함. `next-auth` 세션 연동.
+
+```
+Props:
+  menuData*:        array   사이드 내비게이션에 전달할 전체 메뉴 데이터
+  setSelectedMenu*: func    메뉴 선택 시 상위로 전달하는 setter (selectedMenu 상태 업데이트)
+```
+
+```tsx
+const [selectedMenu, setSelectedMenu] = useState(menuData[0]);
+
+<Header menuData={menuData} setSelectedMenu={setSelectedMenu} />
+```
+
+---
+
+### Footer
+
+정적 푸터. props 없음.
+
+```tsx
+<Footer />
+```
+
+---
+
+### Content
+
+페이지 본문 래퍼. `<main className="content">` 렌더링.
+
+```
+Props:
+  children*: node
+```
+
+```tsx
+<Content>
+  <ContentTitle title="페이지 제목" />
+  {/* 본문 콘텐츠 */}
+</Content>
+```
+
+---
+
+### ContentTitle
+
+페이지 상단 타이틀 영역. Heading + 설명 텍스트 + Breadcrumb + 우측 슬롯.
+
+```
+Props:
+  title*:      string
+  desc:        string   제목 아래 설명 텍스트
+  breadcrumb:  (string | { label: string, icon?: string })[]
+  depth:       1 | 2 | 3 | 4 | 5   Heading 레벨 (default: 1)
+  children:    node     우측 슬롯 (버튼 등 액션 영역)
+```
+
+```tsx
+<ContentTitle
+  title="사용자 관리"
+  desc="시스템에 등록된 사용자를 조회하고 관리합니다."
+  breadcrumb={['홈', '관리', '사용자 관리']}
+  depth={2}
+>
+  <Button variant="primary" prefixIcon="plus">사용자 추가</Button>
+</ContentTitle>
+```
+
+---
+
+### SplitLayout
+
+콘텐츠 영역을 N열로 분할하는 레이아웃 컨테이너.
+
+```
+Props:
+  children*: node
+  column:    number   열 수 (CSS 클래스 `splitLayout--column-N` 적용)
+```
+
+```tsx
+<SplitLayout column={2}>
+  <div>왼쪽 패널</div>
+  <div>오른쪽 패널</div>
+</SplitLayout>
+```
+
+---
+
+### 전체 페이지 조합 예시
+
+```tsx
+import { Header, SideNavigation, Content, ContentTitle, Footer } from '@ktds-ui/layout';
+
+export default function AdminLayout({ children }) {
+  const [selectedMenu, setSelectedMenu] = useState(menuData[0]);
+
+  return (
+    <>
+      <Header menuData={menuData} setSelectedMenu={setSelectedMenu} />
+      <div className="wrap">
+        <SideNavigation selectedMenu={selectedMenu} />
+        <Content>
+          {children}
+        </Content>
+      </div>
+      <Footer />
+    </>
+  );
+}
+```
+
+---
+
+## Page Patterns
+
+엔터프라이즈 업무 화면에서 반복 사용되는 표준 페이지 레이아웃 패턴. 실제 소스(`/sample/`) 기반.
+
+### Pattern 01 — 목록 조회 (List + Filter + Dialog)
+
+가장 기본적인 목록 페이지. 인라인 필터 폼 → 목록 타이틀(건수) + 액션 버튼 → 테이블 → 페이지네이션 → 등록 Dialog.
+
+```tsx
+import { Table, Pagination, Button, Form, FormItem, Stack, Select, Text } from '@ktds-ui/components';
+import { ContentTitle } from '@ktds-ui/layout';
+
+// 컬럼 정의
+const columns = [
+  { label: '순번', field: 'no', width: 50 },
+  { label: '그룹', field: 'group' },
+  { label: '이름', field: 'name' },
+  { label: '상태', field: 'status', width: 80 },
+];
+
+export const ListPage = () => {
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  return (
+    <>
+      <ContentTitle title="배치 관리" breadcrumb={['배치 관리', '목록']} />
+
+      {/* 인라인 필터 */}
+      <Form variant="inline">
+        <FormItem label="그룹">
+          <Select placeholder="전체" options={options} onChange={setValue} />
+        </FormItem>
+        <FormItem label="상태">
+          <Select placeholder="전체" options={statusOptions} onChange={setStatus} />
+        </FormItem>
+        <Stack>
+          <Button variant="outline">초기화</Button>
+          <Button variant="normal">검색</Button>
+        </Stack>
+      </Form>
+
+      {/* 목록 타이틀 + 액션 */}
+      <ContentTitle
+        title={<>목록 <Text as="span" size="body3" weight="regular">(총 {total}건)</Text></>}
+        depth={2}
+      >
+        <Button variant="outline">엑셀 다운로드</Button>
+        <Button variant="primary" onClick={() => setDialogOpen(true)}>등록</Button>
+      </ContentTitle>
+
+      {/* 테이블 */}
+      <Table columns={columns} data={data} sort>목록 테이블</Table>
+
+      {/* 페이지네이션 */}
+      <Pagination
+        totalResults={total}
+        options={['sizes', 'jump']}
+        pageSizes={[10, 50, 100]}
+        setPage={setPage}
+        setPageSize={setPageSize}
+      />
+
+      {/* 등록 Dialog */}
+      <Dialog
+        isOpen={dialogOpen}
+        size="large"
+        title="등록"
+        content={() => (
+          <Form variant="grid" column={2}>
+            <FormItem label="이름" isRequired className="dsx-w-full">
+              <Input full />
+            </FormItem>
+          </Form>
+        )}
+        onClose={() => setDialogOpen(false)}
+        buttons={
+          <>
+            <Button size="large" onClick={() => setDialogOpen(false)}>취소</Button>
+            <Button variant="primary" size="large" onClick={handleSave}>저장</Button>
+          </>
+        }
+      />
+    </>
+  );
+};
+```
+
+---
+
+### Pattern 02 — 마스터/디테일 (SplitLayout + Form)
+
+좌측 목록(TreeMenu 또는 Table) + 우측 상세 폼. `SplitLayout`으로 분할.
+
+```tsx
+import { Table, Button, Form, FormItem, RadioGroup, Stack, Input } from '@ktds-ui/components';
+import { ContentTitle, SplitLayout } from '@ktds-ui/layout';
+
+export const MasterDetailPage = () => (
+  <>
+    <ContentTitle title="메뉴 관리" breadcrumb={['시스템 관리', '메뉴 관리']} />
+    <Form variant="inline">{/* 공통 인라인 필터 */}</Form>
+
+    <SplitLayout>
+      {/* 좌측: 목록 */}
+      <article>
+        <ContentTitle title="메뉴 리스트" depth={2}>
+          <Button variant="primary">메뉴 등록</Button>
+        </ContentTitle>
+        <TreeMenu data={treeData} selectionType="radio" onSelect={handleSelect} />
+      </article>
+
+      {/* 우측: 상세 */}
+      <article>
+        <ContentTitle title="메뉴 상세정보" depth={2} />
+        <Form variant="grid" column={2}>
+          <FormItem label="메뉴명" isRequired className="dsx-w-full">
+            <Input full />
+          </FormItem>
+          <FormItem label="사용여부" isRequired className="dsx-w-full">
+            <RadioGroup options={[{value:'Y',label:'사용'},{value:'N',label:'미사용'}]} />
+          </FormItem>
+          <FormItem label="사용기간" className="dsx-w-full">
+            <DatePicker dateRange />
+          </FormItem>
+        </Form>
+        <Stack className="button-wrap">
+          <Button size="large">삭제</Button>
+          <Button size="large" variant="primary">저장</Button>
+        </Stack>
+      </article>
+    </SplitLayout>
+  </>
+);
+```
+
+---
+
+### Pattern 03 — 마스터/탭 디테일 (SplitLayout + TabList)
+
+좌측 목록 + 우측 탭 상세. 오른쪽 영역에 `TabList`로 복수 탭 콘텐츠.
+
+```tsx
+import { Table, Pagination, TabList } from '@ktds-ui/components';
+import { ContentTitle, SplitLayout } from '@ktds-ui/layout';
+
+const [activeTab, setActiveTab] = useState('tab-1');
+const tabData = [
+  { key: 'tab-1', label: '상세정보', content: <DetailForm /> },
+  { key: 'tab-2', label: 'URL 권한', content: <UrlAuthTable /> },
+  { key: 'tab-3', label: '사용자 권한', content: <UserAuthTable /> },
+];
+
+<SplitLayout>
+  <article>
+    {/* 인라인 필터 + 목록 테이블 + 페이지네이션 */}
+    <Table columns={columns} data={data} sort />
+    <Pagination totalResults={total} options={['sizes', 'jump']} setPage={setPage} />
+  </article>
+  <article>
+    <TabList activeTabKey={activeTab} onTabChange={setActiveTab} data={tabData} />
+  </article>
+</SplitLayout>
+```
+
+---
+
+### Pattern 04 — 로그인 페이지
+
+```tsx
+import { Input, Checkbox, Heading, Text, Stack, Button, Icon } from '@ktds-ui/components';
+import { Footer } from '@ktds-ui/layout';
+
+<div className="login-wrap">
+  <section className="login">
+    <h1 className="login-logo">
+      <img src="/logo.svg" alt="서비스명" />
+    </h1>
+    <div className="login-form">
+      <Input size="large" full clearable slotBefore={<Icon name="user" />} placeholder="아이디" />
+      <Input size="large" full clearable slotBefore={<Icon name="lock" />} placeholder="비밀번호" type="password" reveal />
+    </div>
+    <Checkbox>아이디 저장</Checkbox>
+    <Button size="large" variant="primary" onClick={handleLogin}>로그인</Button>
+  </section>
+  <Footer />
+</div>
+```
+
+---
+
+### Pattern 05 — 대시보드 (Chart + Table + Progress)
+
+```tsx
+import { Heading, Chart, Table, Progress } from '@ktds-ui/components';
+
+// Bar Chart
+<Chart
+  chartLabel="요일별 활성 사용자"
+  chartType="bar"
+  chartData={{
+    labels: ['월','화','수','목','금','토','일'],
+    datasets: [
+      { label: '지난 주', data: [8000,5500,7000,6000,9000,3000,1000], backgroundColor: '#9AD0F5' },
+      { label: '이번 주', data: [10000,8500,9000,7500,12000,4000,2000], backgroundColor: '#FFB1C1' },
+    ],
+  }}
+  chartOptions={{ scales: { y: { beginAtZero: true } } }}
+/>
+
+// Doughnut Chart
+<Chart
+  chartLabel="고객 유형"
+  chartType="doughnut"
+  chartData={{
+    labels: ['프리미엄', '일반', '유입'],
+    datasets: [{ data: [5000,1000,1000], backgroundColor: ['#9AD0F5','#FFB1C1','#AEEAEE'] }],
+  }}
+/>
+
+// Progress
+<Progress value={72} max={100} size="2" />
+```
+
+> 대시보드 레이아웃은 CSS Grid로 구성: `display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--spacing-md);`
 
 ---
 
@@ -1675,7 +2929,7 @@ Primary Blue → Lime #58cf04 → Cyan #00bdde → Light Blue #00aeff → Violet
 2. 색상은 반드시 `var(--color-*)` CSS 변수로만 참조 — hex 직접 입력 절대 금지
 3. 수정 후 `npx @google/design.md lint ktds.md` 실행으로 스펙 준수 여부 확인 (`@google/design.md` npm 패키지 필요)
 4. 새 섹션 추가 시 배경 레이어를 먼저 결정하라
-   - 전체 페이지 배경: `var(--color-surface-alt)` (항상)
+   - 전체 페이지 배경: `var(--color-primary-fill-neutral)` (항상)
    - 카드/모달/시트: `var(--color-surface)` (항상)
    - Primary 강조 영역: `var(--color-primary-fill-neutral)`
 5. 버튼 radius는 항상 `var(--rounded-md)` (8px) — pill/full 금지 (FAB·Avatar·Chip 제외)
@@ -1703,12 +2957,14 @@ Primary Blue → Lime #58cf04 → Cyan #00bdde → Light Blue #00aeff → Violet
 > | `fill-neutral: "#dfe0e2"` | `rgba(112,115,124,0.12)` |
 > | `fill-alt: "#e9eaeb"` | `rgba(112,115,124,0.08)` |
 
-- **데이터 차트/그래프**: Primary Blue 시작 → Accent 팔레트 순서 (Lime #58cf04 → Cyan #00bdde → Light Blue #00aeff → Violet #6541f2 → Pink #f553da)
+- **데이터 차트/그래프**: 실제 소스 기준 컬러 팔레트 → `['#69A5FF', '#FF8C8C', '#FFC06E', '#88F03E', '#9E86FC']` (Blue → Red → Orange → Green → Purple 순서)
 - **로딩 스피너**: `border: 3px solid var(--color-border-alt)` + `border-top-color: var(--color-primary)` + `border-radius: 50%` + rotate animation 700ms linear infinite
 - **아이콘 크기**: 16px (인라인/캡션), 20px (body), 24px (heading/list), 40px (empty state)
 - **포커스 링**: `outline: 2px solid var(--color-primary)` + `outline-offset: 2px`
 - **z-index 레이어**: 기본 콘텐츠 0 → Sticky 헤더 100 → Dropdown 200 → Modal/Dialog 300 → Snackbar/Toast 400 → Tooltip 500
 - **애니메이션 타이밍**: hover/press `var(--dsx-transition-base)` · expand/collapse `var(--dsx-transition-collapse)` · fade `var(--dsx-transition-fade)` · popover `var(--dsx-transition-popover)`
+- **소스 미확인 컴포넌트** (Storybook 목록에는 존재하나 현재 소스 미수록): `Accordion`, `BottomSheet`, `List`, `Drawer`, `Slider`, `Stepper`, `Carousel`. 사용 시 CSS 클래스 패턴(`dsx-Accordion-*` 등)으로 추론하여 구현하되 React API는 확정 불가.
+- **Editor 컴포넌트**: Storybook에 등록되어 있으나 현재 소스가 스텁(`export const Editor = () => {}`). 실제 API 미확정 — 직접 구현하거나 별도 에디터 라이브러리(Toast UI, Quill 등) 사용 권장.
 
 ---
 
@@ -1722,18 +2978,39 @@ Copy this `:root` block verbatim — AI must not alter these values:
   /* Colors */
   --color-primary: #1a75ff;
   --color-primary-text: #186ae8;
-  --color-primary-fill-neutral: #E8F1FF;
+  --color-primary-text-neutral: #4891ff;
+  --color-primary-fill: #1a75ff;
+  --color-primary-fill-neutral: #F2F5F9;
+  --color-primary-border: #1a75ff;
+  --color-primary-border-neutral: #66a3ff;
+  --color-primary-icon: #1a75ff;
+  --color-primary-icon-neutral: #4891ff;
   --color-surface: #ffffff;
   --color-surface-alt: #f7f7f8;
   --color-text: #171719;
   --color-text-neutral: rgba(46,47,51,0.88);
   --color-text-alt: rgba(55,56,60,0.61);
   --color-text-assistive: rgba(55,56,60,0.28);
+  --color-text-strong: #000000;
   --color-border: rgba(112,115,124,0.35);
+  --color-border-neutral: rgba(112,115,124,0.28);
   --color-border-alt: rgba(112,115,124,0.16);
   --color-fill: rgba(112,115,124,0.22);
   --color-fill-neutral: rgba(112,115,124,0.12);
   --color-fill-alt: rgba(112,115,124,0.08);
+  --color-fill-strong: rgba(112,115,124,0.35);
+  --color-icon: #171719;
+  --color-icon-neutral: rgba(46,47,51,0.88);
+  --color-text-inactive: #989ba2;
+  --color-border-inactive: #e1e2e4;
+  --color-border-disabled: #eaebec;
+  --color-fill-inactive: rgba(112,115,124,0.22);
+  --color-fill-disabled: rgba(112,115,124,0.12);
+  --color-dimmer: rgba(23,23,25,0.52);
+  --color-inverse-text: #f7f7f8;
+  --color-inverse-surface: #1b1c1e;
+  --color-inverse-fill: rgba(112,115,124,0.22);
+  --color-inverse-icon: #f7f7f8;
   --color-positive: #00c244;
   --color-caution: #ff9200;
   --color-negative: #ff4242;
@@ -1806,39 +3083,62 @@ Copy this `:root` block verbatim — AI must not alter these values:
 
 **Button-primary spec:** height 48px · padding `var(--spacing-lg)` horizontal (24px) · radius `var(--rounded-md)` (8px) · bg `var(--color-primary)` · color white.
 
+**Card spec:** B2B card = `border: 1px solid var(--color-border-alt)` + `box-shadow: none`; B2C card = `border: 0` + `box-shadow: var(--dsx-shadow-1)`. Border와 shadow를 한 카드에 동시에 적용하지 않는다.
+
 **Pretendard font CDN — HTML `<head>`에 반드시 포함:**
 ```html
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
 ```
-`body { font-family: var(--font-sans); background-color: var(--color-surface-alt); }` 선언 필수.
+`body { font-family: var(--font-sans); background-color: var(--color-primary-fill-neutral); }` 선언 필수.
 
 **Surface 레이어 원칙 (반드시 준수):**
-- 페이지/앱 전체 배경: `var(--color-surface-alt)` (#F7F7F8)
+- 페이지/앱 전체 배경: `var(--color-primary-fill-neutral)` (#F2F5F9)
 - 카드·모달·시트·컴포넌트 배경: `var(--color-surface)` (#FFFFFF)
-- 섹션 강조 배경(Primary 관련): `var(--color-primary-fill-neutral)` (#E8F1FF)
+- 섹션 강조 배경(Primary 관련): `var(--color-primary-fill-neutral)` (#F2F5F9)
 - 절대로 페이지 전체 배경을 #FFFFFF(흰색)로 사용하지 말 것.
 
 **다크 모드 CSS — HTML `<style>` 내 `:root` 블록 다음에 반드시 포함:**
 ```css
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-primary: #1a75ff;
+    --color-primary: #1253b5;
     --color-primary-text: #1a75ff;
+    --color-primary-text-neutral: #1253b5;
+    --color-primary-fill: #1253b5;
     --color-primary-fill-neutral: #02060e;
+    --color-primary-border: #4891ff;
+    --color-primary-border-neutral: #1253b5;
+    --color-primary-icon: #1a75ff;
+    --color-primary-icon-neutral: #1253b5;
     --color-surface: #1b1c1e;
     --color-surface-alt: #0f0f10;
     --color-text: #f7f7f8;
     --color-text-neutral: rgba(194,196,200,0.88);
     --color-text-alt: rgba(174,176,182,0.61);
     --color-text-assistive: rgba(174,176,182,0.28);
+    --color-text-strong: #ffffff;
     --color-border: rgba(112,115,124,0.52);
+    --color-border-neutral: rgba(112,115,124,0.43);
     --color-border-alt: rgba(112,115,124,0.35);
     --color-fill: rgba(112,115,124,0.35);
     --color-fill-neutral: rgba(112,115,124,0.16);
     --color-fill-alt: rgba(112,115,124,0.12);
+    --color-fill-strong: rgba(112,115,124,0.43);
+    --color-icon: #f7f7f8;
+    --color-icon-neutral: rgba(194,196,200,0.88);
     --color-surface-disabled: #2e2f33;
     --color-text-disabled: rgba(174,176,182,0.35);
     --color-surface-inactive: #333438;
+    --color-text-inactive: #5a5c63;
+    --color-border-inactive: #37383c;
+    --color-border-disabled: #333438;
+    --color-fill-inactive: rgba(112,115,124,0.22);
+    --color-fill-disabled: rgba(112,115,124,0.12);
+    --color-dimmer: rgba(23,23,25,0.74);
+    --color-inverse-text: #171719;
+    --color-inverse-surface: #f7f7f8;
+    --color-inverse-fill: rgba(112,115,124,0.08);
+    --color-inverse-icon: #171719;
     --color-positive: #1ed45a;
     --color-caution: #ffa938;
     --color-negative: #ff6363;
@@ -1856,7 +3156,7 @@ Copy this `:root` block verbatim — AI must not alter these values:
 ### 목록 페이지 (`ex-list-page`)
 
 ```
-배경: var(--color-surface-alt)
+배경: var(--color-primary-fill-neutral)
 
 section-header-default (title-lg 제목 + 우측 button-primary)
   ↓ gap={spacing.lg}
@@ -1873,7 +3173,7 @@ pagination-item (중앙 정렬)
 ### 폼 페이지 (`ex-form-page`)
 
 ```
-배경: var(--color-surface-alt)
+배경: var(--color-primary-fill-neutral)
 중앙 card-default (max-width 480px  모바일=전체폭)
 
   title-md 제목
@@ -1888,7 +3188,7 @@ pagination-item (중앙 정렬)
 ### 대시보드 (`ex-dashboard`)
 
 ```
-배경: var(--color-surface-alt)
+배경: var(--color-primary-fill-neutral)
 
 데스크탑:
   NavSide 240px (고정) | Main Content
@@ -1903,7 +3203,7 @@ pagination-item (중앙 정렬)
 ### 상세 페이지 (`ex-detail-page`)
 
 ```
-배경: var(--color-surface-alt)
+배경: var(--color-primary-fill-neutral)
 
 breadcrumb-item
   ↓
@@ -1918,7 +3218,7 @@ Hero card-default (전체 너비)
 ### 인증 페이지 (`ex-auth-page`)
 
 ```
-배경: var(--color-surface-alt)
+배경: var(--color-primary-fill-neutral)
 중앙 card-default (max-width 400px)
 
   브랜드 로고 (중앙 정렬)
@@ -2148,41 +3448,70 @@ import { Mark } from '@ktds-ui/components';
 
 Alert: 경고 안내만 표시 (닫기만 가능). Confirm: 사용자 선택이 필요한 중요 이벤트.
 
+**앱 루트에 `AlertProvider` 필수 설정:**
+
+```tsx
+import { AlertProvider } from '@ktds-ui/context/AlertContext';
+
+function App() {
+  return (
+    <AlertProvider>
+      {/* 앱 콘텐츠 */}
+    </AlertProvider>
+  );
+}
+```
+
+**컴포넌트에서 사용:**
+
 ```tsx
 import { useAlert } from '@ktds-ui/context/AlertContext';
 
 function MyComponent() {
-  const { alert, confirm } = useAlert();
+  const { showAlert } = useAlert();
 
-  // Alert — 닫기만 가능
-  const handleAlert = async () => {
-    await alert({
-      title: '알림',
-      message: '처리가 완료되었습니다.',
+  // Alert — 닫기만 가능 (showCancel=false)
+  const handleAlert = () => {
+    showAlert('알림', '처리가 완료되었습니다.', () => {
+      // 확인 후 콜백 (선택)
     });
   };
 
-  // Confirm — 확인/취소 선택
-  const handleConfirm = async () => {
-    const confirmed = await confirm({
-      title: '삭제 확인',
-      message: '정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
-    });
-    if (confirmed) {
-      // 확인 처리
-    }
+  // Confirm — 확인/취소 선택 (showCancel=true)
+  const handleConfirm = () => {
+    showAlert(
+      '삭제 확인',
+      '정말 삭제하시겠습니까?',
+      () => {
+        // 확인 클릭 시
+        handleDelete();
+      },
+      true  // showCancel=true → 취소 버튼 표시
+    );
   };
 }
 ```
 
-| 구분 | 설명 |
-|------|------|
-| Alert | 경고/안내 문구 + 확인 버튼 1개 (닫기만) |
-| Confirm | 중요 이벤트 + 취소·확인 버튼 2개 (사용자 선택) |
+```
+useAlert() 반환값:
+  showAlert(title, message, onConfirm, showCancel=false)
+  removeAlert()
 
-- Dialog 컴포넌트 기반 모달로 표시 (z-index: 300)
+showAlert 파라미터:
+  title:       string   다이얼로그 제목
+  message:     string   본문 메시지
+  onConfirm:   func     확인 클릭 시 콜백
+  showCancel:  bool     취소 버튼 표시 여부 (default: false)
+```
+
+| 구분 | showCancel | 설명 |
+|------|-----------|------|
+| Alert | false | 경고/안내 문구 + 확인 버튼 1개 (닫기만) |
+| Confirm | true | 중요 이벤트 + 취소·확인 버튼 2개 (사용자 선택) |
+
+- `#portal-root` DOM 포털에 렌더링 (z-index: 300)
 - **`useAlert`는 `@ktds-ui/context/AlertContext`에서 import** (Toast와 동일한 패턴)
-- `await alert()` / `await confirm()`은 Promise를 반환 — `confirm()`은 boolean 반환
+- `AlertProvider`가 없으면 hook 동작 안 함 — 앱 최상단에 반드시 래핑 필요
 
 ---
 
@@ -2327,15 +3656,15 @@ import { IconButton } from '@ktds-ui/components';
 | Token | Value |
 |-------|-------|
 | `--dsx-color-primary-border-default` | `#1a75ff` |
-| `--dsx-color-primary-border-neutral` | `#69a5ff` |
+| `--dsx-color-primary-border-neutral` | `#66a3ff` |
 | `--dsx-color-primary-fill-default` | `#1a75ff` |
-| `--dsx-color-primary-fill-neutral` | `#e8f1ff` |
+| `--dsx-color-primary-fill-neutral` | `#F2F5F9` |
 | `--dsx-color-primary-icon-default` | `#1a75ff` |
-| `--dsx-color-primary-icon-neutral` | `#3385ff` |
+| `--dsx-color-primary-icon-neutral` | `#4891ff` |
 | `--dsx-color-primary-text-default` | `#186ae8` |
-| `--dsx-color-primary-text-neutral` | `#3385ff` |
+| `--dsx-color-primary-text-neutral` | `#4891ff` |
 | `--dsx-color-primary-surface-default` | `#ffffff` |
-| `--dsx-color-primary-surface-neutral` | `#e8f1ff` |
+| `--dsx-color-primary-surface-neutral` | `#F2F5F9` |
 
 #### Neutral
 
@@ -2507,3 +3836,93 @@ import { IconButton } from '@ktds-ui/components';
 | `--dsx-transition-fade` | `.2s linear` | overlay fade in/out |
 | `--dsx-transition-collapse` | `.25s ease-out` | 확장/축소 (Accordion, Drawer) |
 | `--dsx-transition-popover` | `.16s cubic-bezier(.16, 1, .3, 1)` | slide 팝오버 (Dropdown, Tooltip) |
+
+## CSS Implementation
+
+```css
+:root {
+  /* === Brand Colors === */
+  --color-primary: #1a75ff;
+  --color-primary-text: #186ae8;
+  --color-primary-text-neutral: #4891ff;
+  --color-primary-fill: #1a75ff;
+  --color-primary-fill-neutral: #F2F5F9;
+  --color-primary-border: #1a75ff;
+  --color-primary-border-neutral: #66a3ff;
+  --color-primary-icon: #1a75ff;
+  --color-primary-icon-neutral: #4891ff;
+  --color-on-primary: #ffffff;
+
+  /* === Surface === */
+  --color-surface: #ffffff;
+  --color-surface-alt: #f7f7f8;
+  --color-surface-disabled: #f4f4f5;
+  --color-surface-inactive: #eaebec;
+
+  /* === Text (rgba semantic tokens) === */
+  --color-text: #171719;
+  --color-text-neutral: rgba(46,47,51,0.88);
+  --color-text-alt: rgba(55,56,60,0.61);
+  --color-text-assistive: rgba(55,56,60,0.28);
+  --color-text-disabled: #caccce;
+  --color-text-strong: #000000;
+
+  /* === Border & Fill (rgba semantic tokens) === */
+  --color-border: rgba(112,115,124,0.35);
+  --color-border-alt: rgba(112,115,124,0.16);
+  --color-fill: rgba(112,115,124,0.22);
+  --color-fill-neutral: rgba(112,115,124,0.12);
+  --color-fill-alt: rgba(112,115,124,0.08);
+
+  /* === Icon === */
+  --color-icon: #171719;
+  --color-icon-neutral: #474a4f;
+
+  /* === Status === */
+  --color-positive: #00c244;
+  --color-caution: #ff9200;
+  --color-negative: #ff4242;
+  --color-info: #0066ff;
+
+  /* === Spacing === */
+  --spacing-xxs: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-base: 16px;
+  --spacing-md: 20px;
+  --spacing-lg: 24px;
+  --spacing-lg-alt: 28px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 40px;
+  --spacing-3xl: 48px;
+  --spacing-4xl: 56px;
+  --spacing-section: 64px;
+  --spacing-5xl: 72px;
+  --spacing-6xl: 80px;
+
+  /* === Rounded === */
+  --rounded-none: 0px;
+  --rounded-xs: 2px;
+  --rounded-sm: 4px;
+  --rounded-base: 6px;
+  --rounded-md: 8px;
+  --rounded-lg: 12px;
+  --rounded-xl: 16px;
+  --rounded-2xl: 20px;
+  --rounded-full: 9999px;
+
+  /* === DSX Shadows === */
+  --dsx-shadow-1: 0px 1px 3px rgba(0,0,0,0.16);
+  --dsx-shadow-2: 0px 3px 4px rgba(0,0,0,0.16);
+  --dsx-shadow-3: 0px 8px 20px rgba(0,0,0,0.10);
+  --dsx-shadow-4: 0px 18px 28px rgba(0,0,0,0.08);
+  --dsx-shadow-5: 4px 16px 40px rgba(0,0,0,0.10);
+  --dsx-shadow-6: 6px 32px 48px rgba(0,0,0,0.10);
+
+  /* === DSX Transitions === */
+  --dsx-transition-base: .2s ease-in-out;
+  --dsx-transition-fade: .2s linear;
+  --dsx-transition-collapse: .25s ease-out;
+  --dsx-transition-popover: .16s cubic-bezier(.16, 1, .3, 1);
+}
+```

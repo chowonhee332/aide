@@ -9,7 +9,7 @@ import {
 import { cn } from '@/lib/utils'
 import DotField from '@/components/DotField'
 import type { Question, QuestionnaireResponse, TweakSpec, TweakVariable, AppDomain } from '@/lib/gemini'
-import { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY } from '@/lib/domain-constants'
+import { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY, DOMAIN_HOME_EMPHASIS_OPTIONS } from '@/lib/domain-constants'
 import { getVariantStyles, getVariantInfo } from '@/lib/variant-refs'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import { saveHistoryItem, compressThumbnail, loadHistory, deleteHistoryItem, type HistoryItem } from '@/lib/history'
@@ -127,9 +127,25 @@ const INSPECTOR_SCRIPT = `<script data-aide-inject="1">
   hb.style.cssText='position:fixed;pointer-events:none;z-index:2147483646;background:rgba(0,85,255,0.07);box-sizing:border-box;transition:all 50ms ease';
   document.body.appendChild(sb);document.body.appendChild(hb);
   function box(el,div){var r=el.getBoundingClientRect();div.style.left=r.left+'px';div.style.top=r.top+'px';div.style.width=r.width+'px';div.style.height=r.height+'px';}
+  function getSharedClasses(el){
+    if(!el.className||typeof el.className!=='string')return[];
+    var names=el.className.split(/\\s+/).filter(function(c){return c&&c.length>1&&!/[\\[\\]:.#,+~>()^$*|@{}]/.test(c);});
+    var screens=document.querySelectorAll('.aide-screen');
+    if(screens.length<2)return[];
+    var shared=[];
+    for(var i=0;i<names.length;i++){
+      var cls=names[i];
+      var count=0;
+      var esc=typeof CSS!=='undefined'&&CSS.escape?CSS.escape(cls):cls;
+      for(var j=0;j<screens.length;j++){try{if(screens[j].querySelector('.'+esc))count++;}catch(e){}}
+      if(count>=2)shared.push(cls);
+    }
+    return shared;
+  }
   function report(el){
     var cs=getComputedStyle(el),r=el.getBoundingClientRect();
-    parent.postMessage({type:'aide:select',styles:{tagName:el.tagName.toLowerCase(),className:el.className||'',text:(el.textContent||'').trim().slice(0,80),fontFamily:cs.fontFamily,fontSize:cs.fontSize,fontWeight:cs.fontWeight,color:cs.color,textAlign:cs.textAlign,lineHeight:cs.lineHeight,letterSpacing:cs.letterSpacing,width:Math.round(r.width)+'px',height:Math.round(r.height)+'px',opacity:cs.opacity,paddingTop:cs.paddingTop,paddingRight:cs.paddingRight,paddingBottom:cs.paddingBottom,paddingLeft:cs.paddingLeft,marginTop:cs.marginTop,marginRight:cs.marginRight,marginBottom:cs.marginBottom,marginLeft:cs.marginLeft,borderWidth:cs.borderWidth,borderRadius:cs.borderRadius,backgroundColor:cs.backgroundColor,backgroundImage:cs.backgroundImage}},'*');
+    var sharedClasses=getSharedClasses(el);
+    parent.postMessage({type:'aide:select',sharedClasses:sharedClasses,styles:{tagName:el.tagName.toLowerCase(),className:el.className||'',text:(el.textContent||'').trim().slice(0,80),fontFamily:cs.fontFamily,fontSize:cs.fontSize,fontWeight:cs.fontWeight,color:cs.color,textAlign:cs.textAlign,lineHeight:cs.lineHeight,letterSpacing:cs.letterSpacing,width:Math.round(r.width)+'px',height:Math.round(r.height)+'px',opacity:cs.opacity,paddingTop:cs.paddingTop,paddingRight:cs.paddingRight,paddingBottom:cs.paddingBottom,paddingLeft:cs.paddingLeft,marginTop:cs.marginTop,marginRight:cs.marginRight,marginBottom:cs.marginBottom,marginLeft:cs.marginLeft,borderWidth:cs.borderWidth,borderRadius:cs.borderRadius,backgroundColor:cs.backgroundColor,backgroundImage:cs.backgroundImage}},'*');
   }
   document.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();sel=e.target;sb.style.display='block';box(sel,sb);report(sel);},true);
   document.addEventListener('mouseover',function(e){if(e.target!==sel)box(e.target,hb);},true);
@@ -137,6 +153,10 @@ const INSPECTOR_SCRIPT = `<script data-aide-inject="1">
     if(!e.data)return;
     var d=e.data;
     if(d.type==='aide:update'&&sel){sel.style[d.prop]=d.value;report(sel);}
+    if(d.type==='aide:update-all'&&d.selector&&d.prop){var targets=document.querySelectorAll(d.selector);for(var i=0;i<targets.length;i++){targets[i].style[d.prop]=d.value;}if(sel)report(sel);}
+    if(d.type==='aide:setIcon-all'&&d.selector&&d.name){var its=document.querySelectorAll(d.selector);for(var ii=0;ii<its.length;ii++){var it=its[ii];if(it.tagName==='SPAN'||it.tagName==='I'){while(it.firstChild)it.removeChild(it.firstChild);it.appendChild(document.createTextNode(d.name));}}if(sel)setTimeout(function(){report(sel);},50);}
+    if(d.type==='aide:replaceImage-all'&&d.selector&&d.url){var rts=document.querySelectorAll(d.selector);for(var ri=0;ri<rts.length;ri++){var rt=rts[ri];if(rt.tagName==='IMG'){rt.src=d.url;}else{var rci=rt.querySelector('img');if(rci){rci.src=d.url;}else{rt.style.backgroundImage='url("'+d.url+'")';rt.style.backgroundSize='cover';rt.style.backgroundPosition='center';}}}}
+    if(d.type==='aide:replaceIconWithImg-all'&&d.selector&&d.url){var xts=document.querySelectorAll(d.selector);for(var xi=0;xi<xts.length;xi++){var xt=xts[xi];var ximg=document.createElement('img');ximg.src=d.url;var xsz=(parseFloat(getComputedStyle(xt).fontSize)||24)+'px';ximg.style.cssText='width:'+xsz+';height:'+xsz+';object-fit:contain;display:inline-block;vertical-align:middle;';if(xt.parentNode)xt.parentNode.replaceChild(ximg,xt);}if(sel)setTimeout(function(){report(sel);},50);}
     if(d.type==='aide:setVideoSrc'&&sel){
       function makeVideo(src,ref){var v=document.createElement('video');v.src=src;v.autoplay=true;v.muted=true;v.loop=true;v.playsInline=true;v.style.cssText=ref.style.cssText;v.className=ref.className;return v;}
       if(sel.tagName==='VIDEO'){sel.src=d.url;}
@@ -507,6 +527,8 @@ export default function StudioPage() {
 
   // Editor state
   const [selectedStyles, setSelectedStyles] = useState<ElementStyles | null>(null)
+  const [selectedSharedClasses, setSelectedSharedClasses] = useState<string[]>([])
+  const [syncAllScreens, setSyncAllScreens] = useState(false)
   const [tweaksOpen, setTweaksOpen] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [creonOpen, setCreonOpen] = useState(false)
@@ -524,9 +546,16 @@ export default function StudioPage() {
   const [shareOpen, setShareOpen] = useState(false)
   const [zoomOpen, setZoomOpen] = useState(false)
   const [zoom, setZoom] = useState(60)
+  const [previewWidth, setPreviewWidth] = useState(390)
   const [copyLinkDone, setCopyLinkDone] = useState(false)
   const shareRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef<HTMLDivElement>(null)
+
+  // Figma export state
+  const [figmaExportOpen, setFigmaExportOpen] = useState(false)
+  const [isFigmaExporting, setIsFigmaExporting] = useState(false)
+  const [figmaExportDone, setFigmaExportDone] = useState(false)
+  const [figmaExportError, setFigmaExportError] = useState<string | null>(null)
 
   // Per-variant undo/redo history
   const [historyA, setHistoryA] = useState<string[]>([])
@@ -669,7 +698,6 @@ export default function StudioPage() {
   useEffect(() => { canvasPanRef.current = canvasPan }, [canvasPan])
   useEffect(() => { selectedCardRef.current = selectedCard }, [selectedCard])
 
-
   // Canvas zoom/pan (step 3)
   useEffect(() => {
     if (step !== 3) return
@@ -677,7 +705,10 @@ export default function StudioPage() {
     if (!el) return
     const applyTransform = (pan: { x: number; y: number }, zoom: number) => {
       const t = canvasTransformRef.current
-      if (t) t.style.transform = `translate(${pan.x}px,${pan.y}px) scale(${zoom})`
+      if (t) {
+        t.style.transition = 'transform 0.18s ease-out'
+        t.style.transform = `translate(${pan.x}px,${pan.y}px) scale(${zoom})`
+      }
     }
     const onWheel = (e: WheelEvent) => {
       if (selectedCardRef.current) {
@@ -689,13 +720,14 @@ export default function StudioPage() {
           return
         }
       }
-      // Ctrl/Meta + scroll → 줌 (커서 기준)
+      // Ctrl/Meta + scroll → 줌 (cursor-based)
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault()
         const rect = el.getBoundingClientRect()
         const mouseX = e.clientX - rect.left
         const mouseY = e.clientY - rect.top
-        const factor = e.deltaY > 0 ? 0.92 : 1 / 0.92
+        // Use a milder factor for smoother zoom
+        const factor = e.deltaY > 0 ? 0.9875 : 1 / 0.9875
         const curZoom = canvasZoomRef.current
         const curPan = canvasPanRef.current
         const newZoom = Math.min(Math.max(curZoom * factor, 0.15), 4)
@@ -708,7 +740,7 @@ export default function StudioPage() {
         applyTransform(newPan, newZoom)
         return
       }
-      // 트랙패드/마우스 스크롤 → 양방향 패닝
+      // Trackpad/mouse scroll → pan
       e.preventDefault()
       const newPan = { x: canvasPanRef.current.x - e.deltaX, y: canvasPanRef.current.y - e.deltaY }
       canvasPanRef.current = newPan
@@ -725,13 +757,16 @@ export default function StudioPage() {
     if (!el) return
     const applyTransform = (pan: { x: number; y: number }, scale: number) => {
       const t = studioTransformRef.current
-      if (t) t.style.transform = `translate(${pan.x}px,${pan.y}px) scale(${scale})`
+      if (t) {
+        t.style.transition = 'transform 0.18s ease-out'
+        t.style.transform = `translate(${pan.x}px,${pan.y}px) scale(${scale})`
+      }
     }
     const onWheel = (e: WheelEvent) => {
       // Ctrl/Meta + scroll → 줌
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault()
-        const factor = e.deltaY > 0 ? 0.92 : 1 / 0.92
+        const factor = e.deltaY > 0 ? 0.95 : 1 / 0.95
         const cur = studioScaleRef.current
         const newScale = Math.min(Math.max(cur * factor, 0.15), 4)
         studioScaleRef.current = newScale
@@ -776,6 +811,9 @@ export default function StudioPage() {
       const curPan = isStudio ? studioPanRef.current : canvasPanRef.current
       panStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, panX: curPan.x, panY: curPan.y }
       el.style.cursor = 'grabbing'
+        // Disable smooth transition while dragging for instant feedback
+        const panTarget = isStudio ? studioTransformRef.current : canvasTransformRef.current
+        if (panTarget) panTarget.style.transition = ''
     }
     const onMouseMove = (e: MouseEvent) => {
       if (!isPanningRef.current) return
@@ -816,7 +854,11 @@ export default function StudioPage() {
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       if (!e.data) return
-      if (e.data.type === 'aide:select') setSelectedStyles(e.data.styles)
+      if (e.data.type === 'aide:select') {
+        setSelectedStyles(e.data.styles)
+        setSelectedSharedClasses(e.data.sharedClasses || [])
+        setSyncAllScreens(false)
+      }
       if (e.data.type === 'aide:screens') { setScreens(e.data.screens ?? []); if (e.data.screens?.[0]) setActiveScreenId(e.data.screens[0].id) }
       if (e.data.type === 'aide:screen') setActiveScreenId(e.data.id)
       if (e.data.type === 'creon:asset') {
@@ -912,8 +954,13 @@ export default function StudioPage() {
   }, [step])
 
   const handleStyleUpdate = useCallback((prop: string, value: string) => {
-    sendToIframe({ type: 'aide:update', prop, value })
-  }, [sendToIframe])
+    if (syncAllScreens && selectedSharedClasses.length > 0) {
+      const selector = '.aide-screen .' + selectedSharedClasses[0]
+      sendToIframe({ type: 'aide:update-all', selector, prop, value })
+    } else {
+      sendToIframe({ type: 'aide:update', prop, value })
+    }
+  }, [sendToIframe, syncAllScreens, selectedSharedClasses])
 
   const loadHistoryItemIntoEditor = useCallback((item: HistoryItem) => {
     setBrief(item.brief)
@@ -1014,6 +1061,21 @@ export default function StudioPage() {
       }
       return { ...prev, [questionId]: value }
     })
+
+    if (questionId === 'domain') {
+      const domainKey = DOMAIN_LABEL_TO_KEY[value] ?? 'other'
+      const newOptions = DOMAIN_HOME_EMPHASIS_OPTIONS[domainKey]
+      setQuestionnaire(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          questions: prev.questions.map(q =>
+            q.id === 'home_emphasis' ? { ...q, options: newOptions } : q
+          ),
+        }
+      })
+      setAnswers(prev => { const { home_emphasis: _, ...rest } = prev; return rest })
+    }
   }, [])
 
   const handleGenerate = async () => {
@@ -1140,6 +1202,7 @@ export default function StudioPage() {
       setHistoryA([data.html]); setHistoryIndexA(0)
       setHistoryB([]); setHistoryIndexB(-1)
       setZoom(isMobile ? 100 : isTablet ? 70 : 60)
+      setPreviewWidth(isMobile ? 390 : isTablet ? 768 : 1440)
       setStep(4)
 
       if (data.image) {
@@ -1331,6 +1394,39 @@ export default function StudioPage() {
     setShareOpen(false)
   }
 
+  const exportToFigma = async () => {
+    if (!result?.html) return
+    setShareOpen(false)
+    setFigmaExportOpen(true)
+    setIsFigmaExporting(true)
+    setFigmaExportDone(false)
+    setFigmaExportError(null)
+
+    try {
+      const res = await fetch('/api/export-figma', {
+        method: 'POST',
+        headers: apiHeaders(),
+        body: JSON.stringify({ html: result.html, platform, screens }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const bundle = await res.json()
+
+      const ts = new Date().toISOString().slice(0, 10)
+      const blob = new Blob([JSON.stringify(bundle)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `aide-design-${ts}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      setFigmaExportDone(true)
+    } catch (err) {
+      setFigmaExportError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setIsFigmaExporting(false)
+    }
+  }
+
   const downloadPng = () => {
     if (!result?.image) return
     const a = document.createElement('a'); a.href = result.image; a.download = 'ui-design.png'; a.click()
@@ -1366,14 +1462,15 @@ export default function StudioPage() {
 
     return (
       <div
-        className="h-screen overflow-hidden flex flex-col text-[#111111]"
+        className="h-screen overflow-hidden flex flex-col text-[#111111] relative"
         style={{
           fontFamily: "'Inter', -apple-system, sans-serif",
           backgroundColor: '#f4f4f6',
-          backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px)',
-          backgroundSize: '16px 16px',
         }}
       >
+        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: -1 }}>
+          <DotField />
+        </div>
         {isExpandingPrototype && <ExpandingOverlay image={pickedVariantIdx !== null ? (mainVariants[pickedVariantIdx]?.image ?? undefined) : undefined} platform={platform} variantLabel={pickedVariantIdx !== null ? ['시안 A','시안 B','시안 C'][pickedVariantIdx] : undefined} />}
 
         {/* Header */}
@@ -1401,7 +1498,7 @@ export default function StudioPage() {
             >
               <RefreshCw size={13} /> 다시 생성
             </button>
-            <button onClick={() => setStep(2)} className="flex items-center gap-1.5 text-[13px] text-[#666666] hover:text-[#111111] transition-colors">
+            <button onClick={() => setStep(2)} disabled={isAnyGenerating} className="flex items-center gap-1.5 text-[13px] text-[#666666] hover:text-[#111111] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               <ArrowLeft size={14} /> 뒤로
             </button>
           </div>
@@ -2049,7 +2146,10 @@ export default function StudioPage() {
   // ─── Step 4: Figma-style full-screen editor ──────────────────────────────
   if (step === 4 && result) {
     return (
-      <div className="h-screen overflow-hidden flex flex-col text-[#111111]" style={{ fontFamily: "'Inter', -apple-system, sans-serif", backgroundColor: '#f4f4f6', backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px)', backgroundSize: '16px 16px' }}>
+      <div className="h-screen overflow-hidden flex flex-col text-[#111111] relative" style={{ fontFamily: "'Inter', -apple-system, sans-serif", backgroundColor: '#f4f4f6' }}>
+        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+          <DotField />
+        </div>
 
         {/* Tab bar */}
         <div className="h-11 border-b border-[rgba(0,0,0,0.09)] flex items-stretch shrink-0 bg-white">
@@ -2170,11 +2270,9 @@ export default function StudioPage() {
                     <span className="text-[16px]">🖼️</span> PNG 내보내기
                   </button>
                   <div className="h-px bg-[rgba(0,0,0,0.06)] mx-3" />
-                  <div className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#666666] cursor-not-allowed">
-                    <span className="text-[16px]">🎨</span>
-                    <span>Figma로 내보내기</span>
-                    <span className="ml-auto text-[13px] bg-[#f0f0f0] text-[#666666] px-1.5 py-0.5 rounded-full border border-[rgba(0,0,0,0.07)]">준비 중</span>
-                  </div>
+                  <button onClick={exportToFigma} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#111111] hover:bg-[#f0f0f0] transition-colors text-left">
+                    <span className="text-[16px]">🎨</span> Figma로 내보내기
+                  </button>
                 </div>
               )}
             </div>
@@ -2208,6 +2306,19 @@ export default function StudioPage() {
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-3">
+            <div className="flex items-center rounded overflow-hidden border border-[rgba(0,0,0,0.09)]">
+              <button
+                onClick={() => { setPreviewWidth(390); setZoom(100) }}
+                className="px-3 py-1 text-[12px] font-medium transition-colors"
+                style={previewWidth <= 768 ? { background: '#111111', color: '#ffffff' } : { color: '#666666', background: 'transparent' }}
+              >앱</button>
+              <button
+                onClick={() => { setPreviewWidth(1440); setZoom(60) }}
+                className="px-3 py-1 text-[12px] font-medium transition-colors border-l border-[rgba(0,0,0,0.09)]"
+                style={previewWidth > 768 ? { background: '#111111', color: '#ffffff' } : { color: '#666666', background: 'transparent' }}
+              >웹</button>
+            </div>
+            <div className="w-px h-4 bg-[rgba(0,0,0,0.09)]" />
             <div className="flex items-center gap-2 text-[13px] text-[#666666]">
               <SlidersHorizontal size={12} />
               <span>Tweaks</span>
@@ -2215,7 +2326,7 @@ export default function StudioPage() {
             </div>
             <div className="w-px h-4 bg-[rgba(0,0,0,0.09)]" />
             <button
-              onClick={() => { if (editMode) commitIframeHtml(); setEditMode(e => !e); setSelectedStyles(null) }}
+              onClick={() => { if (editMode) commitIframeHtml(); setEditMode(e => !e); setSelectedStyles(null); setSelectedSharedClasses([]); setSyncAllScreens(false) }}
               className="flex items-center gap-1.5 text-[13px] px-2.5 py-1 border transition-colors"
               style={{ borderRadius: '6px', ...(editMode ? { backgroundColor: '#111111', color: '#ffffff', borderColor: '#111111' } : { color: '#666666', borderColor: 'rgba(0,0,0,0.09)' }) }}
             >
@@ -2373,39 +2484,20 @@ export default function StudioPage() {
                 padding: 32,
               }}
             >
-              {isMobile ? (
-                <MobileFrame scale={zoom / 100} darkMode={darkMode}>
-                  <iframe
-                    ref={iframeRef}
-                    srcDoc={displayHtml}
-                    style={{ width: 390, height: 844, border: 'none', display: 'block' }}
-                    sandbox="allow-scripts allow-same-origin"
-                    title="Generated UI"
-                  />
-                </MobileFrame>
-              ) : isTablet ? (
-                <TabletFrame scale={zoom / 100}>
-                  <iframe
-                    ref={iframeRef}
-                    srcDoc={displayHtml}
-                    style={{ width: 834, height: 1170, border: 'none', display: 'block' }}
-                    sandbox="allow-scripts allow-same-origin"
-                    title="Generated UI"
-                  />
-                </TabletFrame>
-              ) : (
-                <DesktopFrame scale={zoom / 100}>
-                  <div style={{ width: 1440, height: 1024, transformOrigin: 'top left', transform: `scale(${zoom / 100})`, overflow: 'hidden' }}>
-                    <iframe
-                      ref={iframeRef}
-                      srcDoc={displayHtml}
-                      style={{ width: 1440, height: 1024, border: 'none', display: 'block' }}
-                      sandbox="allow-scripts allow-same-origin"
-                      title="Generated UI"
-                    />
-                  </div>
-                </DesktopFrame>
-              )}
+              <ResponsiveFrame
+                previewWidth={previewWidth}
+                onWidthChange={setPreviewWidth}
+                zoom={zoom}
+                platform={platform}
+              >
+                <iframe
+                  ref={iframeRef}
+                  srcDoc={displayHtml}
+                  style={{ width: previewWidth, height: platform === 'mobile' ? 844 : 1024, border: 'none', display: 'block' }}
+                  sandbox="allow-scripts allow-same-origin"
+                  title="Generated UI"
+                />
+              </ResponsiveFrame>
             </div>
           </div>
 
@@ -2413,7 +2505,15 @@ export default function StudioPage() {
           {editMode && iconPickerOpen && (
             <IconPickerPanel
               pickedIcon={pickedIcon}
-              onPick={(name) => { setPickedIcon(name); sendToIframe({ type: 'aide:setIcon', name }) }}
+              onPick={(name) => {
+                setPickedIcon(name)
+                if (syncAllScreens && selectedSharedClasses.length > 0) {
+                  const selector = '.aide-screen ' + selectedSharedClasses.map(c => '.' + c).join('')
+                  sendToIframe({ type: 'aide:setIcon-all', selector, name })
+                } else {
+                  sendToIframe({ type: 'aide:setIcon', name })
+                }
+              }}
               onApply={() => { setIconPickerOpen(false); setPickedIcon(null); setOriginalIconText(null) }}
               onCancel={() => {
                 if (originalIconText !== null) sendToIframe({ type: 'aide:setIcon', name: originalIconText })
@@ -2424,6 +2524,7 @@ export default function StudioPage() {
 
           {/* Right: properties panel (edit mode only, hidden when Creon or icon picker is open) */}
           {editMode && !creonOpen && !iconPickerOpen && <PropertiesPanel styles={selectedStyles} onUpdate={handleStyleUpdate}
+            sharedClasses={selectedSharedClasses} syncAllScreens={syncAllScreens} onToggleSync={() => setSyncAllScreens(v => !v)}
             onCreonReplace={selectedStyles && (() => {
               const s = selectedStyles
               const visualTag = ['img', 'svg', 'canvas', 'video', 'figure', 'picture'].includes(s.tagName)
@@ -2468,9 +2569,13 @@ export default function StudioPage() {
                         {!isIcon && (
                           <button
                             onClick={() => {
+                              const isSyncMode = syncAllScreens && selectedSharedClasses.length > 0
+                              const selector = isSyncMode ? '.aide-screen ' + selectedSharedClasses.map(c => '.' + c).join('') : ''
                               if (/\.(mp4|webm|mov)(\?|$)/i.test(creonAsset)) {
                                 sendToIframe({ type: 'aide:update', prop: 'backgroundImage', value: 'none' })
                                 sendToIframe({ type: 'aide:setVideoSrc', url: creonAsset })
+                              } else if (isSyncMode) {
+                                sendToIframe({ type: 'aide:replaceImage-all', selector, url: creonAsset })
                               } else {
                                 sendToIframe({ type: 'aide:replaceImage', url: creonAsset })
                               }
@@ -2484,7 +2589,12 @@ export default function StudioPage() {
                         {isIcon && (
                           <button
                             onClick={() => {
-                              sendToIframe({ type: 'aide:replaceIconWithImg', url: creonAsset })
+                              if (syncAllScreens && selectedSharedClasses.length > 0) {
+                                const selector = '.aide-screen ' + selectedSharedClasses.map(c => '.' + c).join('')
+                                sendToIframe({ type: 'aide:replaceIconWithImg-all', selector, url: creonAsset })
+                              } else {
+                                sendToIframe({ type: 'aide:replaceIconWithImg', url: creonAsset })
+                              }
                               sendToIframe({ type: 'aide:pulse', on: false })
                             }}
                             style={{ width: '100%', padding: '5px 0', fontSize: 12, fontWeight: 600, color: '#ffffff', backgroundColor: '#111111', border: 'none', borderRadius: 6, cursor: 'pointer' }}
@@ -2521,6 +2631,90 @@ export default function StudioPage() {
             onStateChange={handleStateChange}
             onVarChange={handleVarChange}
           />
+        )}
+
+        {figmaExportOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)' }}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.25)' }}>
+              {figmaExportError ? (
+                <div className="flex flex-col items-center gap-5 px-8 py-10">
+                  <div className="size-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#ff000010', border: '1.5px solid #ff000030' }}>
+                    <span className="text-2xl">⚠️</span>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[15px] font-semibold text-[#111111] mb-1">내보내기 실패</p>
+                    <p className="text-[13px] text-[#666666] leading-relaxed">{figmaExportError}</p>
+                  </div>
+                  <button
+                    onClick={() => setFigmaExportOpen(false)}
+                    className="w-full py-2.5 text-[13px] font-semibold rounded-xl transition-colors"
+                    style={{ backgroundColor: '#111111', color: '#ffffff' }}
+                  >
+                    닫기
+                  </button>
+                </div>
+              ) : isFigmaExporting ? (
+                <div className="flex flex-col items-center gap-5 px-8 py-10">
+                  <div className="size-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#0066ff10', border: '1.5px solid #0066ff30' }}>
+                    <span className="text-2xl">🎨</span>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[15px] font-semibold text-[#111111] mb-1">Figma 번들 생성 중...</p>
+                    <p className="text-[13px] text-[#666666]">각 화면을 캡처하고 JSON으로 패키징하고 있습니다</p>
+                  </div>
+                  <div className="w-full h-1 bg-[#f0f0f0] rounded-full overflow-hidden">
+                    <div className="h-full bg-[#0066ff] rounded-full" style={{ width: '60%', animation: 'figma-bar 1.6s ease-in-out infinite' }} />
+                  </div>
+                  <style>{`@keyframes figma-bar{0%{transform:translateX(-150%)}100%{transform:translateX(300%)}}`}</style>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-0">
+                  <div className="flex flex-col items-center gap-4 px-8 pt-8 pb-6">
+                    <div className="size-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#22c55e10', border: '1.5px solid #22c55e40' }}>
+                      <span className="text-2xl">✅</span>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[15px] font-semibold text-[#111111] mb-1">JSON 파일 다운로드 완료!</p>
+                      <p className="text-[13px] text-[#666666] leading-relaxed">아래 순서대로 Figma에 플러그인을 설치하고<br />다운로드한 파일을 가져오세요</p>
+                    </div>
+                  </div>
+
+                  <div className="px-6 pb-6 flex flex-col gap-3">
+                    {[
+                      { step: '1', text: 'Figma 데스크톱 앱 열기' },
+                      { step: '2', text: 'Plugins > Development > Import plugin from manifest...' },
+                      { step: '3', text: '다운로드 폴더에서 figma-plugin/manifest.json 선택' },
+                      { step: '4', text: 'Plugins > Development > Aide — UI to Figma 실행' },
+                      { step: '5', text: '다운로드한 aide-design-*.json 파일 선택 후 가져오기' },
+                    ].map(item => (
+                      <div key={item.step} className="flex items-start gap-3">
+                        <div className="size-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: '#111111' }}>
+                          <span className="text-[11px] font-bold text-white">{item.step}</span>
+                        </div>
+                        <p className="text-[13px] text-[#444444] leading-snug pt-0.5">{item.text}</p>
+                      </div>
+                    ))}
+
+                    <div className="mt-1 p-3 rounded-xl text-[12px] text-[#555555] leading-relaxed" style={{ backgroundColor: '#f7f7f7', border: '1px solid #eeeeee' }}>
+                      💡 플러그인 파일은{' '}
+                      <a href="/figma-plugin/manifest.json" download className="text-[#0066ff] underline font-medium">여기서 다운로드</a>
+                      {' '}하거나 프로젝트의 <code className="text-[11px] font-mono bg-[#ebebeb] px-1 py-0.5 rounded">public/figma-plugin/</code> 폴더를 사용하세요.
+                    </div>
+                  </div>
+
+                  <div className="px-6 pb-6">
+                    <button
+                      onClick={() => setFigmaExportOpen(false)}
+                      className="w-full py-2.5 text-[13px] font-semibold rounded-xl transition-colors"
+                      style={{ backgroundColor: '#111111', color: '#ffffff' }}
+                    >
+                      닫기
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     )
@@ -3055,9 +3249,145 @@ function DesktopFrame({ children, scale = 0.6 }: { children: React.ReactNode; sc
   )
 }
 
+function ResponsiveFrame({
+  previewWidth,
+  onWidthChange,
+  zoom,
+  platform,
+  children,
+}: {
+  previewWidth: number
+  onWidthChange: (w: number) => void
+  zoom: number
+  platform: 'mobile' | 'web'
+  children: React.ReactNode
+}) {
+  const scale = zoom / 100
+  const frameH = platform === 'mobile' ? 844 : 1024
+  const scaledW = Math.round(previewWidth * scale)
+  const scaledH = Math.round(frameH * scale)
+  const chromeH = 32
+
+  const getBreakpoint = (w: number) => {
+    if (w < 480) return { label: 'Mobile', color: '#22c55e' }
+    if (w < 1024) return { label: 'Tablet', color: '#f59e0b' }
+    return { label: 'Desktop', color: '#3b82f6' }
+  }
+  const bp = getBreakpoint(previewWidth)
+
+  const dragRef = useRef<{ startX: number; startW: number } | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+
+  const snapToZone = (w: number) => (w < 480 ? 390 : w < 1024 ? 768 : 1440)
+
+  const handleDragStart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+    dragRef.current = { startX: e.clientX, startW: previewWidth }
+    let latestW = previewWidth
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return
+      const delta = (ev.clientX - dragRef.current.startX) / scale
+      const newW = Math.max(320, Math.min(1920, Math.round(dragRef.current.startW + delta)))
+      latestW = newW
+      onWidthChange(newW)
+    }
+    const onUp = () => {
+      dragRef.current = null
+      setIsDragging(false)
+      onWidthChange(snapToZone(latestW))
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+      {/* 브레이크포인트 인디케이터 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, paddingLeft: 2 }}>
+        <div style={{ width: 8, height: 8, borderRadius: '50%', background: bp.color, flexShrink: 0 }} />
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#444' }}>{bp.label}</span>
+        <span style={{ fontSize: 12, color: '#999' }}>{previewWidth}px</span>
+      </div>
+
+      {/* 프레임 + 드래그 핸들 */}
+      <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+        {/* 프레임 셸 */}
+        <div
+          style={{
+            width: scaledW,
+            flexShrink: 0,
+            borderRadius: 10,
+            overflow: 'hidden',
+            border: '0.5px solid rgba(0,0,0,0.12)',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+            background: '#fff',
+          }}
+        >
+          {/* 브라우저 크롬 바 */}
+          <div
+            style={{
+              height: chromeH,
+              background: '#ebebeb',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0 12px',
+              gap: 6,
+              borderBottom: '0.5px solid rgba(0,0,0,0.08)',
+              flexShrink: 0,
+            }}
+          >
+            <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#ff5f57' }} />
+            <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#febc2e' }} />
+            <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#28c840' }} />
+          </div>
+          {/* 콘텐츠 클립 영역 */}
+          <div style={{ width: scaledW, height: scaledH, overflow: 'hidden', position: 'relative' }}>
+            {isDragging && (
+              <div style={{ position: 'absolute', inset: 0, zIndex: 10, cursor: 'ew-resize' }} />
+            )}
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: previewWidth,
+                height: frameH,
+                transform: `scale(${scale})`,
+                transformOrigin: 'top left',
+              }}
+            >
+              {children}
+            </div>
+          </div>
+        </div>
+
+        {/* 오른쪽 드래그 핸들 */}
+        <div
+          onMouseDown={handleDragStart}
+          title="드래그하여 너비 조절"
+          style={{
+            width: 20,
+            height: scaledH + chromeH,
+            cursor: 'ew-resize',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ width: 4, height: 40, background: 'rgba(0,0,0,0.15)', borderRadius: 2 }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Properties panel ─────────────────────────────────────────────────────────
 
-function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange }: { styles: ElementStyles | null; onUpdate: (prop: string, val: string) => void; onCreonReplace?: () => void; onIconChange?: () => void }) {
+function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange, sharedClasses, syncAllScreens, onToggleSync }: { styles: ElementStyles | null; onUpdate: (prop: string, val: string) => void; onCreonReplace?: () => void; onIconChange?: () => void; sharedClasses?: string[]; syncAllScreens?: boolean; onToggleSync?: () => void }) {
   if (!styles) {
     return (
       <div className="w-72 shrink-0 border-l border-[rgba(0,0,0,0.09)] bg-white flex flex-col items-center justify-center text-center p-8">
@@ -3071,6 +3401,7 @@ function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange }: { s
 
   const color = rgbToHex(styles.color)
   const bg = rgbToHex(styles.backgroundColor)
+  const isShared = sharedClasses && sharedClasses.length > 0
 
   return (
     <div className="w-72 shrink-0 border-l border-[rgba(0,0,0,0.09)] bg-white flex flex-col text-[13px]">
@@ -3080,6 +3411,33 @@ function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange }: { s
         <span className="text-[13px] font-mono bg-[#f0f0f0] text-[#666666] px-1.5 py-0.5 rounded">&lt;{styles.tagName}&gt;</span>
         {styles.text && <span className="text-[#666666] truncate">{styles.text}</span>}
       </div>
+
+      {/* Shared component sync toggle */}
+      {isShared && (
+        <div
+          className="px-4 py-2.5 border-b border-[rgba(0,0,0,0.07)] flex items-center justify-between cursor-pointer"
+          style={{ backgroundColor: syncAllScreens ? 'rgba(0,85,255,0.06)' : '#fafafa' }}
+          onClick={onToggleSync}
+        >
+          <div className="flex items-center gap-2">
+            <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#0055ff', flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: '#444444', fontWeight: 500 }}>공통 컴포넌트 — 모든 화면 동기화</span>
+          </div>
+          <div
+            style={{
+              width: 32, height: 18, borderRadius: 9, flexShrink: 0,
+              backgroundColor: syncAllScreens ? '#0055ff' : '#cccccc',
+              position: 'relative', transition: 'background 0.2s',
+            }}
+          >
+            <div style={{
+              position: 'absolute', top: 2, left: syncAllScreens ? 16 : 2,
+              width: 14, height: 14, borderRadius: '50%', backgroundColor: '#ffffff',
+              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+            }} />
+          </div>
+        </div>
+      )}
 
       {/* TYPOGRAPHY */}
       <Section label="TYPOGRAPHY">
