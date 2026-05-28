@@ -329,7 +329,7 @@ function ExpandingOverlay({ image, platform, variantLabel }: { image?: string; p
   }, [])
 
   const W = isMob ? 76 : 118
-  const H = isMob ? 130 : 80
+  const H = isMob ? 165 : 84
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ backgroundColor: 'rgba(248,248,248,0.93)', backdropFilter: 'blur(12px)' }}>
@@ -368,7 +368,7 @@ function ExpandingOverlay({ image, platform, variantLabel }: { image?: string; p
               flexShrink: 0,
             }}>
               {image
-                ? <img src={image} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                ? <img src={image} style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'top center', display: 'block', background: '#ffffff' }} />
                 : <div style={{ width: '100%', height: '100%', background: '#e4e4e4' }} />}
             </div>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#111111', letterSpacing: '-0.01em' }}>{variantLabel ?? '선택된 시안'}</span>
@@ -2222,7 +2222,7 @@ export default function StudioPage() {
                     onClick={e => { e.stopPropagation(); setSelectedCard(`variant-${letter}`) }}
                     style={{
                       borderRadius: '12px',
-                      aspectRatio: isMobile ? '402/874' : isTablet ? '834/1194' : '1440/1024',
+                      aspectRatio: isMobile ? '390/844' : isTablet ? '834/1194' : '1440/1024',
                       border: selectedCard === `variant-${letter}` ? '2px solid #1a75ff' : '2px solid rgba(255,255,255,0.7)',
                       outline: selectedCard === `variant-${letter}` ? '3px solid rgba(26,117,255,0.18)' : 'none',
                       outlineOffset: '2px',
@@ -2230,7 +2230,7 @@ export default function StudioPage() {
                     }}
                   >
                     {variant ? (
-                      <img src={variant.image} alt={`시안 ${letter}`} className="w-full h-full object-cover object-top" />
+                      <img src={variant.image} alt={`시안 ${letter}`} className="w-full h-full object-contain object-top bg-white" />
                     ) : isLoadingThis ? (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="size-8 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#0055ff' }} />

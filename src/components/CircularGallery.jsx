@@ -168,15 +168,21 @@ class Media {
         }
         
         void main() {
-          vec2 ratio = vec2(
-            min((uPlaneSizes.x / uPlaneSizes.y) / (uImageSizes.x / uImageSizes.y), 1.0),
-            min((uPlaneSizes.y / uPlaneSizes.x) / (uImageSizes.y / uImageSizes.x), 1.0)
-          );
-          vec2 uv = vec2(
-            vUv.x * ratio.x + (1.0 - ratio.x) * 0.5,
-            vUv.y * ratio.y + (1.0 - ratio.y) * 0.5
-          );
-          vec4 color = texture2D(tMap, uv);
+          vec2 centered = vUv - 0.5;
+          float planeAspect = uPlaneSizes.x / uPlaneSizes.y;
+          float imageAspect = uImageSizes.x / uImageSizes.y;
+          vec2 fittedSize = vec2(1.0);
+
+          if (planeAspect > imageAspect) {
+            fittedSize.x = imageAspect / planeAspect;
+          } else {
+            fittedSize.y = planeAspect / imageAspect;
+          }
+
+          vec2 uv = centered / fittedSize + 0.5;
+          bool insideImage = uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0;
+          vec4 color = insideImage ? texture2D(tMap, uv) : vec4(1.0, 1.0, 1.0, 1.0);
+          color = vec4(mix(vec3(1.0), color.rgb, color.a), 1.0);
           
           float d = roundedBoxSDF(vUv - 0.5, vec2(0.5 - uBorderRadius), uBorderRadius);
           
@@ -190,7 +196,7 @@ class Media {
       uniforms: {
         tMap: { value: texture },
         uPlaneSizes: { value: [0, 0] },
-        uImageSizes: { value: [0, 0] },
+        uImageSizes: { value: [1, 1] },
         uSpeed: { value: 0 },
         uTime: { value: 100 * Math.random() },
         uBorderRadius: { value: this.borderRadius }
@@ -273,8 +279,8 @@ class Media {
     }
     this.scale = this.screen.height / 1500;
     const isMobile = this.platform === 'mobile';
-    const designW = isMobile ? 380 : 900;
-    const designH = isMobile ? 780 : 560;
+    const designW = isMobile ? 390 : 900;
+    const designH = isMobile ? 844 : 560;
     this.plane.scale.y = (this.viewport.height * (designH * this.scale)) / this.screen.height;
     this.plane.scale.x = (this.viewport.width * (designW * this.scale)) / this.screen.width;
     this.plane.program.uniforms.uPlaneSizes.value = [this.plane.scale.x, this.plane.scale.y];
