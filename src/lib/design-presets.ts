@@ -250,9 +250,10 @@ const sortedIds = Object.keys(MD_FILES).sort((a, b) => {
 // Build DESIGN_PRESETS: 'none' + all auto-discovered .md files (enriched with RICH_META)
 export const DESIGN_PRESETS: Record<string, DesignPresetMeta> = {
   none: {
-    label: '없음',
-    md: '',
-    description: 'AI가 브랜드에 맞는 디자인 시스템을 직접 설계합니다',
+    label: '기본',
+    md: MD_FILES.ktds ?? '',
+    color: '#1a75ff',
+    description: '기본값으로 kt ds 디자인 시스템을 사용합니다',
   },
 }
 

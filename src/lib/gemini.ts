@@ -138,6 +138,7 @@ export interface UrlSourceData {
   fontFamilies: string
   htmlClasses: string
   computedStyles: string
+  componentStructure?: string
 }
 
 export async function analyzeUrlToDesignMd(
@@ -148,7 +149,7 @@ export async function analyzeUrlToDesignMd(
   captureStatus?: 'full' | 'partial' | 'blocked',
 ): Promise<string> {
   const sourceSection = sourceData
-    ? `\n\n## Extracted Source Code Data\n\nUse this raw source data as the PRIMARY source of truth for tokens — these are actual computed values from the browser, not visual estimates.\n\n### Computed Element Styles (MOST ACCURATE — use these for color/typography tokens)\n\`\`\`\n${sourceData.computedStyles || '(none found)'}\n\`\`\`\n\n### CSS Custom Properties (Design Tokens)\n\`\`\`\n${sourceData.cssVariables || '(none found)'}\n\`\`\`\n\n### Font Family Declarations\n\`\`\`\n${sourceData.fontFamilies || '(none found)'}\n\`\`\`\n\n### HTML Class Patterns (Tailwind / CSS modules)\n\`\`\`\n${sourceData.htmlClasses || '(none found)'}\n\`\`\`\n`
+    ? `\n\n## Extracted Source Code Data\n\nUse this raw source data as the PRIMARY source of truth for tokens — these are actual computed values from the browser, not visual estimates.\n\n### Computed Element Styles (MOST ACCURATE — use these for color/typography tokens)\n\`\`\`\n${sourceData.computedStyles || '(none found)'}\n\`\`\`\n\n### Component Structure Samples (MOST USEFUL — use these for component rules)\n\`\`\`\n${sourceData.componentStructure || '(none found)'}\n\`\`\`\n\n### CSS Custom Properties (Design Tokens)\n\`\`\`\n${sourceData.cssVariables || '(none found)'}\n\`\`\`\n\n### Font Family Declarations\n\`\`\`\n${sourceData.fontFamilies || '(none found)'}\n\`\`\`\n\n### HTML Class Patterns (Tailwind / CSS modules)\n\`\`\`\n${sourceData.htmlClasses || '(none found)'}\n\`\`\`\n`
     : ''
 
   const accessNote = captureStatus === 'blocked'
@@ -157,11 +158,11 @@ export async function analyzeUrlToDesignMd(
     ? `\n\n⚠️ LIMITED SOURCE ACCESS: CSS extraction was restricted (cross-origin or dynamic rendering). Rely primarily on the screenshot for visual color/font analysis.\n`
     : ''
 
-  const prompt = `You are a design system expert. Analyze the provided screenshot of "${url}" AND the extracted source code data below to produce an accurate DESIGN.md file.${accessNote}${sourceSection}
+  const prompt = `You are a senior design system auditor. Analyze the provided screenshot of "${url}" AND the extracted source code data below to produce an accurate, portable DESIGN.md file that can be used to regenerate UI in the same visual language.${accessNote}${sourceSection}
 
 Output ONLY the raw DESIGN.md content — no explanations, no code fences, no markdown wrappers. Start directly with the YAML frontmatter.
 
-Follow the Google DESIGN.md specification exactly:
+Follow this DESIGN.md schema exactly. This is a neutral Aide DESIGN.md format, not a Google/Material spec:
 
 ---
 version: "alpha"
@@ -268,14 +269,17 @@ components:
 - DON'T: [another thing to avoid]
 
 Rules for analysis:
-- If CSS custom properties are provided, extract exact hex/token values from them directly — do NOT estimate visually.
-- If Tailwind classes are present (e.g. bg-blue-500, rounded-lg, text-sm), infer the design scale from them.
-- Use ONLY hex colors (no rgb/rgba). Convert rgba to the nearest opaque hex.
-- Detect the dominant color palette from backgrounds, CTAs, and text.
-- Use CSS font-family declarations when available; fall back to visual inference.
-- Infer font sizes from visual hierarchy (display > h1 > body > caption).
-- Detect border-radius from buttons and cards.
-- Be specific and accurate — this will be used to generate UI.`;
+- Source data beats screenshot estimation. If CSS custom properties or computed styles are provided, extract exact token values from them first.
+- If screenshot and CSS disagree, prefer computed styles for colors, typography, border radius, shadow, and component dimensions.
+- Use ONLY hex colors in the YAML colors section. Convert rgb/rgba to the nearest opaque hex for base colors; preserve opacity/shadow values as strings only inside shadows/components.
+- Detect and document the real navigation pattern: top GNB, side LNB, bottom nav, tabs, breadcrumbs, filters, or mixed layout.
+- Detect real component anatomy: button height/radius/fill/border, input height/radius/border, card border/shadow/radius/padding, chips/tabs/badges.
+- Do NOT invent Material Design, MD3, Carbon, iOS, Tailwind, or any named system unless the source explicitly uses it.
+- Do NOT add md3:true, md3Base:true, --md-sys-* tokens, Roboto, or Material component rules unless they are explicitly visible in the source.
+- If an icon system is visible, name it generically from the source (e.g. "site icon set", "inline SVG icons"). Do not default to Material Symbols.
+- If Tailwind classes are present (e.g. bg-blue-500, rounded-lg, text-sm), infer the design scale from them but output semantic DESIGN.md tokens.
+- Capture uncertainty in the prose sections, not by inserting vague token values. Avoid placeholders like "[detected]" in final output; choose the best observed value.
+- Be specific and implementation-ready — this DESIGN.md will be used directly to generate UI.`;
 
   return generateProWithImage(prompt, screenshotBase64, 'image/png', apiKey, 'gemini-3.1-pro-preview');
 }
@@ -299,11 +303,17 @@ export interface HeroImageDecision {
   heroSubject?: string;
 }
 
+export interface PlatformRecommendation {
+  platform: PlatformType;
+  reason: string;
+}
+
 export interface QuestionnaireResponse {
   questions: Question[];
   projectSummary: string;
   heroImageDecision?: HeroImageDecision;
   domain?: AppDomain;
+  recommendedPlatform?: PlatformRecommendation;
 }
 
 export type PlatformType = 'mobile' | 'web';
@@ -319,10 +329,15 @@ function loadPlatformGuide(platform: PlatformType): string {
 
 function loadDefaultDesignMd(): string {
   try {
-    const filePath = path.join(process.cwd(), 'src', 'lib', 'default-design.md');
+    const filePath = path.join(process.cwd(), 'src', 'lib', 'design-systems', 'ktds.md');
     return fs.readFileSync(filePath, 'utf-8');
   } catch {
-    return '';
+    try {
+      const fallbackPath = path.join(process.cwd(), 'src', 'lib', 'default-design.md');
+      return fs.readFileSync(fallbackPath, 'utf-8');
+    } catch {
+      return '';
+    }
   }
 }
 
@@ -336,12 +351,40 @@ export interface GenerateParams {
   mainOnly?: boolean;
   variantStyle?: string;
   referenceImageBase64?: string;
+  referenceImageKind?: 'wireframe' | 'reference';
+  asIsAnalysis?: AsIsPageAnalysis;
   platform?: PlatformType;
   modelId?: string;
   heroImagePrompt?: string;
   heroSubject?: string;
   domain?: AppDomain;
   criticalReview?: boolean;
+}
+
+export interface AsIsPageAnalysis {
+  sourceUrl: string;
+  pageTitle: string;
+  metaDescription?: string;
+  pagePurpose: string;
+  layoutType: string;
+  globalNavigation: Array<{ tag: string; text: string; href?: string | null }>;
+  primaryCtas: Array<{ tag: string; text: string; href?: string | null }>;
+  forms: Array<{ label: string; fields: string[]; submitText: string }>;
+  sections: Array<{
+    index: number;
+    role: string;
+    heading: string;
+    textSamples: string[];
+    ctaSamples: string[];
+    repeatedItemCount: number;
+  }>;
+  repeatedPatterns: string[];
+  contentInventory: {
+    headings: string[];
+    buttons: string[];
+    links: string[];
+  };
+  redesignFocus: string[];
 }
 
 export interface TweakVariable {
@@ -395,7 +438,7 @@ ${designSystemContext}
 **generate: false 조건 (하나라도 해당하면):**
 - 내부 대시보드 / 관리자 툴 / B2B 엔터프라이즈
 - 모바일 앱 메인화면 (랜딩이 아닌 실제 앱)
-- 플랫폼 = ${platform === 'web' ? 'web' : 'mobile'} (모바일 앱이면 무조건 false)
+- 모바일 주문/피드/탐색 앱처럼 실제 앱 홈 화면이 핵심인 경우
 - 정보 조회·CRUD·폼 위주 서비스
 - 커뮤니티·SNS·뉴스 피드 서비스
 
@@ -408,6 +451,16 @@ generate: true일 때:
   - 반드시 isometric 3D 아이콘으로 표현 가능한 구체적 사물이어야 함
 
 generate: false일 때: heroSubject는 빈 문자열("")로 설정
+
+## 플랫폼 추천
+
+기획서를 읽고 생성 기준 플랫폼을 추천하세요. 결과물은 항상 반응형으로 만들지만, 첫 시안 프리뷰와 정보 구조의 기준이 되는 primary platform을 정합니다.
+
+- mobile: 음식/배달, 쇼핑 앱, SNS, 커뮤니티, 헬스, 엔터테인먼트, 데이팅, 온디맨드 서비스처럼 모바일 사용 맥락이 우선인 경우
+- web: 포털, B2B SaaS, 어드민, 대시보드, CRM/ERP, 분석툴, 교육/문서/검색 중심 서비스, 랜딩/브랜드 사이트처럼 데스크탑 정보 구조가 우선인 경우
+- 사용자가 브리프에 "웹", "포털", "대시보드", "관리자", "랜딩"을 명시하면 web을 우선합니다.
+- 사용자가 브리프에 "앱", "모바일", "배달", "피드", "주문", "예약 앱"을 명시하면 mobile을 우선합니다.
+${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는 ${platform}이지만, 브리프와 서비스 성격이 더 우선입니다.` : ''}
 
 ## 도메인 분류
 
@@ -428,6 +481,10 @@ generate: false일 때: heroSubject는 빈 문자열("")로 설정
 {
   "projectSummary": "프로젝트 한 줄 요약",
   "domain": "finance",
+  "recommendedPlatform": {
+    "platform": "mobile",
+    "reason": "추천 근거 한 줄"
+  },
   "heroImageDecision": {
     "generate": false,
     "reason": "판단 근거 한 줄",
@@ -442,7 +499,7 @@ generate: false일 때: heroSubject는 빈 문자열("")로 설정
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Failed to parse questionnaire JSON');
 
-  const parsed = JSON.parse(jsonMatch[0]) as { projectSummary: string; domain: AppDomain; heroImageDecision?: HeroImageDecision };
+  const parsed = JSON.parse(jsonMatch[0]) as { projectSummary: string; domain: AppDomain; heroImageDecision?: HeroImageDecision; recommendedPlatform?: PlatformRecommendation };
 
   const inferredDomainLabel = parsed.domain ? (DOMAIN_KEY_TO_LABEL[parsed.domain] ?? '기타') : '기타'
 
@@ -480,6 +537,7 @@ generate: false일 때: heroSubject는 빈 문자열("")로 설정
   return {
     projectSummary: parsed.projectSummary,
     domain: parsed.domain,
+    recommendedPlatform: parsed.recommendedPlatform,
     heroImageDecision: parsed.heroImageDecision,
     questions: fixedQuestions,
   }
@@ -747,8 +805,14 @@ ${safeHtml.slice(0, 18000)}
 5. **반응형 안정성**: 모바일/웹 플랫폼에 맞는 내비게이션과 레이아웃이 적용되었는가?
 6. **금지 사항**: 디자인 시스템에 없는 임의 hex, 임의 shadow, 임의 radius, 과한 그라데이션이 스타일을 덮어쓰지 않았는가?
 7. **CTA 명확도**: 주요 CTA가 디자인 시스템의 action 스타일로 명확히 보이는가?
+8. **아트 디렉션**: 첫 화면에 하나의 focal point가 있고, 핵심 요약/주요 행동/보조 탐색의 3영역이 명확한가?
+9. **시각 리듬**: 같은 성격의 카드/행/섹션이 같은 크기·간격·정렬·정보 순서를 유지하는가?
+10. **콘텐츠 구체성**: 모든 섹션이 실제 서비스 데이터처럼 구체적 텍스트, 수치, 상태, 가격/시간/평점/담당자/진행률 등을 담고 있는가?
 
 ## 즉시 실패 처리할 레이아웃 결함
+- 첫 화면에 focal point가 없고 비슷한 카드/칩만 나열된 경우
+- 핵심 요약, 주요 행동, 보조 탐색 중 2개 이상이 빠진 경우
+- A/B/C 시안이 같은 레이아웃 순서를 반복하고 차이가 색상/문구 수준에 그친 경우
 - 한글이 세로로 한 글자씩 떨어져 보이거나 writing-mode/좁은 column 때문에 문장이 깨진 경우
 - 첫 화면의 절반 이상이 빈 흰 영역 또는 빈 카드로 남아 있는 경우
 - 음식/배달/커머스 화면인데 메뉴 이미지 대신 산, 바다, 노트북 같은 무관한 이미지가 들어간 경우
@@ -831,15 +895,15 @@ ${domainBlock}
    - 한 화면의 절반 이상을 빈 공간, 빈 카드, 흰 배경으로 남기지 않는다. 여백은 의도적인 그룹핑에만 사용한다.
    - 모든 카드/리스트는 실제 서비스 데이터처럼 제목, 설명, 가격/상태/시간/평점 등 메타 정보, 액션을 포함한다.
    - 한글 문장은 절대 세로로 한 글자씩 쌓지 않는다. writing-mode, text-orientation, 과도하게 좁은 텍스트 column 사용 금지.
-   - emoji를 아이콘이나 라벨로 사용하지 않는다. 아이콘은 Material Symbols를 쓰고, 텍스트는 실제 UI 카피로 작성한다.
+   - emoji를 아이콘이나 라벨로 사용하지 않는다. 아이콘은 DESIGN.md의 아이콘 규칙을 따른다. KTDS 디자인 시스템이면 KTDS Icon name(search, homeFill, chevron 등)과 KTDS icon color/size 토큰을 기준으로 표현한다.
    - "star", "home", "BEST"만 덩그러니 보이는 placeholder성 문구 금지. 필요한 경우 "별점", "홈", "추천"처럼 자연스러운 한국어 UI 라벨을 사용한다.
    - 음식/배달/커머스/여행 등 이미지가 중요한 도메인은 무관한 랜덤 이미지 금지. 반드시 브리프와 직접 관련된 placeholder 설명을 작성한다.
    - 하단 내비게이션, floating CTA, 장바구니 버튼은 콘텐츠를 가리지 않도록 main content padding-bottom을 충분히 확보한다.
 
 5. **아이콘 사용 규칙**
-   - 반드시 Google Material Symbols를 사용하십시오.
-   - <head> 안에 반드시 포함: <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-   - 사용법: <span class="material-symbols-outlined" style="font-size:24px;">icon_name</span> (이모지 사용 금지, 공식 아이콘명 사용)
+   - DESIGN.md가 아이콘 시스템을 정의하면 그 규칙을 최우선으로 따르십시오. KTDS의 경우 "KTDS Icon"으로 표현하고, ktds.md의 주요 icon name 목록을 사용하십시오.
+   - 독립 실행 HTML에서 실제 패키지 import가 불가능할 때는 KTDS Icon을 inline SVG 또는 CSS mask 형태로 구현하되, 색상은 var(--color-icon) / var(--color-primary-icon) 등 KTDS 토큰을 사용하십시오.
+   - Material Symbols, emoji, 외부 아이콘 세트는 DESIGN.md가 명시하지 않은 경우 기본값으로 사용하지 마십시오.
 
 6. **이미지 및 비주얼 처리 규칙**
    - 3D 이미지는 **메인 히어로 섹션에서 최대 1회만** 사용하십시오. 반복 카드, 추천 카드, 리스트 썸네일, 상세 이미지에는 3D 이미지 사용 금지.
@@ -951,8 +1015,52 @@ ${domainBlock}
    - [ ] DESIGN.md가 정의한 카드 gap, container padding, navigation 패턴을 우선했는가?`;
 }
 
+function buildArtDirectionLayer(effectivePlatform: PlatformType): string {
+  return `## 화면 설계 선행 단계 — 내부적으로 먼저 결정하고 코드에 반영 (출력에는 설명 금지)
+
+HTML을 쓰기 전에 아래 7가지를 내부 설계안으로 먼저 확정한 뒤, 그 결정이 실제 레이아웃과 콘텐츠에 보이게 구현하세요.
+
+1. **Focal Point**
+   - 첫 화면에서 사용자가 0.5초 안에 보는 하나의 중심을 정한다.
+   - focal point 후보: 핵심 KPI, 대표 상품/혜택, 검색창, 주문 CTA, 주요 이미지, 업무 상태 요약.
+   - focal point가 2개 이상 경쟁하면 실패다.
+
+2. **Primary Action Path**
+   - 사용자가 가장 먼저 해야 할 행동 1개와 그 다음 행동 1개를 정한다.
+   - primary CTA는 첫 화면에서 가장 빨리 발견되어야 한다.
+   - secondary CTA는 같은 스타일 강도로 경쟁하지 않는다.
+
+3. **Three-Zone Composition**
+   - 화면을 반드시 3개 영역으로 설계한다:
+     A. 핵심 요약 또는 히어로
+     B. 주요 행동 또는 주요 콘텐츠
+     C. 보조 탐색 또는 신뢰/상태 정보
+   - 세 영역은 여백, 구분선, 표면색, 카드 리듬 중 DESIGN.md가 허용하는 방식으로 구분한다.
+
+4. **Real Content Density**
+   - 모든 카드/리스트/섹션에는 실제 서비스처럼 구체적 텍스트와 수치를 넣는다.
+   - 예: 가격, 평점, 시간, 상태, 날짜, 담당자, 진행률, 카테고리, 혜택, 주문/신청 가능 여부.
+   - 빈 박스, lorem ipsum, 추상 문구, 같은 문구 반복은 실패다.
+
+5. **Visual Rhythm**
+   - 같은 성격의 카드와 리스트는 같은 높이, 같은 gap, 같은 정보 순서, 같은 액션 위치를 가진다.
+   - 카드 안의 이미지/텍스트/메타/CTA 비율을 안정적으로 맞춘다.
+   - ${effectivePlatform === 'web' ? '웹은 한 화면에 12컬럼 기반의 가로 밀도와 명확한 섹션 폭을 만든다.' : '모바일은 390px 폭에서 텍스트 줄바꿈이 자연스럽고, 하단 내비/CTA가 콘텐츠를 가리지 않게 한다.'}
+
+6. **Image Direction**
+   - 이미지가 필요한 도메인은 이미지가 정보 구조의 일부가 되게 배치한다.
+   - 3D는 히어로 1회만, 반복 썸네일은 실제 도메인에 맞는 Unsplash placeholder를 사용한다.
+   - 이미지 없는 화면도 아이콘 나열 대신 데이터/카피/CTA로 중심을 만든다.
+
+7. **Design-System Expressiveness**
+   - 디자인 시스템은 제한이 아니라 재료다. 토큰을 바꾸지 말고, 섹션 비율·정렬·타입 계층·콘텐츠 밀도로 완성도를 만든다.
+   - 예쁘게 보이려고 임의 컬러/그림자/라운드를 추가하지 말고, DESIGN.md 안에서 가장 표현력 있는 조합을 선택한다.
+
+위 설계안은 출력하지 말고, 최종 HTML/CSS 결과에만 반영하세요.`;
+}
+
 export async function generateUI(params: GenerateParams, apiKey?: string): Promise<string> {
-  const { designMd, brief, answers, projectSummary, logoDataUrl, brandColors, mainOnly = false, variantStyle, referenceImageBase64, platform, modelId = 'gemini-3.1-pro-preview', heroImagePrompt, heroSubject, domain } = params;
+  const { designMd, brief, answers, projectSummary, logoDataUrl, brandColors, mainOnly = false, variantStyle, referenceImageBase64, referenceImageKind = 'reference', asIsAnalysis, platform, modelId = 'gemini-3.1-pro-preview', heroImagePrompt, heroSubject, domain } = params;
   const isBVariantUI = typeof variantStyle === 'string' && variantStyle.includes('시안 B')
   const effectiveHeroImagePrompt = isBVariantUI ? (heroSubject || heroImagePrompt || 'product hero') : heroImagePrompt
 
@@ -1013,6 +1121,19 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
   const effectivePlatform: PlatformType = platform ?? 'mobile';
   const platformLabel = effectivePlatform === 'web' ? '웹/데스크탑' : '모바일 앱';
   const platformGuide = loadPlatformGuide(effectivePlatform);
+  const webNavigationRule = effectivePlatform === 'web' ? `
+## 웹 내비게이션 결정 규칙 (CRITICAL)
+웹이라고 해서 좌측 LNB를 무조건 쓰지 마십시오. 서비스 성격과 정보 구조에 맞는 내비게이션을 선택하세요.
+
+- B2B SaaS, 어드민, CRM, ERP, 분석툴, 데이터 대시보드, 업무/생산성 도구 → 좌측 LNB/NavigationRail 적합
+- 포털, 커머스, 음식/배달, 예약, 여행, 교육, 엔터테인먼트, 브랜드/마케팅형 서비스 → 상단 GNB/Header Nav 적합
+- 검색/탐색 중심 서비스 → 상단 GNB + 검색바 + 카테고리 탭 또는 필터 사이드바 적합
+- 콘텐츠 피드/커뮤니티 → 상단 GNB + 피드 + 보조 사이드 패널 적합
+- 랜딩/프로모션형 요청 → 상단 GNB + 히어로 + 섹션 구조 적합
+- DESIGN.md에 navigation/header/sidebar 패턴이 명시되어 있으면 그 규칙을 최우선으로 따르십시오.
+- 웹에서는 하단 모바일 탭바, 상태바, 노치, 홈 인디케이터 같은 모바일 앱 크롬은 절대 사용하지 마십시오.
+- 포털형/탐색형 서비스인데 좌측 LNB만 있는 어드민 구조로 만들면 실패입니다.
+` : ''
   const hasBrandColors = !!(brandColors && brandColors.length > 0);
 
   const prompt = `
@@ -1052,7 +1173,7 @@ ${hasDesignSystem ? `
 아래 [디자인 시스템] 섹션에 정의된 토큰과 규칙을 반드시 따르세요.
 
 ${hasBrandColors
-  ? `- 색상: ⛔ 디자인 시스템의 colors 토큰은 무시. 아래 [브랜드 컬러] 섹션의 색상만 사용할 것.`
+  ? `- 색상: DESIGN.md의 neutral/surface/background/border/status colors는 유지하고, primary/action/accent 계열만 아래 [브랜드 컬러]로 치환합니다.`
   : isAdaptive
   ? `- 색상: colors 토큰이 "[AI 결정]" 형태로 되어있습니다. 도메인·브랜드·시안 방향에 맞는 컬러를 직접 선택해 :root에 CSS 변수로 선언하세요. CSS 속성에 #hex 직접 사용 절대 금지 (반드시 var(--color-*) 사용).`
   : `- 색상: ⛔ YAML frontmatter의 colors 토큰만 사용. CSS 속성에 #hex 직접 사용 절대 금지 (예: color:#333 금지, background:#fff 금지 → 반드시 CSS 변수 사용).`}
@@ -1063,7 +1184,7 @@ ${hasBrandColors
   • background / textColor / borderColor / dividerColor 값이 이름이면 → var(--color-{이름}) (예: "primary" → var(--color-primary), "border-alt" → var(--color-border-alt))
   • radius / radiusTop 값이 이름이면 → var(--rounded-{이름}) (예: "md" → var(--rounded-md), "xl" → var(--rounded-xl))
   • padding / paddingX / paddingY 값이 이름이면 → var(--spacing-{이름}) (예: "lg" → var(--spacing-lg), "md" → var(--spacing-md))
-  • variants 키 아래 = 독립 스타일 변형(primary/secondary/tertiary 등), states 키 아래 = 동일 컴포넌트의 인터랙션 상태(disabled/focus/error)${hasBrandColors ? '\n  • background·textColor는 브랜드 컬러 우선 (components 토큰 값 대신 브랜드 컬러 변수 사용)' : ''}
+  • variants 키 아래 = 독립 스타일 변형(primary/secondary/tertiary 등), states 키 아래 = 동일 컴포넌트의 인터랙션 상태(disabled/focus/error)${hasBrandColors ? '\n  • primary/action/accent 관련 component token만 브랜드 컬러 변수로 치환. surface, neutral, border, disabled, status, card background는 DESIGN.md 값을 유지' : ''}
 - 플랫폼(${platformLabel})은 레이아웃 구조·크롬(상태바·네비바·탭바)에만 영향.
 ${isMd3Base ? `
 ╔══════════════════════════════════════════════════════════════╗
@@ -1074,7 +1195,7 @@ ${isMd3Base ? `
 - 모든 입력: MD3 Outlined Text Field 구조 사용 (레이블 항상 필드 위에 배치)
 - 카드: MD3 Elevated/Filled/Outlined Card 구조 사용
 - 목록: MD3 List Item 구조 (min-height 56px 준수)
-- 내비게이션: ${effectivePlatform === 'web' ? '⛔ 하단 탭바 절대 금지 — Navigation Rail(좌측 고정, 240px 너비) 사용 필수' : 'Navigation Bar(하단 고정 탭바) 사용'}
+- 내비게이션: ${effectivePlatform === 'web' ? '하단 탭바는 금지. 서비스 성격에 따라 상단 GNB/Header Nav, 좌측 LNB/NavigationRail, GNB+필터 사이드바 중 선택' : 'Navigation Bar(하단 고정 탭바) 사용'}
 - 칩: MD3 Assist/Filter Chip (rounded-full, height 32px)
 - 모달: MD3 Dialog (max-width 480px)${effectivePlatform !== 'web' ? ' 또는 Bottom Sheet (모바일)' : ''}
 - 위의 --md-sys-color-*, --md-sys-shape-*, --md-sys-typescale-* CSS 변수를 MD3 컴포넌트 스타일링에 활용할 것
@@ -1082,7 +1203,7 @@ ${isMd3Base ? `
 ⚠️ 디자인 시스템 치수 우선 — MD3 플랫폼 가이드 수치보다 DESIGN.md 토큰을 우선:
 - 버튼, 입력, 카드, 칩, 내비게이션의 height/radius/padding은 DESIGN.md의 components와 tokens 값을 따른다.
 - KTDS처럼 MD3 구조를 빌리되 자체 치수가 있는 시스템은 KTDS Storybook/ktds.md 값을 최종 기준으로 삼는다.
-- 폰트: ⛔ <head>에 반드시 Pretendard CDN 추가 (Material Symbols CDN과 별개로 필수):
+- 폰트: ⛔ <head>에 반드시 Pretendard CDN 추가:
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
   body { font-family: var(--font-sans); } 선언 필수
 
@@ -1119,13 +1240,22 @@ ${isMd3Base ? `
   .badge-caution  { background:var(--color-caution);  color:#ffffff; border-radius:var(--rounded-full); }
   .badge-info     { background:var(--color-info);     color:#ffffff; border-radius:var(--rounded-full); }
 
-${effectivePlatform === 'web' ? `[NavigationRail] ⛔ 웹 전용 — 하단 탭바 절대 금지
+${effectivePlatform === 'web' ? `[Web Navigation] ⛔ 웹 전용 — 하단 탭바 절대 금지, 서비스 성격에 따라 아래 중 하나 선택
+  상단 GNB/Header Nav: 포털·커머스·배달·예약·여행·교육·엔터테인먼트·브랜드 서비스에 우선 사용
+  { position:sticky; top:0; z-index:20; height:64px; background:var(--color-surface); border-bottom:1px solid var(--color-border-alt); display:flex; align-items:center; justify-content:space-between; padding:0 var(--spacing-xl); }
+  .gnb-left, .gnb-right { display:flex; align-items:center; gap:var(--spacing-base); }
+  .gnb-item.active { color:var(--color-primary); font-weight:600; }
+
+  좌측 LNB/NavigationRail: B2B SaaS·어드민·CRM·ERP·대시보드·업무 도구에만 사용
   { position:fixed; left:0; top:0; width:240px; height:100vh; background:var(--color-surface); border-right:1px solid var(--color-border-alt); display:flex; flex-direction:column; padding:var(--spacing-lg) 0; }
   .nav-header { padding:0 var(--spacing-base) var(--spacing-lg); }
   .nav-item   { height:56px; padding:0 var(--spacing-base); display:flex; align-items:center; gap:var(--spacing-sm); font-size:14px; cursor:pointer; }
   .nav-item.active { color:var(--color-primary); background:var(--color-primary-fill-neutral); border-radius:var(--rounded-md); font-weight:600; }
   .nav-item.inactive { color:var(--color-text-alternative, var(--color-on-surface-variant)); }
-  .main-content { margin-left:240px; }` : `[NavigationBar] ⛔ 모바일 전용 — 하단 고정 탭바
+  .main-content.with-lnb { margin-left:240px; }
+
+  GNB + 필터 사이드바: 탐색/검색 중심 서비스에서 사용
+  .layout-with-filter { display:grid; grid-template-columns:280px minmax(0,1fr); gap:var(--spacing-xl); }` : `[NavigationBar] ⛔ 모바일 전용 — 하단 고정 탭바
   { position:fixed; bottom:0; left:0; right:0; background:var(--color-surface); border-top:1px solid var(--color-border-alt); display:flex; }
   active icon+text: var(--color-primary); inactive: var(--color-icon)`}
 
@@ -1178,12 +1308,21 @@ Google Material Design 3 사양을 정확히 구현하라. 아래 치수·형태
   .chip-filter            { background:transparent; border:1px solid var(--color-outline); color:var(--color-on-surface-variant); }
   .chip-filter.selected   { background:var(--color-secondary-container); border:none; color:var(--color-on-secondary-container); }
 
-${effectivePlatform === 'web' ? `[NavigationRail] ⛔ 웹 전용 — 하단 탭바 절대 금지
+${effectivePlatform === 'web' ? `[Web Navigation] ⛔ 웹 전용 — 하단 탭바 절대 금지, 서비스 성격에 따라 아래 중 하나 선택
+  상단 GNB/Header Nav: 포털·커머스·배달·예약·여행·교육·엔터테인먼트·브랜드 서비스에 우선 사용
+  { position:sticky; top:0; z-index:20; height:64px; background:var(--color-surface); display:flex; align-items:center; justify-content:space-between; padding:0 32px; border-bottom:1px solid var(--color-outline-variant); }
+  .gnb-left, .gnb-right { display:flex; align-items:center; gap:16px; }
+  .gnb-item.active { color:var(--color-primary); font-weight:700; }
+
+  좌측 LNB/NavigationRail: B2B SaaS·어드민·CRM·ERP·대시보드·업무 도구에만 사용
   { position:fixed; left:0; top:0; width:80px; height:100vh; background:var(--color-surface); display:flex; flex-direction:column; align-items:center; padding:16px 0; gap:4px; }
   .nav-item        { width:56px; height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:9999px; gap:4px; font:500 0.75rem/1rem Roboto; }
   .nav-item.active { background:var(--color-secondary-container); color:var(--color-on-secondary-container); }
   .nav-item.inactive { color:var(--color-on-surface-variant); }
-  .main-content    { margin-left:80px; }` : `[NavigationBar] ⛔ 모바일 전용 — 하단 고정 탭바
+  .main-content.with-lnb { margin-left:80px; }
+
+  GNB + 필터 사이드바: 탐색/검색 중심 서비스에서 사용
+  .layout-with-filter { display:grid; grid-template-columns:280px minmax(0,1fr); gap:24px; }` : `[NavigationBar] ⛔ 모바일 전용 — 하단 고정 탭바
   { position:fixed; bottom:0; left:0; right:0; height:80px; background:var(--color-surface-container); display:flex; justify-content:space-around; align-items:center; padding:0 8px; }
   .nav-item         { display:flex; flex-direction:column; align-items:center; gap:4px; font:500 0.75rem/1rem Roboto; min-width:48px; }
   .nav-indicator    { width:64px; height:32px; border-radius:9999px; display:flex; align-items:center; justify-content:center; }
@@ -1211,20 +1350,20 @@ ${effectivePlatform !== 'web' ? `[BottomSheet]
 ` : ''}[Snackbar]
   { border-radius:4px; background:var(--color-inverse-surface); color:var(--color-inverse-on-surface); padding:14px 16px; min-width:288px; max-width:568px; box-shadow:var(--elevation-3); }
   action: color:var(--color-inverse-primary); font-weight:500;
-` : ''}` : effectivePlatform === 'web' ? 'Google, Stripe, Linear 수준의 완성도 높은 웹 UI를 만드세요.' : '네이티브 모바일 앱 수준의 UI를 만드세요 (Material Design 3 기반).'}
+` : ''}` : effectivePlatform === 'web' ? '선택한 디자인 시스템 안에서 완성도 높은 웹 UI를 만드세요.' : '선택한 디자인 시스템 안에서 네이티브 모바일 앱 수준의 UI를 만드세요.'}
 
 ## 디자인 시스템${hasDesignSystem ? ' ← 이 섹션의 모든 토큰·규칙을 코드에 그대로 반영할 것' : ''}
 ${extractDesignMdForPrompt(effectiveDesignMd) || '없음 — 아래 플랫폼 가이드라인과 기획서를 기반으로 최적화된 디자인을 만드세요.'}
 ${hasDesignSystem ? `
 > **체크리스트 — 코드 작성 전 반드시 확인**
-> - [ ] ${hasBrandColors ? '⛔ colors 토큰 무시 → [브랜드 컬러] 섹션의 값으로 CSS 변수 선언했는가?' : 'colors 토큰을 CSS 변수로 선언했는가?'}
+> - [ ] ${hasBrandColors ? '브랜드 컬러를 primary/action/accent 계열에만 반영하고, neutral/surface/background/border/status 토큰은 DESIGN.md 값을 유지했는가?' : 'colors 토큰을 CSS 변수로 선언했는가?'}
 > - [ ] components.button 규칙을 DESIGN.md 그대로 적용했는가?
 > - [ ] components.input/select 규칙을 DESIGN.md 그대로 적용했는가?
 > - [ ] components.card 규칙을 DESIGN.md 그대로 적용했는가?
 > - [ ] components.listItem/navigation/dialog 등 필요한 컴포넌트를 DESIGN.md 기준으로 적용했는가?
-> - [ ] ${effectivePlatform === 'web' ? '⛔ 하단 탭바 사용했는가? → 있으면 즉시 제거. NavigationRail(좌측 240px 고정)로 교체 필수' : 'components.navigationBar → bg var(--color-surface), border-top 1px var(--color-border-alt), active=var(--color-primary)?'}
+> - [ ] ${effectivePlatform === 'web' ? '웹 내비게이션이 서비스 성격에 맞는가? 포털/커머스/배달/예약형이면 상단 GNB, B2B/어드민/대시보드형이면 좌측 LNB를 사용했는가? 하단 탭바는 즉시 제거.' : 'components.navigationBar → bg var(--color-surface), border-top 1px var(--color-border-alt), active=var(--color-primary)?'}
 > - [ ] 폰트 크기·굵기가 typography 토큰과 일치하는가?
-> - [ ] ${hasBrandColors ? '임의 색상 사용하지 않았는가? (브랜드 컬러 외 hex 금지)' : '⛔ CSS 속성에 #hex 직접 사용했는가? → 있으면 반드시 CSS 변수로 교체 (e.g., color: #333 → color: var(--color-text))'}
+> - [ ] ${hasBrandColors ? '브랜드 컬러와 DESIGN.md 토큰 외 임의 hex를 사용하지 않았는가?' : '⛔ CSS 속성에 #hex 직접 사용했는가? → 있으면 반드시 CSS 변수로 교체 (e.g., color: #333 → color: var(--color-text))'}
 > - [ ] ⛔ spacing에 임의 px 값 사용하지 않았는가? (var(--spacing-*) 변수만 허용, 예: padding: 16px 금지)
 > - [ ] ⛔ border-radius에 임의 px 값 사용하지 않았는가? (var(--rounded-*) 변수만 허용, 예: border-radius: 8px 금지)
 ${isMd3Base ? `> - [ ] MD3 구조: 버튼·입력·카드·리스트·내비게이션이 MD3 컴포넌트 패턴을 따르는가?
@@ -1234,13 +1373,14 @@ ${isMd3Base ? `> - [ ] MD3 구조: 버튼·입력·카드·리스트·내비게�
 > - [ ] ⛔ Pretendard CDN이 <head>에 포함되었는가? body에 font-family: var(--font-sans) 선언했는가?` : isMd3 ? `> - [ ] ⚠️ 버튼: height:40px, border-radius:9999px (pill) 적용했는가?
 > - [ ] ⚠️ 카드: border-radius:12px 적용했는가?
 > - [ ] ⚠️ --color-surface-container-* 변수가 :root에 선언되었는가?
-> - [ ] ${effectivePlatform === 'web' ? '⛔ 하단 탭바 사용했는가? → 있으면 즉시 제거. NavigationRail(좌측 80px 고정)로 교체 필수' : 'Navigation Bar: height:80px, indicator pill(width:64px height:32px border-radius:9999px) 구현했는가?'}
+> - [ ] ${effectivePlatform === 'web' ? '웹 내비게이션이 서비스 성격에 맞는가? 포털/커머스/배달/예약형이면 상단 GNB, B2B/어드민/대시보드형이면 좌측 LNB를 사용했는가? 하단 탭바는 즉시 제거.' : 'Navigation Bar: height:80px, indicator pill(width:64px height:32px border-radius:9999px) 구현했는가?'}
 > - [ ] Chip: height:32px, border-radius:9999px (pill) 적용했는가?
 > - [ ] Input floating label 구현했는가? (placeholder 단독 사용 금지)
 > - [ ] Google Fonts Roboto CDN이 <head>에 포함되었는가?` : ''}
 ` : ''}
 ${logoDataUrl ? `\n## 회사 로고\n헤더/네비게이션 바에 아래 이미지를 <img> 태그로 삽입하세요 (src 값 그대로 사용, 절대 변경 금지):\n<img src="__LOGO_DATA_URL__" alt="logo" style="height:28px;object-fit:contain;" />` : ''}
-${hasBrandColors ? `\n## 브랜드 컬러 ← 색상은 반드시 이 값만 사용 (디자인 시스템 colors 토큰 무시, 임의 hex 절대 금지)\n메인 프라이머리: ${brandColors![0]}\nCSS :root에 반드시 선언: --color-primary: ${brandColors![0]};${brandColors![1] ? `\n보조 컬러: ${brandColors![1]}; --color-secondary: ${brandColors![1]};` : ''}${brandColors!.length > 2 ? `\n추가 컬러: ${brandColors!.slice(2).join(', ')}` : ''}\n버튼·강조·액션·링크·아이콘은 이 색상만 사용.` : ''}
+${hasBrandColors ? `\n## 브랜드 컬러 적용 규칙\n로고에서 추출한 브랜드 컬러는 사용자의 회사 정체성을 반영하기 위한 값입니다. DESIGN.md가 기본 UI 품질과 컴포넌트 구조를 보장하고, 브랜드 컬러는 primary/action/accent 계열만 치환합니다.\n\n메인 브랜드 컬러: ${brandColors![0]}${brandColors![1] ? `\n보조 브랜드 컬러: ${brandColors![1]}` : ''}${brandColors!.length > 2 ? `\n추가 브랜드 컬러: ${brandColors!.slice(2).join(', ')}` : ''}\n\nCSS 변수 선언 규칙:\n- --color-primary, --color-primary-text, --color-primary-fill, --color-primary-border, --color-primary-icon 등 primary/action/accent 계열은 브랜드 컬러 기반으로 선언\n- --color-secondary는 보조 브랜드 컬러가 있을 때만 선언\n- --color-surface, --color-surface-alt, --color-background, --color-text, --color-border, --color-fill, --color-disabled, --color-positive, --color-caution, --color-negative, --color-info 등 neutral/surface/background/border/status 계열은 DESIGN.md 값을 유지\n- spacing, rounded, typography, component height/padding/radius/card rules는 DESIGN.md 값을 유지\n- 브랜드 컬러와 DESIGN.md 토큰 외 임의 hex 사용 금지\n- CTA, 주요 액션, 활성 탭, 링크, primary icon에만 브랜드 컬러를 사용하고 카드 배경/페이지 배경/본문 텍스트를 브랜드 컬러로 덮지 않음` : ''}
+${asIsAnalysis ? `\n## As-is URL 구조 분석 — 리디자인 대상 정보 구조 (스타일 금지)\n아래 데이터는 기존 서비스의 정보 구조, 섹션 순서, 주요 CTA, 내비게이션, 콘텐츠 재료를 파악하기 위한 것입니다.\n\n절대 규칙:\n- As-is URL의 색상, 폰트, 라운드, 카드 그림자, 아이콘 스타일, 시각 톤을 복사하지 마세요.\n- 최종 시각 스타일은 DESIGN.md와 브랜드 규칙만 따릅니다.\n- As-is는 \"무엇을 유지/개선할지\" 판단하는 입력입니다.\n- 기존 화면의 핵심 섹션/CTA/콘텐츠 의미는 유지하되, 정보 위계·스캔성·반응형 레이아웃·CTA 발견성을 개선하세요.\n\n분석 JSON:\n\`\`\`json\n${JSON.stringify(asIsAnalysis, null, 2).slice(0, 12000)}\n\`\`\`` : ''}
 ## 프로젝트 개요
 ${projectSummary}
 
@@ -1254,14 +1394,18 @@ ${structuredAnswerRules ? `\n## 답변 기반 디자인 지침 (반드시 적용
 ## AI 자율 디자인 결정 원칙
 사용자 답변에 없는 모든 디자인 결정은 아래 우선순위로 AI가 자율 판단합니다:
 1. 업로드된 디자인 시스템 토큰 (최우선)
-2. Material Design 3 가이드라인 (네비게이션 패턴, 컴포넌트 구조, 간격 등)
+2. 선택한 DESIGN.md의 컴포넌트/내비게이션/레이아웃 규칙
 3. 플랫폼 관례 (iOS/Android/Web)
 사용자가 명시하지 않은 네비게이션 패턴, 버튼 스타일, 색상, 타이포그래피, 간격 등은 위 기준으로 최적값을 선택하세요.
 
 ---
 
+${webNavigationRule}
+
 ## 플랫폼별 구현 가이드
 ${platformGuide}
+
+${buildArtDirectionLayer(effectivePlatform)}
 
 ${buildQualityRules(effectiveHeroImagePrompt, domain)}
 
@@ -1273,6 +1417,8 @@ ${mainOnly ? `### 단일 메인 화면 (비교 선택용)
 - 첫 화면 안에 실제 서비스 콘텐츠가 충분히 보여야 한다. 상단 영역만 만들고 아래를 비워두면 실패.
 - ${effectivePlatform === 'mobile' ? '모바일 앱은 390px 내외 폭에서도 텍스트가 가로로 자연스럽게 읽혀야 한다. 세로 글자, 잘린 카드, 하단 내비와 겹친 콘텐츠는 실패.' : '웹 화면은 1440px 기준에서 좌우 컬럼, 카드 그리드, 리스트가 균형 있게 채워져야 한다.'}
 - 배달/커머스류 홈이면 최소한 검색/주소, 카테고리, 추천 메뉴 또는 가게 카드 여러 개, 가격/평점/시간, 장바구니/주문 액션이 첫 화면에 보여야 한다.
+- 단일 메인 화면은 "상단만 예쁜 포스터"가 아니라 실제 서비스 홈이어야 한다. 첫 viewport 안에 최소 4개 콘텐츠 단위(요약/CTA/탐색/리스트 또는 카드)가 보여야 한다.
+- 시안 A/B/C는 서로 다른 레이아웃 골격을 가져야 한다. 같은 header + hero + chip + card list 구조를 이름만 바꿔 반복하면 실패다.
 ` : `### 멀티스크린 프로토타입 (필수)
 기획서를 분석해 **3~5개의 핵심 화면**을 하나의 HTML에 생성하세요.
 
@@ -1316,12 +1462,21 @@ ${variantStyle ? `---
 
 ## 디자인 방향 (이 시안의 핵심 차별점 — 반드시 충실히 반영)
 ${variantStyle}
+
+## 이 시안의 조형 차별화 의무
+- 위 방향을 단순 문구로만 반영하지 말고, 실제 레이아웃 골격이 달라야 합니다.
+- A/B/C 모두 같은 컴포넌트를 같은 순서로 반복하는 것을 금지합니다.
+- 정보형은 밀도와 비교성, 전환형은 focal point와 CTA, 탐색형은 이미지/큐레이션 흐름이 화면 구조 자체에서 드러나야 합니다.
+- 단, 색상·폰트·카드·버튼·간격·라운드는 반드시 DESIGN.md를 유지합니다.
 ${effectivePlatform === 'web' ? `
-⛔ 웹 플랫폼 강제 오버라이드 (위 시안 방향보다 우선):
+웹 플랫폼 레이아웃 규칙 (위 시안 방향보다 우선):
 - 캔버스: 1440px 너비, body에 max-width 제한 없이 풀 와이드 레이아웃
-- 내비게이션: 위 시안에 '하단 탭바' 명시되어 있어도 ⛔ 절대 사용 금지 → NavigationRail(좌측 240px 고정) 반드시 사용
+- 내비게이션: 하단 탭바는 절대 사용 금지. 서비스 성격에 따라 상단 GNB, 좌측 LNB, GNB+필터 사이드바 중 선택
+- 포털·커머스·배달·예약·여행·교육·엔터테인먼트·브랜드형 웹은 상단 GNB를 우선 사용
+- B2B SaaS·어드민·CRM·ERP·분석 대시보드·업무 도구는 좌측 LNB를 우선 사용
+- 검색/탐색 중심 웹은 상단 GNB + 카테고리/필터 사이드바 조합 사용 가능
 - 모바일 앱 크롬 금지: 상태바, 홈 인디케이터, 스와이프 영역 등 모바일 전용 UI 요소 사용 금지
-- 12컬럼 그리드 (gutter 24px), 우측 패널·사이드바·멀티 컬럼 레이아웃 적극 활용` : ''}
+- 12컬럼 그리드 (gutter 24px), 필요할 때만 우측 패널·사이드바·멀티 컬럼 레이아웃 활용` : ''}
 ` : hasExplore ? `---
 
 ## 다양한 시안 탐색 모드 (필수)
@@ -1341,7 +1496,23 @@ ${effectivePlatform === 'web' ? `
 `;
 
   const referenceSection = referenceImageBase64
-    ? `\n## 🎨 레퍼런스 이미지 — 구조 참고 (CRITICAL)
+    ? referenceImageKind === 'wireframe'
+      ? `\n## 와이어프레임 이미지 — 레이아웃 구조 기준 (CRITICAL)
+첨부 이미지는 사용자가 의도한 정보 배치와 화면 골격입니다. 단, 시각 스타일은 DESIGN.md를 최종 기준으로 유지하세요:
+
+**반드시 반영**
+- 주요 영역의 순서: 헤더/히어로/콘텐츠/리스트/CTA/탭바 등 화면 구조를 최대한 유지
+- 카드·목록·폼·CTA가 놓인 위치와 비율을 해석해서 실제 서비스 데이터로 채우기
+- 와이어프레임의 빈 박스는 의미 있는 실제 콘텐츠 영역으로 변환
+- 모바일/웹 반응형 전환 시에도 와이어프레임의 핵심 흐름을 유지
+
+**절대 금지**
+- 와이어프레임의 회색 박스, 임시 선, 저충실도 스타일을 그대로 복사하지 말 것
+- 와이어프레임을 따라 하느라 DESIGN.md의 컬러·폰트·카드·간격 규칙을 덮어쓰지 말 것
+
+✅ 통과 기준: 사용자의 배치 의도를 유지하면서 선택한 디자인 시스템으로 완성된 화면
+`
+      : `\n## 🎨 레퍼런스 이미지 — 분위기·패턴 참고 (CRITICAL)
 첨부 이미지는 레이아웃과 콘텐츠 밀도 참고 자료입니다. 단, 색상·폰트·라운드·카드·그림자 규칙은 DESIGN.md를 최종 기준으로 유지하세요:
 
 **1. 시각적 톤·무드 추출**
@@ -1418,7 +1589,7 @@ ${critique.improvements.map((s, i) => `${i + 1}. ${s}`).join('\n')}
 }
 
 export async function expandToPrototype(mainHtml: string, params: GenerateParams, apiKey?: string): Promise<string> {
-  const { brief, answers, projectSummary, designMd, logoDataUrl: expandLogoUrl, brandColors: expandBrandColors, modelId = 'gemini-3.1-pro-preview', platform, domain } = params;
+  const { brief, answers, projectSummary, designMd, logoDataUrl: expandLogoUrl, brandColors: expandBrandColors, asIsAnalysis, modelId = 'gemini-3.1-pro-preview', platform, domain } = params;
   const answersText = Object.entries(answers)
     .map(([k, v]) => `- ${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
     .join('\n');
@@ -1447,7 +1618,8 @@ export async function expandToPrototype(mainHtml: string, params: GenerateParams
 \`\`\`html
 ${safeMainHtml}
 \`\`\`
-${designMd ? `\n## 디자인 시스템 (서브 화면에도 동일하게 적용 — 임의 색상·폰트 사용 절대 금지)\n${extractDesignMdForPrompt(designMd)}\n` : ''}${expandBrandColors && expandBrandColors.length > 0 ? `\n## 브랜드 컬러\n--color-primary: ${expandBrandColors[0]};${expandBrandColors[1] ? ` --color-secondary: ${expandBrandColors[1]};` : ''}\n` : ''}
+${designMd ? `\n## 디자인 시스템 (서브 화면에도 동일하게 적용 — 임의 색상·폰트 사용 절대 금지)\n${extractDesignMdForPrompt(designMd)}\n` : ''}${expandBrandColors && expandBrandColors.length > 0 ? `\n## 브랜드 컬러 적용\n- primary/action/accent 계열만 브랜드 컬러로 유지: --color-primary: ${expandBrandColors[0]};${expandBrandColors[1] ? ` --color-secondary: ${expandBrandColors[1]};` : ''}\n- neutral/surface/background/border/status 색상, spacing, rounded, typography, component sizing은 DESIGN.md 값을 유지\n- 카드 배경, 페이지 배경, 본문 텍스트를 브랜드 컬러로 덮지 말 것\n` : ''}
+${asIsAnalysis ? `\n## As-is URL 구조 분석 — 서브 화면 확장 참고\n아래 데이터는 기존 서비스의 정보 구조와 콘텐츠 재료입니다. 색상·폰트·라운드·그림자는 복사하지 말고, DESIGN.md 스타일을 유지하세요.\n\`\`\`json\n${JSON.stringify(asIsAnalysis, null, 2).slice(0, 9000)}\n\`\`\`\n` : ''}
 ## 프로젝트 개요
 ${projectSummary}
 

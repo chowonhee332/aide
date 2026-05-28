@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
 
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
     const trimmedDesignMd = (designMd ?? '').slice(0, 10000)
-    const result = await analyzeAndGenerateQuestions(trimmedDesignMd, brief, platform, apiKey)
+    const platformHint = platform === 'web' || platform === 'mobile' ? platform : undefined
+    const result = await analyzeAndGenerateQuestions(trimmedDesignMd, brief, platformHint, apiKey)
     return NextResponse.json(result)
   } catch (err) {
     const message = err instanceof Error ? err.message : '알 수 없는 오류'

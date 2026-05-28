@@ -3665,11 +3665,11 @@ import { Button, ButtonArea, Stack } from '@ktds-ui/components';
 
 ---
 
-## Icon / IconButton
+## KTDS Icon / IconButton
 
-### Icon
+### KTDS Icon
 
-SVG 아이콘을 CSS 변수로 관리. `--dsx-icon-*` 변수로 등록되어 있으며 `<Icon name="...">` 으로 사용.
+KTDS Icon은 DSCore에서 제공하는 SVG 아이콘 세트다. `--dsx-icon-*` CSS 변수로 등록되어 있으며 `<Icon name="...">` 으로 사용한다. Material Icons, emoji, 외부 아이콘 세트로 대체하지 않는다.
 
 ```tsx
 import { Icon } from '@ktds-ui/components';
@@ -3679,7 +3679,7 @@ import { Icon } from '@ktds-ui/components';
 <Icon name="search" />
 ```
 
-**주요 아이콘 name 목록:**
+**주요 KTDS Icon name 목록:**
 
 | 카테고리 | name 목록 |
 |----------|-----------|
@@ -3690,12 +3690,12 @@ import { Icon } from '@ktds-ui/components';
 | 콘텐츠 | star starFill heart bookmark bookmarkFill link folder eye eyeFill eyeSlash eyeSlashFill |
 | 기타 | homeFill smileFill pictureFill nodata return clock empty |
 
-- **Icon 자체를 버튼으로 사용 금지** — 버튼으로 사용 시 `IconButton` 컴포넌트 사용
+- **KTDS Icon 자체를 버튼으로 사용 금지** — 버튼으로 사용 시 `IconButton` 컴포넌트 사용
 - `--dsx-icon-size` CSS 변수로 아이콘 크기 제어
 
 ---
 
-### IconButton
+### KTDS IconButton
 
 특정 컨트롤 요소를 아이콘으로 표현할 때 사용. `children`은 접근성을 위해 필수.
 

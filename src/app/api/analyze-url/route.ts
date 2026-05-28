@@ -164,6 +164,40 @@ export async function POST(req: NextRequest) {
         colorLines.push(`input: backgroundColor=${toHex(s.backgroundColor)}, borderColor=${toHex(s.borderColor)}, borderRadius=${s.borderRadius}, fontSize=${s.fontSize}`)
       }
 
+      function sampleElement(label: string, selector: string, limit = 6): string[] {
+        return Array.from(document.querySelectorAll(selector)).slice(0, limit).map((el, index) => {
+          const s = getComputedStyle(el)
+          const rect = el.getBoundingClientRect()
+          const text = (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60)
+          return [
+            `${label}[${index}]`,
+            `tag=${el.tagName.toLowerCase()}`,
+            `text="${text}"`,
+            `size=${Math.round(rect.width)}x${Math.round(rect.height)}`,
+            `display=${s.display}`,
+            `bg=${toHex(s.backgroundColor) ?? 'transparent'}`,
+            `color=${toHex(s.color) ?? 'n/a'}`,
+            `border=${s.borderWidth} ${s.borderStyle} ${toHex(s.borderColor) ?? s.borderColor}`,
+            `radius=${s.borderRadius}`,
+            `shadow=${s.boxShadow === 'none' ? 'none' : s.boxShadow}`,
+            `padding=${s.padding}`,
+            `font=${s.fontWeight} ${s.fontSize} ${s.fontFamily.split(',')[0].trim()}`,
+            `class="${typeof el.className === 'string' ? el.className.slice(0, 120) : ''}"`,
+          ].join(' | ')
+        })
+      }
+
+      const componentLines: string[] = [
+        '## Buttons / Links',
+        ...sampleElement('button', 'button, a[role="button"], a[href]', 10),
+        '\n## Inputs',
+        ...sampleElement('input', 'input:not([type="hidden"]), textarea, select', 8),
+        '\n## Cards / Containers',
+        ...sampleElement('card', '[class*="card"], article, section, li', 12),
+        '\n## Navigation Candidates',
+        ...sampleElement('nav', 'header, nav, [class*="gnb"], [class*="nav"], [class*="header"], [id*="header"], [id*="nav"]', 8),
+      ]
+
       // Border radius patterns from containers
       const radiusCount: Record<string, number> = {}
       const containerEls = Array.from(document.querySelectorAll('div, section, article, li')).slice(0, 200)
@@ -182,6 +216,7 @@ export async function POST(req: NextRequest) {
         fontFamilies: [...new Set(fontMatches)].slice(0, 30).join('\n'),
         htmlClasses: [...new Set(allClasses)].slice(0, 400).join(' '),
         computedStyles: colorLines.join('\n'),
+        componentStructure: componentLines.join('\n'),
       }
     }) as UrlSourceData
 

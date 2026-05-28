@@ -25,6 +25,17 @@ const F = {
   hairlineSoft: '#eeeeee',
 }
 
+type AsIsAnalysis = {
+  sourceUrl: string
+  pageTitle: string
+  pagePurpose: string
+  layoutType: string
+  sections: Array<{ heading: string; ctaSamples: string[]; repeatedItemCount: number }>
+  primaryCtas: Array<{ text: string }>
+  globalNavigation: Array<{ text: string }>
+  redesignFocus: string[]
+}
+
 const HOW_IT_WORKS = [
   {
     step: '01', icon: <MessageSquare size={20} strokeWidth={1.5} />,
@@ -546,7 +557,6 @@ export default function Home() {
   }, [historyModalOpen])
 
   const [brief, setBrief] = useState('')
-  const [platform, setPlatform] = useState<'mobile' | 'web'>('mobile')
   const [designPreset, setDesignPreset] = useState<DesignPreset>('none')
   const [designPanelOpen, setDesignPanelOpen] = useState(false)
   const [designMdContent, setDesignMdContent] = useState<string | null>(null)
@@ -562,7 +572,10 @@ export default function Home() {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const [refPanelOpen, setRefPanelOpen] = useState(false)
+  const [sourceTab, setSourceTab] = useState<'asis' | 'wireframe' | 'reference' | 'brand'>('asis')
   const [refPageImage, setRefPageImage] = useState<string | null>(null)
+  const [refImageKind, setRefImageKind] = useState<'wireframe' | 'reference'>('reference')
+  const [asIsAnalysis, setAsIsAnalysis] = useState<AsIsAnalysis | null>(null)
   const [refPageUrlInput, setRefPageUrlInput] = useState('')
   const [refCapturing, setRefCapturing] = useState(false)
   const [refError, setRefError] = useState<string | null>(null)
@@ -759,10 +772,32 @@ export default function Home() {
       const dataUrl = ev.target?.result as string
       const base64 = dataUrl.split(',')[1]
       setRefPageImage(base64)
+      setRefImageKind(sourceTab === 'wireframe' ? 'wireframe' : 'reference')
       setRefPanelOpen(false)
       setRefError(null)
     }
     reader.readAsDataURL(file)
+  }
+
+  const handleAsIsAnalyze = async () => {
+    if (!refPageUrlInput.trim() || refCapturing) return
+    setRefCapturing(true)
+    setRefError(null)
+    try {
+      const res = await fetch('/api/analyze-asis-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: refPageUrlInput.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setRefError(data.error ?? 'As-is 분석 실패'); return }
+      setAsIsAnalysis(data.analysis)
+      setRefPanelOpen(false)
+    } catch {
+      setRefError('네트워크 오류가 발생했습니다.')
+    } finally {
+      setRefCapturing(false)
+    }
   }
 
   const handleRefCapture = async () => {
@@ -779,6 +814,7 @@ export default function Home() {
       const data = await res.json()
       if (!res.ok) { setRefError(data.error ?? '캡처 실패'); return }
       setRefPageImage(data.screenshot)
+      setRefImageKind('reference')
       setRefPanelOpen(false)
     } catch {
       setRefError('네트워크 오류가 발생했습니다.')
@@ -789,24 +825,36 @@ export default function Home() {
 
   const clearRefPage = () => {
     setRefPageImage(null)
+    setRefImageKind('reference')
     setRefPageUrlInput('')
     setRefError(null)
     if (refImageInputRef.current) refImageInputRef.current.value = ''
+  }
+
+  const clearAsIs = () => {
+    setAsIsAnalysis(null)
+    setRefError(null)
   }
 
   const handleSubmit = useCallback(() => {
     if (!brief.trim()) return
     const params = new URLSearchParams({ brief: brief.trim() })
     if (designPreset !== 'none') params.set('preset', designPreset)
-    params.set('platform', platform)
     if (designMdContent) {
       sessionStorage.setItem('designMd', designMdContent)
       params.set('hasDesignMd', '1')
     }
+    if (asIsAnalysis) {
+      sessionStorage.setItem('asIsAnalysis', JSON.stringify(asIsAnalysis))
+    } else {
+      sessionStorage.removeItem('asIsAnalysis')
+    }
     if (refPageImage) {
       sessionStorage.setItem('referenceImage', refPageImage)
+      sessionStorage.setItem('referenceImageKind', refImageKind)
     } else {
       sessionStorage.removeItem('referenceImage')
+      sessionStorage.removeItem('referenceImageKind')
     }
     if (brandLogo) {
       sessionStorage.setItem('brandLogo', brandLogo)
@@ -820,7 +868,7 @@ export default function Home() {
     }
     sessionStorage.setItem('aide_model', modelId)
     router.push(`/studio?${params.toString()}`)
-  }, [brief, designPreset, platform, designMdContent, refPageImage, brandLogo, brandColors, modelId, router])
+  }, [brief, designPreset, designMdContent, asIsAnalysis, refPageImage, refImageKind, brandLogo, brandColors, modelId, router])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -1345,8 +1393,8 @@ export default function Home() {
               onChange={e => setBrief(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={designPreset !== 'none'
-                ? `${DESIGN_PRESETS[designPreset].label} 디자인 시스템을 활용하여 어떤 앱 화면을 만들고 싶으세요?\n\n예시:\n${DESIGN_PRESETS[designPreset].label} 스타일로 대시보드를 만들어주세요. 주요 지표와 사용자 활동을 한눈에 볼 수 있어야 합니다.`
-                : `어떤 앱 화면을 만들고 싶으세요? (예: 음식 배달 앱 홈 화면, 스마트 요금제 비교 페이지...)`}
+                ? `${DESIGN_PRESETS[designPreset].label} 디자인 시스템을 활용하여 어떤 서비스를 만들고 싶으세요?\n\n예시:\n${DESIGN_PRESETS[designPreset].label} 스타일로 대시보드를 만들어주세요. 주요 지표와 사용자 활동을 한눈에 볼 수 있어야 합니다.`
+                : `어떤 서비스를 만들고 싶으세요? (예: 음식 배달 홈, 포털 메인, 스마트 요금제 비교 페이지...)`}
               rows={3}
               style={{
                 width: '100%', background: 'none', border: 'none', outline: 'none',
@@ -1361,7 +1409,54 @@ export default function Home() {
               gap: '8px',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
-                {/* + 버튼 (reference page) */}
+                {/* + source button */}
+                <button
+                  onClick={() => { setRefPanelOpen(v => !v); setDesignPanelOpen(false); setBrandPanelOpen(false) }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: '38px', height: '38px', borderRadius: '50%',
+                    border: 'none',
+                    backgroundColor: refPanelOpen ? F.ink : 'rgba(0,0,0,0.08)',
+                    color: refPanelOpen ? F.canvas : 'rgba(0,0,0,0.55)',
+                    cursor: 'pointer', transition: 'all 0.15s', flexShrink: 0,
+                  }}
+                  title="리디자인 소스 추가"
+                >
+                  <span style={{ fontSize: '20px', lineHeight: 1, marginTop: '-1px' }}>+</span>
+                </button>
+
+                {/* Source chips */}
+                {asIsAnalysis ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <button
+                      onClick={() => { setRefPanelOpen(true); setSourceTab('asis'); setDesignPanelOpen(false) }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        padding: '0 12px', height: '38px', borderRadius: '100px',
+                        border: 'none', backgroundColor: 'rgba(0,0,0,0.08)',
+                        color: 'rgba(0,0,0,0.65)', fontSize: '13px', fontWeight: 500,
+                        cursor: 'pointer', letterSpacing: '-0.13px',
+                      }}
+                    >
+                      <Link2 size={12} />
+                      As-is
+                      <span style={{ color: 'rgba(0,0,0,0.42)', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {(() => { try { return new URL(asIsAnalysis.sourceUrl).hostname.replace(/^www\./, '') } catch { return asIsAnalysis.pageTitle || '분석됨' } })()}
+                      </span>
+                    </button>
+                    <button
+                      onClick={clearAsIs}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '22px', height: '22px', borderRadius: '50%',
+                        border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#555555',
+                      }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ) : null}
+
                 {refPageImage ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <button
@@ -1379,7 +1474,7 @@ export default function Home() {
                         alt="ref"
                         style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: '3px', flexShrink: 0 }}
                       />
-                      현재 페이지
+                      {refImageKind === 'wireframe' ? '와이어프레임' : '참고자료'}
                     </button>
                     <button
                       onClick={clearRefPage}
@@ -1392,80 +1487,12 @@ export default function Home() {
                       <X size={12} />
                     </button>
                   </div>
-                ) : (
-                  <button
-                    onClick={() => { setRefPanelOpen(v => !v); setDesignPanelOpen(false) }}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      width: '38px', height: '38px', borderRadius: '50%',
-                      border: 'none',
-                      backgroundColor: 'rgba(0,0,0,0.08)',
-                      color: 'rgba(0,0,0,0.55)',
-                      cursor: 'pointer', transition: 'all 0.15s', flexShrink: 0,
-                    }}
-                  >
-                    <span style={{ fontSize: '20px', lineHeight: 1, marginTop: '-1px' }}>+</span>
-                  </button>
-                )}
+                ) : null}
 
-                {/* 앱/웹 토글 */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '2px',
-                  backgroundColor: 'rgba(0,0,0,0.08)', borderRadius: '100px',
-                  padding: '3px', flexShrink: 0, height: '38px',
-                }}>
-                  {(['mobile', 'web'] as const).map(p => (
-                    <button
-                      key={p}
-                      onClick={() => setPlatform(p)}
-                      style={{
-                        padding: '0 14px', borderRadius: '100px', height: '100%',
-                        border: 'none', cursor: 'pointer',
-                        fontSize: '12px', fontWeight: 600,
-                        transition: 'all 0.15s',
-                        backgroundColor: platform === p ? '#ffffff' : 'transparent',
-                        color: platform === p ? F.ink : 'rgba(0,0,0,0.5)',
-                        boxShadow: platform === p ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
-                      }}
-                    >
-                      {p === 'mobile' ? '앱' : '웹'}
-                    </button>
-                  ))}
-                </div>
-
-                {/* DESIGN.md button */}
-                <button
-                  onClick={() => {
-                    const isOpening = !designPanelOpen
-                    if (isOpening && designMdFileName?.startsWith('http') && designMdContent) {
-                      setUrlInput(designMdFileName)
-                      setUrlPreviewMd(designMdContent)
-                      setUrlPreviewScreenshot(appliedUrlScreenshot)
-                    } else if (!isOpening) {
-                      setUrlPreviewMd(null)
-                      setUrlPreviewScreenshot(null)
-                    }
-                    setDesignPanelOpen(v => !v)
-                    setBrandPanelOpen(false)
-                  }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '5px',
-                    padding: '0 13px', height: '38px', borderRadius: '100px',
-                    border: 'none',
-                    backgroundColor: 'rgba(0,0,0,0.08)',
-                    color: 'rgba(0,0,0,0.55)', fontSize: '13px', fontWeight: 500,
-                    cursor: 'pointer', letterSpacing: '-0.13px', transition: 'all 0.15s',
-                  }}
-                >
-                  <FileText size={11} />
-                  design.md
-                </button>
-
-                {/* Brand button */}
-                {(brandLogo !== null || brandColors.length > 0) ? (
+                {(brandLogo !== null || brandColors.length > 0) && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <button
-                      onClick={() => { setBrandPanelOpen(v => !v); setDesignPanelOpen(false) }}
+                      onClick={() => { setRefPanelOpen(true); setSourceTab('brand'); setDesignPanelOpen(false) }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '6px',
                         padding: '0 12px', height: '38px', borderRadius: '100px',
@@ -1499,22 +1526,35 @@ export default function Home() {
                       <X size={12} />
                     </button>
                   </div>
-                ) : (
-                  <button
-                    onClick={() => { setBrandPanelOpen(v => !v); setDesignPanelOpen(false) }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '5px',
-                      padding: '0 13px', height: '38px', borderRadius: '100px',
-                      border: 'none', backgroundColor: 'rgba(0,0,0,0.08)',
-                      color: 'rgba(0,0,0,0.55)', fontSize: '13px', fontWeight: 500,
-                      cursor: 'pointer', letterSpacing: '-0.13px', transition: 'all 0.15s',
-                    }}
-                  >
-                    <Palette size={11} />
-                    브랜드 정보
-                  </button>
                 )}
 
+                {/* DESIGN.md button */}
+                <button
+                  onClick={() => {
+                    const isOpening = !designPanelOpen
+                    if (isOpening && designMdFileName?.startsWith('http') && designMdContent) {
+                      setUrlInput(designMdFileName)
+                      setUrlPreviewMd(designMdContent)
+                      setUrlPreviewScreenshot(appliedUrlScreenshot)
+                    } else if (!isOpening) {
+                      setUrlPreviewMd(null)
+                      setUrlPreviewScreenshot(null)
+                    }
+                    setDesignPanelOpen(v => !v)
+                    setBrandPanelOpen(false)
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '5px',
+                    padding: '0 13px', height: '38px', borderRadius: '100px',
+                    border: 'none',
+                    backgroundColor: 'rgba(0,0,0,0.08)',
+                    color: 'rgba(0,0,0,0.55)', fontSize: '13px', fontWeight: 500,
+                    cursor: 'pointer', letterSpacing: '-0.13px', transition: 'all 0.15s',
+                  }}
+                >
+                  <FileText size={11} />
+                  design.md
+                </button>
 
               </div>
 
@@ -1792,33 +1832,173 @@ export default function Home() {
               border: `1px solid ${F.hairline}`, padding: '16px',
             }}>
               <input ref={refImageInputRef} type="file" accept="image/*" onChange={handleRefImageUpload} style={{ display: 'none' }} />
-              <button
-                onClick={() => refImageInputRef.current?.click()}
-                style={{
-                  width: '100%', padding: '14px', borderRadius: '10px',
-                  border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
-                  color: F.inkMuted, fontSize: '13px', fontWeight: 500, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
-                  marginBottom: '14px', letterSpacing: '-0.13px',
-                }}
-              >
-                <Upload size={13} />
-                이미지 파일 업로드 (PNG, JPG, WEBP)
-              </button>
+              <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 12, backgroundColor: F.surface2, marginBottom: 14 }}>
+                {([
+                  ['asis', 'As-is URL'],
+                  ['wireframe', '와이어프레임'],
+                  ['reference', '참고자료'],
+                  ['brand', '브랜드'],
+                ] as const).map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setSourceTab(key)}
+                    style={{
+                      flex: 1,
+                      height: 34,
+                      border: 'none',
+                      borderRadius: 9,
+                      backgroundColor: sourceTab === key ? F.canvas : 'transparent',
+                      color: sourceTab === key ? F.ink : F.inkMuted,
+                      boxShadow: sourceTab === key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: F.ink, letterSpacing: '-0.13px' }}>
+                  {sourceTab === 'asis' ? '리디자인할 기존 화면'
+                    : sourceTab === 'wireframe' ? '구조로 사용할 와이어프레임'
+                    : sourceTab === 'reference' ? '분위기와 패턴 참고자료'
+                    : '브랜드 정체성 자료'}
+                </div>
+                <div style={{ fontSize: 12, color: F.inkMuted, marginTop: 3, lineHeight: 1.45 }}>
+                  {sourceTab === 'asis' ? '기존 서비스의 정보 구조, 섹션, CTA, 문제점을 분석합니다. 스타일은 가져오지 않고 선택한 design.md를 따릅니다.'
+                    : sourceTab === 'wireframe' ? '기획 와이어프레임, 손그림, 피그마 캡처를 올리면 구조를 기준으로 화면을 만듭니다.'
+                    : sourceTab === 'reference' ? '좋아하는 이미지나 서비스 URL을 넣으면 무드, 밀도, 레이아웃 리듬만 참고합니다.'
+                    : '로고와 컬러를 넣으면 브랜드 요소를 화면에 자연스럽게 반영합니다.'}
+                </div>
+              </div>
+
+              {sourceTab === 'asis' && asIsAnalysis && (
+                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 12, color: F.inkMuted, marginBottom: 4 }}>분석 완료</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: F.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {asIsAnalysis.pageTitle || asIsAnalysis.sourceUrl}
+                      </div>
+                      <div style={{ fontSize: 12, color: F.inkMuted, marginTop: 4 }}>
+                        {asIsAnalysis.layoutType} · 섹션 {asIsAnalysis.sections.length}개 · CTA {asIsAnalysis.primaryCtas.length}개
+                      </div>
+                    </div>
+                    <button onClick={clearAsIs} style={{ border: 'none', background: 'none', cursor: 'pointer', color: F.inkMuted, display: 'flex', padding: 2 }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {(sourceTab === 'wireframe' || sourceTab === 'reference') && (
+                <button
+                  onClick={() => refImageInputRef.current?.click()}
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: '10px',
+                    border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
+                    color: F.inkMuted, fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+                    marginBottom: '14px', letterSpacing: '-0.13px',
+                  }}
+                >
+                  <Upload size={13} />
+                  {sourceTab === 'wireframe' ? '와이어프레임 이미지 업로드' : '참고 이미지 업로드'}
+                </button>
+              )}
+
+              {sourceTab === 'brand' && (
+                <>
+                  <p style={{ fontSize: '12px', fontWeight: 600, color: F.inkMuted, marginBottom: '8px', letterSpacing: '-0.12px' }}>로고</p>
+                  {brandLogo ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '10px', backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, marginBottom: '14px' }}>
+                      <img src={brandLogo} alt="logo" style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 4 }} />
+                      <span style={{ fontSize: '12px', color: F.ink, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{brandLogoName}</span>
+                      <button onClick={() => { setBrandLogo(null); setBrandLogoName(null) }} style={{ border: 'none', background: 'none', cursor: 'pointer', color: F.inkMuted, display: 'flex' }}>
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => logoInputRef.current?.click()}
+                      style={{
+                        width: '100%', padding: '14px', borderRadius: '10px', marginBottom: '14px',
+                        border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
+                        color: F.inkMuted, fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+                        letterSpacing: '-0.13px',
+                      }}
+                    >
+                      <Upload size={13} />
+                      로고 이미지 업로드
+                    </button>
+                  )}
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <p style={{ fontSize: '12px', fontWeight: 600, color: F.inkMuted, letterSpacing: '-0.12px', margin: 0 }}>브랜드 컬러</p>
+                    {extractingColors && <span style={{ fontSize: '11px', color: F.inkMuted }}>로고에서 추출 중...</span>}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    {brandColors.map((color, i) => (
+                      <div key={i} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                        <label style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: color, cursor: 'pointer', display: 'block', border: '2px solid rgba(0,0,0,0.08)', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+                          <input
+                            type="color"
+                            value={color}
+                            onChange={e => { const next = [...brandColors]; next[i] = e.target.value; setBrandColors(next) }}
+                            style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', border: 'none', padding: 0 }}
+                          />
+                        </label>
+                        <button
+                          onClick={() => setBrandColors(brandColors.filter((_, j) => j !== i))}
+                          style={{ position: 'absolute', top: '-4px', right: '-4px', width: '14px', height: '14px', borderRadius: '50%', backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                        >
+                          <X size={8} />
+                        </button>
+                        <span style={{ fontSize: '9px', fontFamily: 'monospace', color: F.inkMuted }}>{color.toUpperCase()}</span>
+                      </div>
+                    ))}
+                    {brandColors.length < 5 && (
+                      <button
+                        onClick={() => setBrandColors([...brandColors, '#000000'])}
+                        style={{ width: '36px', height: '36px', borderRadius: '50%', border: `1.5px dashed ${F.hairline}`, backgroundColor: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: F.inkMuted, fontSize: '20px', lineHeight: 1 }}
+                      >
+                        +
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {(sourceTab === 'asis' || sourceTab === 'reference') && (
+                <>
+              {sourceTab === 'reference' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                  <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
+                  <span style={{ color: F.inkMuted, fontSize: '11px', letterSpacing: '-0.11px' }}>또는 URL로 캡처</span>
+                  <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
+                </div>
+              )}
+              {sourceTab === 'asis' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
                 <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
-                <span style={{ color: F.inkMuted, fontSize: '11px', letterSpacing: '-0.11px' }}>또는 URL로 캡처</span>
+                <span style={{ color: F.inkMuted, fontSize: '11px', letterSpacing: '-0.11px' }}>URL 입력</span>
                 <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
               </div>
+              )}
 
               <div style={{ display: 'flex', gap: '6px' }}>
                 <input
                   type="text"
                   value={refPageUrlInput}
                   onChange={e => { setRefPageUrlInput(e.target.value); setRefError(null) }}
-                  onKeyDown={e => e.key === 'Enter' && handleRefCapture()}
-                  placeholder="리뉴얼할 현재 페이지 URL (예: ktds.com)"
+                  onKeyDown={e => e.key === 'Enter' && (sourceTab === 'asis' ? handleAsIsAnalyze() : handleRefCapture())}
+                  placeholder={sourceTab === 'asis' ? '리뉴얼할 기존 서비스 URL (예: company.com)' : '참고할 서비스 URL (예: airbnb.com)'}
                   style={{
                     flex: 1, padding: '10px 12px', borderRadius: '10px',
                     border: refError ? '1px solid rgba(255,80,80,0.5)' : `1px solid ${F.hairline}`,
@@ -1828,7 +2008,7 @@ export default function Home() {
                   }}
                 />
                 <button
-                  onClick={handleRefCapture}
+                  onClick={sourceTab === 'asis' ? handleAsIsAnalyze : handleRefCapture}
                   disabled={!refPageUrlInput.trim() || refCapturing}
                   style={{
                     padding: '10px 14px', borderRadius: '10px', flexShrink: 0,
@@ -1841,9 +2021,11 @@ export default function Home() {
                   }}
                 >
                   <Link2 size={12} />
-                  {refCapturing ? '캡처 중…' : '캡처하기'}
+                  {refCapturing ? (sourceTab === 'asis' ? '분석 중…' : '캡처 중…') : (sourceTab === 'asis' ? '분석하기' : '캡처하기')}
                 </button>
               </div>
+                </>
+              )}
               {refError && (
                 <p style={{ color: 'rgba(255,80,80,0.8)', fontSize: '12px', marginTop: '6px', letterSpacing: '-0.12px' }}>
                   {refError}

@@ -473,13 +473,9 @@ function parseCustomDesignMdMeta(md: string): {
 
 export default function StudioPage() {
   const [step, setStep] = useState<Step>(1)
-  const [startedFromLanding, setStartedFromLanding] = useState(() => {
-    if (typeof window === 'undefined') return false
-    const params = new URLSearchParams(window.location.search)
-    return params.has('brief') && !params.has('historyId')
-  })
+  const [startedFromLanding, setStartedFromLanding] = useState(false)
   const [platform, setPlatform] = useState<'mobile' | 'web'>('mobile')
-  const [designPreset, setDesignPreset] = useState<DesignPreset>('none')
+  const [designPreset, setDesignPreset] = useState<DesignPreset>('ktds')
   const [customDesignMd, setCustomDesignMd] = useState<string | null>(null)
   const customDesignMdName = customDesignMd
     ? (customDesignMd.match(/name:\s*["']?([^"'\n]+)["']?/)?.[1]?.trim() ?? 'Custom')
@@ -657,7 +653,7 @@ export default function StudioPage() {
     setStartedFromLanding(true)
     const preset: DesignPreset = (presetParam && presetParam in DESIGN_PRESETS)
       ? presetParam as DesignPreset
-      : 'none'
+      : 'ktds'
 
     setBrief(briefParam)
     setDesignPreset(preset)
@@ -687,6 +683,16 @@ export default function StudioPage() {
       .then(res => res.json())
       .then(data => {
         if (data.error) throw new Error(data.error)
+        if (data.recommendedPlatform?.platform === 'web' || data.recommendedPlatform?.platform === 'mobile') {
+          setPlatform(data.recommendedPlatform.platform)
+          if (data.recommendedPlatform.platform === 'web') {
+            setPreviewWidth(1440)
+            setZoom(60)
+          } else {
+            setPreviewWidth(390)
+            setZoom(100)
+          }
+        }
         setQuestionnaire(data)
         setAnswers(data.domain ? { domain: DOMAIN_KEY_TO_LABEL[data.domain as AppDomain] ?? '기타' } : {})
         setStep(2)
@@ -1046,10 +1052,20 @@ export default function StudioPage() {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: apiHeaders(),
-        body: JSON.stringify({ designMd: effectiveDesignMd, brief, platform }),
+      body: JSON.stringify({ designMd: effectiveDesignMd, brief }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
+      if (data.recommendedPlatform?.platform === 'web' || data.recommendedPlatform?.platform === 'mobile') {
+        setPlatform(data.recommendedPlatform.platform)
+        if (data.recommendedPlatform.platform === 'web') {
+          setPreviewWidth(1440)
+          setZoom(60)
+        } else {
+          setPreviewWidth(390)
+          setZoom(100)
+        }
+      }
       setQuestionnaire(data)
       setAnswers(data.domain ? { domain: DOMAIN_KEY_TO_LABEL[data.domain as AppDomain] ?? '기타' } : {})
       setStep(2)
@@ -1090,6 +1106,17 @@ export default function StudioPage() {
     }
   }, [])
 
+  const readAsIsAnalysis = () => {
+    const raw = sessionStorage.getItem('asIsAnalysis')
+    if (!raw) return undefined
+    try {
+      return JSON.parse(raw)
+    } catch {
+      sessionStorage.removeItem('asIsAnalysis')
+      return undefined
+    }
+  }
+
   const handleGenerate = async () => {
     if (!questionnaire) return
     const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
@@ -1102,8 +1129,10 @@ export default function StudioPage() {
     const genId = ++generationIdRef.current
     try {
       const referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
+      const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
+      const asIsAnalysis = readAsIsAnalysis()
       const modelId = sessionStorage.getItem('aide_model') ?? undefined
-      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, platform, modelId, heroImagePrompt: questionnaire.heroImageDecision?.generate ? questionnaire.heroImageDecision.prompt : undefined, heroSubject: questionnaire.heroImageDecision?.heroSubject || undefined }
+      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, referenceImageKind, asIsAnalysis, platform, modelId, heroImagePrompt: questionnaire.heroImageDecision?.generate ? questionnaire.heroImageDecision.prompt : undefined, heroSubject: questionnaire.heroImageDecision?.heroSubject || undefined }
       const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
       const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
       const variantStyles = getVariantStyles(effectiveDomain)
@@ -1184,6 +1213,7 @@ export default function StudioPage() {
     setPickedVariantIdx(idx)
     setGenerateError('')
     try {
+      const asIsAnalysis = readAsIsAnalysis()
       const res = await fetch('/api/expand', {
         method: 'POST',
         headers: apiHeaders(),
@@ -1195,6 +1225,7 @@ export default function StudioPage() {
           projectSummary: questionnaire.projectSummary,
           logoDataUrl,
           brandColors: brandColors.length > 0 ? brandColors : undefined,
+          asIsAnalysis,
           platform,
           modelId: sessionStorage.getItem('aide_model') ?? undefined,
         }),
@@ -1273,7 +1304,7 @@ export default function StudioPage() {
     setEditMode(false); setChatMessages([]); setChatInput('')
     setHistoryA([]); setHistoryIndexA(-1); setHistoryB([]); setHistoryIndexB(-1)
     setShareOpen(false); setZoomOpen(false); setZoom(60)
-    setDesignPreset('none'); setLogoDataUrl(null); setLogoLoading(false); setBrandColors([])
+    setDesignPreset('ktds'); setLogoDataUrl(null); setLogoLoading(false); setBrandColors([])
     setMainVariants([null, null, null]); setPickedVariantIdx(null)
     setIsGeneratingB(false); setIsGeneratingC(false); setIsExpandingPrototype(false)
     setScreens([]); setActiveScreenId('')
@@ -1286,6 +1317,8 @@ export default function StudioPage() {
     if (!questionnaire) return
     const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
     const referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
+    const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
+    const asIsAnalysis = readAsIsAnalysis()
     const modelId = sessionStorage.getItem('aide_model') ?? undefined
     const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
     const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
@@ -1299,6 +1332,8 @@ export default function StudioPage() {
       brandColors: brandColors.length > 0 ? brandColors : undefined,
       mainOnly: true,
       referenceImageBase64,
+      referenceImageKind,
+      asIsAnalysis,
       platform,
       modelId,
       heroImagePrompt: questionnaire.heroImageDecision?.generate ? questionnaire.heroImageDecision.prompt : undefined,
@@ -3011,7 +3046,7 @@ export default function StudioPage() {
                     })}
                   </div>
                   <p className="text-[13px]" style={{ color: F.inkMuted }}>
-                    {(designPreset === 'none' && !customDesignMd) ? 'AI가 브랜드에 맞는 디자인 시스템을 직접 설계합니다' : `${customDesignMdName ?? DESIGN_PRESETS[designPreset].label} 가이드라인을 적용합니다`}
+                    {`${customDesignMdName ?? DESIGN_PRESETS[designPreset].label} 가이드라인을 적용합니다`}
                   </p>
                 </div>
 
@@ -3079,7 +3114,7 @@ export default function StudioPage() {
                       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px]" style={{ backgroundColor: F.surface1, border: `1px solid ${F.hairlineSoft}`, color: F.ink }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                         <span>{customDesignMdName ?? designPreset}.md</span>
-                        <button onClick={() => { setDesignPreset('none'); setCustomDesignMd(null) }} className="flex items-center" style={{ color: F.inkMuted }}>
+                        <button onClick={() => { setDesignPreset('ktds'); setCustomDesignMd(null) }} className="flex items-center" style={{ color: F.inkMuted }}>
                           <X size={11} />
                         </button>
                       </div>
@@ -3089,9 +3124,7 @@ export default function StudioPage() {
                   <textarea
                     value={brief}
                     onChange={e => setBrief(e.target.value.slice(0, 2000))}
-                    placeholder={(designPreset !== 'none' || !!customDesignMd)
-                      ? `${customDesignMdName ?? DESIGN_PRESETS[designPreset].label} 디자인 시스템을 활용하여 어떤 화면을 만들고 싶으신가요?\n\n예시:\n${customDesignMdName ?? DESIGN_PRESETS[designPreset].label} 스타일로 대시보드를 만들어주세요. 주요 지표와 사용자 활동을 한눈에 볼 수 있어야 합니다.`
-                      : `어떤 화면을 만들고 싶으신가요?\n\n예시:\n피트니스 앱의 홈 화면을 만들어주세요. 오늘의 운동 목표와 진행 상황을 볼 수 있어야 합니다.`}
+                    placeholder={`${customDesignMdName ?? DESIGN_PRESETS[designPreset].label} 디자인 시스템을 활용하여 어떤 화면을 만들고 싶으신가요?\n\n예시:\n${customDesignMdName ?? DESIGN_PRESETS[designPreset].label} 스타일로 대시보드를 만들어주세요. 주요 지표와 사용자 활동을 한눈에 볼 수 있어야 합니다.`}
                     className="flex-1 p-4 text-sm resize-none leading-relaxed bg-transparent outline-none"
                     style={{ color: F.ink }}
                   />
@@ -3121,6 +3154,34 @@ export default function StudioPage() {
               </div>
               <button onClick={() => { setStartedFromLanding(false); setStep(1) }} className="flex items-center gap-1.5 text-sm text-[#666666] hover:text-[#111111] transition-colors mt-1">
                 <ArrowLeft size={14} /> 뒤로
+              </button>
+            </div>
+
+            <div className="mb-8 flex items-center justify-between gap-4 px-4 py-3" style={{ borderRadius: 12, backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.08)' }}>
+              <div>
+                <div className="text-[13px] font-semibold text-[#111111]">
+                  추천 생성 기준: {platform === 'web' ? '웹 우선' : '모바일 우선'}
+                </div>
+                <div className="text-[12px] text-[#777777] mt-0.5">
+                  {questionnaire.recommendedPlatform?.reason ?? '서비스 성격을 기준으로 AI가 기본 프리뷰와 정보 구조를 정했습니다.'}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  const next = platform === 'web' ? 'mobile' : 'web'
+                  setPlatform(next)
+                  if (next === 'web') {
+                    setPreviewWidth(1440)
+                    setZoom(60)
+                  } else {
+                    setPreviewWidth(390)
+                    setZoom(100)
+                  }
+                }}
+                className="shrink-0 text-[12px] font-semibold px-3 py-2 transition-colors"
+                style={{ borderRadius: 8, border: '1px solid rgba(0,0,0,0.10)', backgroundColor: '#f7f7f8', color: '#111111' }}
+              >
+                {platform === 'web' ? '모바일 우선으로 변경' : '웹 우선으로 변경'}
               </button>
             </div>
 

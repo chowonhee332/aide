@@ -72,6 +72,12 @@ const DOMAIN_CONTEXT: Record<AppDomain, DomainContext> = {
 const PHILOSOPHY_A = `정밀 정보형 (시안 A)
 목표: 선택한 DESIGN.md의 스타일을 유지하면서 정보 탐색과 비교가 가장 쉬운 화면을 만든다.
 
+필수 레이아웃 문법:
+- 모바일: compact app bar → 검색/필터 → 2~3개 요약 지표 → 조밀한 리스트/카드 스택 → 보조 액션 순서로 구성
+- 웹: 상단 GNB 또는 업무형 LNB → KPI/상태 요약 band → 필터/검색 row → 표/리스트/카드 그리드의 2컬럼 이상 구조
+- 히어로를 크게 만들지 않는다. 첫 화면의 시각 중심은 "비교 가능한 실제 데이터 묶음"이어야 한다.
+- 같은 성격의 카드/행은 동일한 높이, 동일한 메타 정보 순서, 동일한 CTA 위치를 갖는다.
+
 방향:
 - 핵심 데이터, 상태, 목록, 비교 정보가 먼저 보이는 구조
 - 컬러는 선택한 디자인 시스템의 강조/상태 토큰 범위 안에서 절제해서 사용
@@ -89,6 +95,12 @@ const PHILOSOPHY_A = `정밀 정보형 (시안 A)
 const PHILOSOPHY_B = `전환 중심형 (시안 B)
 목표: 선택한 DESIGN.md의 스타일을 유지하면서 사용자가 가장 중요한 행동을 빠르게 하도록 만든다.
 
+필수 레이아웃 문법:
+- 모바일: app bar → 강한 hero/action panel → primary CTA → 혜택/가격/상태 proof row → 추천 항목 3개 이상
+- 웹: 상단 GNB → 좌우 비대칭 hero(메시지/CTA + 대표 비주얼) → trust/proof strip → 주요 상품/기능 카드
+- 첫 화면의 focal point는 하나만 만든다. CTA와 대표 메시지가 분산되면 실패다.
+- CTA는 hero 안 또는 hero 바로 아래에 배치하고, 보조 CTA는 시각적으로 한 단계 낮춘다.
+
 방향:
 - 상단에 서비스 핵심 가치와 대표 CTA를 명확히 배치
 - 상품/신청/예약/주문/시작하기 등 전환 흐름을 가장 짧게 설계
@@ -105,6 +117,12 @@ const PHILOSOPHY_B = `전환 중심형 (시안 B)
 
 const PHILOSOPHY_C = `브랜드 탐색형 (시안 C)
 목표: 선택한 DESIGN.md의 스타일을 유지하면서 서비스의 분위기, 스토리, 탐색 경험을 가장 잘 보여준다.
+
+필수 레이아웃 문법:
+- 모바일: app bar → 이미지/큐레이션 hero → 카테고리 rail → editorial/recommendation card → 개인화 추천 리스트
+- 웹: 상단 GNB → full-width editorial band 또는 magazine-style grid → 카테고리/스토리 섹션 → 추천 컬렉션
+- 이미지가 단순 썸네일이 아니라 섹션의 의미를 만든다. 단, 이미지 스타일은 DESIGN.md의 카드/서피스 규칙을 따른다.
+- C는 A보다 정보 밀도가 낮고, B보다 탐색과 분위기가 풍부해야 한다.
 
 방향:
 - 이미지, 카테고리, 추천, 스토리, 큐레이션을 중심으로 구성
