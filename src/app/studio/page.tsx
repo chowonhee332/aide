@@ -38,6 +38,32 @@ interface ElementStyles {
   borderWidth: string; borderRadius: string; backgroundColor: string; backgroundImage: string
 }
 
+function platformLabel(platform?: 'mobile' | 'web') {
+  return platform === 'web' ? '웹 서비스' : '모바일 앱'
+}
+
+function platformFromIntent(value?: string): 'mobile' | 'web' | null {
+  if (!value) return null
+  if (value.includes('웹') || value.includes('랜딩') || value.includes('대시보드') || value.includes('포털')) return 'web'
+  if (value.includes('모바일')) return 'mobile'
+  return null
+}
+
+function defaultAnswersFromAnalysis(data: QuestionnaireResponse): Record<string, string> {
+  const domain = data.domain ?? 'other'
+  const serviceType = domain === 'business' || domain === 'productivity' ? 'B2B' : 'B2C'
+  const domainLabel = DOMAIN_KEY_TO_LABEL[domain] ?? '기타'
+  const homeOptions = DOMAIN_HOME_EMPHASIS_OPTIONS[domain] ?? DOMAIN_HOME_EMPHASIS_OPTIONS.other
+  return {
+    service_type: serviceType,
+    platform_intent: platformLabel(data.recommendedPlatform?.platform),
+    domain: domainLabel,
+    home_emphasis: homeOptions[0] ?? 'AI가 결정',
+    variant_strategy: '세 방향 모두 다르게',
+    hero3d: data.heroImageDecision?.generate ? '사용' : '사용 안 함',
+  }
+}
+
 // Detect web vs mobile for history items that pre-date the platform field
 function guessPlatform(item: { platform?: 'mobile' | 'web'; brief: string; html: string }): 'mobile' | 'web' {
   if (item.platform) return item.platform
@@ -1067,7 +1093,7 @@ export default function StudioPage() {
         }
       }
       setQuestionnaire(data)
-      setAnswers(data.domain ? { domain: DOMAIN_KEY_TO_LABEL[data.domain as AppDomain] ?? '기타' } : {})
+      setAnswers(defaultAnswersFromAnalysis(data))
       setStep(2)
     } catch (err) {
       setAnalyzeError(err instanceof Error ? err.message : '오류가 발생했습니다')
@@ -1076,10 +1102,14 @@ export default function StudioPage() {
     }
   }
 
+  useEffect(() => {
+    if (!questionnaire) return
+    setAnswers(prev => ({ ...defaultAnswersFromAnalysis(questionnaire), ...prev }))
+  }, [questionnaire])
+
   const handleAnswer = useCallback((questionId: string, value: string, type: 'single' | 'multi' | 'text') => {
     setAnswers(prev => {
       if (type === 'single') {
-        if (prev[questionId] === value) { const { [questionId]: _, ...rest } = prev; return rest }
         return { ...prev, [questionId]: value }
       }
       if (type === 'multi') {
@@ -1102,7 +1132,20 @@ export default function StudioPage() {
           ),
         }
       })
-      setAnswers(prev => { const { home_emphasis: _, ...rest } = prev; return rest })
+      setAnswers(prev => ({ ...prev, home_emphasis: newOptions[0] ?? 'AI가 결정' }))
+    }
+    if (questionId === 'platform_intent') {
+      const next = platformFromIntent(value)
+      if (next) {
+        setPlatform(next)
+        if (next === 'web') {
+          setPreviewWidth(1440)
+          setZoom(60)
+        } else {
+          setPreviewWidth(390)
+          setZoom(100)
+        }
+      }
     }
   }, [])
 
@@ -1132,7 +1175,11 @@ export default function StudioPage() {
       const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
       const asIsAnalysis = readAsIsAnalysis()
       const modelId = sessionStorage.getItem('aide_model') ?? undefined
-      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, referenceImageKind, asIsAnalysis, platform, modelId, heroImagePrompt: questionnaire.heroImageDecision?.generate ? questionnaire.heroImageDecision.prompt : undefined, heroSubject: questionnaire.heroImageDecision?.heroSubject || undefined }
+      const hero3dMode = typeof answers['hero3d'] === 'string' ? answers['hero3d'] : 'AI 판단'
+      const shouldUseHero3d = hero3dMode === '사용' || (hero3dMode === 'AI 판단' && questionnaire.heroImageDecision?.generate)
+      const heroPrompt = shouldUseHero3d ? (questionnaire.heroImageDecision?.prompt || brief) : undefined
+      const heroSubject = shouldUseHero3d ? (questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || brief) : undefined
+      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, referenceImageKind, asIsAnalysis, platform, modelId, heroImagePrompt: heroPrompt, heroSubject }
       const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
       const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
       const variantStyles = getVariantStyles(effectiveDomain)
@@ -1323,6 +1370,8 @@ export default function StudioPage() {
     const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
     const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
     const variantStyles = getVariantStyles(effectiveDomain)
+    const hero3dMode = typeof answers['hero3d'] === 'string' ? answers['hero3d'] : 'AI 판단'
+    const shouldUseHero3d = hero3dMode === '사용' || (hero3dMode === 'AI 판단' && questionnaire.heroImageDecision?.generate)
     const baseParams = {
       designMd: effectiveDesignMd,
       brief,
@@ -1336,8 +1385,8 @@ export default function StudioPage() {
       asIsAnalysis,
       platform,
       modelId,
-      heroImagePrompt: questionnaire.heroImageDecision?.generate ? questionnaire.heroImageDecision.prompt : undefined,
-      heroSubject: questionnaire.heroImageDecision?.heroSubject || undefined,
+      heroImagePrompt: shouldUseHero3d ? (questionnaire.heroImageDecision?.prompt || brief) : undefined,
+      heroSubject: shouldUseHero3d ? (questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || brief) : undefined,
       domain: effectiveDomain,
       variantStyle: variantStyles[idx],
     }
@@ -1519,8 +1568,6 @@ export default function StudioPage() {
     clearTimeout(brandDebounceTimer.current)
     brandDebounceTimer.current = setTimeout(() => setDebouncedBrandColor(color), 500)
   }
-
-  const answeredCount = questionnaire ? Object.keys(answers).length : 0
 
   // ─── Step 3: Generation canvas view ──────────────────────────────────────
   if (step === 3) {
@@ -3172,12 +3219,12 @@ export default function StudioPage() {
           </div>
         )}
 
-        {/* ── Step 2: Questionnaire ── */}
+        {/* ── Step 2: AI Criteria Review ── */}
         {step === 2 && questionnaire && (
           <div className="max-w-3xl mx-auto w-full px-8 py-12">
             <div className="flex items-start justify-between mb-8">
               <div>
-                <h1 className="text-[22px] font-bold mb-1" style={{ letterSpacing: '-0.05em' }}>세부 옵션 선택</h1>
+                <h1 className="text-[22px] font-bold mb-1" style={{ letterSpacing: '-0.05em' }}>이 기준으로 만들게요</h1>
                 <p className="text-[14px] text-[#666666]">{questionnaire.projectSummary}</p>
               </div>
               <button onClick={() => { setStartedFromLanding(false); setStep(1) }} className="flex items-center gap-1.5 text-sm text-[#666666] hover:text-[#111111] transition-colors mt-1">
@@ -3188,36 +3235,15 @@ export default function StudioPage() {
             <div className="mb-8 flex items-center justify-between gap-4 px-4 py-3" style={{ borderRadius: 12, backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.08)' }}>
               <div>
                 <div className="text-[13px] font-semibold text-[#111111]">
-                  추천 생성 기준: {platform === 'web' ? '웹 우선' : '모바일 우선'}
+                  AI 추천값을 미리 선택해뒀어요
                 </div>
                 <div className="text-[12px] text-[#777777] mt-0.5">
-                  {questionnaire.recommendedPlatform?.reason ?? '서비스 성격을 기준으로 AI가 기본 프리뷰와 정보 구조를 정했습니다.'}
+                  필요하면 아래 버튼만 바꾸고 바로 시안을 생성하면 됩니다.
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  const next = platform === 'web' ? 'mobile' : 'web'
-                  setPlatform(next)
-                  if (next === 'web') {
-                    setPreviewWidth(1440)
-                    setZoom(60)
-                  } else {
-                    setPreviewWidth(390)
-                    setZoom(100)
-                  }
-                }}
-                className="shrink-0 text-[12px] font-semibold px-3 py-2 transition-colors"
-                style={{ borderRadius: 8, border: '1px solid rgba(0,0,0,0.10)', backgroundColor: '#f7f7f8', color: '#111111' }}
-              >
-                {platform === 'web' ? '모바일 우선으로 변경' : '웹 우선으로 변경'}
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3 mb-8">
-              <div className="flex-1 h-1 bg-[#f0f0f0] overflow-hidden" style={{ borderRadius: '9999px' }}>
-                <div className="h-full transition-all duration-300" style={{ width: `${(answeredCount / questionnaire.questions.length) * 100}%`, backgroundColor: '#111111', borderRadius: '9999px' }} />
+              <div className="shrink-0 text-[12px] font-semibold px-3 py-2" style={{ borderRadius: 9999, backgroundColor: '#f5f5f5', color: '#111111', border: '1px solid rgba(0,0,0,0.08)' }}>
+                {platform === 'web' ? '웹 프리뷰' : '모바일 프리뷰'}
               </div>
-              <span className="text-[13px] text-[#666666] shrink-0">{answeredCount} / {questionnaire.questions.length} 답변</span>
             </div>
 
             <div className="space-y-8 mb-10">
@@ -3233,14 +3259,12 @@ export default function StudioPage() {
             )}
 
             <PrimaryButton onClick={handleGenerate} disabled={isGenerating} loading={isGenerating} loadingText="시안 A/B/C를 생성하고 있습니다... (60~90초 소요)">
-              <Sparkles size={16} /> UI 시안 생성하기
+              <Sparkles size={16} /> 이 기준으로 시안 생성하기
             </PrimaryButton>
 
-            {answeredCount === 0 && (
-              <p className="text-center text-[13px] text-[#666666] mt-3">
-                옵션을 선택하지 않아도 됩니다 — AI가 최선의 선택을 합니다
-              </p>
-            )}
+            <p className="text-center text-[13px] text-[#666666] mt-3">
+              복잡한 설계, 시안 차별화, 이미지 생성과 검수는 백단에서 자동으로 처리됩니다
+            </p>
           </div>
         )}
 
@@ -4136,9 +4160,10 @@ function QuestionCard({ index, question, answer, onAnswer }: {
               <button
                 key={option}
                 onClick={() => onAnswer(option)}
-                className="px-4 py-2 text-sm border transition-all"
+                className="px-4 py-2 text-sm border transition-all inline-flex items-center gap-1.5"
                 style={{ borderRadius: '8px', ...(isSelected(option) ? { backgroundColor: '#111111', borderColor: '#111111', color: '#ffffff' } : { backgroundColor: '#f5f5f5', borderColor: 'rgba(0,0,0,0.09)', color: '#666666' }) }}
               >
+                {isSelected(option) && <Check size={13} />}
                 {option}
               </button>
             ))}

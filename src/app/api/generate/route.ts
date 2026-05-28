@@ -24,8 +24,9 @@ export async function POST(req: NextRequest) {
     console.log('[generate] step1: params parsed, starting generateUI')
 
     const html = await generateUI(params, apiKey)
+    const heroPrompt = params.heroSubject || params.heroImagePrompt || (html.includes('%%HERO_3D_IMAGE') ? params.brief : undefined)
     const finalHtml = await resolveImagePlaceholders(html, {
-      heroImagePrompt: params.heroSubject || params.heroImagePrompt,
+      heroImagePrompt: heroPrompt,
       apiKey,
     })
     console.log('[generate] step2: html generated, length=', finalHtml.length)

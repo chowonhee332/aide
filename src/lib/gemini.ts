@@ -448,6 +448,10 @@ ${designSystemContext}
 
 히어로 섹션에 AI 생성 3D 이미지가 필요한지 판단하세요.
 
+**최우선 조건:**
+- 사용자가 기획서에 "3D", "3D 캐릭터", "3D 히어로", "캐릭터 생성", "마스코트"처럼 AI 생성 3D 비주얼을 명시적으로 요청하면 generate는 true입니다.
+- 이 경우 모바일 앱 홈 화면이라도 메인 히어로 1회에 한해 3D를 허용합니다.
+
 **generate: true 조건 (모두 해당할 때):**
 - B2C 랜딩페이지 / 브랜드 소개 / 제품 쇼케이스
 - 앱·서비스 소개 페이지 (SaaS, 스타트업, 앱 마케팅)
@@ -462,9 +466,9 @@ ${designSystemContext}
 - 커뮤니티·SNS·뉴스 피드 서비스
 
 generate: true일 때:
-- prompt는 **영어**로, 3D 제품/서비스 시각화에 적합한 프롬프트 작성:
-  - 스타일: photorealistic 3D render, studio lighting, clean background
-  - 예: "3D render of a sleek smartphone with glowing blue UI, floating above white surface, soft caustic lighting, product hero shot, 4K"
+- prompt는 **영어**로, Creon 3D Studio 스타일에 적합한 단일 오브젝트/캐릭터 프롬프트 작성:
+  - 스타일: cute isometric 3D mascot/icon, glossy plastic, soft studio lighting, clean shape
+  - 예: "a cute sandwich mascot holding a coupon", "a delivery box mascot", "a friendly credit card character"
 - heroSubject는 이 서비스를 상징하는 **단일 오브젝트**를 **영어 명사구** 2~5단어로 작성:
   - 예: "a sleek smartphone", "a credit card", "a running shoe", "a delivery box", "a laptop with UI"
   - 반드시 isometric 3D 아이콘으로 표현 가능한 구체적 사물이어야 함
@@ -524,32 +528,39 @@ ${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는
 
   const fixedQuestions: Question[] = [
     {
-      id: 'service_type',
-      question: '서비스 성격이 어떻게 되나요?',
-      description: '사용자 타입에 따라 UI 밀도와 정보 구조가 달라집니다',
+      id: 'platform_intent',
+      question: '기준 화면',
+      description: parsed.recommendedPlatform?.reason ?? '첫 시안 프리뷰와 정보 구조의 기준 화면입니다.',
       type: 'single',
-      options: ['B2C — 일반 사용자 대상', 'B2B — 기업/업무용'],
+      options: ['모바일 앱', '웹 서비스', '랜딩/브랜드', '대시보드/관리자', '포털/커머스'],
     },
     {
       id: 'domain',
-      question: '서비스 도메인(업종)은 무엇인가요?',
+      question: '서비스 도메인',
       description: `AI가 "${inferredDomainLabel}"로 추론했습니다. 다르다면 변경해 주세요`,
       type: 'single',
       options: Object.values(DOMAIN_KEY_TO_LABEL),
     },
     {
-      id: 'target_audience',
-      question: '주 사용자층은 누구인가요?',
-      description: '타겟층에 맞게 폰트 크기, 네비게이션 복잡도, 시각적 톤을 조정합니다',
-      type: 'single',
-      options: ['10~20대 청소년·청년', '20~40대 일반 직장인', '40~60대 장년층', '전문가·파워유저'],
-    },
-    {
       id: 'home_emphasis',
-      question: '홈 화면에서 가장 강조하고 싶은 것은?',
-      description: '히어로 섹션 구성과 첫 화면 핵심 콘텐츠가 결정됩니다',
+      question: '홈에서 강조할 것',
+      description: '첫 화면의 focal point와 섹션 순서를 결정합니다.',
       type: 'single',
       options: DOMAIN_HOME_EMPHASIS_OPTIONS[parsed.domain ?? 'other'] ?? DOMAIN_HOME_EMPHASIS_OPTIONS['other'],
+    },
+    {
+      id: 'variant_strategy',
+      question: '시안 방향',
+      description: 'A/B/C가 서로 얼마나 다른 방향으로 나올지 결정합니다.',
+      type: 'single',
+      options: ['세 방향 모두 다르게', '균형형', '정보형 강화', '전환형 강화', '탐색형 강화'],
+    },
+    {
+      id: 'hero3d',
+      question: '3D 이미지',
+      description: parsed.heroImageDecision?.reason ?? '메인 히어로에서 3D 비주얼을 쓸지 결정합니다.',
+      type: 'single',
+      options: ['AI 판단', '사용', '사용 안 함'],
     },
   ]
 
@@ -669,34 +680,39 @@ export async function resolveImagePlaceholders(
   return result;
 }
 
-function normalizeHeroBackground(background?: string): string {
-  const bg = background?.trim()
-  if (!bg) return '#ffffff'
-  if (/^#[0-9a-fA-F]{3,8}$/.test(bg)) return bg
-  const lower = bg.toLowerCase()
-  if (lower.includes('primary') || lower.includes('blue')) return '#1A75FF'
-  if (lower.includes('white') || lower.includes('surface')) return '#ffffff'
-  return bg
+async function removeHeroImageBackground(
+  base64: string,
+  mimeType = 'image/png',
+): Promise<{ base64: string; mimeType: string }> {
+  const { removeBackground } = await import('@imgly/background-removal')
+  const source = Buffer.from(base64, 'base64')
+  const blob = new Blob([source], { type: mimeType })
+  const resultBlob = await removeBackground(blob)
+  const arrayBuffer = await resultBlob.arrayBuffer()
+  return {
+    base64: Buffer.from(arrayBuffer).toString('base64'),
+    mimeType: resultBlob.type || 'image/png',
+  }
 }
 
-function buildCreon3DPrompt(subject: string, backgroundColor = '#ffffff'): string {
-  const bg = normalizeHeroBackground(backgroundColor)
+function buildCreon3DPrompt(subject: string): string {
   const prompt = {
     task: "generate isometric 3D icon",
     subject: subject || 'a friendly robot',
     style_lock: true,
-    output: { format: "png", size: "1920x1080" },
+    output: { format: "png", size: "1536x672" },
     negative_prompt: "vignette, dark corners, shadow artifacts, patterns, gradients, stroke/outline, textures, scratches, dirt, noise, bevel/emboss, text, watermark, photographic background, fabric/leather realism, grunge, low-res, aliasing",
     brand_tone: "vibrant, modern, friendly, premium",
     system: { scalable: true, interchangeable: true },
     background: {
       type: "solid",
-      color: bg,
-      note: `MUST exactly match hero section background color ${bg}. No gradient, no pattern, no checkerboard.`
+      color: "#FFFFFF",
+      alpha: true,
+      note: "Generate on a clean white studio background. The app will remove the background with @imgly/background-removal and preserve a transparent PNG."
     },
     render: {
       quality: "ultra-high",
-      resolution: 1920,
+      resolution: 1536,
       separation: "by color/lighting/depth only"
     },
     colors: {
@@ -714,12 +730,11 @@ function buildCreon3DPrompt(subject: string, backgroundColor = '#ffffff'): strin
       mode: "soft diffused studio",
       source: "top-front or top-right",
       highlights: "clean specular on glossy areas",
-      shadows: "soft elliptical ground/contact shadow beneath subject, low opacity, blurred, matching object footprint"
+      shadows: "soft ground shadow beneath the object"
     },
     form: {
-      shapes: "rounded, smooth, bubbly, pillowy inflated soft-volume forms with 85% fillet, zero sharp corners",
-      edges: "crisp, no outlines",
-      proportions: "chibi/stylized, simplified anatomy, squash-and-stretch for friendliness"
+      shapes: "rounded, smooth, bubbly",
+      edges: "crisp, no outlines"
     },
     composition: {
       elements: "single main subject, centered, no extra decorations",
@@ -727,8 +742,8 @@ function buildCreon3DPrompt(subject: string, backgroundColor = '#ffffff'): strin
       density: "minimal, focused center",
       framing: "The entire subject must be fully visible and centered inside the frame. Leave a small, clean margin around all edges. Do not crop any part of the subject."
     },
-    camera: { type: "isometric", angle: "35deg tilt, 35deg pan, orthographic lens", static: true },
-    canvas: { ratio: "16:9", safe_margins: true }
+    camera: { type: "isometric", static: true },
+    canvas: { ratio: "16:7", safe_margins: true }
   }
   return JSON.stringify(prompt, null, 2)
 }
@@ -751,11 +766,11 @@ function loadCreonRefImages(): Array<{ inlineData: { data: string; mimeType: str
 export async function generateHeroImage(
   subject: string,
   apiKey?: string,
-  backgroundColor = '#ffffff',
+  _backgroundColor = '#ffffff',
 ): Promise<{ base64: string; mimeType: string } | null> {
   try {
     const ai = getAi(apiKey)
-    const prompt = buildCreon3DPrompt(subject, backgroundColor)
+    const prompt = buildCreon3DPrompt(subject)
     const refImages = loadCreonRefImages()
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [
       { text: prompt },
@@ -766,15 +781,23 @@ export async function generateHeroImage(
       contents: { parts },
       config: {
         responseModalities: ['IMAGE'],
-        temperature: 1,
-        imageConfig: { aspectRatio: '16:9', imageSize: '2K' },
         httpOptions: { timeout: 120_000 },
       },
     })
     for (const part of res.candidates?.[0]?.content?.parts ?? []) {
       if (part.inlineData?.data) {
-        console.log('[gemini] 3D image generated with matched background:', normalizeHeroBackground(backgroundColor))
-        return { base64: part.inlineData.data, mimeType: 'image/png' }
+        try {
+          const transparent = await removeHeroImageBackground(
+            part.inlineData.data,
+            part.inlineData.mimeType || 'image/png',
+          )
+          console.log('[gemini] 3D image generated with Creon shadow-on prompt and transparent background')
+          return transparent
+        } catch (removeErr) {
+          const message = removeErr instanceof Error ? removeErr.message : String(removeErr)
+          console.error('[gemini] background removal failed, using original 3D image:', message)
+          return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType || 'image/png' }
+        }
       }
     }
     return null
@@ -852,7 +875,7 @@ ${safeHtml.slice(0, 18000)}
 - 첫 화면의 절반 이상이 빈 흰 영역 또는 빈 카드로 남아 있는 경우
 - 음식/배달/커머스 화면인데 메뉴 이미지 대신 산, 바다, 노트북 같은 무관한 이미지가 들어간 경우
 - 3D 히어로 이미지가 메인 히어로 외 카드/리스트/썸네일 영역에 반복 사용된 경우
-- 히어로 배경색과 3D 이미지 배경색이 달라 카드보드 컷아웃처럼 보이는 경우
+- 3D 히어로 이미지를 투명 PNG가 아닌 배경 있는 이미지처럼 다루어 카드보드 컷아웃처럼 보이는 경우
 - 3D 이미지 배경을 CSS filter, mix-blend-mode, canvas chroma key 등으로 제거하려는 코드가 포함된 경우
 - "star", "home" 같은 영어 placeholder 텍스트가 사용자에게 그대로 노출된 경우
 - emoji로 아이콘을 대신하거나, 같은 아이콘/이미지가 의미 없이 반복되는 경우
@@ -958,28 +981,36 @@ ${domainBlock}
    - keyword는 반드시 브리프와 직접 관련된 명사를 사용한다. 음식 배달이면 sandwich, salad, coffee, avocado처럼 음식 키워드만 사용하고 landscape, laptop, mountain, ocean 같은 무관한 키워드 금지.
    - ⛔ **[CRITICAL] 플레이스홀더는 반드시 img src 속성값에만 사용** — %%HERO_3D_IMAGE%%·%%IMG_1%%·%%THUMB%%·%%THUMB:...%% 등 모든 플레이스홀더 문자열은 반드시 <img src="%%...%%"> 형태로만 사용하십시오. 텍스트 노드(<p>, <span>, <div> 등의 내용), alt, href, 주석, 또는 다른 어떤 위치에도 절대 삽입 금지. 이미지가 없는 영역에 "이미지 URL"이나 플레이스홀더 문자열이 보이는 것은 심각한 오류입니다.
    ${heroImagePrompt ? `
-   ⚠️ **3D 히어로 이미지 배경 매칭 규칙 (CRITICAL)**
+   ⚠️ **3D 히어로 이미지 규칙 (CRITICAL)**
    - %%HERO_3D_IMAGE%%는 메인 히어로에서 **정확히 1회만** 사용하십시오.
-   - 배경색을 반드시 플레이스홀더에 명시하십시오: 흰 배경이면 %%HERO_3D_IMAGE:#ffffff%%, primary blue 배경이면 %%HERO_3D_IMAGE:#1A75FF%%처럼 사용합니다.
-   - 히어로 섹션 CSS의 background 값과 %%HERO_3D_IMAGE:[색상]%%의 색상 값은 반드시 동일해야 합니다. 파란 히어로면 3D 이미지도 같은 파란 배경으로 생성됩니다.
-   - 3D 이미지는 투명 PNG가 아니며 배경 제거를 하지 않습니다. 따라서 이미지 배경과 히어로 배경을 맞추는 것이 필수입니다.
-   - 3D 오브젝트 아래에는 자연스러운 접지감을 위한 부드러운 그림자가 포함되어 있습니다. CSS filter, mix-blend-mode 등으로 그림자를 지우지 마십시오.
-   - **히어로 이미지 배치 패턴 — 도메인에 맞게 선택하십시오:**
+   - 플레이스홀더는 <img src="%%HERO_3D_IMAGE%%"> 형태로 사용하십시오. 과거 호환용 %%HERO_3D_IMAGE:#ffffff%% 형식도 동작하지만 새 시안에서는 색상 suffix를 붙이지 마십시오.
+   - 3D 이미지는 Creon 3D Studio의 shadow ON 프롬프트로 생성하고, @imgly/background-removal로 배경 제거된 투명 PNG로 치환됩니다.
+   - 히어로 섹션 배경은 DESIGN.md 토큰으로 자유롭게 구성하되, 이미지 자체의 흰색/파란색 배경을 맞추려고 CSS filter, mix-blend-mode, chroma key, canvas 후처리를 사용하지 마십시오.
+   - 3D 오브젝트 아래에는 자연스러운 접지감을 위한 부드러운 ground shadow가 포함되어 있습니다. 이미지나 CSS로 그림자를 추가 중복 적용하지 마십시오.
+   - 3D 이미지의 크기와 크롭 방식은 AI가 히어로의 목적에 맞게 판단하십시오. 항상 전체가 보일 필요도, 항상 크게 잘릴 필요도 없습니다.
+   - 단, 어떤 방식이든 CTA와 핵심 문구를 가리면 실패입니다. 이미지 컨테이너에는 overflow:hidden을 사용해 가로 스크롤을 절대 만들지 마십시오.
+   - **히어로 이미지 배치 패턴 — 도메인과 시안 방향에 맞게 하나를 선택하십시오:**
 
-     패턴 A. **전체 보임 (contain)** — 앱/서비스 소개, B2B, 대시보드, 아이콘 쇼케이스처럼 오브젝트 전체가 깔끔하게 보여야 할 때
+     패턴 A. **전체 보임 (contain)** — B2B, 대시보드, 앱/서비스 소개, 아이콘 쇼케이스처럼 오브젝트 전체를 안정적으로 보여줘야 할 때
      <section class="hero-with-image">
        <div><!-- 헤드라인·서브카피·CTA --></div>
-       <img src="%%HERO_3D_IMAGE:#ffffff%%" alt="hero" style="width:100%;height:auto;max-height:300px;object-fit:contain;" />
+       <img src="%%HERO_3D_IMAGE%%" alt="hero" style="width:100%;height:auto;max-height:300px;object-fit:contain;" />
      </section>
 
-     패턴 B. **살짝 크게/잘림 (oversized)** — 음식/배달/커머스/라이프스타일처럼 오브젝트가 화면을 꽉 채워야 다이나믹하고 감성적일 때. transform으로 키워서 overflow:hidden으로 자름 — 가로 스크롤 절대 유발하지 않음
-     <section class="hero-with-image" style="overflow:hidden;">
+     패턴 B. **크게 확대/일부 크롭 (oversized crop)** — 음식/배달/커머스/라이프스타일처럼 오브젝트가 식욕, 제품감, 감성 임팩트를 만들어야 할 때. 투명 PNG를 크게 키우고 컨테이너에서 자연스럽게 잘라냅니다.
+     <section class="hero-with-image" style="overflow:hidden;position:relative;">
        <div><!-- 헤드라인·서브카피·CTA --></div>
-       <img src="%%HERO_3D_IMAGE:#1A75FF%%" alt="hero" style="width:100%;height:auto;max-height:320px;object-fit:contain;transform:scale(1.15);transform-origin:center bottom;" />
+       <img src="%%HERO_3D_IMAGE%%" alt="hero" style="width:120%;height:auto;max-height:360px;object-fit:contain;transform:translateX(6%) scale(1.18);transform-origin:center bottom;" />
      </section>
 
-   - 두 패턴 중 서비스 성격과 히어로 분위기에 맞는 것을 AI가 판단하여 선택하십시오.
-   - %%HERO_3D_IMAGE:[색상]%% 플레이스홀더를 절대 다른 URL이나 %%IMG%%로 교체하지 마십시오.
+     패턴 C. **작은 플로팅 오브젝트 (small floating)** — 정보가 많거나 CTA/검색/쿠폰이 주인공이어야 할 때. 3D는 보조 포인트로 작게 배치하고, 텍스트와 액션이 시각 중심이 되게 합니다.
+     <section class="hero-with-image" style="position:relative;overflow:hidden;">
+       <div><!-- 헤드라인·서브카피·CTA --></div>
+       <img src="%%HERO_3D_IMAGE%%" alt="hero" style="position:absolute;right:var(--spacing-base);bottom:var(--spacing-base);width:34%;max-width:180px;height:auto;object-fit:contain;" />
+     </section>
+
+   - 선택 기준: A=신뢰/정돈, B=감성/식욕/제품 임팩트, C=정보/CTA 우선. 시안 B는 B 패턴을 우선 고려하되, 화면이 답답하면 A 또는 C를 선택하십시오.
+   - %%HERO_3D_IMAGE%% 플레이스홀더를 절대 다른 URL이나 %%IMG%%로 교체하지 마십시오.
    - **[WCAG AA 필수]** 히어로 섹션의 텍스트 색상 규칙:
      * 배경색이 Primary(blue, #1A75FF 등 짙은 색), 다크 계열이면 반드시 color:#ffffff (white) 사용
      * 배경색이 White/Light surface이면 color:#111111 사용
@@ -1120,8 +1151,7 @@ HTML을 쓰기 전에 아래 7가지를 내부 설계안으로 먼저 확정한 
 
 export async function generateUI(params: GenerateParams, apiKey?: string): Promise<string> {
   const { designMd, brief, answers, projectSummary, logoDataUrl, brandColors, mainOnly = false, variantStyle, referenceImageBase64, referenceImageKind = 'reference', asIsAnalysis, platform, modelId = 'gemini-3.1-pro-preview', heroImagePrompt, heroSubject, domain } = params;
-  const isBVariantUI = typeof variantStyle === 'string' && variantStyle.includes('시안 B')
-  const effectiveHeroImagePrompt = isBVariantUI ? (heroSubject || heroImagePrompt || 'product hero') : heroImagePrompt
+  const effectiveHeroImagePrompt = heroSubject || heroImagePrompt
 
   const safeAnswers = answers ?? {};
   const answersText = Object.entries(safeAnswers)
@@ -1134,8 +1164,11 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
 
   const str = (key: string) => (typeof safeAnswers[key] === 'string' ? safeAnswers[key] as string : '')
   const serviceType = str('service_type')
+  const platformIntent = str('platform_intent')
   const targetAudience = str('target_audience')
   const homeEmphasis = str('home_emphasis')
+  const variantStrategy = str('variant_strategy')
+  const hero3d = str('hero3d')
   const mood = str('mood')
 
   const serviceTypeRule = serviceType.includes('B2C')
@@ -1163,6 +1196,25 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
     : homeEmphasis.includes('가게 카드') || homeEmphasis.includes('가게 탐색')
     ? '- 홈 강조(가게 탐색): 가게/매장 카드 리스트 최상단 배치, 썸네일+가게명+카테고리+평점+배달시간 구조, 검색창+필터 칩 상단 노출'
     : ''
+  const platformIntentRule = platformIntent
+    ? `- 기준 화면(${platformIntent}): 첫 시안의 정보 구조와 내비게이션은 이 기준을 우선하되, 최종 HTML은 반응형으로 작성한다.`
+    : ''
+  const variantStrategyRule = variantStrategy.includes('세 방향')
+    ? '- 시안 구성: A/B/C는 section order, card type, CTA 위치, 이미지 사용 방식이 서로 달라야 한다. 같은 header+hero+chip+list 구조 반복은 실패.'
+    : variantStrategy.includes('정보형')
+    ? '- 시안 구성: A안의 정보 비교성과 데이터 밀도를 특히 강화하고, B/C도 A와 다른 골격을 유지한다.'
+    : variantStrategy.includes('전환형')
+    ? '- 시안 구성: B안의 focal point와 primary CTA를 특히 강화하고, A/C도 B와 다른 골격을 유지한다.'
+    : variantStrategy.includes('탐색형')
+    ? '- 시안 구성: C안의 이미지 큐레이션과 탐색 흐름을 특히 강화하고, A/B도 C와 다른 골격을 유지한다.'
+    : variantStrategy.includes('균형')
+    ? '- 시안 구성: A/B/C의 품질과 완성도를 균형 있게 유지하되, 각 시안의 목적과 레이아웃 골격은 구분한다.'
+    : ''
+  const hero3dRule = hero3d === '사용'
+    ? '- 3D 이미지: 메인 히어로에서 3D 이미지를 1회 사용한다. contain/oversized crop/small floating 중 화면 목적에 맞게 선택한다.'
+    : hero3d === '사용 안 함'
+    ? '- 3D 이미지: 3D 히어로 이미지를 사용하지 않는다. 히어로와 카드 이미지는 실제 서비스 맥락에 맞는 실사/콘텐츠 이미지로 구성한다.'
+    : ''
   const moodRule = mood.includes('전문적')
     ? '- 무드(전문적·신뢰감): 정렬된 데이터 중심 레이아웃과 절제된 강조를 사용하되, radius/border/shadow/color는 반드시 디자인 시스템 토큰을 따른다.'
     : mood.includes('친근')
@@ -1173,7 +1225,7 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
     ? '- 무드(활기·젊은): 빠른 리듬의 레이아웃과 명확한 강조를 사용하되, 임의 그라데이션/강한 그림자/새 컬러를 만들지 않고 디자인 시스템 토큰 안에서 표현한다.'
     : ''
 
-  const structuredAnswerRules = [serviceTypeRule, targetRule, homeEmphasisRule, moodRule].filter(Boolean).join('\n')
+  const structuredAnswerRules = [serviceTypeRule, platformIntentRule, targetRule, homeEmphasisRule, variantStrategyRule, hero3dRule, moodRule].filter(Boolean).join('\n')
 
   const effectiveDesignMd = designMd || loadDefaultDesignMd();
   const hasDesignSystem = !!effectiveDesignMd;
@@ -1551,7 +1603,7 @@ ${effectivePlatform === 'web' ? `
 
 반드시 완전한 단일 HTML 파일로 응답하세요.
 - 모든 CSS를 <style> 태그 안에 작성
-- stock photo·외부 이미지 URL을 직접 작성하지 말고, 이미지가 필요한 곳에는 위 규칙의 %%HERO_3D_IMAGE:[색상]%% / %%IMG_n:설명%% / %%THUMB:keyword:width:height%% 플레이스홀더만 사용
+- stock photo·외부 이미지 URL을 직접 작성하지 말고, 이미지가 필요한 곳에는 위 규칙의 %%HERO_3D_IMAGE%% / %%IMG_n:설명%% / %%THUMB:keyword:width:height%% 플레이스홀더만 사용
 - Chart.js CDN은 허용
 - 응답은 반드시 \`\`\`html 코드블록으로 감싸기
 - 설명 텍스트 없이 코드만 출력
