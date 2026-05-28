@@ -1927,6 +1927,36 @@ export default function StudioPage() {
             const subtle = isDark ? '#252525' : '#f4f4f5'
             const border = isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.07)'
 
+            // Derived design tokens from preset RICH_META (customMeta has no token fields)
+            const effectiveTypographyScale = preset.typographyScale
+            const effectiveRadiusTokens = preset.radiusTokens
+            const effectiveStatusColors = preset.statusColors
+
+            const btnRadius = effectiveRadiusTokens?.find((t: { name: string; value: string }) => t.name === 'md')?.value
+              ?? effectiveRadiusTokens?.find((t: { name: string; value: string }) => t.name === 'sm')?.value
+              ?? '6px'
+            const hasPill = effectiveRadiusTokens?.some((t: { name: string; value: string }) => t.name === 'pill' || t.value === '9999px' || t.value === '999px') ?? false
+            const chipRadius = hasPill ? '9999px' : (effectiveRadiusTokens?.find((t: { name: string; value: string }) => ['xl', 'lg', 'full'].includes(t.name))?.value ?? '20px')
+            const badgeRadius = effectiveRadiusTokens?.find((t: { name: string; value: string }) => ['xs', 'sm'].includes(t.name))?.value ?? '4px'
+            const negativeColor = effectiveStatusColors?.find((s: { name: string; hex: string }) => s.name.toLowerCase().includes('negative'))?.hex ?? '#ff4242'
+
+            const TYPO_VISUAL_SIZES = [58, 46, 36, 28]
+            type TypoRow = { label: string; font: string; size: number; weight: number; actualSize: string | null }
+            const typoRows: TypoRow[] = effectiveTypographyScale
+              ? effectiveTypographyScale.slice(0, Math.min(effectivePalette.length, 4)).map((step: { name: string; size: string; weight: number }, i: number): TypoRow => ({
+                  label: step.name,
+                  font: i === 0 ? effectiveFonts.headline : effectiveFonts.body,
+                  size: TYPO_VISUAL_SIZES[i] ?? 24,
+                  weight: step.weight,
+                  actualSize: step.size,
+                }))
+              : [
+                  { label: 'Headline', font: effectiveFonts.headline, size: 58, weight: 700, actualSize: null },
+                  { label: 'Body',     font: effectiveFonts.body,     size: 46, weight: 400, actualSize: null },
+                  { label: 'Label',    font: effectiveFonts.body,     size: 36, weight: 500, actualSize: null },
+                  { label: 'Caption',  font: effectiveFonts.body,     size: 28, weight: 400, actualSize: null },
+                ]
+
             function genTints(hex: string): string[] {
               const h = hex.replace('#', '')
               const r = parseInt(h.slice(0, 2), 16)
@@ -1950,7 +1980,7 @@ export default function StudioPage() {
             }
 
             return (
-              <div className="shrink-0 flex flex-col overflow-hidden" onClick={e => { e.stopPropagation(); setSelectedCard('style-plan') }} style={{ width: 660, height: 560, borderRadius: 16, backgroundColor: outerBg, border: selectedCard === 'style-plan' ? '2px solid #1a75ff' : (isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.06)'), cursor: 'default', outline: selectedCard === 'style-plan' ? '3px solid rgba(26,117,255,0.18)' : 'none', outlineOffset: '2px' }}>
+              <div className="shrink-0 flex flex-col overflow-hidden" onClick={e => { e.stopPropagation(); setSelectedCard('style-plan') }} style={{ width: 680, height: 560, borderRadius: 16, backgroundColor: outerBg, border: selectedCard === 'style-plan' ? '2px solid #1a75ff' : (isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.06)'), cursor: 'default', outline: selectedCard === 'style-plan' ? '3px solid rgba(26,117,255,0.18)' : 'none', outlineOffset: '2px' }}>
 
                 {/* Header */}
                 <div style={{ padding: '10px 14px', borderBottom: border, display: 'flex', alignItems: 'center', gap: 8, backgroundColor: cellBg }}>
@@ -1966,7 +1996,7 @@ export default function StudioPage() {
                 </div>
 
                 {/* 4-column grid */}
-                <div data-card-scroll="style-plan" style={{ display: 'grid', gridTemplateColumns: '185px 1fr 1fr 1fr', gap: 1, backgroundColor: gridLine, flex: 1, overflowY: 'auto' }}>
+                <div data-card-scroll="style-plan" style={{ display: 'grid', gridTemplateColumns: '175px 140px 1fr 1fr', gap: 1, backgroundColor: gridLine, flex: 1, overflowY: 'auto' }}>
 
                   {/* Col 1: Color swatches + tint strips */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -1987,35 +2017,33 @@ export default function StudioPage() {
                     })}
                   </div>
 
-                  {/* Col 2: Typography */}
+                  {/* Col 2: Typography — reads from preset.typographyScale */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {([
-                      { label: 'Headline', font: effectiveFonts.headline, size: 64, weight: 700 },
-                      { label: 'Body',     font: effectiveFonts.body,     size: 52, weight: 400 },
-                      { label: 'Label',    font: effectiveFonts.body,     size: 42, weight: 500 },
-                      { label: 'Caption',  font: effectiveFonts.body,     size: 34, weight: 400 },
-                    ] as const).slice(0, effectivePalette.length).map(({ label, font, size, weight }, i) => (
-                      <div key={i} style={{ backgroundColor: cellBg, padding: '10px 12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 4 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <span style={{ fontSize: 9, fontWeight: 500, color: muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
-                          <span style={{ fontSize: 8, color: isDark ? '#333' : '#ccc', maxWidth: 55, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{font.split(',')[0].trim()}</span>
+                    {typoRows.map(({ label, font, size, weight, actualSize }, i) => (
+                      <div key={i} style={{ backgroundColor: cellBg, padding: '8px 12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 2, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
+                          <span style={{ fontSize: 8, fontWeight: 600, color: muted, textTransform: 'uppercase', letterSpacing: '0.07em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 70 }}>{label}</span>
+                          <span style={{ fontSize: 7.5, color: isDark ? '#444' : '#bbb', flexShrink: 0 }}>{font.split(',')[0].trim()}</span>
                         </div>
-                        <div style={{ fontSize: size, fontWeight: weight, color: ink, lineHeight: 1, fontFamily: font, letterSpacing: '-0.02em', overflow: 'hidden' }}>Aa</div>
+                        {actualSize && (
+                          <span style={{ fontSize: 7.5, color: isDark ? '#444' : '#ccc', fontFamily: 'monospace', lineHeight: 1 }}>{actualSize} · {weight}</span>
+                        )}
+                        <div style={{ fontSize: size, fontWeight: weight, color: ink, lineHeight: 1, fontFamily: font, letterSpacing: '-0.02em', overflow: 'hidden', marginTop: 'auto' }}>Aa</div>
                       </div>
                     ))}
                   </div>
 
                   {/* Col 3: Components */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {/* Buttons */}
-                    <div style={{ backgroundColor: cellBg, padding: '10px 10px', flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
+                    {/* Buttons — radius from radiusTokens.md, negative from statusColors */}
+                    <div style={{ backgroundColor: cellBg, padding: '10px 10px', flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 5 }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
-                        <button style={{ backgroundColor: effectiveColor, color: '#fff', border: 'none', borderRadius: 6, padding: '6px 4px', fontSize: 9, fontWeight: 600, cursor: 'default' }}>Primary</button>
-                        <button style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.07)', color: ink, border: 'none', borderRadius: 6, padding: '6px 4px', fontSize: 9, fontWeight: 500, cursor: 'default' }}>Secondary</button>
-                        <button style={{ backgroundColor: 'transparent', color: ink, border: `1px solid ${isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.22)'}`, borderRadius: 6, padding: '6px 4px', fontSize: 9, fontWeight: 500, cursor: 'default' }}>Outline</button>
-                        <button style={{ backgroundColor: 'transparent', color: ink, border: 'none', borderRadius: 6, padding: '6px 4px', fontSize: 9, fontWeight: 500, cursor: 'default' }}>Ghost</button>
+                        <button style={{ backgroundColor: effectiveColor, color: '#fff', border: 'none', borderRadius: btnRadius, padding: '7px 4px', fontSize: 9, fontWeight: 600, cursor: 'default' }}>Primary</button>
+                        <button style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.07)', color: ink, border: 'none', borderRadius: btnRadius, padding: '7px 4px', fontSize: 9, fontWeight: 500, cursor: 'default' }}>Secondary</button>
+                        <button style={{ backgroundColor: 'transparent', color: ink, border: `1px solid ${isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.22)'}`, borderRadius: btnRadius, padding: '7px 4px', fontSize: 9, fontWeight: 500, cursor: 'default' }}>Outline</button>
+                        <button style={{ backgroundColor: 'transparent', color: ink, border: 'none', borderRadius: btnRadius, padding: '7px 4px', fontSize: 9, fontWeight: 500, cursor: 'default' }}>Ghost</button>
                       </div>
-                      <button style={{ backgroundColor: '#ff4242', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 4px', fontSize: 9, fontWeight: 600, cursor: 'default', width: '100%' }}>Negative</button>
+                      <button style={{ backgroundColor: negativeColor, color: '#fff', border: 'none', borderRadius: btnRadius, padding: '7px 4px', fontSize: 9, fontWeight: 600, cursor: 'default', width: '100%' }}>Negative</button>
                     </div>
 
                     {/* Dividers */}
@@ -2073,11 +2101,11 @@ export default function StudioPage() {
                       ))}
                     </div>
 
-                    {/* Badge + chips */}
+                    {/* Badge + chips — radius from radiusTokens */}
                     <div style={{ backgroundColor: cellBg, padding: '10px 10px', flex: 1, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                      <div style={{ backgroundColor: effectiveColor, color: '#fff', borderRadius: 4, padding: '2px 7px', fontSize: 9, fontWeight: 600 }}>New</div>
-                      <div style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)', borderRadius: 20, padding: '2px 8px', fontSize: 9 }}>Filter</div>
-                      <div style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)', borderRadius: 20, padding: '2px 8px', fontSize: 9 }}>Sort</div>
+                      <div style={{ backgroundColor: effectiveColor, color: '#fff', borderRadius: badgeRadius, padding: '2px 7px', fontSize: 9, fontWeight: 600 }}>New</div>
+                      <div style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)', borderRadius: chipRadius, padding: '2px 8px', fontSize: 9 }}>Filter</div>
+                      <div style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)', borderRadius: chipRadius, padding: '2px 8px', fontSize: 9 }}>Sort</div>
                     </div>
 
                     {/* Action icons */}

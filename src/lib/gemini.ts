@@ -10,9 +10,28 @@ function getAi(apiKey?: string) {
   return new GoogleGenAI({ apiKey: apiKey || process.env.GEMINI_API_KEY! })
 }
 
+// Korean stopwords + generic adjectives to skip — picks the most meaningful content noun
+const KEYWORD_STOPWORDS = new Set([
+  '음식', '사진', '이미지', '그림', '배경', '스타일', '모습', '장면',
+  'photo', 'image', 'picture', 'background', 'style', 'view', 'scene',
+  'classic', 'fresh', 'delicious', 'tasty', 'beautiful', 'modern', 'simple',
+])
+
+function extractImageKeyword(desc: string): string {
+  const words = desc.split(/[\s,]+/).filter(w => w.length > 1)
+  // prefer Korean nouns (contains Hangul) longer than 1 char
+  const korean = words.find(w => /[가-힣]/.test(w) && !KEYWORD_STOPWORDS.has(w))
+  if (korean) return korean.toLowerCase()
+  // fallback: longest English word not in stopwords
+  const english = words
+    .filter(w => /^[a-zA-Z]+$/.test(w) && w.length > 3 && !KEYWORD_STOPWORDS.has(w.toLowerCase()))
+    .sort((a, b) => b.length - a.length)[0]
+  return (english ?? words[0] ?? 'product').toLowerCase()
+}
+
 async function fetchUnsplashUrl(keyword: string, width: number, height: number): Promise<string | null> {
   const accessKey = process.env.UNSPLASH_ACCESS_KEY
-  if (!accessKey) return `https://source.unsplash.com/${width}x${height}/?${encodeURIComponent(keyword)}`
+  if (!accessKey) return `https://loremflickr.com/${width}/${height}/${encodeURIComponent(keyword)}`
   try {
     const res = await fetch(
       `https://api.unsplash.com/photos/random?query=${encodeURIComponent(keyword)}&orientation=landscape&client_id=${accessKey}`,
@@ -626,8 +645,8 @@ export async function resolveImagePlaceholders(
     for (let i = 0; i < imgMatches.length; i++) {
       const full = imgMatches[i][0]
       const desc = imgMatches[i][1].trim()
-      const keyword = desc.split(/\s+/).find((w: string) => w.length > 3)?.toLowerCase() ?? 'product'
-      result = result.split(full).join(urls[i] ?? `https://source.unsplash.com/900x600/?${encodeURIComponent(keyword)}`)
+      const keyword = extractImageKeyword(desc)
+      result = result.split(full).join(urls[i] ?? `https://loremflickr.com/900/600/${encodeURIComponent(keyword)}`)
     }
   }
 
@@ -642,7 +661,7 @@ export async function resolveImagePlaceholders(
       const keyword = thumbMatches[i][1].trim()
       const w = thumbMatches[i][2]
       const h = thumbMatches[i][3]
-      const url = urls[i] ?? `https://source.unsplash.com/${w}x${h}/?${encodeURIComponent(keyword)}`
+      const url = urls[i] ?? `https://loremflickr.com/${w}/${h}/${encodeURIComponent(keyword)}`
       result = result.split(full).join(url)
     }
   }
@@ -662,40 +681,56 @@ function normalizeHeroBackground(background?: string): string {
 
 function buildCreon3DPrompt(subject: string, backgroundColor = '#ffffff'): string {
   const bg = normalizeHeroBackground(backgroundColor)
-  const lines: string[] = []
-  lines.push(`🚨🚨🚨 CRITICAL STYLE REQUIREMENT 🚨🚨🚨`)
-  lines.push(`You MUST generate this icon in the EXACT same visual style as the reference Creon 3D icon sheet.`)
-  lines.push(`The style is NON-NEGOTIABLE and must be applied to ANY subject, regardless of what the subject is.`)
-  lines.push(`STYLE CHARACTERISTICS (MANDATORY FOR ALL ICONS):`)
-  lines.push(`- Smooth, glossy plastic material with high-gloss finish`)
-  lines.push(`- Isometric 3D perspective (35deg tilt, 35deg pan, orthographic lens)`)
-  lines.push(`- Soft, uniform lighting with no harsh shadows, plus a subtle grounding shadow`)
-  lines.push(`- Color palette: Dominant blue (#2962FF), secondary blue (#4FC3F7), white (#FFFFFF), warm accent yellow (#FFD45A)`)
-  lines.push(`- Pillowy, inflated, soft-volume forms with rounded edges (85% fillet)`)
-  lines.push(`- Chibi/stylized proportions, simplified anatomy`)
-  lines.push(`- Slightly floating or standing on an invisible white surface with a soft elliptical contact shadow`)
-  lines.push(`- Subtle light gray contact shadow below the subject, blurred, low opacity, matching the object footprint`)
-  lines.push(`- Solid flat background and invisible floor in exactly ${bg} (no gradient, no patterns, no grids, no checkerboard)`)
-  lines.push(`- Single hero subject, minimal composition`)
-  lines.push(`- No photographic realism, no textures, no noise, no grain`)
-  lines.push(`- Consistent rendering quality matching the reference sheet exactly`)
-  lines.push(``)
-  lines.push(`SUBJECT: Generate an isometric 3D icon of ${subject || 'a friendly robot'}.`)
-  lines.push(`📐 OUTPUT REQUIREMENT: Output must be exactly 1024x576 pixels (16:9 landscape). Never return a square or 1024x1024 image. Maintain landscape orientation with width greater than height.`)
-  lines.push(``)
-  lines.push(`🔒 STYLE CONSISTENCY ENFORCEMENT:`)
-  lines.push(`- The visual style described above is ABSOLUTE and must be applied to this specific subject.`)
-  lines.push(`- Do NOT adapt the style to the subject - adapt the subject to the style.`)
-  lines.push(`- Every icon must look like it came from the same design system, regardless of what it represents.`)
-  lines.push(`- Maintain the exact same material properties, lighting setup, color palette, and rendering quality.`)
-  lines.push(`🎨 COLOR SPECIFICATION:`)
-  lines.push(`Background: Solid flat ${bg}. The 3D image background MUST exactly match the hero section background color used in the UI.`)
-  lines.push(`Color palette (MUST USE): dominant blue #2962FF, secondary blue #4FC3F7, neutral white #FFFFFF, warm accent #FFD45A used sparingly.`)
-  lines.push(`⚠️ Apply these colors while maintaining the exact style. The color palette is part of the style identity.`)
-  lines.push(`💎 MATERIALS (MANDATORY): primary material smooth high-gloss plastic, secondary material matte pastel plastic, accents translucent frosted plastic, surface detail no noise, no texture, no scratches.`)
-  lines.push(`📦 FORM (MANDATORY): pillowy, inflated, soft-volume forms, rounded with 85% fillet zero sharp corners, chibi/stylized simplified anatomy, squash-and-stretch for friendliness, clean seamless.`)
-  lines.push(`💡 LIGHTING (MANDATORY): soft global illumination, dual top-front softboxes with faint rim light, highlights broad glossy bloom no hard speculars, soft ambient occlusion plus a gentle ground/contact shadow visible on the ${bg} floor, no hard cast shadow, no dark shadow, exposure balanced no high contrast.`)
-  return lines.join('\n')
+  const prompt = {
+    task: "generate isometric 3D icon",
+    subject: subject || 'a friendly robot',
+    style_lock: true,
+    output: { format: "png", size: "1920x1080" },
+    negative_prompt: "vignette, dark corners, shadow artifacts, patterns, gradients, stroke/outline, textures, scratches, dirt, noise, bevel/emboss, text, watermark, photographic background, fabric/leather realism, grunge, low-res, aliasing",
+    brand_tone: "vibrant, modern, friendly, premium",
+    system: { scalable: true, interchangeable: true },
+    background: {
+      type: "solid",
+      color: bg,
+      note: `MUST exactly match hero section background color ${bg}. No gradient, no pattern, no checkerboard.`
+    },
+    render: {
+      quality: "ultra-high",
+      resolution: 1920,
+      separation: "by color/lighting/depth only"
+    },
+    colors: {
+      dominant_blue: "#2962FF",
+      white: "#FFFFFF",
+      accent_light_blue: "#4FC3F7",
+      inherent_colors: "when object has a universal color identity (e.g. sun=yellow, carrot=orange/green, leaf=green), preserve it. Otherwise default to blue/white palette."
+    },
+    materials: {
+      primary: "high-gloss blue plastic",
+      secondary: "clean matte white plastic",
+      accents: "minimal silver/chrome details only"
+    },
+    lighting: {
+      mode: "soft diffused studio",
+      source: "top-front or top-right",
+      highlights: "clean specular on glossy areas",
+      shadows: "soft elliptical ground/contact shadow beneath subject, low opacity, blurred, matching object footprint"
+    },
+    form: {
+      shapes: "rounded, smooth, bubbly, pillowy inflated soft-volume forms with 85% fillet, zero sharp corners",
+      edges: "crisp, no outlines",
+      proportions: "chibi/stylized, simplified anatomy, squash-and-stretch for friendliness"
+    },
+    composition: {
+      elements: "single main subject, centered, no extra decorations",
+      depth: "distinct layering, slight elevation",
+      density: "minimal, focused center",
+      framing: "The entire subject must be fully visible and centered inside the frame. Leave a small, clean margin around all edges. Do not crop any part of the subject."
+    },
+    camera: { type: "isometric", angle: "35deg tilt, 35deg pan, orthographic lens", static: true },
+    canvas: { ratio: "16:9", safe_margins: true }
+  }
+  return JSON.stringify(prompt, null, 2)
 }
 
 function loadCreonRefImages(): Array<{ inlineData: { data: string; mimeType: string } }> {
@@ -900,7 +935,17 @@ ${domainBlock}
    - 음식/배달/커머스/여행 등 이미지가 중요한 도메인은 무관한 랜덤 이미지 금지. 반드시 브리프와 직접 관련된 placeholder 설명을 작성한다.
    - 하단 내비게이션, floating CTA, 장바구니 버튼은 콘텐츠를 가리지 않도록 main content padding-bottom을 충분히 확보한다.
 
-5. **아이콘 사용 규칙**
+5. **[WCAG AA] 색상 대비 규칙 (CRITICAL — 절대 위반 금지)**
+   - **Primary/Accent 배경(진한 색) 위 텍스트는 반드시 흰색(#ffffff)**: 배경이 파란색·보라색·검정·짙은 그라데이션인 경우
+     * 올바른 예: style="background:#1A75FF; color:#ffffff;" ✅
+     * 금지 예: style="background:#1A75FF; color:#000000;" ❌  style="background:#1A75FF; color:#333333;" ❌
+   - **btn-primary 텍스트는 반드시 color:#ffffff**: .btn-primary 클래스 또는 인라인 style에서 background가 var(--color-primary)인 경우 color:#000000/#111111/#333333 절대 금지
+     * 올바른 예: button style="background:var(--color-primary); color:#ffffff;" ✅
+     * 금지 예: button class="btn-primary" style="color:#000" ❌
+   - **배경이 밝은 색(white, light gray, surface)이면 텍스트는 어두운 색(#111111/#222222)**: 흰 배경에 흰 텍스트 금지
+   - 인라인 style로 color를 강제 지정할 때 배경과 대비가 4.5:1 이상인지 항상 확인
+
+6. **아이콘 사용 규칙**
    - DESIGN.md가 아이콘 시스템을 정의하면 그 규칙을 최우선으로 따르십시오. KTDS의 경우 "KTDS Icon"으로 표현하고, ktds.md의 주요 icon name 목록을 사용하십시오.
    - 독립 실행 HTML에서 실제 패키지 import가 불가능할 때는 KTDS Icon을 inline SVG 또는 CSS mask 형태로 구현하되, 색상은 var(--color-icon) / var(--color-primary-icon) 등 KTDS 토큰을 사용하십시오.
    - Material Symbols, emoji, 외부 아이콘 세트는 DESIGN.md가 명시하지 않은 경우 기본값으로 사용하지 마십시오.
@@ -911,22 +956,36 @@ ${domainBlock}
    - 화면에서 눈에 띄는 대형 실사 이미지는 플레이스홀더 형식(%%IMG_1:영문 설명%%, %%IMG_2:영문 설명%%, %%IMG_3:영문 설명%%)을 사용하십시오. 영문 설명은 실제 사진 검색에 적합한 구체적 상황/사물 키워드로 작성하십시오.
    - 소형 프로필이나 반복 카드 내 썸네일 등은 %%THUMB:keyword:width:height%% 형식의 플레이스홀더를 사용하십시오. keyword는 이미지 내용을 설명하는 영문 명사(예: pizza, sushi, burger), width/height는 픽셀 정수입니다. 카드마다 keyword를 다르게 지정해 이미지가 겹치지 않게 하십시오. (예: %%THUMB:pizza:400:300%%, %%THUMB:sushi:400:300%%, %%THUMB:burger:400:300%%)
    - keyword는 반드시 브리프와 직접 관련된 명사를 사용한다. 음식 배달이면 sandwich, salad, coffee, avocado처럼 음식 키워드만 사용하고 landscape, laptop, mountain, ocean 같은 무관한 키워드 금지.
+   - ⛔ **[CRITICAL] 플레이스홀더는 반드시 img src 속성값에만 사용** — %%HERO_3D_IMAGE%%·%%IMG_1%%·%%THUMB%%·%%THUMB:...%% 등 모든 플레이스홀더 문자열은 반드시 <img src="%%...%%"> 형태로만 사용하십시오. 텍스트 노드(<p>, <span>, <div> 등의 내용), alt, href, 주석, 또는 다른 어떤 위치에도 절대 삽입 금지. 이미지가 없는 영역에 "이미지 URL"이나 플레이스홀더 문자열이 보이는 것은 심각한 오류입니다.
    ${heroImagePrompt ? `
    ⚠️ **3D 히어로 이미지 배경 매칭 규칙 (CRITICAL)**
    - %%HERO_3D_IMAGE%%는 메인 히어로에서 **정확히 1회만** 사용하십시오.
    - 배경색을 반드시 플레이스홀더에 명시하십시오: 흰 배경이면 %%HERO_3D_IMAGE:#ffffff%%, primary blue 배경이면 %%HERO_3D_IMAGE:#1A75FF%%처럼 사용합니다.
    - 히어로 섹션 CSS의 background 값과 %%HERO_3D_IMAGE:[색상]%%의 색상 값은 반드시 동일해야 합니다. 파란 히어로면 3D 이미지도 같은 파란 배경으로 생성됩니다.
    - 3D 이미지는 투명 PNG가 아니며 배경 제거를 하지 않습니다. 따라서 이미지 배경과 히어로 배경을 맞추는 것이 필수입니다.
-   - 3D 오브젝트 아래에는 자연스러운 접지감을 위한 부드러운 그림자가 포함되어 있습니다. CSS filter, mix-blend-mode, overflow hidden 등으로 그림자를 지우거나 잘라내지 마십시오.
-   - 히어로 카드 구조(배경색은 이미지 플레이스홀더 색상과 동일하게 적용):
+   - 3D 오브젝트 아래에는 자연스러운 접지감을 위한 부드러운 그림자가 포함되어 있습니다. CSS filter, mix-blend-mode 등으로 그림자를 지우지 마십시오.
+   - **히어로 이미지 배치 패턴 — 도메인에 맞게 선택하십시오:**
+
+     패턴 A. **전체 보임 (contain)** — 앱/서비스 소개, B2B, 대시보드, 아이콘 쇼케이스처럼 오브젝트 전체가 깔끔하게 보여야 할 때
      <section class="hero-with-image">
-       <div>
-         <!-- 헤드라인·서브카피·CTA 텍스트 영역 -->
-       </div>
-       <img src="%%HERO_3D_IMAGE:#ffffff%%" alt="hero" style="width:100%;height:auto;max-height:280px;object-fit:contain;" />
+       <div><!-- 헤드라인·서브카피·CTA --></div>
+       <img src="%%HERO_3D_IMAGE:#ffffff%%" alt="hero" style="width:100%;height:auto;max-height:300px;object-fit:contain;" />
      </section>
+
+     패턴 B. **살짝 크게/잘림 (oversized)** — 음식/배달/커머스/라이프스타일처럼 오브젝트가 화면을 꽉 채워야 다이나믹하고 감성적일 때. transform으로 키워서 overflow:hidden으로 자름 — 가로 스크롤 절대 유발하지 않음
+     <section class="hero-with-image" style="overflow:hidden;">
+       <div><!-- 헤드라인·서브카피·CTA --></div>
+       <img src="%%HERO_3D_IMAGE:#1A75FF%%" alt="hero" style="width:100%;height:auto;max-height:320px;object-fit:contain;transform:scale(1.15);transform-origin:center bottom;" />
+     </section>
+
+   - 두 패턴 중 서비스 성격과 히어로 분위기에 맞는 것을 AI가 판단하여 선택하십시오.
    - %%HERO_3D_IMAGE:[색상]%% 플레이스홀더를 절대 다른 URL이나 %%IMG%%로 교체하지 마십시오.
-   - 텍스트 색은 히어로 배경 명도에 맞춰 DESIGN.md의 text/inverse 토큰을 사용하십시오.
+   - **[WCAG AA 필수]** 히어로 섹션의 텍스트 색상 규칙:
+     * 배경색이 Primary(blue, #1A75FF 등 짙은 색), 다크 계열이면 반드시 color:#ffffff (white) 사용
+     * 배경색이 White/Light surface이면 color:#111111 사용
+     * 절대 어두운 배경 위에 color:#000000/#111111 같은 어두운 텍스트를 쓰지 마십시오 → WCAG 대비 미달
+     * 올바른 예시: style="background:#1A75FF; color:#ffffff;" ✅
+     * 금지 예시: style="background:#1A75FF; color:#000000;" ❌
    - 모바일에서는 grid-template-columns: 1fr (이미지가 텍스트 아래 또는 위로 스택)으로 자동 대응하십시오.
    ` : ''}
    
@@ -1099,6 +1158,10 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
     ? '- 홈 강조(CTA): 히어로에 대형 CTA 버튼 또는 검색창 최상단 배치, 바로가기 퀵 액션 그리드(2×3 또는 2×4), 최소 텍스트'
     : homeEmphasis.includes('최근 활동')
     ? '- 홈 강조(히스토리): 타임라인 또는 활동 피드 섹션 상단 배치, 각 항목에 상태 배지·시간 표시, 빠른 재진입 버튼'
+    : homeEmphasis.includes('추천 메뉴') || homeEmphasis.includes('메뉴 카드')
+    ? '- 홈 강조(메뉴 추천): 메뉴/상품 카드 그리드 최상단 배치, 이미지 중심 카드(썸네일+이름+가격+평점), 카테고리 탭 필터 필수, 인기순·추천순 정렬 기능'
+    : homeEmphasis.includes('가게 카드') || homeEmphasis.includes('가게 탐색')
+    ? '- 홈 강조(가게 탐색): 가게/매장 카드 리스트 최상단 배치, 썸네일+가게명+카테고리+평점+배달시간 구조, 검색창+필터 칩 상단 노출'
     : ''
   const moodRule = mood.includes('전문적')
     ? '- 무드(전문적·신뢰감): 정렬된 데이터 중심 레이아웃과 절제된 강조를 사용하되, radius/border/shadow/color는 반드시 디자인 시스템 토큰을 따른다.'
