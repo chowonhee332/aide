@@ -106,13 +106,13 @@ export async function compressThumbnail(dataUrl: string): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image()
     img.onload = () => {
-      const maxW = 480
+      const maxW = 1200
       const scale = Math.min(1, maxW / img.width)
       const canvas = document.createElement('canvas')
       canvas.width = Math.round(img.width * scale)
       canvas.height = Math.round(img.height * scale)
       canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
-      resolve(canvas.toDataURL('image/jpeg', 0.72))
+      resolve(canvas.toDataURL('image/jpeg', 0.88))
     }
     img.onerror = () => resolve(dataUrl)
     img.src = dataUrl

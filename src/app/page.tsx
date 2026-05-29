@@ -996,6 +996,11 @@ export default function Home() {
         .marquee-left { animation: marquee-left 32s linear infinite; display: flex; width: max-content; }
         .marquee-right { animation: marquee-right 28s linear infinite; display: flex; width: max-content; }
         .history-card:hover .history-card-overlay { opacity: 1 !important; }
+        @keyframes scroll-cue {
+          0%, 100% { transform: translateY(0); opacity: 0.45; }
+          50% { transform: translateY(7px); opacity: 1; }
+        }
+        .scroll-cue-dot { animation: scroll-cue 1.45s ease-in-out infinite; }
       `}</style>
 
       {/* ── URL → design.md 생성 모달 ── */}
@@ -2139,44 +2144,91 @@ export default function Home() {
               design.md 없으신가요? URL로 자동 생성하기
             </button>
           </div>
+
+          <button
+            onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}
+            aria-label="Scroll to examples"
+            style={{
+              position: 'absolute',
+              left: '50%',
+              bottom: '28px',
+              transform: 'translateX(-50%)',
+              width: '34px',
+              height: '54px',
+              borderRadius: '999px',
+              border: '1px solid rgba(255,255,255,0.46)',
+              backgroundColor: 'rgba(255,255,255,0.12)',
+              backdropFilter: 'blur(10px)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'center',
+              paddingTop: '10px',
+              cursor: 'pointer',
+              boxShadow: '0 10px 32px rgba(0,0,0,0.08)',
+            }}
+          >
+            <span
+              className="scroll-cue-dot"
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: '#ffffff',
+                display: 'block',
+              }}
+            />
+          </button>
         </main>
       </section>
 
 
       {/* History Gallery Section */}
       {historyItems.length > 0 && (
-        <section style={{ background: '#ffffff', padding: '100px 0 0' }}>
-          <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 48px' }}>
+        <section
+          id="showcase"
+          style={{
+            background: 'transparent',
+            height: '100vh',
+            boxSizing: 'border-box',
+            overflow: 'hidden',
+            padding: 'clamp(180px, 20vh, 250px) 0 0',
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
+          <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 48px 40px', textAlign: 'center' }}>
             <h2 style={{
               fontFamily: 'var(--font-poppins), sans-serif',
               fontWeight: 800,
-              fontSize: 'clamp(36px, 5vw, 64px)',
+              fontSize: 'clamp(38px, 5.5vw, 72px)',
               lineHeight: 1.1,
-              color: '#111111',
+              color: '#ffffff',
               letterSpacing: '-0.03em',
-              marginBottom: '16px',
-              maxWidth: '700px',
+              margin: '0 auto 18px',
+              maxWidth: '900px',
             }}>
-              창의성을 자유롭게,<br />무한한 가능성을 탐험하세요
+              See What You Can Build
             </h2>
             <p style={{
               fontSize: '18px',
-              color: '#666666',
+              color: 'rgba(255,255,255,0.72)',
               fontWeight: 400,
               lineHeight: 1.6,
-              maxWidth: '520px',
+              maxWidth: '620px',
+              margin: '0 auto',
             }}>
-              Aide가 생성한 다양한 UI 화면들을 탐색하며 당신의 다음 아이디어를 발견해보세요.
+              Real screens generated from briefs, brand cues, and design systems.
             </p>
           </div>
-          <div style={{ height: '600px', position: 'relative' }}>
+          <div style={{ height: 'calc(100vh - clamp(380px, 46vh, 500px))', minHeight: '420px', position: 'relative' }}>
             <CircularGallery
-              items={historyItems.filter(i => i.thumbnail).map(i => ({ image: i.thumbnail, text: i.brief, platform: i.platform ?? 'web' }))}
-              bend={1}
+              items={historyItems.filter(i => i.thumbnail).map(i => ({ id: i.id, image: i.thumbnail, text: i.brief, platform: i.platform ?? 'web' }))}
+              bend={4}
               textColor="#111111"
-              borderRadius={0.05}
+              borderRadius={0.025}
               scrollSpeed={2}
               scrollEase={0.05}
+              onItemClick={(itemId: string) => router.push(`/studio?historyId=${itemId}`)}
             />
           </div>
         </section>

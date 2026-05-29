@@ -109,7 +109,8 @@ class Media {
     textColor,
     borderRadius = 0,
     font,
-    platform
+    platform,
+    id
   }) {
     this.extra = 0;
     this.geometry = geometry;
@@ -127,6 +128,7 @@ class Media {
     this.borderRadius = borderRadius;
     this.font = font;
     this.platform = platform;
+    this.id = id;
     this.createShader();
     this.createMesh();
     this.onResize();
@@ -279,15 +281,31 @@ class Media {
     }
     this.scale = this.screen.height / 1500;
     const isMobile = this.platform === 'mobile';
-    const designW = isMobile ? 390 : 900;
-    const designH = isMobile ? 844 : 560;
+    const designH = 1100;
+    const designW = isMobile ? designH * (390 / 844) : designH * (1440 / 1024);
     this.plane.scale.y = (this.viewport.height * (designH * this.scale)) / this.screen.height;
     this.plane.scale.x = (this.viewport.width * (designW * this.scale)) / this.screen.width;
     this.plane.program.uniforms.uPlaneSizes.value = [this.plane.scale.x, this.plane.scale.y];
-    this.padding = 2;
+    this.padding = 3;
     this.width = this.plane.scale.x + this.padding;
     this.widthTotal = this.width * this.length;
     this.x = this.width * this.index;
+  }
+  hitTest(mouseX, mouseY) {
+    if (!this.screen || !this.viewport || !this.plane) return false;
+    const screenX = (this.plane.position.x / this.viewport.width + 0.5) * this.screen.width;
+    const screenY = (0.5 - this.plane.position.y / this.viewport.height) * this.screen.height;
+    const scaleX = this.screen.width / this.viewport.width;
+    const scaleY = this.screen.height / this.viewport.height;
+    const width = this.plane.scale.x * scaleX;
+    const height = this.plane.scale.y * scaleY;
+    const dx = mouseX - screenX;
+    const dy = mouseY - screenY;
+    const cos = Math.cos(-this.plane.rotation.z);
+    const sin = Math.sin(-this.plane.rotation.z);
+    const localX = dx * cos - dy * sin;
+    const localY = dx * sin + dy * cos;
+    return Math.abs(localX) <= width / 2 && Math.abs(localY) <= height / 2;
   }
 }
 
@@ -301,12 +319,14 @@ class App {
       borderRadius = 0,
       font = 'bold 30px Figtree',
       scrollSpeed = 2,
-      scrollEase = 0.05
+      scrollEase = 0.05,
+      onItemClick
     } = {}
   ) {
     document.documentElement.classList.remove('no-js');
     this.container = container;
     this.scrollSpeed = scrollSpeed;
+    this.onItemClick = onItemClick;
     this.scroll = { ease: scrollEase, current: 0, target: 0, last: 0 };
     this.onCheckDebounce = debounce(this.onCheck, 200);
     this.createRenderer();
@@ -375,12 +395,28 @@ class App {
         textColor,
         borderRadius,
         font,
-        platform: data.platform
+        platform: data.platform,
+        id: data.id
       });
+    });
+    this.normalizeMediaLayout();
+  }
+  normalizeMediaLayout() {
+    if (!this.medias || !this.medias.length) return;
+    const gap = 3;
+    const widthTotal = this.medias.reduce((sum, media) => sum + media.plane.scale.x + gap, 0);
+    let cursor = 0;
+    this.medias.forEach((media, index) => {
+      media.padding = gap;
+      media.width = media.plane.scale.x + gap;
+      media.widthTotal = widthTotal;
+      media.x = cursor + media.plane.scale.x / 2;
+      cursor += media.plane.scale.x + gap;
     });
   }
   onTouchDown(e) {
     this.isDown = true;
+    this.didDrag = false;
     this.scroll.position = this.scroll.current;
     this.start = e.touches ? e.touches[0].clientX : e.clientX;
   }
@@ -388,11 +424,22 @@ class App {
     if (!this.isDown) return;
     const x = e.touches ? e.touches[0].clientX : e.clientX;
     const distance = (this.start - x) * (this.scrollSpeed * 0.025);
+    if (Math.abs(this.start - x) > 5) this.didDrag = true;
     this.scroll.target = this.scroll.position + distance;
   }
   onTouchUp() {
     this.isDown = false;
     this.onCheck();
+  }
+  onClick(e) {
+    if (this.didDrag || !this.onItemClick || !this.medias) return;
+    const rect = this.gl.canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const hit = [...this.medias]
+      .sort((a, b) => Math.abs(a.plane.position.x) - Math.abs(b.plane.position.x))
+      .find(media => media.id && media.hitTest(mouseX, mouseY));
+    if (hit) this.onItemClick(hit.id);
   }
   onWheel(e) {
     const delta = e.deltaY || e.wheelDelta || e.detail;
@@ -421,6 +468,7 @@ class App {
     this.viewport = { width, height };
     if (this.medias) {
       this.medias.forEach(media => media.onResize({ screen: this.screen, viewport: this.viewport }));
+      this.normalizeMediaLayout();
     }
   }
   update() {
@@ -439,6 +487,7 @@ class App {
     this.boundOnTouchDown = this.onTouchDown.bind(this);
     this.boundOnTouchMove = this.onTouchMove.bind(this);
     this.boundOnTouchUp = this.onTouchUp.bind(this);
+    this.boundOnClick = this.onClick.bind(this);
     window.addEventListener('resize', this.boundOnResize);
     window.addEventListener('mousewheel', this.boundOnWheel);
     window.addEventListener('wheel', this.boundOnWheel);
@@ -448,6 +497,7 @@ class App {
     window.addEventListener('touchstart', this.boundOnTouchDown);
     window.addEventListener('touchmove', this.boundOnTouchMove);
     window.addEventListener('touchend', this.boundOnTouchUp);
+    this.gl.canvas.addEventListener('click', this.boundOnClick);
   }
   destroy() {
     window.cancelAnimationFrame(this.raf);
@@ -460,6 +510,7 @@ class App {
     window.removeEventListener('touchstart', this.boundOnTouchDown);
     window.removeEventListener('touchmove', this.boundOnTouchMove);
     window.removeEventListener('touchend', this.boundOnTouchUp);
+    this.gl.canvas.removeEventListener('click', this.boundOnClick);
     if (this.renderer && this.renderer.gl && this.renderer.gl.canvas.parentNode) {
       this.renderer.gl.canvas.parentNode.removeChild(this.renderer.gl.canvas);
     }
@@ -473,14 +524,15 @@ export default function CircularGallery({
   borderRadius = 0.05,
   font = 'bold 30px Figtree',
   scrollSpeed = 2,
-  scrollEase = 0.05
+  scrollEase = 0.05,
+  onItemClick
 }) {
   const containerRef = useRef(null);
   useEffect(() => {
-    const app = new App(containerRef.current, { items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase });
+    const app = new App(containerRef.current, { items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase, onItemClick });
     return () => {
       app.destroy();
     };
-  }, [items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase]);
+  }, [items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase, onItemClick]);
   return <div className="circular-gallery" ref={containerRef} />;
 }
