@@ -938,15 +938,35 @@ ${cssVarDeclaration('--aide-input-height', layoutRhythm.inputHeight)}
 ${cssVarDeclaration('--aide-card-border', layoutRhythm.cardBorder)}
 ${cssVarDeclaration('--aide-card-shadow', layoutRhythm.cardShadow)}
 }
-.aide-page { padding: var(--aide-page-padding); }
-.aide-section { display: grid; gap: var(--aide-card-gap); }
+/* Page container: flex column so direct child sections get uniform gap */
+.aide-page,
+main.aide-page,
+div.aide-page {
+  padding: 0 var(--aide-page-padding);
+  display: flex;
+  flex-direction: column;
+  gap: var(--aide-section-gap);
+}
+/* Reset section-level margins so flex gap is the single source of truth */
+.aide-page > section,
+.aide-page > div.aide-section,
+.aide-page > .aide-section {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+/* Fallback: sibling selector for when aide-page flex gap isn't in play */
 .aide-section + .aide-section { margin-top: var(--aide-section-gap); }
+/* Card-level rhythm */
+.aide-section { display: flex; flex-direction: column; gap: var(--aide-card-gap); }
 .aide-card {
   padding: var(--aide-card-padding);
   border-radius: var(--aide-card-radius);
   border: var(--aide-card-border);
   box-shadow: var(--aide-card-shadow);
 }
+/* Universal safety net: normalize section stacking when aide-page is used */
+.aide-page > section > * { margin-top: 0; margin-bottom: 0; }
+.aide-page > section > * + * { margin-top: var(--aide-card-gap); }
 </style>`
 }
 
@@ -993,7 +1013,7 @@ function collectStaticDesignContractIssues(html: string): string[] {
       /(px|rem|rgba?\(|#[0-9a-fA-F]{3,8})/.test(value)
     )
 
-  if (arbitraryValues.length > 18) {
+  if (arbitraryValues.length > 8) {
     const samples = arbitraryValues
       .slice(0, 8)
       .map(item => `${item.prop}: ${item.value}`)
@@ -1007,6 +1027,27 @@ function collectStaticDesignContractIssues(html: string): string[] {
   const uniqueCardRadius = new Set(cardRadiusValues)
   if (uniqueCardRadius.size > 2) {
     issues.push(`Card radius is inconsistent across card-like selectors: ${[...uniqueCardRadius].slice(0, 5).join(', ')}.`)
+  }
+
+  // Detect overuse of large spacing tokens in margin/padding (section-level spacing should use parent flex gap)
+  const largeSpacingTokens = ['var(--spacing-3xl)', 'var(--spacing-4xl)', 'var(--spacing-5xl)', 'var(--spacing-6xl)', 'var(--spacing-section)']
+  const largeSpacingMatches = [...css.matchAll(/(^|[;\n]\s*)(margin|padding)(-top|-bottom|-left|-right)?\s*:\s*([^;{}]+);/gi)]
+    .filter(m => largeSpacingTokens.some(tok => m[4]?.includes(tok)))
+    .map(m => `${m[2]}${m[3] ?? ''}: ${m[4]?.trim()}`)
+  if (largeSpacingMatches.length > 0) {
+    issues.push(`Large spacing tokens used directly in margin/padding instead of parent flex gap (${largeSpacingMatches.length} instance${largeSpacingMatches.length > 1 ? 's' : ''}). Use .aide-page flex gap instead. Examples: ${largeSpacingMatches.slice(0, 3).join('; ')}.`)
+  }
+
+  // Detect sections/aide-section with direct margin-top/bottom that override parent flex gap
+  const sectionMarginMatches = [...css.matchAll(/(?:section|\.aide-section)[^{]*\{([^}]*)\}/gi)]
+    .flatMap(m => {
+      const body = m[1]
+      return [...body.matchAll(/(margin-top|margin-bottom|padding-top|padding-bottom)\s*:\s*([^;]+);/gi)]
+        .filter(p => !/^(0|0px|auto|inherit|unset|initial)$/.test(p[2].trim()))
+        .map(p => `${p[1]}: ${p[2].trim()}`)
+    })
+  if (sectionMarginMatches.length > 0) {
+    issues.push(`Section elements have direct margin/padding-top/bottom values that fight parent flex gap. Remove them and rely on aide-page gap only. Found: ${sectionMarginMatches.slice(0, 3).join('; ')}.`)
   }
 
   return issues
@@ -1358,7 +1399,7 @@ export async function generateHeroImage(
       contents: { parts },
       config: {
         responseModalities: ['IMAGE'],
-        httpOptions: { timeout: 120_000 },
+        httpOptions: { timeout: 120_000, apiVersion: 'v1alpha' },
       },
     })
     for (const part of res.candidates?.[0]?.content?.parts ?? []) {
@@ -2029,7 +2070,8 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
   const effectiveDesignMd = designMd || loadDefaultDesignMd();
   const hasDesignSystem = !!effectiveDesignMd;
   const isAdaptive = hasDesignSystem && /adaptive:\s*true/.test(effectiveDesignMd);
-  const isMd3Base = hasDesignSystem && /md3Base:\s*true/.test(effectiveDesignMd);
+  const isKtds = hasDesignSystem && /name:\s*["']?KTDS/i.test(effectiveDesignMd);
+  const isMd3Base = hasDesignSystem && (/md3Base:\s*true/.test(effectiveDesignMd) || isKtds);
   const isMd3 = hasDesignSystem && /(?:^|\n)md3:\s*true/.test(effectiveDesignMd) && !isMd3Base;
 
   const effectivePlatform: PlatformType = platform ?? 'mobile';
@@ -2114,9 +2156,14 @@ ${hasBrandColors
 - 플랫폼(${platformLabel})은 레이아웃 구조·크롬(상태바·네비바·탭바)에만 영향.
 ${isMd3Base ? `
 ╔══════════════════════════════════════════════════════════════╗
-║  🏗️  MD3 구조 기반 — 컴포넌트 패턴 강제                         ║
+║  ${isKtds ? '🏢  KTDS 디자인 시스템 — 컴포넌트 패턴 강제' : '🏗️  MD3 구조 기반 — 컴포넌트 패턴 강제                        '}║
 ╚══════════════════════════════════════════════════════════════╝
-이 시스템은 Material Design 3 컴포넌트 구조를 기반으로 한다.
+${isKtds ? `KTDS 디자인 시스템(KT DS)을 정확하게 구현하라. 아래 치수·형태·색상을 그대로 적용 — 임의 변경 절대 금지.
+- 페이지 배경: var(--color-primary-fill-neutral) = #F2F5F9 (흰색 배경 사용 금지)
+- 카드/컴포넌트 배경: var(--color-surface) = #ffffff
+- 버튼: 8px 라운드 사각형 (pill/capsule 절대 금지), height 48px
+- 입력: L=40px / M=32px / S=24px, border-radius: var(--rounded-md)
+- 내비게이션: ${effectivePlatform === 'web' ? '서비스 성격에 따라 상단 GNB 또는 좌측 LNB 선택 (위 웹 내비게이션 결정 규칙 준수)' : '하단 고정 탭바(NavBottom) 사용'}` : `이 시스템은 Material Design 3 컴포넌트 구조를 기반으로 한다.
 - 모든 버튼: MD3 Filled/Outlined/Text Button 구조 사용
 - 모든 입력: MD3 Outlined Text Field 구조 사용 (레이블 항상 필드 위에 배치)
 - 카드: MD3 Elevated/Filled/Outlined Card 구조 사용
@@ -2127,8 +2174,7 @@ ${isMd3Base ? `
 - 위의 --md-sys-color-*, --md-sys-shape-*, --md-sys-typescale-* CSS 변수를 MD3 컴포넌트 스타일링에 활용할 것
 
 ⚠️ 디자인 시스템 치수 우선 — MD3 플랫폼 가이드 수치보다 DESIGN.md 토큰을 우선:
-- 버튼, 입력, 카드, 칩, 내비게이션의 height/radius/padding은 DESIGN.md의 components와 tokens 값을 따른다.
-- KTDS처럼 MD3 구조를 빌리되 자체 치수가 있는 시스템은 KTDS Storybook/ktds.md 값을 최종 기준으로 삼는다.
+- 버튼, 입력, 카드, 칩, 내비게이션의 height/radius/padding은 DESIGN.md의 components와 tokens 값을 따른다.`}
 - 폰트: ⛔ <head>에 반드시 Pretendard CDN 추가:
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
   body { font-family: var(--font-sans); } 선언 필수
@@ -2294,11 +2340,27 @@ ${designSystemContract}
     --aide-card-gap: /* contract.layoutRhythm.cardGap */;
     --aide-card-radius: /* contract.layoutRhythm.cardRadius */;
   }
-  .aide-page { padding: var(--aide-page-padding); }
-  .aide-section + .aide-section { margin-top: var(--aide-section-gap); }
+  /* 메인 콘텐츠 컨테이너는 반드시 aide-page 클래스를 붙이고 flex column + gap으로 섹션 간격을 제어 */
+  .aide-page {
+    padding: 0 var(--aide-page-padding);
+    display: flex;
+    flex-direction: column;
+    gap: var(--aide-section-gap);
+  }
+  /* aide-page 직속 자식 section/div의 margin을 0으로 리셋 — flex gap이 단일 간격 source */
+  .aide-page > section,
+  .aide-page > div.aide-section {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+  /* 카드 내부 리듬 */
+  .aide-section { display: flex; flex-direction: column; gap: var(--aide-card-gap); }
   .aide-card { padding: var(--aide-card-padding); border-radius: var(--aide-card-radius); }
-  .aide-card > * + * { margin-top: var(--aide-card-gap); }
   \`\`\`
+- **[MANDATORY] aide-page 클래스 사용**: 스크롤 가능한 메인 콘텐츠 wrapper(<main>, <div class="content"> 등)에 반드시 aide-page 클래스를 추가하십시오.
+- **[MANDATORY] aide-section 클래스 사용**: 메인 영역 안의 모든 <section> 또는 주요 콘텐츠 블록에 반드시 aide-section 클래스를 추가하십시오.
+- **[MANDATORY] 섹션 자체에 margin/padding-top/bottom 금지**: 섹션 간 간격은 오직 부모의 gap: var(--aide-section-gap)으로만 제어합니다. section { margin-top: ... } 또는 section { padding-top: ... } 형태는 금지입니다.
+- **[MANDATORY] 큰 spacing 토큰 직접 사용 금지**: var(--spacing-3xl) 이상(var(--spacing-4xl), var(--spacing-5xl), var(--spacing-section) 등)을 margin/padding에 직접 사용하지 마십시오. 섹션 간격은 var(--aide-section-gap), 카드 내부 간격은 var(--aide-card-gap)을 사용하십시오.
 - 같은 성격의 카드/리스트/버튼/입력은 반드시 같은 variable을 사용하십시오. 예쁜 차이는 레이아웃 구조와 콘텐츠 밀도에서 만들고, padding/gap/radius를 흔들어서 만들지 마십시오.
 - design.md가 명시한 componentContract가 있으면 semantic variable보다 componentContract 값을 우선합니다.
 - design.md가 URL에서 생성된 불완전한 문서여도 Contract에서 추출한 rhythm을 우선하고, 부족한 값은 가장 가까운 existing token을 한 번만 선택해 :root에 고정하십시오.
