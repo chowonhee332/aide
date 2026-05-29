@@ -85,8 +85,8 @@ function buildCuratedUnsplashUrl(keyword: string, width: number, height: number)
   return `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${width}&h=${height}&q=82`
 }
 
-async function fetchUnsplashUrl(keyword: string, width: number, height: number): Promise<string | null> {
-  const accessKey = process.env.UNSPLASH_ACCESS_KEY
+async function fetchUnsplashUrl(keyword: string, width: number, height: number, accessKeyOverride?: string): Promise<string | null> {
+  const accessKey = accessKeyOverride || process.env.UNSPLASH_ACCESS_KEY
   const searchKeyword = normalizeUnsplashKeyword(keyword)
   const fallbackUrl = buildCuratedUnsplashUrl(searchKeyword, width, height)
   if (!accessKey) return fallbackUrl
@@ -1060,9 +1060,10 @@ export async function resolveImagePlaceholders(
     heroImagePrompt?: string;
     heroImageData?: { base64: string; mimeType: string } | null;
     apiKey?: string;
+    unsplashKey?: string;
   } = {}
 ): Promise<string> {
-  const { heroImagePrompt, heroImageData, apiKey } = options
+  const { heroImagePrompt, heroImageData, apiKey, unsplashKey } = options
   let result = html
   const transparentGif = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
 
@@ -1107,7 +1108,7 @@ export async function resolveImagePlaceholders(
   const imgMatches = [...result.matchAll(/%%IMG_\d+:([^%]+)%%/g)].slice(0, 3)
   if (imgMatches.length > 0) {
     const urls = await Promise.all(
-      imgMatches.map(m => fetchUnsplashUrl(m[1].trim(), 900, 600))
+      imgMatches.map(m => fetchUnsplashUrl(m[1].trim(), 900, 600, unsplashKey))
     )
     for (let i = 0; i < imgMatches.length; i++) {
       const full = imgMatches[i][0]
@@ -1121,7 +1122,7 @@ export async function resolveImagePlaceholders(
   const thumbMatches = [...result.matchAll(/%%THUMB:([^:%]+):(\d+):(\d+)%%/g)]
   if (thumbMatches.length > 0) {
     const urls = await Promise.all(
-      thumbMatches.map(m => fetchUnsplashUrl(m[1].trim(), parseInt(m[2]), parseInt(m[3])))
+      thumbMatches.map(m => fetchUnsplashUrl(m[1].trim(), parseInt(m[2]), parseInt(m[3]), unsplashKey))
     )
     for (let i = 0; i < thumbMatches.length; i++) {
       const full = thumbMatches[i][0]

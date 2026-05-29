@@ -515,8 +515,16 @@ export default function StudioPage() {
   const [brief, setBrief] = useState('')
 
   const apiHeaders = useCallback((): Record<string, string> => {
-    const key = typeof window !== 'undefined' ? (localStorage.getItem('aide_gemini_api_key') ?? '') : ''
-    return { 'Content-Type': 'application/json', ...(key && { 'x-gemini-key': key }) }
+    if (typeof window === 'undefined') return { 'Content-Type': 'application/json' }
+    const geminiKey = localStorage.getItem('aide_gemini_api_key') ?? ''
+    const unsplashKey = localStorage.getItem('aide_unsplash_access_key') ?? ''
+    const codeToDesignKey = localStorage.getItem('aide_code_to_design_api_key') ?? ''
+    return {
+      'Content-Type': 'application/json',
+      ...(geminiKey && { 'x-gemini-key': geminiKey }),
+      ...(unsplashKey && { 'x-unsplash-key': unsplashKey }),
+      ...(codeToDesignKey && { 'x-code-to-design-key': codeToDesignKey }),
+    }
   }, [])
 
   const [isAnalyzing, setIsAnalyzing] = useState(false)

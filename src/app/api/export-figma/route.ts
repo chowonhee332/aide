@@ -49,9 +49,9 @@ async function readCodeToDesignResponse(response: Response) {
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.CODE_TO_DESIGN_API_KEY
+    const apiKey = req.headers.get('x-code-to-design-key') || process.env.CODE_TO_DESIGN_API_KEY
     if (!apiKey) {
-      return NextResponse.json({ error: 'CODE_TO_DESIGN_API_KEY is not configured' }, { status: 500 })
+      return NextResponse.json({ error: 'code.to.design API Key is not configured. Add CODE_TO_DESIGN_API_KEY on the server or save it in the API Key modal.' }, { status: 500 })
     }
 
     const body = await req.json()

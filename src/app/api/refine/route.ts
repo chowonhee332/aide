@@ -7,9 +7,10 @@ export async function POST(req: NextRequest) {
   try {
     const { html, message, brief, designMd, logoDataUrl } = await req.json()
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
+    const unsplashKey = req.headers.get('x-unsplash-key') ?? undefined
 
     let text = await refineUI(html, message, brief, designMd, apiKey, logoDataUrl)
-    text = await resolveImagePlaceholders(text, { apiKey })
+    text = await resolveImagePlaceholders(text, { apiKey, unsplashKey })
 
     if (!text.includes('<html') && !text.includes('<!DOCTYPE')) {
       return NextResponse.json({ error: '유효한 HTML이 반환되지 않았습니다' }, { status: 500 })

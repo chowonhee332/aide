@@ -34,10 +34,11 @@ export async function POST(req: NextRequest) {
   try {
     const { mainHtml, ...params } = await req.json() as { mainHtml: string } & GenerateParams
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
+    const unsplashKey = req.headers.get('x-unsplash-key') ?? undefined
     console.log('[expand] step1: params parsed, starting expandToPrototype')
     let html = await expandToPrototype(mainHtml, params, apiKey)
     console.log('[expand] step2: html generated, length=', html.length)
-    html = await resolveImagePlaceholders(html, { heroImagePrompt: params.heroImagePrompt, apiKey })
+    html = await resolveImagePlaceholders(html, { heroImagePrompt: params.heroImagePrompt, apiKey, unsplashKey })
 
     const puppeteer = await import('puppeteer')
     browser = await puppeteer.default.launch({

@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
   try {
     const params = await req.json()
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
+    const unsplashKey = req.headers.get('x-unsplash-key') ?? undefined
     console.log('[generate] step1: params parsed, starting generateUI')
 
     const html = await generateUI(params, apiKey)
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest) {
     const finalHtml = await resolveImagePlaceholders(html, {
       heroImagePrompt: heroPrompt,
       apiKey,
+      unsplashKey,
     })
     console.log('[generate] step2: html generated, length=', finalHtml.length)
 

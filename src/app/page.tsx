@@ -28,6 +28,51 @@ const F = {
   hairlineSoft: '#eeeeee',
 }
 
+type ApiKeyTab = 'gemini' | 'unsplash' | 'figma'
+
+const API_KEY_META: Record<ApiKeyTab, { label: string; title: string; storageKey: string; placeholder: string; description: string }> = {
+  gemini: {
+    label: 'Gemini',
+    title: 'Gemini API Key',
+    storageKey: 'aide_gemini_api_key',
+    placeholder: 'AIza...',
+    description: 'UI 생성, 질문 생성, 3D 이미지 생성에 사용합니다. 입력하면 서버 환경변수보다 이 키를 우선 사용합니다.',
+  },
+  unsplash: {
+    label: 'Unsplash',
+    title: 'Unsplash Access Key',
+    storageKey: 'aide_unsplash_access_key',
+    placeholder: 'Unsplash Access Key',
+    description: '시안 안의 실사 썸네일과 배경 이미지를 불러올 때 사용합니다. 없으면 서버 키 또는 기본 큐레이션 이미지로 대체됩니다.',
+  },
+  figma: {
+    label: 'Figma Plugin',
+    title: 'code.to.design API Key',
+    storageKey: 'aide_code_to_design_api_key',
+    placeholder: 'zpka_...',
+    description: '완성된 HTML을 Figma에 붙여넣을 수 있는 데이터로 변환할 때 사용합니다.',
+  },
+}
+
+function readClientApiKeys(): Record<ApiKeyTab, string> {
+  if (typeof window === 'undefined') return { gemini: '', unsplash: '', figma: '' }
+  return {
+    gemini: localStorage.getItem(API_KEY_META.gemini.storageKey) ?? '',
+    unsplash: localStorage.getItem(API_KEY_META.unsplash.storageKey) ?? '',
+    figma: localStorage.getItem(API_KEY_META.figma.storageKey) ?? '',
+  }
+}
+
+function buildClientApiHeaders(): Record<string, string> {
+  const keys = readClientApiKeys()
+  return {
+    'Content-Type': 'application/json',
+    ...(keys.gemini && { 'x-gemini-key': keys.gemini }),
+    ...(keys.unsplash && { 'x-unsplash-key': keys.unsplash }),
+    ...(keys.figma && { 'x-code-to-design-key': keys.figma }),
+  }
+}
+
 type AsIsAnalysis = {
   sourceUrl: string
   pageTitle: string
@@ -590,20 +635,24 @@ function extractColorsFromImage(dataUrl: string): Promise<string[]> {
 export default function Home() {
   const router = useRouter()
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
-  const [apiKeyInput, setApiKeyInput] = useState('')
+  const [apiKeyTab, setApiKeyTab] = useState<ApiKeyTab>('gemini')
+  const [apiKeyInputs, setApiKeyInputs] = useState<Record<ApiKeyTab, string>>({ gemini: '', unsplash: '', figma: '' })
   const [apiKeyValidating, setApiKeyValidating] = useState(false)
   const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
   const [apiKeyError, setApiKeyError] = useState('')
+  const activeApiKeyMeta = API_KEY_META[apiKeyTab]
+  const activeApiKeyInput = apiKeyInputs[apiKeyTab]
 
   const openApiKeyModal = () => {
-    setApiKeyInput(localStorage.getItem('aide_gemini_api_key') ?? '')
+    setApiKeyInputs(readClientApiKeys())
+    setApiKeyTab('gemini')
     setApiKeyStatus('idle')
     setApiKeyError('')
     setApiKeyModalOpen(true)
   }
 
   const handleValidateAndSave = async () => {
-    const trimmed = apiKeyInput.trim()
+    const trimmed = activeApiKeyInput.trim()
     if (!trimmed) {
       setApiKeyError('API Key를 입력해주세요.')
       return
@@ -612,6 +661,12 @@ export default function Home() {
     setApiKeyStatus('idle')
     setApiKeyError('')
     try {
+      if (apiKeyTab !== 'gemini') {
+        localStorage.setItem(activeApiKeyMeta.storageKey, trimmed)
+        setApiKeyStatus('valid')
+        setTimeout(() => setApiKeyModalOpen(false), 600)
+        return
+      }
       const res = await fetch('/api/validate-key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -619,7 +674,7 @@ export default function Home() {
       })
       const data = await res.json()
       if (data.valid) {
-        localStorage.setItem('aide_gemini_api_key', trimmed)
+        localStorage.setItem(activeApiKeyMeta.storageKey, trimmed)
         setApiKeyStatus('valid')
         setTimeout(() => setApiKeyModalOpen(false), 800)
       } else {
@@ -720,10 +775,9 @@ export default function Home() {
     setGenMdScreenshot(null)
     setGenMdCaptureStatus(null)
     try {
-      const storedKey = localStorage.getItem('aide_gemini_api_key') ?? ''
       const res = await fetch('/api/analyze-url', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(storedKey && { 'x-gemini-key': storedKey }) },
+        headers: buildClientApiHeaders(),
         body: JSON.stringify({ url: genMdUrl.trim() }),
       })
       const data = await res.json()
@@ -850,10 +904,9 @@ export default function Home() {
     setUrlAnalyzing(true)
     setUrlError(null)
     try {
-      const storedKey = localStorage.getItem('aide_gemini_api_key') ?? ''
       const res = await fetch('/api/analyze-url', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(storedKey && { 'x-gemini-key': storedKey }) },
+        headers: buildClientApiHeaders(),
         body: JSON.stringify({ url: urlInput.trim() }),
       })
       const data = await res.json()
@@ -922,10 +975,9 @@ export default function Home() {
     setRefCapturing(true)
     setRefError(null)
     try {
-      const storedKey = localStorage.getItem('aide_gemini_api_key') ?? ''
       const res = await fetch('/api/capture-url', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(storedKey && { 'x-gemini-key': storedKey }) },
+        headers: buildClientApiHeaders(),
         body: JSON.stringify({ url: refPageUrlInput.trim() }),
       })
       const data = await res.json()
@@ -2332,21 +2384,55 @@ export default function Home() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: F.canvas, borderRadius: '20px', padding: '32px', width: '440px', maxWidth: 'calc(100vw - 32px)', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}
+            style={{ background: F.canvas, borderRadius: '20px', padding: '32px', width: '520px', maxWidth: 'calc(100vw - 32px)', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
               <KeyRound size={20} color={F.primary} />
-              <h2 style={{ fontSize: '18px', fontWeight: 700, color: F.ink, margin: 0 }}>Gemini API Key</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, color: F.ink, margin: 0 }}>{activeApiKeyMeta.title}</h2>
+            </div>
+            <div style={{ display: 'flex', gap: '6px', padding: '4px', borderRadius: '12px', background: F.surface1, margin: '14px 0 16px' }}>
+              {(Object.keys(API_KEY_META) as ApiKeyTab[]).map(tab => {
+                const active = apiKeyTab === tab
+                const saved = Boolean(apiKeyInputs[tab]?.trim())
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => {
+                      setApiKeyTab(tab)
+                      setApiKeyStatus('idle')
+                      setApiKeyError('')
+                    }}
+                    style={{
+                      flex: 1,
+                      border: 'none',
+                      borderRadius: '9px',
+                      padding: '9px 8px',
+                      background: active ? F.canvas : 'transparent',
+                      color: active ? F.ink : F.inkMuted,
+                      boxShadow: active ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                      fontSize: '13px',
+                      fontWeight: active ? 700 : 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {API_KEY_META[tab].label}{saved ? ' · 저장됨' : ''}
+                  </button>
+                )
+              })}
             </div>
             <p style={{ fontSize: '13px', color: F.inkMuted, marginBottom: '20px', lineHeight: 1.6 }}>
-              키를 입력하면 서버 환경변수 대신 이 키로 Gemini API를 호출합니다. 브라우저 localStorage에만 저장됩니다.
+              {activeApiKeyMeta.description} 브라우저 localStorage에만 저장됩니다.
             </p>
             <input
               type="password"
-              value={apiKeyInput}
-              onChange={e => { setApiKeyInput(e.target.value); setApiKeyStatus('idle'); setApiKeyError('') }}
+              value={activeApiKeyInput}
+              onChange={e => {
+                setApiKeyInputs(prev => ({ ...prev, [apiKeyTab]: e.target.value }))
+                setApiKeyStatus('idle')
+                setApiKeyError('')
+              }}
               onKeyDown={e => { if (e.key === 'Enter') handleValidateAndSave() }}
-              placeholder="AIza..."
+              placeholder={activeApiKeyMeta.placeholder}
               autoFocus
               disabled={apiKeyValidating}
               style={{
@@ -2363,7 +2449,7 @@ export default function Home() {
               <p style={{ fontSize: '12px', color: '#ef4444', margin: '0 0 16px', lineHeight: 1.5 }}>{apiKeyError}</p>
             )}
             {apiKeyStatus === 'valid' && (
-              <p style={{ fontSize: '12px', color: '#22c55e', margin: '0 0 16px', lineHeight: 1.5 }}>✓ 유효한 API Key입니다. 저장 중...</p>
+              <p style={{ fontSize: '12px', color: '#22c55e', margin: '0 0 16px', lineHeight: 1.5 }}>✓ 저장되었습니다.</p>
             )}
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button
@@ -2375,16 +2461,16 @@ export default function Home() {
               </button>
               <button
                 onClick={handleValidateAndSave}
-                disabled={apiKeyValidating || !apiKeyInput.trim()}
+                disabled={apiKeyValidating || !activeApiKeyInput.trim()}
                 style={{
                   padding: '9px 18px', borderRadius: '10px', border: 'none',
-                  background: apiKeyValidating || !apiKeyInput.trim() ? F.hairline : F.primary,
-                  color: apiKeyValidating || !apiKeyInput.trim() ? F.inkMuted : '#fff',
+                  background: apiKeyValidating || !activeApiKeyInput.trim() ? F.hairline : F.primary,
+                  color: apiKeyValidating || !activeApiKeyInput.trim() ? F.inkMuted : '#fff',
                   fontSize: '14px', fontWeight: 600,
-                  cursor: apiKeyValidating || !apiKeyInput.trim() ? 'not-allowed' : 'pointer',
+                  cursor: apiKeyValidating || !activeApiKeyInput.trim() ? 'not-allowed' : 'pointer',
                 }}
               >
-                {apiKeyValidating ? '검증 중...' : '검증 후 저장'}
+                {apiKeyValidating ? (apiKeyTab === 'gemini' ? '검증 중...' : '저장 중...') : apiKeyTab === 'gemini' ? '검증 후 저장' : '저장'}
               </button>
             </div>
           </div>
