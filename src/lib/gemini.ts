@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import fs from 'fs';
 import path from 'path';
+import sharp from 'sharp';
 import { type AppDomain, DOMAIN_KEY_TO_LABEL, DOMAIN_HOME_EMPHASIS_OPTIONS } from './domain-constants';
 import { getDomainGuidance } from './variant-refs';
 export type { AppDomain } from './domain-constants';
@@ -29,21 +30,78 @@ function extractImageKeyword(desc: string): string {
   return (english ?? words[0] ?? 'product').toLowerCase()
 }
 
+const CURATED_UNSPLASH_PHOTOS: Array<{ keys: string[]; id: string }> = [
+  { keys: ['sandwich', 'toast', 'club', '샌드위치', '토스트'], id: 'photo-1528735602780-2552fd46c7af' },
+  { keys: ['salad', 'greens', 'healthy', '샐러드', '건강식'], id: 'photo-1512621776951-a57141f2eefd' },
+  { keys: ['coffee', 'cafe', 'latte', '커피', '카페'], id: 'photo-1509042239860-f550ce710b93' },
+  { keys: ['burger', 'hamburger', '버거', '햄버거'], id: 'photo-1568901346375-23c9450c58cd' },
+  { keys: ['pizza', '피자'], id: 'photo-1513104890138-7c749659a591' },
+  { keys: ['sushi', '초밥', '스시'], id: 'photo-1579871494447-9811cf80d66c' },
+  { keys: ['pet', 'dog', 'cat', 'animal', 'vet', 'veterinary', '동물', '강아지', '고양이', '동물병원'], id: 'photo-1583511655826-05700442b31b' },
+  { keys: ['hospital', 'clinic', 'doctor', 'health', 'medical', '병원', '진료', '건강', '의료'], id: 'photo-1505751172876-fa1923c5c528' },
+  { keys: ['finance', 'bank', 'stock', 'chart', '금융', '투자', '증권'], id: 'photo-1554224155-6726b3ff858f' },
+  { keys: ['dashboard', 'office', 'business', 'saas', '업무', '대시보드', '오피스'], id: 'photo-1497366754035-f200968a6e72' },
+  { keys: ['travel', 'hotel', 'trip', '여행', '숙박', '호텔'], id: 'photo-1507525428034-b723cf961d3e' },
+  { keys: ['education', 'study', 'class', 'school', '교육', '학습', '학교'], id: 'photo-1503676260728-1c00da094a0b' },
+]
+
+const UNSPLASH_KEYWORD_ALIASES: Array<{ keys: string[]; query: string }> = [
+  { keys: ['동물병원', '반려동물', '강아지', '고양이', '펫', 'pet', 'vet'], query: 'veterinary clinic pet care' },
+  { keys: ['병원', '의료', '건강', '진료', 'clinic', 'doctor', 'medical'], query: 'modern health clinic' },
+  { keys: ['샌드위치', '토스트', '샐러드', '점심', '배달', '음식', 'sandwich', 'salad', 'delivery'], query: 'fresh sandwich lunch' },
+  { keys: ['버거', '햄버거', 'burger'], query: 'gourmet burger' },
+  { keys: ['커피', '카페', 'coffee', 'cafe'], query: 'coffee cafe table' },
+  { keys: ['피자', 'pizza'], query: 'fresh pizza' },
+  { keys: ['금융', '투자', '증권', 'finance', 'bank'], query: 'finance dashboard office' },
+  { keys: ['대시보드', '업무', '관리자', 'saas', 'dashboard'], query: 'business dashboard office' },
+  { keys: ['여행', '숙박', '호텔', 'travel', 'hotel'], query: 'hotel travel destination' },
+  { keys: ['교육', '학습', '학교', 'education', 'study'], query: 'online learning study' },
+]
+
+function normalizeUnsplashKeyword(input: string): string {
+  const normalized = input
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s/-]/gu, ' ')
+    .replace(/\b(오늘|추천|인기|베스트|best|new|hot|card|thumbnail|image|photo|service|screen|app|ui)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  const alias = UNSPLASH_KEYWORD_ALIASES.find(item =>
+    item.keys.some(key => normalized.includes(key.toLowerCase()))
+  )
+  if (alias) return alias.query
+
+  const keyword = extractImageKeyword(normalized || input)
+  if (/^[가-힣]+$/.test(keyword)) return 'lifestyle product'
+  return keyword || 'lifestyle product'
+}
+
+function buildCuratedUnsplashUrl(keyword: string, width: number, height: number): string {
+  const normalized = normalizeUnsplashKeyword(keyword)
+  const match = CURATED_UNSPLASH_PHOTOS.find(photo =>
+    photo.keys.some(key => normalized.includes(key.toLowerCase()) || key.toLowerCase().includes(normalized))
+  )
+  const id = match?.id ?? 'photo-1546069901-ba9599a7e63c'
+  return `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${width}&h=${height}&q=82`
+}
+
 async function fetchUnsplashUrl(keyword: string, width: number, height: number): Promise<string | null> {
   const accessKey = process.env.UNSPLASH_ACCESS_KEY
-  if (!accessKey) return `https://loremflickr.com/${width}/${height}/${encodeURIComponent(keyword)}`
+  const searchKeyword = normalizeUnsplashKeyword(keyword)
+  const fallbackUrl = buildCuratedUnsplashUrl(searchKeyword, width, height)
+  if (!accessKey) return fallbackUrl
   try {
     const res = await fetch(
-      `https://api.unsplash.com/photos/random?query=${encodeURIComponent(keyword)}&orientation=landscape&client_id=${accessKey}`,
+      `https://api.unsplash.com/photos/random?query=${encodeURIComponent(searchKeyword)}&orientation=landscape&client_id=${accessKey}`,
       { signal: AbortSignal.timeout(5000) }
     )
-    if (!res.ok) return null
+    if (!res.ok) return fallbackUrl
     const data = await res.json()
     const base = data?.urls?.regular ?? data?.urls?.small
-    if (!base) return null
+    if (!base) return fallbackUrl
     return `${base}&w=${width}&h=${height}&fit=crop&auto=format`
   } catch {
-    return null
+    return fallbackUrl
   }
 }
 
@@ -622,6 +680,380 @@ function extractDesignMdForPrompt(designMd: string): string {
   return parts.length > 0 ? parts.join('\n\n') : designMd;
 }
 
+type DesignTokenMap = Record<string, string>
+type ComponentContract = Record<string, Record<string, string>>
+type DesignRhythmContract = {
+  systemName: string
+  hasBrandColors: boolean
+  colors: DesignTokenMap
+  spacing: DesignTokenMap
+  rounded: DesignTokenMap
+  typographyKeys: string[]
+  components: ComponentContract
+  layoutRhythm: {
+    pagePadding: string
+    sectionGap: string
+    cardPadding: string
+    cardGap: string
+    cardRadius: string
+    buttonHeight: string
+    inputHeight: string
+    cardBorder: string
+    cardShadow: string
+  }
+}
+
+function extractYamlFrontmatter(designMd: string): string {
+  return designMd.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? ''
+}
+
+function extractYamlTopLevelSection(yaml: string, section: string): string {
+  const match = yaml.match(new RegExp(`(?:^|\\n)${section}:\\s*\\n([\\s\\S]*?)(?=\\n[a-zA-Z0-9_-]+:\\s*(?:\\n|["'{\\[]|[^\\n]*)|\\s*$)`))
+  return match?.[1] ?? ''
+}
+
+function parseSimpleTokenMap(yaml: string, section: string): DesignTokenMap {
+  const block = extractYamlTopLevelSection(yaml, section)
+  const result: DesignTokenMap = {}
+  for (const line of block.split('\n')) {
+    const match = line.match(/^[ \t]{2}([^:#\n][^:\n]*):\s*(.+?)\s*$/)
+    if (!match) continue
+    const key = match[1].trim()
+    const value = match[2].trim().replace(/^["']|["']$/g, '')
+    if (!value || value.startsWith('{') || value.startsWith('[')) continue
+    result[key] = value
+  }
+  return result
+}
+
+function parseComponentContract(yaml: string): ComponentContract {
+  const block = extractYamlTopLevelSection(yaml, 'components')
+  const result: ComponentContract = {}
+  let current = ''
+  for (const line of block.split('\n')) {
+    const component = line.match(/^[ \t]{2}([^:#\n][^:\n]*):\s*$/)
+    if (component) {
+      current = component[1].trim()
+      result[current] = result[current] ?? {}
+      continue
+    }
+    if (!current) continue
+    const prop = line.match(/^[ \t]{4}([^:#\n][^:\n]*):\s*(.+?)\s*$/)
+    if (!prop) continue
+    const key = prop[1].trim()
+    const value = prop[2].trim().replace(/^["']|["']$/g, '')
+    if (!value || value.startsWith('{') || value.startsWith('[')) continue
+    result[current][key] = value
+  }
+  return result
+}
+
+function parseNumericPx(value?: string): number | null {
+  if (!value) return null
+  const px = value.match(/(-?\d+(?:\.\d+)?)px/)
+  if (px) return Number(px[1])
+  const rem = value.match(/(-?\d+(?:\.\d+)?)rem/)
+  if (rem) return Math.round(Number(rem[1]) * 16)
+  const raw = value.match(/^(-?\d+(?:\.\d+)?)$/)
+  if (raw) return Number(raw[1])
+  return null
+}
+
+function pickSpacingToken(spacing: DesignTokenMap, preferred: string[], fallbackIndexRatio: number): string {
+  for (const key of preferred) {
+    if (spacing[key]) return `var(--spacing-${key})`
+  }
+  const entries = Object.entries(spacing)
+    .map(([key, value]) => ({ key, value, px: parseNumericPx(value) }))
+    .filter((item): item is { key: string; value: string; px: number } => item.px !== null)
+    .sort((a, b) => a.px - b.px)
+  if (entries.length === 0) return '[derive from DESIGN.md spacing]'
+  const index = Math.min(entries.length - 1, Math.max(0, Math.round((entries.length - 1) * fallbackIndexRatio)))
+  return `var(--spacing-${entries[index].key})`
+}
+
+function pickRoundedToken(rounded: DesignTokenMap, preferred: string[], fallbackIndexRatio: number): string {
+  for (const key of preferred) {
+    if (rounded[key]) return `var(--rounded-${key})`
+  }
+  const entries = Object.entries(rounded)
+    .map(([key, value]) => ({ key, value, px: parseNumericPx(value) }))
+    .filter((item): item is { key: string; value: string; px: number } => item.px !== null)
+    .sort((a, b) => a.px - b.px)
+  if (entries.length === 0) return '[derive from DESIGN.md rounded/radius]'
+  const index = Math.min(entries.length - 1, Math.max(0, Math.round((entries.length - 1) * fallbackIndexRatio)))
+  return `var(--rounded-${entries[index].key})`
+}
+
+function pickComponentValue(components: ComponentContract, names: string[], props: string[]): string | null {
+  const component = Object.entries(components).find(([name]) =>
+    names.some(candidate => name.toLowerCase().includes(candidate))
+  )?.[1]
+  if (!component) return null
+  for (const prop of props) {
+    if (component[prop]) return component[prop]
+  }
+  return null
+}
+
+function extractDesignSystemName(designMd: string): string {
+  const yaml = extractYamlFrontmatter(designMd)
+  const name = yaml.match(/(?:^|\n)name:\s*["']?([^"'\n]+)["']?/)?.[1]?.trim()
+  if (name) return name
+  return designMd.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? 'Selected Design System'
+}
+
+function buildDesignRhythmContract(designMd: string, hasBrandColors = false): DesignRhythmContract | null {
+  const yaml = extractYamlFrontmatter(designMd)
+  if (!designMd.trim()) return null
+
+  const name = extractDesignSystemName(designMd)
+  const colors = parseSimpleTokenMap(yaml, 'colors')
+  const spacing = parseSimpleTokenMap(yaml, 'spacing')
+  const rounded = parseSimpleTokenMap(yaml, 'rounded')
+  const typography = parseSimpleTokenMap(yaml, 'typography')
+  const components = parseComponentContract(yaml)
+
+  const cardPadding = pickComponentValue(components, ['card'], ['padding', 'paddingX', 'paddingY'])
+    ?? pickSpacingToken(spacing, ['lg', 'md', 'base'], 0.58)
+  const cardGap = pickComponentValue(components, ['card'], ['gap', 'rowGap', 'columnGap'])
+    ?? pickSpacingToken(spacing, ['md', 'base', 'sm'], 0.42)
+  const sectionGap = pickSpacingToken(spacing, ['xl', 'lg', 'section'], 0.76)
+  const pagePadding = pickSpacingToken(spacing, ['lg', 'md', 'gutter', 'base'], 0.58)
+  const cardRadius = pickComponentValue(components, ['card'], ['radius', 'rounded', 'borderRadius'])
+    ?? pickRoundedToken(rounded, ['md', 'lg', 'card'], 0.58)
+  const buttonHeight = pickComponentValue(components, ['button-primary', 'button'], ['height', 'minHeight'])
+    ?? '[derive from button component in DESIGN.md]'
+  const inputHeight = pickComponentValue(components, ['input', 'textfield', 'text-field'], ['height', 'minHeight'])
+    ?? '[derive from input component in DESIGN.md]'
+  const cardBorder = pickComponentValue(components, ['card'], ['border', 'borderColor'])
+    ?? '[derive from card component in DESIGN.md]'
+  const cardShadow = pickComponentValue(components, ['card'], ['shadow', 'boxShadow'])
+    ?? '[derive from card/elevation rules in DESIGN.md]'
+
+  return {
+    systemName: name,
+    hasBrandColors,
+    colors,
+    spacing,
+    rounded,
+    typographyKeys: Object.keys(typography).slice(0, 16),
+    components,
+    layoutRhythm: {
+      pagePadding,
+      sectionGap,
+      cardPadding,
+      cardGap,
+      cardRadius,
+      buttonHeight,
+      inputHeight,
+      cardBorder,
+      cardShadow,
+    },
+  }
+}
+
+function buildDesignSystemContract(designMd: string, hasBrandColors = false): string {
+  if (!designMd.trim()) return 'No external DESIGN.md was provided. Use the default Aide design system contract.'
+
+  const contract = buildDesignRhythmContract(designMd, hasBrandColors)
+  if (!contract) return 'No external DESIGN.md was provided. Use the default Aide design system contract.'
+
+  const { systemName: name, colors, spacing, rounded, typographyKeys: typeKeys, components, layoutRhythm } = contract
+  const colorLines = Object.entries(colors).slice(0, 24).map(([key, value]) => `    "${key}": "${value}"`)
+  const spacingLines = Object.entries(spacing).slice(0, 18).map(([key, value]) => `    "${key}": "${value}"`)
+  const roundedLines = Object.entries(rounded).slice(0, 14).map(([key, value]) => `    "${key}": "${value}"`)
+  const componentLines = Object.entries(components).slice(0, 16).map(([key, value]) => {
+    const summary = Object.entries(value).slice(0, 8).map(([prop, val]) => `${prop}: ${val}`).join('; ')
+    return `    "${key}": "${summary || 'defined in prose'}"`
+  })
+
+  return `## Design System Contract — generated from the selected DESIGN.md
+
+This contract is the source of truth for this generation. It was compiled from **${name}**.
+It is intentionally generic: do not assume KTDS values unless this selected DESIGN.md is KTDS.
+
+\`\`\`json
+{
+  "systemName": ${JSON.stringify(name)},
+  "brandColorOverride": ${hasBrandColors ? '"enabled: only primary/action/accent tokens may be replaced by applied brand colors"' : '"disabled: use DESIGN.md colors exactly"'},
+  "tokens": {
+    "colors": {
+${colorLines.length ? colorLines.join(',\n') : '    "note": "No explicit color tokens found; infer only from DESIGN.md prose and never invent unrelated colors."'}
+    },
+    "spacing": {
+${spacingLines.length ? spacingLines.join(',\n') : '    "note": "No explicit spacing tokens found; derive a compact scale from component specs/prose and reuse consistently."'}
+    },
+    "rounded": {
+${roundedLines.length ? roundedLines.join(',\n') : '    "note": "No explicit radius tokens found; derive from component specs/prose and reuse consistently."'}
+    },
+    "typographyKeys": ${JSON.stringify(typeKeys)}
+  },
+  "componentContract": {
+${componentLines.length ? componentLines.join(',\n') : '    "note": "No explicit component YAML found; follow prose component rules strictly."'}
+  },
+  "layoutRhythm": {
+    "pagePadding": ${JSON.stringify(layoutRhythm.pagePadding)},
+    "sectionGap": ${JSON.stringify(layoutRhythm.sectionGap)},
+    "cardPadding": ${JSON.stringify(layoutRhythm.cardPadding)},
+    "cardGap": ${JSON.stringify(layoutRhythm.cardGap)},
+    "cardRadius": ${JSON.stringify(layoutRhythm.cardRadius)},
+    "buttonHeight": ${JSON.stringify(layoutRhythm.buttonHeight)},
+    "inputHeight": ${JSON.stringify(layoutRhythm.inputHeight)},
+    "cardBorder": ${JSON.stringify(layoutRhythm.cardBorder)},
+    "cardShadow": ${JSON.stringify(layoutRhythm.cardShadow)}
+  }
+}
+\`\`\`
+
+### Contract Rules (CRITICAL)
+- Use this selected DESIGN.md contract for every screen and every A/B/C variant.
+- A/B/C may differ in layout intent, section order, density, and visual strategy, but **spacing rhythm, component sizing, radius, border/shadow policy, typography scale, and color tokens must stay consistent**.
+- Do not hardcode arbitrary hex/px/radius/shadow values. If a value is needed, choose the closest token from this contract and expose it as a CSS variable.
+- If the contract says a value must be derived from prose, derive it once at :root level and reuse the same variable everywhere. Do not derive different values per card/section.
+- Same component type = same padding/gap/radius/action placement. Cards in the same list/grid must not have random internal spacing.
+- Brand color override is ${hasBrandColors ? 'enabled, but only for primary/action/accent roles. Neutral, surface, background, border, disabled, status, spacing, radius, and typography remain from DESIGN.md.' : 'disabled. Use the selected DESIGN.md color system exactly.'}
+- The final HTML should define semantic variables such as --aide-page-padding, --aide-section-gap, --aide-card-padding, --aide-card-gap, --aide-card-radius from this contract, then use them consistently.`
+}
+
+function cssVarDeclaration(key: string, value: string): string {
+  const safeValue = value.includes('[derive')
+    ? 'initial'
+    : value.replace(/\{([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_-]+)\}/g, 'var(--$1-$2)')
+  return `  ${key}: ${safeValue};`
+}
+
+function buildAideContractStyle(contract: DesignRhythmContract | null): string {
+  if (!contract) return ''
+  const { layoutRhythm } = contract
+  return `<style data-aide-contract="1">
+:root {
+${cssVarDeclaration('--aide-page-padding', layoutRhythm.pagePadding)}
+${cssVarDeclaration('--aide-section-gap', layoutRhythm.sectionGap)}
+${cssVarDeclaration('--aide-card-padding', layoutRhythm.cardPadding)}
+${cssVarDeclaration('--aide-card-gap', layoutRhythm.cardGap)}
+${cssVarDeclaration('--aide-card-radius', layoutRhythm.cardRadius)}
+${cssVarDeclaration('--aide-button-height', layoutRhythm.buttonHeight)}
+${cssVarDeclaration('--aide-input-height', layoutRhythm.inputHeight)}
+${cssVarDeclaration('--aide-card-border', layoutRhythm.cardBorder)}
+${cssVarDeclaration('--aide-card-shadow', layoutRhythm.cardShadow)}
+}
+.aide-page { padding: var(--aide-page-padding); }
+.aide-section { display: grid; gap: var(--aide-card-gap); }
+.aide-section + .aide-section { margin-top: var(--aide-section-gap); }
+.aide-card {
+  padding: var(--aide-card-padding);
+  border-radius: var(--aide-card-radius);
+  border: var(--aide-card-border);
+  box-shadow: var(--aide-card-shadow);
+}
+</style>`
+}
+
+function injectDesignContractStyle(html: string, designMd: string, hasBrandColors = false): string {
+  const contract = buildDesignRhythmContract(designMd, hasBrandColors)
+  const style = buildAideContractStyle(contract)
+  if (!style || html.includes('data-aide-contract="1"')) return html
+  if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, `${style}\n</head>`)
+  if (/<body/i.test(html)) return html.replace(/<body/i, `${style}\n<body`)
+  return `${style}\n${html}`
+}
+
+function extractStyleText(html: string): string {
+  return [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)]
+    .map(match => match[1])
+    .join('\n')
+}
+
+function collectStaticDesignContractIssues(html: string): string[] {
+  const css = extractStyleText(html)
+  if (!css.trim()) return ['CSS <style> block is missing.']
+
+  const issues: string[] = []
+  const requiredVars = [
+    '--aide-page-padding',
+    '--aide-section-gap',
+    '--aide-card-padding',
+    '--aide-card-gap',
+    '--aide-card-radius',
+  ]
+  const missingVars = requiredVars.filter(name => !css.includes(name))
+  if (missingVars.length > 0) {
+    issues.push(`Missing semantic rhythm variables: ${missingVars.join(', ')}.`)
+  }
+
+  const arbitraryMatches = [...css.matchAll(/(^|[;\n]\s*)(padding|margin|gap|row-gap|column-gap|border-radius|box-shadow|height|min-height|max-height)\s*:\s*([^;{}]+);/g)]
+  const arbitraryValues = arbitraryMatches
+    .map(match => ({ prop: match[2], value: match[3].trim() }))
+    .filter(({ value }) =>
+      !value.includes('var(--aide-') &&
+      !value.includes('var(--spacing-') &&
+      !value.includes('var(--rounded-') &&
+      !/^(0|0px|auto|100%|none|inherit|unset|fit-content|initial)$/.test(value) &&
+      /(px|rem|rgba?\(|#[0-9a-fA-F]{3,8})/.test(value)
+    )
+
+  if (arbitraryValues.length > 18) {
+    const samples = arbitraryValues
+      .slice(0, 8)
+      .map(item => `${item.prop}: ${item.value}`)
+      .join('; ')
+    issues.push(`Too many hardcoded rhythm values instead of contract variables (${arbitraryValues.length}). Samples: ${samples}.`)
+  }
+
+  const cardRadiusValues = [...css.matchAll(/(?:\.|-)card[^{]*\{[^}]*border-radius\s*:\s*([^;{}]+);/gi)]
+    .map(match => match[1].trim())
+    .filter(Boolean)
+  const uniqueCardRadius = new Set(cardRadiusValues)
+  if (uniqueCardRadius.size > 2) {
+    issues.push(`Card radius is inconsistent across card-like selectors: ${[...uniqueCardRadius].slice(0, 5).join(', ')}.`)
+  }
+
+  return issues
+}
+
+async function enforceStaticDesignContract(
+  html: string,
+  params: {
+    brief: string
+    designMd: string
+    apiKey?: string
+    logoDataUrl?: string | null
+    domain?: AppDomain
+    hasBrandColors?: boolean
+  },
+): Promise<{ html: string; refined: boolean; issues: string[] }> {
+  let nextHtml = injectDesignContractStyle(html, params.designMd, params.hasBrandColors)
+  const issues = collectStaticDesignContractIssues(nextHtml)
+  const shouldRefine = issues.length > 0 && issues.some(issue =>
+    issue.includes('Too many hardcoded') ||
+    issue.includes('Card radius') ||
+    issue.includes('Missing semantic')
+  )
+
+  if (!shouldRefine) return { html: nextHtml, refined: false, issues }
+
+  const message = `생성된 HTML/CSS가 선택된 DESIGN.md의 rhythm contract에서 벗어났습니다. 아래 정적 검사 이슈를 고치세요:
+${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
+
+수정 기준:
+- :root의 --aide-page-padding / --aide-section-gap / --aide-card-padding / --aide-card-gap / --aide-card-radius / --aide-button-height / --aide-input-height 변수를 유지하고 실제 섹션·카드·버튼·인풋에 재사용하세요.
+- 동일 컴포넌트 타입은 같은 padding, gap, radius, border/shadow 정책을 사용하세요.
+- DESIGN.md에 없는 새로운 spacing scale, radius scale, shadow, hex color를 만들지 마세요.
+- 이미지 src, 3D placeholder, Unsplash placeholder, 데이터 URL, 텍스트 콘텐츠, 화면 구조는 유지하세요.
+- 시각 완성도는 유지하되 간격/정렬/카드 리듬만 계약에 맞게 정리하세요.`
+
+  try {
+    nextHtml = await refineUI(nextHtml, message, params.brief, params.designMd, params.apiKey, params.logoDataUrl, params.domain)
+    nextHtml = injectDesignContractStyle(nextHtml, params.designMd, params.hasBrandColors)
+    return { html: nextHtml, refined: true, issues }
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    console.warn('[gemini] static design contract refine skipped:', msg)
+    return { html: nextHtml, refined: false, issues }
+  }
+}
+
 export async function resolveImagePlaceholders(
   html: string,
   options: {
@@ -632,17 +1064,41 @@ export async function resolveImagePlaceholders(
 ): Promise<string> {
   const { heroImagePrompt, heroImageData, apiKey } = options
   let result = html
+  const transparentGif = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+
+  const roleMatches = [...result.matchAll(/%%(HERO_SCENE_3D|MASCOT_3D|REWARD_OBJECT_3D)(?::([^%]+))?%%/g)]
+  if (roleMatches.length > 0) {
+    const generatedByRole = new Map<string, string>()
+    for (const match of roleMatches) {
+      const full = match[0]
+      if (generatedByRole.has(full)) continue
+      const role = match[1] as HeroImageRole
+      const detail = match[2]?.trim()
+      const roleSubject = buildHeroRoleSubject(role, heroImagePrompt, detail)
+      const mode = role === 'HERO_SCENE_3D' ? 'scene' : 'transparent'
+      const generated = heroImagePrompt || detail
+        ? await generateHeroImage(roleSubject, apiKey, '#ffffff', mode)
+        : null
+      generatedByRole.set(
+        full,
+        generated ? `data:${generated.mimeType};base64,${generated.base64}` : transparentGif,
+      )
+    }
+    for (const [placeholder, src] of generatedByRole) {
+      result = result.split(placeholder).join(src)
+    }
+  }
 
   const heroMatches = [...result.matchAll(/%%HERO_3D_IMAGE(?::([^%]+))?%%/g)]
   if (heroMatches.length > 0) {
     const background = heroMatches[0][1]?.trim() || '#ffffff'
     let heroImg = heroImageData ?? null
     if (!heroImg && heroImagePrompt) {
-      heroImg = await generateHeroImage(heroImagePrompt, apiKey, background)
+      heroImg = await generateHeroImage(heroImagePrompt, apiKey, background, 'auto')
     }
     const heroSrc = heroImg
       ? `data:${heroImg.mimeType};base64,${heroImg.base64}`
-      : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+      : transparentGif
     for (const match of heroMatches) {
       result = result.split(match[0]).join(heroSrc)
     }
@@ -657,7 +1113,7 @@ export async function resolveImagePlaceholders(
       const full = imgMatches[i][0]
       const desc = imgMatches[i][1].trim()
       const keyword = extractImageKeyword(desc)
-      result = result.split(full).join(urls[i] ?? `https://loremflickr.com/900/600/${encodeURIComponent(keyword)}`)
+      result = result.split(full).join(urls[i] ?? buildCuratedUnsplashUrl(keyword, 900, 600))
     }
   }
 
@@ -672,7 +1128,7 @@ export async function resolveImagePlaceholders(
       const keyword = thumbMatches[i][1].trim()
       const w = thumbMatches[i][2]
       const h = thumbMatches[i][3]
-      const url = urls[i] ?? `https://loremflickr.com/${w}/${h}/${encodeURIComponent(keyword)}`
+      const url = urls[i] ?? buildCuratedUnsplashUrl(keyword, parseInt(w), parseInt(h))
       result = result.split(full).join(url)
     }
   }
@@ -680,70 +1136,189 @@ export async function resolveImagePlaceholders(
   return result;
 }
 
+type HeroImageRole = 'HERO_SCENE_3D' | 'MASCOT_3D' | 'REWARD_OBJECT_3D'
+type HeroImageMode = 'auto' | 'scene' | 'transparent'
+
+function buildHeroRoleSubject(
+  role: HeroImageRole,
+  baseSubject?: string,
+  detail?: string,
+): string {
+  const subject = [baseSubject, detail].filter(Boolean).join('\n')
+  if (role === 'HERO_SCENE_3D') {
+    return `${subject || 'a premium character-led mobile app hero scene'}
+
+Role: immersive 3D hero scene.
+Create a complete app hero visual where the character, background, props, lighting, and mood are designed together. The image may include a stylized environment/background and should be usable as a hero card or onboarding panel background. Leave visual safe space for UI text and CTA. Do not make a tiny isolated icon.`
+  }
+  if (role === 'MASCOT_3D') {
+    return `${subject || 'a friendly companion mascot'}
+
+Role: standalone 3D mascot asset.
+Create one expressive mascot/character for use inside an existing UI layout. Keep the character visually complete, readable at small size, with natural soft contact shadow. Use a clean studio background suitable for transparent-background extraction.`
+  }
+  return `${subject || 'a reward item'}
+
+Role: standalone 3D reward/object asset.
+Create one premium reward object, item, badge, coin, gem, product, or prop that supports the service moment. Keep it simple, readable, and suitable for transparent-background extraction.`
+}
+
 async function removeHeroImageBackground(
   base64: string,
   mimeType = 'image/png',
 ): Promise<{ base64: string; mimeType: string }> {
+  const original = { base64, mimeType }
   const { removeBackground } = await import('@imgly/background-removal')
   const source = Buffer.from(base64, 'base64')
   const blob = new Blob([source], { type: mimeType })
-  const resultBlob = await removeBackground(blob)
-  const arrayBuffer = await resultBlob.arrayBuffer()
-  return {
-    base64: Buffer.from(arrayBuffer).toString('base64'),
-    mimeType: resultBlob.type || 'image/png',
+  try {
+    const resultBlob = await removeBackground(blob, {
+      publicPath: 'https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/',
+      model: 'isnet_fp16',
+      proxyToWorker: false,
+      output: { format: 'image/png', quality: 0.9 },
+    })
+    const arrayBuffer = await resultBlob.arrayBuffer()
+    return {
+      base64: Buffer.from(arrayBuffer).toString('base64'),
+      mimeType: resultBlob.type || 'image/png',
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[gemini] imgly background removal failed, using studio-white fallback:', message)
+    return removeWhiteStudioBackground(original.base64, original.mimeType)
   }
 }
 
-function buildCreon3DPrompt(subject: string): string {
+async function removeWhiteStudioBackground(
+  base64: string,
+  _mimeType = 'image/png',
+): Promise<{ base64: string; mimeType: string }> {
+  const input = Buffer.from(base64, 'base64')
+  const image = sharp(input).ensureAlpha()
+  const { data, info } = await image.raw().toBuffer({ resolveWithObject: true })
+  const { width, height, channels } = info
+  const visited = new Uint8Array(width * height)
+  const queue = new Int32Array(width * height)
+  let head = 0
+  let tail = 0
+
+  const isStudioWhite = (idx: number) => {
+    const offset = idx * channels
+    const r = data[offset]
+    const g = data[offset + 1]
+    const b = data[offset + 2]
+    const min = Math.min(r, g, b)
+    const max = Math.max(r, g, b)
+    return min >= 232 && max - min <= 22
+  }
+
+  const push = (idx: number) => {
+    if (idx < 0 || idx >= visited.length || visited[idx] || !isStudioWhite(idx)) return
+    visited[idx] = 1
+    queue[tail++] = idx
+  }
+
+  for (let x = 0; x < width; x++) {
+    push(x)
+    push((height - 1) * width + x)
+  }
+  for (let y = 0; y < height; y++) {
+    push(y * width)
+    push(y * width + width - 1)
+  }
+
+  while (head < tail) {
+    const idx = queue[head++]
+    const x = idx % width
+    const y = Math.floor(idx / width)
+    if (x > 0) push(idx - 1)
+    if (x < width - 1) push(idx + 1)
+    if (y > 0) push(idx - width)
+    if (y < height - 1) push(idx + width)
+  }
+
+  for (let idx = 0; idx < visited.length; idx++) {
+    if (!visited[idx]) continue
+    const offset = idx * channels
+    const delta = Math.max(255 - data[offset], 255 - data[offset + 1], 255 - data[offset + 2])
+    data[offset + 3] = delta < 8 ? 0 : Math.min(120, Math.max(0, Math.round((delta - 8) * 8)))
+  }
+
+  const output = await sharp(data, { raw: { width, height, channels } }).png().toBuffer()
+  return {
+    base64: output.toString('base64'),
+    mimeType: 'image/png',
+  }
+}
+
+function shouldPreserveHeroScene(subject: string): boolean {
+  return /scene|world|landscape|environment|background|full[-\s]?bleed|nintendo|duolingo|pokemon|pokémon|finch|game|reward|growth|companion|mascot|character|캐릭터|마스코트|성장|리워드|게임|꾸미기|아이템|만보기|펫|동료/i.test(subject)
+}
+
+function buildCreon3DPrompt(subject: string, mode: HeroImageMode = 'auto'): string {
+  const isTransparentAsset = mode === 'transparent'
   const prompt = {
-    task: "generate isometric 3D icon",
+    task: "generate a premium 3D mobile app hero visual",
     subject: subject || 'a friendly robot',
-    style_lock: true,
+    style_lock: false,
     output: { format: "png", size: "1536x672" },
-    negative_prompt: "vignette, dark corners, shadow artifacts, patterns, gradients, stroke/outline, textures, scratches, dirt, noise, bevel/emboss, text, watermark, photographic background, fabric/leather realism, grunge, low-res, aliasing",
-    brand_tone: "vibrant, modern, friendly, premium",
-    system: { scalable: true, interchangeable: true },
+    negative_prompt: "text, letters, numbers, watermark, logo, UI screenshot, app interface, harsh outlines, gritty realism, horror, uncanny face, distorted limbs, low-res, aliasing, muddy colors, noisy texture, cluttered composition, cropped face, broken anatomy",
+    brand_tone: "cute, playful, premium, emotionally engaging, polished consumer app",
+    creative_direction: {
+      priority: "Make the visual feel like a high-end character-led mobile app hero, not a generic icon.",
+      references: "Nintendo charm, Duolingo friendliness, Pokemon Sleep softness, Finch companion-app warmth, Apple Design Award polish.",
+      freedom: "Adapt colors, character species, outfit, props, pose, scene depth, background, lighting, and mood to the service brief. Do not force the default blue/white Creon palette unless it fits the concept."
+    },
     background: {
-      type: "solid",
-      color: "#FFFFFF",
-      alpha: true,
-      note: "Generate on a clean white studio background. The app will remove the background with @imgly/background-removal and preserve a transparent PNG."
+      type: isTransparentAsset ? "clean studio white for later transparent extraction" : "adaptive",
+      alpha: isTransparentAsset ? "not required; background will be removed after generation" : "optional",
+      note: isTransparentAsset
+        ? "The final asset must be easy to isolate from the background: one clear subject, no background props touching the canvas edges, clean white/near-white studio background, soft natural contact shadow only."
+        : "If the brief benefits from an immersive hero scene, include a soft 3D environment/background and keep it beautiful. If the visual is a standalone mascot/object, use a clean studio background suitable for background removal."
     },
     render: {
       quality: "ultra-high",
       resolution: 1536,
-      separation: "by color/lighting/depth only"
+      separation: "by color, lighting, atmospheric depth, and layered composition"
     },
     colors: {
-      dominant_blue: "#2962FF",
-      white: "#FFFFFF",
-      accent_light_blue: "#4FC3F7",
-      inherent_colors: "when object has a universal color identity (e.g. sun=yellow, carrot=orange/green, leaf=green), preserve it. Otherwise default to blue/white palette."
+      palette: "choose a joyful, app-ready palette from the brief. Pastel gradients, warm sunlight, fresh greens, soft purples, aqua blues, peach, cream, and reward gold are allowed when appropriate.",
+      constraints: "avoid muddy colors. Preserve natural colors for animals, health, reward items, plants, food, coins, gems, and outfits."
     },
     materials: {
-      primary: "high-gloss blue plastic",
-      secondary: "clean matte white plastic",
-      accents: "minimal silver/chrome details only"
+      character: "soft plush-like 3D, clay-toy finish, rounded forms, expressive face, premium toy-render quality",
+      props: "soft plastic, fabric-like simplified clothing, coins/gems/items with gentle specular highlights",
+      environment: "stylized miniature 3D world if useful: grass, path, clouds, trees, reward podium, cozy room, sleep/wellness scenery"
     },
     lighting: {
-      mode: "soft diffused studio",
-      source: "top-front or top-right",
-      highlights: "clean specular on glossy areas",
-      shadows: "soft ground shadow beneath the object"
+      mode: "soft cinematic studio or gentle outdoor app-hero lighting",
+      source: "top-front, golden hour, or soft gradient lighting chosen to match the brief",
+      highlights: "clean premium highlights on eyes, cheeks, rounded body, coins, gems, and props",
+      shadows: "natural soft contact shadows and ambient occlusion; subtle glow is allowed when it improves delight"
     },
     form: {
-      shapes: "rounded, smooth, bubbly",
-      edges: "crisp, no outlines"
+      shapes: "rounded, soft, huggable, playful, cute companion proportions",
+      edges: "smooth, no black outlines, no hard beveled UI-icon look",
+      expression: "emotionally clear: happy, encouraging, proud, sleepy, excited, or supportive depending on the service moment"
     },
     composition: {
-      elements: "single main subject, centered, no extra decorations",
-      depth: "distinct layering, slight elevation",
-      density: "minimal, focused center",
-      framing: "The entire subject must be fully visible and centered inside the frame. Leave a small, clean margin around all edges. Do not crop any part of the subject."
+      elements: "one hero mascot/character as the star, plus only meaningful props from the service such as steps, coins, gems, reward chest, outfit item, path, badge, goal ring, or growth stage.",
+      depth: "clear foreground character, midground props, soft background depth if using a scene",
+      density: "hero-worthy but not cluttered; leave clean space for UI copy and CTA when used in an app hero",
+      framing: "Create a strong app hero crop. Full body is allowed when growth/companion identity matters; partial crop is allowed when it creates stronger impact. Never crop the face awkwardly.",
+      scale: "The character should feel large enough to carry the hero, not like a tiny icon."
     },
-    camera: { type: "isometric", static: true },
-    canvas: { ratio: "16:7", safe_margins: true }
+    camera: {
+      type: "adaptive 3D camera",
+      options: "front 3/4, slight low angle, isometric, or cozy diorama view depending on the scene",
+      avoid: "flat icon-only camera unless the brief explicitly asks for an icon"
+    },
+    canvas: {
+      ratio: "16:7",
+      safe_margins: true,
+      hero_usage: "Designed to sit inside a mobile app hero card or full-bleed onboarding panel."
+    }
   }
   return JSON.stringify(prompt, null, 2)
 }
@@ -767,10 +1342,11 @@ export async function generateHeroImage(
   subject: string,
   apiKey?: string,
   _backgroundColor = '#ffffff',
+  mode: HeroImageMode = 'auto',
 ): Promise<{ base64: string; mimeType: string } | null> {
   try {
     const ai = getAi(apiKey)
-    const prompt = buildCreon3DPrompt(subject)
+    const prompt = buildCreon3DPrompt(subject, mode)
     const refImages = loadCreonRefImages()
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [
       { text: prompt },
@@ -786,6 +1362,10 @@ export async function generateHeroImage(
     })
     for (const part of res.candidates?.[0]?.content?.parts ?? []) {
       if (part.inlineData?.data) {
+        if (mode === 'scene' || (mode === 'auto' && shouldPreserveHeroScene(subject))) {
+          console.log('[gemini] 3D hero scene generated, preserving background for stronger hero impact')
+          return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType || 'image/png' }
+        }
         try {
           const transparent = await removeHeroImageBackground(
             part.inlineData.data,
@@ -976,41 +1556,56 @@ ${domainBlock}
 6. **이미지 및 비주얼 처리 규칙**
    - 3D 이미지는 **메인 히어로 섹션에서 최대 1회만** 사용하십시오. 반복 카드, 추천 카드, 리스트 썸네일, 상세 이미지에는 3D 이미지 사용 금지.
    - 히어로 외 대형 이미지와 콘텐츠 썸네일은 Unsplash 기반 플레이스홀더를 사용합니다.
-   - 화면에서 눈에 띄는 대형 실사 이미지는 플레이스홀더 형식(%%IMG_1:영문 설명%%, %%IMG_2:영문 설명%%, %%IMG_3:영문 설명%%)을 사용하십시오. 영문 설명은 실제 사진 검색에 적합한 구체적 상황/사물 키워드로 작성하십시오.
-   - 소형 프로필이나 반복 카드 내 썸네일 등은 %%THUMB:keyword:width:height%% 형식의 플레이스홀더를 사용하십시오. keyword는 이미지 내용을 설명하는 영문 명사(예: pizza, sushi, burger), width/height는 픽셀 정수입니다. 카드마다 keyword를 다르게 지정해 이미지가 겹치지 않게 하십시오. (예: %%THUMB:pizza:400:300%%, %%THUMB:sushi:400:300%%, %%THUMB:burger:400:300%%)
+   - 화면에서 눈에 띄는 대형 실사 이미지는 플레이스홀더 형식(%%IMG_1:영문 설명%%, %%IMG_2:영문 설명%%, %%IMG_3:영문 설명%%)을 사용하십시오. 영문 설명은 실제 사진 검색에 적합한 범용 상황/사물 키워드로 작성하십시오.
+   - 소형 프로필이나 반복 카드 내 썸네일 등은 %%THUMB:keyword:width:height%% 형식의 플레이스홀더를 사용하십시오. keyword는 이미지 내용을 설명하는 범용 영문 명사구(예: fresh sandwich, veterinary clinic, pet care, finance dashboard), width/height는 픽셀 정수입니다. 카드마다 keyword를 다르게 지정해 이미지가 겹치지 않게 하십시오.
+   - keyword에는 브랜드명, 서비스명, 지점명, 캐릭터명, 주소, UI 문구를 넣지 마십시오. 예: "스마일동물병원" X → "veterinary clinic pet care" O, "샌디 시그니처 클럽" X → "fresh sandwich lunch" O.
    - keyword는 반드시 브리프와 직접 관련된 명사를 사용한다. 음식 배달이면 sandwich, salad, coffee, avocado처럼 음식 키워드만 사용하고 landscape, laptop, mountain, ocean 같은 무관한 키워드 금지.
-   - ⛔ **[CRITICAL] 플레이스홀더는 반드시 img src 속성값에만 사용** — %%HERO_3D_IMAGE%%·%%IMG_1%%·%%THUMB%%·%%THUMB:...%% 등 모든 플레이스홀더 문자열은 반드시 <img src="%%...%%"> 형태로만 사용하십시오. 텍스트 노드(<p>, <span>, <div> 등의 내용), alt, href, 주석, 또는 다른 어떤 위치에도 절대 삽입 금지. 이미지가 없는 영역에 "이미지 URL"이나 플레이스홀더 문자열이 보이는 것은 심각한 오류입니다.
+   - 시안 A/B/C의 비주얼 전략은 AI가 서비스 성격에 맞게 자유롭게 판단하되, 세 시안이 모두 같은 3D 히어로 구조로 반복되면 안 됩니다. 3D가 가장 설득력 있는 시안에는 3D를 쓰고, 현실감/신뢰감/식욕/장소성이 더 중요한 시안에는 Unsplash 실사 히어로를 적극 검토하십시오.
+   - 단, "최소 1개는 반드시 실사"처럼 기계적으로 강제하지 마십시오. 브리프, 도메인, 사용자가 요청한 캐릭터 중요도에 따라 자연스럽게 선택하십시오.
+   - ⛔ **[CRITICAL] 플레이스홀더는 반드시 img src 속성값에만 사용** — %%HERO_SCENE_3D%%·%%MASCOT_3D%%·%%REWARD_OBJECT_3D%%·%%HERO_3D_IMAGE%%·%%IMG_1%%·%%THUMB%%·%%THUMB:...%% 등 모든 플레이스홀더 문자열은 반드시 <img src="%%...%%"> 형태로만 사용하십시오. 텍스트 노드(<p>, <span>, <div> 등의 내용), alt, href, 주석, 또는 다른 어떤 위치에도 절대 삽입 금지. 이미지가 없는 영역에 "이미지 URL"이나 플레이스홀더 문자열이 보이는 것은 심각한 오류입니다.
    ${heroImagePrompt ? `
    ⚠️ **3D 히어로 이미지 규칙 (CRITICAL)**
-   - %%HERO_3D_IMAGE%%는 메인 히어로에서 **정확히 1회만** 사용하십시오.
-   - 플레이스홀더는 <img src="%%HERO_3D_IMAGE%%"> 형태로 사용하십시오. 과거 호환용 %%HERO_3D_IMAGE:#ffffff%% 형식도 동작하지만 새 시안에서는 색상 suffix를 붙이지 마십시오.
-   - 3D 이미지는 Creon 3D Studio의 shadow ON 프롬프트로 생성하고, @imgly/background-removal로 배경 제거된 투명 PNG로 치환됩니다.
-   - 히어로 섹션 배경은 DESIGN.md 토큰으로 자유롭게 구성하되, 이미지 자체의 흰색/파란색 배경을 맞추려고 CSS filter, mix-blend-mode, chroma key, canvas 후처리를 사용하지 마십시오.
-   - 3D 오브젝트 아래에는 자연스러운 접지감을 위한 부드러운 ground shadow가 포함되어 있습니다. 이미지나 CSS로 그림자를 추가 중복 적용하지 마십시오.
-   - 3D 이미지의 크기와 크롭 방식은 AI가 히어로의 목적에 맞게 판단하십시오. 항상 전체가 보일 필요도, 항상 크게 잘릴 필요도 없습니다.
+   - 3D 플레이스홀더는 아래 3가지 역할 중 하나를 선택하십시오. 한 화면에서 3D는 **메인 히어로 1회만** 사용합니다.
+     * %%HERO_SCENE_3D%%: 캐릭터·게임·성장·리워드·감성 앱처럼 3D 배경/월드/캐릭터가 함께 녹아야 할 때 사용. 배경을 보존하므로 히어로 카드/온보딩 패널의 visual background로 크게 배치합니다.
+     * %%MASCOT_3D%%: UI 위에 얹는 투명 마스코트/캐릭터가 필요할 때 사용. 배경 제거된 PNG로 치환되므로 카드 오른쪽, KPI 옆, 성장 스테이지 위에 자연스럽게 배치합니다.
+     * %%REWARD_OBJECT_3D%%: 코인, 보상 상자, 상품, 아이템처럼 작은 오브젝트가 필요할 때 사용. 배경 제거된 PNG로 치환됩니다.
+   - 기존 %%HERO_3D_IMAGE%%도 동작하지만, 새 시안에서는 역할이 명확한 %%HERO_SCENE_3D%% / %%MASCOT_3D%% / %%REWARD_OBJECT_3D%%를 우선 사용하십시오.
+   - 플레이스홀더는 반드시 <img src="%%HERO_SCENE_3D%%"> 또는 <img src="%%MASCOT_3D%%"> 또는 <img src="%%REWARD_OBJECT_3D%%"> 형태로 사용하십시오.
+   - 3D 이미지는 Creon의 고품질 3D 렌더 스타일을 기반으로 하되, 더 이상 단순 아이콘/단일 오브젝트에 고정하지 않습니다. 브리프가 캐릭터·게임·성장·리워드·감성 앱이면 히어로 씬/마스코트 월드처럼 풍부하게 생성될 수 있습니다.
+   - 히어로 섹션 배경은 DESIGN.md 토큰으로 구성하되, %%HERO_SCENE_3D%%처럼 이미지가 이미 배경을 포함한 hero scene이면 흰/파란 카드 위 작은 장식처럼 얹지 말고 이미지 자체가 히어로의 주인공이 되게 배치하십시오.
+   - 3D 오브젝트 아래에는 자연스러운 접지감을 위한 부드러운 shadow/glow가 포함될 수 있습니다. 이미지나 CSS로 그림자를 추가 중복 적용하지 마십시오.
+   - 캐릭터/마스코트/제품이 브리프에 포함된 경우 3D 이미지는 장식 아이콘이 아니라 히어로의 핵심 비주얼입니다. 모바일 390px 기준 시각 너비가 최소 160px 이상, 권장 220~340px 수준이 되게 배치하십시오.
+   - 3D 이미지의 크기와 크롭 방식은 AI가 히어로의 목적에 맞게 판단하되, 작은 플로팅 아이콘처럼 보이면 실패입니다. 캐릭터 요청이 있으면 감성 온보딩/게임 대시보드처럼 큰 비주얼 중심 패턴을 우선 사용하십시오.
    - 단, 어떤 방식이든 CTA와 핵심 문구를 가리면 실패입니다. 이미지 컨테이너에는 overflow:hidden을 사용해 가로 스크롤을 절대 만들지 마십시오.
    - **히어로 이미지 배치 패턴 — 도메인과 시안 방향에 맞게 하나를 선택하십시오:**
 
      패턴 A. **전체 보임 (contain)** — B2B, 대시보드, 앱/서비스 소개, 아이콘 쇼케이스처럼 오브젝트 전체를 안정적으로 보여줘야 할 때
      <section class="hero-with-image">
        <div><!-- 헤드라인·서브카피·CTA --></div>
-       <img src="%%HERO_3D_IMAGE%%" alt="hero" style="width:100%;height:auto;max-height:300px;object-fit:contain;" />
+       <img src="%%MASCOT_3D%%" alt="hero" style="width:clamp(160px,46%,260px);height:auto;max-height:320px;object-fit:contain;" />
      </section>
 
      패턴 B. **크게 확대/일부 크롭 (oversized crop)** — 음식/배달/커머스/라이프스타일처럼 오브젝트가 식욕, 제품감, 감성 임팩트를 만들어야 할 때. 투명 PNG를 크게 키우고 컨테이너에서 자연스럽게 잘라냅니다.
      <section class="hero-with-image" style="overflow:hidden;position:relative;">
        <div><!-- 헤드라인·서브카피·CTA --></div>
-       <img src="%%HERO_3D_IMAGE%%" alt="hero" style="width:120%;height:auto;max-height:360px;object-fit:contain;transform:translateX(6%) scale(1.18);transform-origin:center bottom;" />
+       <img src="%%REWARD_OBJECT_3D%%" alt="hero" style="width:120%;height:auto;max-height:360px;object-fit:contain;transform:translateX(6%) scale(1.18);transform-origin:center bottom;" />
      </section>
 
-     패턴 C. **작은 플로팅 오브젝트 (small floating)** — 정보가 많거나 CTA/검색/쿠폰이 주인공이어야 할 때. 3D는 보조 포인트로 작게 배치하고, 텍스트와 액션이 시각 중심이 되게 합니다.
+     패턴 C. **몰입형 캐릭터 씬 (immersive character scene)** — 게임/리워드/성장/헬스케어 companion 앱처럼 캐릭터와 배경이 앱의 감정을 이끌 때. 이미지를 카드 또는 온보딩 패널의 visual background처럼 크게 사용합니다.
+     <section class="hero-scene" style="position:relative;overflow:hidden;min-height:360px;border-radius:var(--radius-xl);">
+       <img src="%%HERO_SCENE_3D%%" alt="hero" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" />
+       <div style="position:relative;z-index:1;"><!-- 헤드라인·서브카피·CTA --></div>
+     </section>
+
+     패턴 D. **작은 플로팅 오브젝트 (small floating)** — 정보가 많거나 CTA/검색/쿠폰이 주인공이어야 할 때. 3D는 보조 포인트로 작게 배치하고, 텍스트와 액션이 시각 중심이 되게 합니다.
      <section class="hero-with-image" style="position:relative;overflow:hidden;">
        <div><!-- 헤드라인·서브카피·CTA --></div>
-       <img src="%%HERO_3D_IMAGE%%" alt="hero" style="position:absolute;right:var(--spacing-base);bottom:var(--spacing-base);width:34%;max-width:180px;height:auto;object-fit:contain;" />
+       <img src="%%MASCOT_3D%%" alt="hero" style="position:absolute;right:var(--spacing-base);bottom:var(--spacing-base);width:38%;min-width:128px;max-width:210px;height:auto;object-fit:contain;" />
      </section>
 
-   - 선택 기준: A=신뢰/정돈, B=감성/식욕/제품 임팩트, C=정보/CTA 우선. 시안 B는 B 패턴을 우선 고려하되, 화면이 답답하면 A 또는 C를 선택하십시오.
-   - %%HERO_3D_IMAGE%% 플레이스홀더를 절대 다른 URL이나 %%IMG%%로 교체하지 마십시오.
+   - 선택 기준: A=신뢰/정돈, B=제품/오브젝트 임팩트, C=캐릭터/게임/성장/감성 몰입, D=정보/CTA 우선. 시안 B 또는 캐릭터 중심 브리프는 C 패턴을 적극 고려하십시오. 캐릭터/마스코트가 있는 브리프에서 D 패턴은 마지막 선택지입니다.
+   - 3D 플레이스홀더를 절대 다른 URL이나 %%IMG%%로 교체하지 마십시오.
+   - %%HERO_SCENE_3D%%를 사용할 때는 같은 히어로 안에 실사 이미지나 다른 3D 이미지를 겹쳐 넣지 마십시오. 배경-캐릭터-UI가 하나의 장면처럼 보이게 해야 합니다.
    - **[WCAG AA 필수]** 히어로 섹션의 텍스트 색상 규칙:
      * 배경색이 Primary(blue, #1A75FF 등 짙은 색), 다크 계열이면 반드시 color:#ffffff (white) 사용
      * 배경색이 White/Light surface이면 color:#111111 사용
@@ -1066,6 +1661,8 @@ ${domainBlock}
    - DESIGN.md에 반응형/내비게이션 규칙이 있으면 그 규칙을 최우선으로 적용
    - 규칙이 없을 때만 Mobile / Tablet / Desktop 3단계 레이아웃 전환을 자율 구성
    - 그리드 열 수와 내비게이션 형태는 서비스 성격과 선택한 디자인 시스템에 맞게 결정
+   - \`@media\` 규칙이 하나도 없는 HTML은 실패입니다. 최소 2개 이상의 breakpoint를 작성하십시오.
+   - \`.app\`, \`.phone\`, \`.container\`, \`.page\`, \`.shell\` 같은 최상위 wrapper에 \`width:390px\` 또는 \`width:1440px\`만 고정하고 끝내지 마십시오. \`width:100%; max-width:...; margin:auto;\` 조합으로 유연하게 구성하십시오.
 
    **내비게이션 3종 세트 패턴 — [디자인 시스템].responsive의 breakpoint 값으로 대입:**
    \`\`\`css
@@ -1137,16 +1734,217 @@ HTML을 쓰기 전에 아래 7가지를 내부 설계안으로 먼저 확정한 
    - 카드 안의 이미지/텍스트/메타/CTA 비율을 안정적으로 맞춘다.
    - ${effectivePlatform === 'web' ? '웹은 한 화면에 12컬럼 기반의 가로 밀도와 명확한 섹션 폭을 만든다.' : '모바일은 390px 폭에서 텍스트 줄바꿈이 자연스럽고, 하단 내비/CTA가 콘텐츠를 가리지 않게 한다.'}
 
-6. **Image Direction**
+6. **Responsive Strategy**
+   - 기준 플랫폼은 첫 preview의 시작점일 뿐입니다. 최종 HTML은 반드시 모바일/태블릿/데스크탑 폭에서 모두 깨지지 않게 동작해야 합니다.
+   - px 고정 폭만으로 화면을 만들지 말고, width:100%, max-width, clamp(), minmax(), grid auto-fit/auto-fill, @media 쿼리를 함께 사용합니다.
+   - 모바일 앱형 화면도 넓은 viewport에서는 중앙 정렬 컨테이너 또는 보조 정보 패널로 자연스럽게 확장하고, 웹형 화면도 390px에서는 1컬럼으로 접습니다.
+   - 3D/실사 히어로 이미지는 컨테이너 비율에 맞춰 clamp()로 크기를 제어하고, 너무 작은 장식/과한 크롭/CTA 가림이 발생하지 않게 합니다.
+
+7. **Image Direction**
    - 이미지가 필요한 도메인은 이미지가 정보 구조의 일부가 되게 배치한다.
    - 3D는 히어로 1회만, 반복 썸네일은 실제 도메인에 맞는 Unsplash placeholder를 사용한다.
    - 이미지 없는 화면도 아이콘 나열 대신 데이터/카피/CTA로 중심을 만든다.
 
-7. **Design-System Expressiveness**
+8. **Design-System Expressiveness**
    - 디자인 시스템은 제한이 아니라 재료다. 토큰을 바꾸지 말고, 섹션 비율·정렬·타입 계층·콘텐츠 밀도로 완성도를 만든다.
    - 예쁘게 보이려고 임의 컬러/그림자/라운드를 추가하지 말고, DESIGN.md 안에서 가장 표현력 있는 조합을 선택한다.
 
 위 설계안은 출력하지 말고, 최종 HTML/CSS 결과에만 반영하세요.`;
+}
+
+function buildHeroVisualIntegrationLayer(heroImagePrompt?: string, variantStyle?: string): string {
+  if (!heroImagePrompt) return ''
+
+  const variantHint = variantStyle?.includes('시안 A')
+    ? '시안 A는 정보 구조와 사용성을 우선하되, 3D가 필요하면 KPI/요약 카드 안의 보조 마스코트 정도로 절제한다.'
+    : variantStyle?.includes('시안 B')
+      ? '시안 B는 가장 강한 히어로 임팩트를 만들 수 있으므로, 캐릭터/성장/리워드형 브리프라면 몰입형 3D 씬을 우선 검토한다.'
+      : variantStyle?.includes('시안 C')
+        ? '시안 C는 감성/브랜드/탐색 흐름을 우선하며, 3D 씬 또는 실사 히어로 중 서비스 감정에 더 맞는 쪽을 선택한다.'
+        : '시안의 목적에 맞춰 3D 씬, 투명 마스코트, 실사 히어로 중 하나를 선택한다.'
+
+  return `## 3D 이미지-UI 통합 설계 (CRITICAL)
+
+이번 3D 생성 의도:
+${heroImagePrompt}
+
+HTML을 작성하기 전에 내부적으로 아래 결정을 먼저 내리고, 그 결과가 실제 CSS/레이아웃에 반영되어야 합니다.
+
+1. **3D의 역할 선택**
+   - 캐릭터/게임/성장/리워드/감성 앱이고 히어로가 브랜드 감정을 이끌어야 하면 \`%%HERO_SCENE_3D%%\`를 사용합니다.
+   - 데이터/KPI/예약/주문이 주인공이고 캐릭터는 보조라면 \`%%MASCOT_3D%%\`를 사용합니다.
+   - 보상, 쿠폰, 아이템, 상품 오브젝트가 주인공이면 \`%%REWARD_OBJECT_3D%%\`를 사용합니다.
+   - 3D보다 현실 이미지가 서비스 신뢰/식욕/공간감을 더 잘 만든다면 3D를 쓰지 않고 \`%%IMG_n:...%%\` 실사 히어로를 선택해도 됩니다.
+
+2. **씬과 UI를 한 몸처럼 배치**
+   - \`%%HERO_SCENE_3D%%\`는 이미지 위에 카드/텍스트를 그냥 얹는 것이 아니라, 장면의 빈 공간(safe area)에 카피와 CTA가 들어가야 합니다.
+   - 텍스트 영역에는 readable overlay/scrim을 토큰 색상으로 만들고, 캐릭터 얼굴·주요 오브젝트 위를 가리지 않습니다.
+   - \`%%MASCOT_3D%%\` / \`%%REWARD_OBJECT_3D%%\`는 카드 오른쪽 아래에 붙이는 작은 스티커가 아니라, progress ring, reward card, growth stage, CTA 주변과 의미적으로 연결되게 배치합니다.
+
+3. **크기와 크롭**
+   - 캐릭터 중심 앱에서 마스코트가 80px 이하의 작은 아이콘처럼 보이면 실패입니다.
+   - 히어로 씬은 패널 높이의 45~70% 이상을 비주얼이 차지해도 됩니다. 단, CTA와 핵심 수치는 항상 읽혀야 합니다.
+   - 전신이 중요한 성장/꾸미기 화면은 contain, 임팩트가 중요한 온보딩/혜택 화면은 일부 crop을 허용합니다.
+
+4. **시안 차별화**
+   - ${variantHint}
+   - A/B/C가 모두 같은 "흰 카드 + 오른쪽 작은 3D" 구조로 나오면 실패입니다.
+   - 3D를 쓰는 시안과 실사/데이터 중심 시안의 역할이 서로 달라야 합니다.
+
+이 섹션은 출력하지 말고 최종 HTML/CSS에만 반영하세요.`
+}
+
+function stripCodeFence(text: string): string {
+  return text
+    .replace(/^```(?:json|html|text)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim()
+}
+
+function getVariantLabel(variantStyle?: string): string {
+  if (variantStyle?.includes('시안 A')) return 'A'
+  if (variantStyle?.includes('시안 B')) return 'B'
+  if (variantStyle?.includes('시안 C')) return 'C'
+  return 'single'
+}
+
+function buildFallbackDesignIntentPlan(args: {
+  variantStyle?: string;
+  platform: PlatformType;
+  heroImagePrompt?: string;
+  domain?: AppDomain;
+}): string {
+  const variant = getVariantLabel(args.variantStyle)
+  const visualRole = variant === 'B' && args.heroImagePrompt
+    ? '%%HERO_SCENE_3D%%'
+    : args.heroImagePrompt
+      ? '%%MASCOT_3D%%'
+      : '%%IMG_1:service hero image%%'
+  return JSON.stringify({
+    variant,
+    designIntent: variant === 'A'
+      ? '정보 구조와 핵심 지표를 가장 안정적으로 읽히게 만드는 실사용형 화면'
+      : variant === 'B'
+        ? '첫 화면의 감정적 임팩트와 전환 CTA를 가장 강하게 만드는 히어로형 화면'
+        : '탐색과 브랜드 감성을 균형 있게 보여주는 큐레이션형 화면',
+    layoutThesis: args.platform === 'web'
+      ? '웹 폭에서는 상단 GNB와 넓은 콘텐츠 그리드로 확장하고, 모바일 폭에서는 1컬럼으로 접는다.'
+      : '모바일 첫 화면 안에서 핵심 요약, 주요 행동, 보조 탐색이 순서대로 보이게 한다.',
+    focalPoint: variant === 'B' ? 'hero visual + primary CTA' : 'primary metric or main content summary',
+    primaryAction: '서비스 목적에 맞는 가장 빠른 CTA 1개',
+    heroVisualPlan: {
+      selectedRole: visualRole,
+      use3d: Boolean(args.heroImagePrompt),
+      composition: visualRole === '%%HERO_SCENE_3D%%'
+        ? '3D scene as a large hero background with readable safe area for copy and CTA'
+        : 'transparent mascot/object meaningfully connected to KPI, progress, reward, or CTA',
+      scale: visualRole === '%%HERO_SCENE_3D%%' ? 'hero panel 45-70%' : '160-260px on mobile',
+      crop: visualRole === '%%HERO_SCENE_3D%%' ? 'cover with safe-area overlay' : 'contain unless impact crop is needed',
+      avoid: 'tiny sticker placement, duplicated 3D assets, unrelated stock images, visual competing with CTA',
+    },
+    designSystemUse: 'Do not change tokens. Improve quality through layout, hierarchy, density, alignment, and rhythm.',
+  }, null, 2)
+}
+
+async function generateDesignIntentAndHeroVisualPlan(args: {
+  brief: string;
+  answersText: string;
+  designMd?: string;
+  variantStyle?: string;
+  platform: PlatformType;
+  domain?: AppDomain;
+  heroImagePrompt?: string;
+  structuredAnswerRules?: string;
+  apiKey?: string;
+}): Promise<string> {
+  const variant = getVariantLabel(args.variantStyle)
+  const designContext = args.designMd ? extractDesignMdForPrompt(args.designMd).slice(0, 5000) : ''
+  const domainContext = args.domain ? getDomainGuidance(args.domain).slice(0, 1800) : ''
+  const prompt = `당신은 AI UI 생성 전 단계의 아트 디렉터입니다.
+HTML을 만들지 말고, 아래 입력을 바탕으로 시안 ${variant}의 Design Intent + Hero Visual Plan만 짧은 JSON으로 작성하세요.
+
+목표:
+- 이후 HTML 생성 모델이 이미지를 장식으로 끼우지 않고, UI와 자연스럽게 녹이도록 구체적인 설계 기준을 준다.
+- QA 단계가 아니므로 검사/평가를 하지 않는다.
+- 디자인 시스템 토큰을 바꾸지 않는다.
+- A/B/C가 서로 다른 레이아웃 골격과 비주얼 전략을 갖게 한다.
+
+반드시 결정할 것:
+1. 이 시안의 핵심 의도
+2. 첫 화면 focal point
+3. 3개 영역 구조: 핵심 요약 / 주요 행동 / 보조 탐색
+4. 히어로 비주얼 전략
+5. 3D 사용 여부와 사용할 경우 정확한 placeholder:
+   - %%HERO_SCENE_3D%%: 배경 포함 캐릭터 월드/온보딩/게임/감성 히어로
+   - %%MASCOT_3D%%: 배경 제거된 투명 마스코트
+   - %%REWARD_OBJECT_3D%%: 배경 제거된 보상/아이템/상품 오브젝트
+   - 3D가 어울리지 않으면 %%IMG_n:english keyword%% 실사 이미지 사용
+6. 이미지 크롭/스케일/위치/safe area
+7. Unsplash 키워드가 필요하면 브랜드명 말고 범용 영문 명사구
+8. 절대 하면 안 되는 것
+
+응답 형식:
+\`\`\`json
+{
+  "variant": "${variant}",
+  "designIntent": "...",
+  "layoutThesis": "...",
+  "focalPoint": "...",
+  "primaryAction": "...",
+  "zones": {
+    "summary": "...",
+    "mainAction": "...",
+    "supportingNavigation": "..."
+  },
+  "heroVisualPlan": {
+    "selectedRole": "%%HERO_SCENE_3D%% | %%MASCOT_3D%% | %%REWARD_OBJECT_3D%% | %%IMG_1:keyword%% | none",
+    "reason": "...",
+    "composition": "...",
+    "scale": "...",
+    "crop": "...",
+    "safeArea": "...",
+    "placement": "...",
+    "fallbackRealImageKeywords": ["..."]
+  },
+  "visualDifferentiation": "...",
+  "designSystemApplication": "...",
+  "avoid": ["...", "...", "..."]
+}
+\`\`\`
+
+## 기획서
+${args.brief}
+
+## 사용자 답변
+${args.answersText || '(없음)'}
+
+## 구조화 규칙
+${args.structuredAnswerRules || '(없음)'}
+
+## 시안 방향
+${args.variantStyle || '(단일 시안)'}
+
+## 기준 플랫폼
+${args.platform}
+
+## 3D 생성 의도
+${args.heroImagePrompt || '(3D 없음 또는 AI 판단)'}
+
+${domainContext ? `## 도메인 패턴\n${domainContext}\n` : ''}
+${designContext ? `## 디자인 시스템 요약\n${designContext}\n` : ''}
+JSON 코드블록만 출력하세요.`
+
+  try {
+    const raw = await generatePro(prompt, args.apiKey, 'gemini-3.5-flash')
+    const plan = stripCodeFence(raw)
+    return plan.length > 200
+      ? plan.slice(0, 6000)
+      : buildFallbackDesignIntentPlan(args)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[gemini] design intent plan failed, using fallback:', message)
+    return buildFallbackDesignIntentPlan(args)
+  }
 }
 
 export async function generateUI(params: GenerateParams, apiKey?: string): Promise<string> {
@@ -1250,6 +2048,18 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
 - 포털형/탐색형 서비스인데 좌측 LNB만 있는 어드민 구조로 만들면 실패입니다.
 ` : ''
   const hasBrandColors = !!(brandColors && brandColors.length > 0);
+  const designSystemContract = buildDesignSystemContract(effectiveDesignMd, hasBrandColors);
+  const designIntentPlan = await generateDesignIntentAndHeroVisualPlan({
+    brief,
+    answersText,
+    designMd: effectiveDesignMd,
+    variantStyle,
+    platform: effectivePlatform,
+    domain,
+    heroImagePrompt: effectiveHeroImagePrompt,
+    structuredAnswerRules,
+    apiKey,
+  })
 
   const prompt = `
 당신은 선택된 DESIGN.md를 실제 제품 화면으로 옮기는 시니어 프로덕트 디자이너이자 프론트엔드 개발자입니다.
@@ -1469,6 +2279,29 @@ ${effectivePlatform !== 'web' ? `[BottomSheet]
 
 ## 디자인 시스템${hasDesignSystem ? ' ← 이 섹션의 모든 토큰·규칙을 코드에 그대로 반영할 것' : ''}
 ${extractDesignMdForPrompt(effectiveDesignMd) || '없음 — 아래 플랫폼 가이드라인과 기획서를 기반으로 최적화된 디자인을 만드세요.'}
+
+${designSystemContract}
+
+## Contract-Based Generation Rules (CRITICAL)
+- 위 Design System Contract는 현재 선택된 design.md에서 컴파일된 규칙입니다. KTDS 전용 규칙이 아니라 현재 선택된 시스템의 계약입니다.
+- 최종 CSS는 반드시 아래 semantic rhythm variables를 선언하고, 모든 반복 컴포넌트에서 재사용하십시오:
+  \`\`\`css
+  :root {
+    --aide-page-padding: /* contract.layoutRhythm.pagePadding */;
+    --aide-section-gap: /* contract.layoutRhythm.sectionGap */;
+    --aide-card-padding: /* contract.layoutRhythm.cardPadding */;
+    --aide-card-gap: /* contract.layoutRhythm.cardGap */;
+    --aide-card-radius: /* contract.layoutRhythm.cardRadius */;
+  }
+  .aide-page { padding: var(--aide-page-padding); }
+  .aide-section + .aide-section { margin-top: var(--aide-section-gap); }
+  .aide-card { padding: var(--aide-card-padding); border-radius: var(--aide-card-radius); }
+  .aide-card > * + * { margin-top: var(--aide-card-gap); }
+  \`\`\`
+- 같은 성격의 카드/리스트/버튼/입력은 반드시 같은 variable을 사용하십시오. 예쁜 차이는 레이아웃 구조와 콘텐츠 밀도에서 만들고, padding/gap/radius를 흔들어서 만들지 마십시오.
+- design.md가 명시한 componentContract가 있으면 semantic variable보다 componentContract 값을 우선합니다.
+- design.md가 URL에서 생성된 불완전한 문서여도 Contract에서 추출한 rhythm을 우선하고, 부족한 값은 가장 가까운 existing token을 한 번만 선택해 :root에 고정하십시오.
+
 ${hasDesignSystem ? `
 > **체크리스트 — 코드 작성 전 반드시 확인**
 > - [ ] ${hasBrandColors ? '브랜드 컬러를 primary/action/accent 계열에만 반영하고, neutral/surface/background/border/status 토큰은 DESIGN.md 값을 유지했는가?' : 'colors 토큰을 CSS 변수로 선언했는가?'}
@@ -1508,9 +2341,10 @@ ${structuredAnswerRules ? `\n## 답변 기반 디자인 지침 (반드시 적용
 
 ## AI 자율 디자인 결정 원칙
 사용자 답변에 없는 모든 디자인 결정은 아래 우선순위로 AI가 자율 판단합니다:
-1. 업로드된 디자인 시스템 토큰 (최우선)
-2. 선택한 DESIGN.md의 컴포넌트/내비게이션/레이아웃 규칙
-3. 플랫폼 관례 (iOS/Android/Web)
+1. 선택된 DESIGN.md에서 컴파일된 Design System Contract (최우선)
+2. 업로드된 디자인 시스템 원문 토큰
+3. 선택한 DESIGN.md의 컴포넌트/내비게이션/레이아웃 규칙
+4. 플랫폼 관례 (iOS/Android/Web)
 사용자가 명시하지 않은 네비게이션 패턴, 버튼 스타일, 색상, 타이포그래피, 간격 등은 위 기준으로 최적값을 선택하세요.
 
 ---
@@ -1520,7 +2354,17 @@ ${webNavigationRule}
 ## 플랫폼별 구현 가이드
 ${platformGuide}
 
+## 시안별 Design Intent + Hero Visual Plan (HTML 생성 전 확정안 — CRITICAL)
+아래 JSON은 이 시안의 상위 설계안입니다. 최종 HTML/CSS는 이 계획을 반드시 반영해야 합니다.
+특히 heroVisualPlan.selectedRole이 3D placeholder라면 해당 placeholder를 정확히 img src에 사용하고, 배치/크기/safeArea/crop 지시를 실제 CSS에 반영하세요.
+heroVisualPlan.selectedRole이 실사 이미지라면 3D를 억지로 쓰지 말고 지정된 Unsplash placeholder 전략을 따르세요.
+\`\`\`json
+${designIntentPlan}
+\`\`\`
+
 ${buildArtDirectionLayer(effectivePlatform)}
+
+${buildHeroVisualIntegrationLayer(effectiveHeroImagePrompt, variantStyle)}
 
 ${buildQualityRules(effectiveHeroImagePrompt, domain)}
 
@@ -1582,6 +2426,8 @@ ${variantStyle}
 - 위 방향을 단순 문구로만 반영하지 말고, 실제 레이아웃 골격이 달라야 합니다.
 - A/B/C 모두 같은 컴포넌트를 같은 순서로 반복하는 것을 금지합니다.
 - 정보형은 밀도와 비교성, 전환형은 focal point와 CTA, 탐색형은 이미지/큐레이션 흐름이 화면 구조 자체에서 드러나야 합니다.
+- 비주얼 전략도 시안별로 판단해 다르게 구성합니다. 3D 히어로가 어울리는 시안은 캐릭터/브랜드 감성 중심으로, 실사 이미지가 더 설득력 있는 시안은 Unsplash 히어로/콘텐츠 이미지 중심으로 구성하십시오.
+- 세 시안 모두 3D 오브젝트만 반복하거나, 세 시안 모두 같은 실사 카드 구조만 반복하지 마십시오. 단, 억지로 할당하지 말고 서비스 목적에 맞는 가장 자연스러운 조합을 선택하십시오.
 - 단, 색상·폰트·카드·버튼·간격·라운드는 반드시 DESIGN.md를 유지합니다.
 ${effectivePlatform === 'web' ? `
 웹 플랫폼 레이아웃 규칙 (위 시안 방향보다 우선):
@@ -1603,7 +2449,7 @@ ${effectivePlatform === 'web' ? `
 
 반드시 완전한 단일 HTML 파일로 응답하세요.
 - 모든 CSS를 <style> 태그 안에 작성
-- stock photo·외부 이미지 URL을 직접 작성하지 말고, 이미지가 필요한 곳에는 위 규칙의 %%HERO_3D_IMAGE%% / %%IMG_n:설명%% / %%THUMB:keyword:width:height%% 플레이스홀더만 사용
+- stock photo·외부 이미지 URL을 직접 작성하지 말고, 이미지가 필요한 곳에는 위 규칙의 %%HERO_SCENE_3D%% / %%MASCOT_3D%% / %%REWARD_OBJECT_3D%% / %%HERO_3D_IMAGE%% / %%IMG_n:설명%% / %%THUMB:keyword:width:height%% 플레이스홀더만 사용
 - Chart.js CDN은 허용
 - 응답은 반드시 \`\`\`html 코드블록으로 감싸기
 - 설명 텍스트 없이 코드만 출력
@@ -1669,7 +2515,17 @@ ${effectivePlatform === 'web' ? `
     html = html.split('__LOGO_DATA_URL__').join(logoDataUrl)
   }
 
-  if (params.criticalReview !== false) {
+  const staticContractResult = await enforceStaticDesignContract(html, {
+    brief,
+    designMd: effectiveDesignMd,
+    apiKey,
+    logoDataUrl,
+    domain,
+    hasBrandColors,
+  })
+  html = staticContractResult.html
+
+  if (params.criticalReview !== false && !staticContractResult.refined) {
     try {
       const critiqueRaw = await critiqueUI(html, brief, domain, apiKey, variantStyle)
       const jsonMatch = critiqueRaw.match(/\{[\s\S]*\}/)
@@ -1704,17 +2560,27 @@ ${critique.improvements.map((s, i) => `${i + 1}. ${s}`).join('\n')}
 }
 
 export async function expandToPrototype(mainHtml: string, params: GenerateParams, apiKey?: string): Promise<string> {
-  const { brief, answers, projectSummary, designMd, logoDataUrl: expandLogoUrl, brandColors: expandBrandColors, asIsAnalysis, modelId = 'gemini-3.1-pro-preview', platform, domain } = params;
+  const { brief, answers, projectSummary, designMd, logoDataUrl: expandLogoUrl, brandColors: expandBrandColors, asIsAnalysis, modelId = 'gemini-3.1-pro-preview', platform, domain, heroImagePrompt, heroSubject } = params;
   const answersText = Object.entries(answers)
     .map(([k, v]) => `- ${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
     .join('\n');
 
   const isWeb = platform === 'web'
+  const designSystemContract = designMd
+    ? buildDesignSystemContract(designMd, !!(expandBrandColors && expandBrandColors.length > 0))
+    : ''
   // Replace logo first, then strip remaining base64 URIs — order matters:
   // if we strip first, the logo's base64 is already gone when we try to replace it.
-  const TINY_GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+  const preservedDataUrls: string[] = []
   const logoSwapped = expandLogoUrl ? mainHtml.split(expandLogoUrl).join('__LOGO_DATA_URL__') : mainHtml
-  const safeMainHtml = logoSwapped.replace(/data:[^;]+;base64,[A-Za-z0-9+/]+=*/g, TINY_GIF)
+  const safeMainHtml = logoSwapped.replace(/data:[^;]+;base64,[A-Za-z0-9+/]+=*/g, (src) => {
+    const token = `__PRESERVED_IMAGE_${preservedDataUrls.length}__`
+    preservedDataUrls.push(src)
+    return token
+  })
+  const preservedImageGuide = preservedDataUrls.length > 0
+    ? `\n## 보존 이미지 토큰 (CRITICAL)\n메인 화면 안의 기존 이미지 data URL은 프롬프트 길이를 줄이기 위해 토큰으로 치환되어 있습니다.\n- ${preservedDataUrls.map((_, i) => `__PRESERVED_IMAGE_${i}__`).join(', ')}\n- 이 토큰들은 실제 이미지 src 자리입니다. 삭제하거나 다른 URL/placeholder/빈 이미지로 바꾸지 마세요.\n- 특히 3D 히어로 이미지가 있으면 선택한 시안의 핵심 비주얼이므로 screen-home에서 반드시 그대로 유지하세요.\n`
+    : ''
 
   const navExtractionGuide = isWeb
     ? `- 상단 GNB/nav 전체 (<nav>, <header> 또는 최상단 고정 영역)
@@ -1733,7 +2599,9 @@ export async function expandToPrototype(mainHtml: string, params: GenerateParams
 \`\`\`html
 ${safeMainHtml}
 \`\`\`
+${preservedImageGuide}
 ${designMd ? `\n## 디자인 시스템 (서브 화면에도 동일하게 적용 — 임의 색상·폰트 사용 절대 금지)\n${extractDesignMdForPrompt(designMd)}\n` : ''}${expandBrandColors && expandBrandColors.length > 0 ? `\n## 브랜드 컬러 적용\n- primary/action/accent 계열만 브랜드 컬러로 유지: --color-primary: ${expandBrandColors[0]};${expandBrandColors[1] ? ` --color-secondary: ${expandBrandColors[1]};` : ''}\n- neutral/surface/background/border/status 색상, spacing, rounded, typography, component sizing은 DESIGN.md 값을 유지\n- 카드 배경, 페이지 배경, 본문 텍스트를 브랜드 컬러로 덮지 말 것\n` : ''}
+${designSystemContract ? `\n${designSystemContract}\n\n## Contract 유지 규칙\n- 서브 화면도 메인 화면과 동일한 Design System Contract와 rhythm variables를 사용하세요.\n- 새로 만드는 카드/리스트/폼/버튼은 메인 화면의 padding/gap/radius/border/shadow 정책을 복제하세요.\n- A/B/C 선택 이후 전체 페이지 확장 단계에서 새로운 spacing scale이나 임의 radius를 만들면 실패입니다.\n` : ''}
 ${asIsAnalysis ? `\n## As-is URL 구조 분석 — 서브 화면 확장 참고\n아래 데이터는 기존 서비스의 정보 구조와 콘텐츠 재료입니다. 색상·폰트·라운드·그림자는 복사하지 말고, DESIGN.md 스타일을 유지하세요.\n\`\`\`json\n${JSON.stringify(asIsAnalysis, null, 2).slice(0, 9000)}\n\`\`\`\n` : ''}
 ## 프로젝트 개요
 ${projectSummary}
@@ -1765,7 +2633,13 @@ ${navExtractionGuide}
 > 아래 규칙은 새로 작성하는 콘텐츠 영역에만 적용됩니다.
 > 공통 UI(앱바/탭바/GNB/사이드바)의 HTML·CSS·색상·아이콘은 절대 수정 금지.
 
-${buildQualityRules(undefined, domain)}
+${buildQualityRules(heroSubject || heroImagePrompt, domain)}
+
+## 반응형 확장 필수 규칙
+- 최종 HTML은 선택한 기준 플랫폼으로 보이되, iframe 폭이 바뀌면 CSS @media 쿼리로 모바일/태블릿/데스크탑 레이아웃이 실제로 전환되어야 합니다.
+- 고정 폭 390px/430px/1440px 컨테이너만 사용해 화면을 중앙에 박아두지 마십시오. width:100%, max-width, clamp(), minmax(), auto-fit/auto-fill을 함께 사용하십시오.
+- 모바일 기준 앱 UI도 넓은 화면에서는 콘텐츠가 깨지지 않도록 중앙 컨테이너 또는 2컬럼 보조 패널로 확장하고, 웹 기준 UI도 390px에서는 1컬럼으로 접혀야 합니다.
+- 히어로 3D/실사 이미지는 컨테이너 크기에 따라 clamp()로 자연스럽게 커지고 작아져야 하며, 텍스트/CTA를 가리거나 과도하게 작은 장식으로 축소되면 실패입니다.
 
 ## 화면 구조
 - 메인 화면 HTML을 \`id="screen-home"\` aide-screen으로 래핑 (내용 수정 금지)
@@ -1802,6 +2676,11 @@ ${buildQualityRules(undefined, domain)}
   if (expandLogoUrl) {
     html = html.split('__LOGO_DATA_URL__').join(expandLogoUrl)
   }
+  preservedDataUrls.forEach((src, i) => {
+    html = html.split(`__PRESERVED_IMAGE_${i}__`).join(src)
+  })
+
+  html = injectDesignContractStyle(html, designMd || '', !!(expandBrandColors && expandBrandColors.length > 0))
 
   return html
 }

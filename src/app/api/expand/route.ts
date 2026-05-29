@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type { Browser } from 'puppeteer'
+import type { Browser, Page } from 'puppeteer'
 import { expandToPrototype, resolveImagePlaceholders, type GenerateParams } from '@/lib/gemini'
 
 export const maxDuration = 180
@@ -13,6 +13,20 @@ async function safeBrowserClose(browser: Browser) {
   } catch {
     browser.process()?.kill('SIGKILL')
   }
+}
+
+async function waitForPageImages(page: Page) {
+  await page.evaluate(async () => {
+    const images = Array.from(document.images)
+    await Promise.all(images.map(img => {
+      if (img.complete) return Promise.resolve()
+      return new Promise<void>(resolve => {
+        const done = () => resolve()
+        img.addEventListener('load', done, { once: true })
+        img.addEventListener('error', done, { once: true })
+      })
+    }))
+  }).catch(() => null)
 }
 
 export async function POST(req: NextRequest) {
@@ -44,10 +58,11 @@ export async function POST(req: NextRequest) {
 
     console.log('[expand] step3: browser launched, viewport', vpWidth, vpHeight)
     await page.setViewport({ width: vpWidth, height: vpHeight, deviceScaleFactor: 2 })
-    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 45000 })
     console.log('[expand] step4: content loaded, waiting for fonts')
     await new Promise(r => setTimeout(r, 1500))
     await page.evaluate(() => document.fonts.ready.then(() => null)).catch(() => null)
+    await waitForPageImages(page)
     console.log('[expand] step5: taking screenshot')
 
     const screenshot = await page.screenshot({

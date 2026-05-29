@@ -583,6 +583,8 @@ export default function StudioPage() {
   const [isFigmaExporting, setIsFigmaExporting] = useState(false)
   const [figmaExportDone, setFigmaExportDone] = useState(false)
   const [figmaExportError, setFigmaExportError] = useState<string | null>(null)
+  const [figmaClipboardHtml, setFigmaClipboardHtml] = useState('')
+  const [figmaClipboardCopied, setFigmaClipboardCopied] = useState(false)
 
   // Per-variant undo/redo history
   const [historyA, setHistoryA] = useState<string[]>([])
@@ -1261,6 +1263,8 @@ export default function StudioPage() {
     setGenerateError('')
     try {
       const asIsAnalysis = readAsIsAnalysis()
+      const hero3dMode = typeof answers['hero3d'] === 'string' ? answers['hero3d'] : 'AI 판단'
+      const shouldUseHero3d = hero3dMode === '사용' || (hero3dMode === 'AI 판단' && questionnaire.heroImageDecision?.generate)
       const res = await fetch('/api/expand', {
         method: 'POST',
         headers: apiHeaders(),
@@ -1275,6 +1279,8 @@ export default function StudioPage() {
           asIsAnalysis,
           platform,
           modelId: sessionStorage.getItem('aide_model') ?? undefined,
+          heroImagePrompt: shouldUseHero3d ? (questionnaire.heroImageDecision?.prompt || brief) : undefined,
+          heroSubject: shouldUseHero3d ? (questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || brief) : undefined,
         }),
       })
       const data = await res.json()
@@ -1518,6 +1524,8 @@ export default function StudioPage() {
     setIsFigmaExporting(true)
     setFigmaExportDone(false)
     setFigmaExportError(null)
+    setFigmaClipboardHtml('')
+    setFigmaClipboardCopied(false)
 
     try {
       const res = await fetch('/api/export-figma', {
@@ -1526,21 +1534,31 @@ export default function StudioPage() {
         body: JSON.stringify({ html: result.html, platform, screens }),
       })
       if (!res.ok) throw new Error(await res.text())
-      const bundle = await res.json()
-
-      const ts = new Date().toISOString().slice(0, 10)
-      const blob = new Blob([JSON.stringify(bundle)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `aide-design-${ts}.json`
-      a.click()
-      URL.revokeObjectURL(url)
+      const bundle = await res.json() as { clipboardHtml?: string }
+      if (!bundle.clipboardHtml) throw new Error('code.to.design 응답에 clipboard 데이터가 없습니다')
+      setFigmaClipboardHtml(bundle.clipboardHtml)
+      const copied = await copyFigmaClipboard(bundle.clipboardHtml)
+      setFigmaClipboardCopied(copied)
       setFigmaExportDone(true)
     } catch (err) {
       setFigmaExportError(err instanceof Error ? err.message : String(err))
     } finally {
       setIsFigmaExporting(false)
+    }
+  }
+
+  const copyFigmaClipboard = async (clipboardHtml: string) => {
+    try {
+      if (!navigator.clipboard || typeof ClipboardItem === 'undefined') return false
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([clipboardHtml], { type: 'text/html' }),
+          'text/plain': new Blob(['Paste into Figma'], { type: 'text/plain' }),
+        }),
+      ])
+      return true
+    } catch {
+      return false
     }
   }
 
@@ -2026,13 +2044,15 @@ export default function StudioPage() {
               return parseInt(h.slice(0, 2), 16) * 0.299 + parseInt(h.slice(2, 4), 16) * 0.587 + parseInt(h.slice(4, 6), 16) * 0.114 > 150
             }
 
+            const stylePlanLabel = customDesignMdName ?? (designPreset === 'ktds' ? 'Aide' : preset.label)
+
             return (
               <div className="shrink-0 flex flex-col overflow-hidden" onClick={e => { e.stopPropagation(); setSelectedCard('style-plan') }} style={{ width: 680, height: 560, borderRadius: 16, backgroundColor: outerBg, border: selectedCard === 'style-plan' ? '2px solid #1a75ff' : (isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.06)'), cursor: 'default', outline: selectedCard === 'style-plan' ? '3px solid rgba(26,117,255,0.18)' : 'none', outlineOffset: '2px' }}>
 
                 {/* Header */}
                 <div style={{ padding: '10px 14px', borderBottom: border, display: 'flex', alignItems: 'center', gap: 8, backgroundColor: cellBg }}>
                   <Sparkles size={11} style={{ color: effectiveColor }} />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: ink }}>{customDesignMdName ?? preset.label} Style Plan</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: ink }}>{stylePlanLabel} Style Plan</span>
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: 5, alignItems: 'center' }}>
                     {(['A', 'B', 'C'] as const).map((l, i) => {
                       const v = mainVariants[i]
@@ -2795,8 +2815,8 @@ export default function StudioPage() {
                     <span className="text-2xl">🎨</span>
                   </div>
                   <div className="text-center">
-                    <p className="text-[15px] font-semibold text-[#111111] mb-1">Figma 번들 생성 중...</p>
-                    <p className="text-[13px] text-[#666666]">각 화면을 캡처하고 JSON으로 패키징하고 있습니다</p>
+                    <p className="text-[15px] font-semibold text-[#111111] mb-1">Figma 데이터 생성 중...</p>
+                    <p className="text-[13px] text-[#666666]">code.to.design으로 변환하고 있습니다</p>
                   </div>
                   <div className="w-full h-1 bg-[#f0f0f0] rounded-full overflow-hidden">
                     <div className="h-full bg-[#0066ff] rounded-full" style={{ width: '60%', animation: 'figma-bar 1.6s ease-in-out infinite' }} />
@@ -2810,18 +2830,22 @@ export default function StudioPage() {
                       <span className="text-2xl">✅</span>
                     </div>
                     <div className="text-center">
-                      <p className="text-[15px] font-semibold text-[#111111] mb-1">JSON 파일 다운로드 완료!</p>
-                      <p className="text-[13px] text-[#666666] leading-relaxed">아래 순서대로 Figma에 플러그인을 설치하고<br />다운로드한 파일을 가져오세요</p>
+                      <p className="text-[15px] font-semibold text-[#111111] mb-1">
+                        {figmaClipboardCopied ? 'Figma 붙여넣기 준비 완료!' : 'Figma 데이터 생성 완료'}
+                      </p>
+                      <p className="text-[13px] text-[#666666] leading-relaxed">
+                        {figmaClipboardCopied
+                          ? '이제 Figma 캔버스에서 Cmd+V로 붙여넣으세요'
+                          : '아래 버튼으로 클립보드에 복사한 뒤 Figma에 붙여넣으세요'}
+                      </p>
                     </div>
                   </div>
 
                   <div className="px-6 pb-6 flex flex-col gap-3">
                     {[
                       { step: '1', text: 'Figma 데스크톱 앱 열기' },
-                      { step: '2', text: 'Plugins > Development > Import plugin from manifest...' },
-                      { step: '3', text: '다운로드 폴더에서 figma-plugin/manifest.json 선택' },
-                      { step: '4', text: 'Plugins > Development > Aide — UI to Figma 실행' },
-                      { step: '5', text: '다운로드한 aide-design-*.json 파일 선택 후 가져오기' },
+                      { step: '2', text: figmaClipboardCopied ? '빈 캔버스에서 Cmd+V 붙여넣기' : '아래 버튼으로 Figma 클립보드 복사' },
+                      { step: '3', text: '붙여넣어진 editable layer 확인' },
                     ].map(item => (
                       <div key={item.step} className="flex items-start gap-3">
                         <div className="size-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: '#111111' }}>
@@ -2832,13 +2856,20 @@ export default function StudioPage() {
                     ))}
 
                     <div className="mt-1 p-3 rounded-xl text-[12px] text-[#555555] leading-relaxed" style={{ backgroundColor: '#f7f7f7', border: '1px solid #eeeeee' }}>
-                      💡 플러그인 파일은{' '}
-                      <a href="/figma-plugin/manifest.json" download className="text-[#0066ff] underline font-medium">여기서 다운로드</a>
-                      {' '}하거나 프로젝트의 <code className="text-[11px] font-mono bg-[#ebebeb] px-1 py-0.5 rounded">public/figma-plugin/</code> 폴더를 사용하세요.
+                      code.to.design API가 HTML/CSS를 Figma paste 데이터로 변환했습니다. 별도 플러그인 설치 없이 Figma 캔버스에 붙여넣으면 됩니다.
                     </div>
                   </div>
 
-                  <div className="px-6 pb-6">
+                  <div className="px-6 pb-6 flex flex-col gap-2">
+                    {!figmaClipboardCopied && figmaClipboardHtml && (
+                      <button
+                        onClick={async () => setFigmaClipboardCopied(await copyFigmaClipboard(figmaClipboardHtml))}
+                        className="w-full py-2.5 text-[13px] font-semibold rounded-xl transition-colors"
+                        style={{ backgroundColor: '#0066ff', color: '#ffffff' }}
+                      >
+                        Figma 클립보드 복사
+                      </button>
+                    )}
                     <button
                       onClick={() => setFigmaExportOpen(false)}
                       className="w-full py-2.5 text-[13px] font-semibold rounded-xl transition-colors"

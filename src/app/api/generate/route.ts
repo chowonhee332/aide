@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type { Browser } from 'puppeteer'
+import type { Browser, Page } from 'puppeteer'
 import { generateUI, resolveImagePlaceholders } from '@/lib/gemini'
 
 export const maxDuration = 180
@@ -15,6 +15,20 @@ async function safeBrowserClose(browser: Browser) {
   }
 }
 
+async function waitForPageImages(page: Page) {
+  await page.evaluate(async () => {
+    const images = Array.from(document.images)
+    await Promise.all(images.map(img => {
+      if (img.complete) return Promise.resolve()
+      return new Promise<void>(resolve => {
+        const done = () => resolve()
+        img.addEventListener('load', done, { once: true })
+        img.addEventListener('error', done, { once: true })
+      })
+    }))
+  }).catch(() => null)
+}
+
 export async function POST(req: NextRequest) {
   let browser: Browser | null = null
 
@@ -24,7 +38,8 @@ export async function POST(req: NextRequest) {
     console.log('[generate] step1: params parsed, starting generateUI')
 
     const html = await generateUI(params, apiKey)
-    const heroPrompt = params.heroSubject || params.heroImagePrompt || (html.includes('%%HERO_3D_IMAGE') ? params.brief : undefined)
+    const has3dPlaceholder = /%%(?:HERO_3D_IMAGE|HERO_SCENE_3D|MASCOT_3D|REWARD_OBJECT_3D)/.test(html)
+    const heroPrompt = params.heroSubject || params.heroImagePrompt || (has3dPlaceholder ? params.brief : undefined)
     const finalHtml = await resolveImagePlaceholders(html, {
       heroImagePrompt: heroPrompt,
       apiKey,
@@ -50,10 +65,11 @@ export async function POST(req: NextRequest) {
 
     console.log('[generate] step3: browser launched, setting viewport', vpWidth, vpHeight)
     await page.setViewport({ width: vpWidth, height: vpHeight, deviceScaleFactor: 2 })
-    await page.setContent(finalHtml, { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await page.setContent(finalHtml, { waitUntil: 'networkidle0', timeout: 45000 })
     console.log('[generate] step4: content loaded, waiting for fonts')
     await new Promise(r => setTimeout(r, 1500))
     await page.evaluate(() => document.fonts.ready.then(() => null)).catch(() => null)
+    await waitForPageImages(page)
     console.log('[generate] step5: fonts ready, taking screenshot')
 
     const screenshot = await page.screenshot({
@@ -64,7 +80,7 @@ export async function POST(req: NextRequest) {
     })
 
     console.log('[generate] step6: screenshot done')
-    return NextResponse.json({ html: finalHtml, image: `data:image/png;base64,${screenshot}`, has3dHero: html.includes('%%HERO_3D_IMAGE') })
+    return NextResponse.json({ html: finalHtml, image: `data:image/png;base64,${screenshot}`, has3dHero: has3dPlaceholder })
   } catch (err) {
     const name = err instanceof Error ? err.name : 'unknown'
     const message = err instanceof Error ? err.message : String(err)

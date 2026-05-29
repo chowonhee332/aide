@@ -694,6 +694,7 @@ export default function Home() {
   const [brandLogo, setBrandLogo] = useState<string | null>(null)
   const [brandLogoName, setBrandLogoName] = useState<string | null>(null)
   const [brandColors, setBrandColors] = useState<string[]>([])
+  const [extractedBrandColors, setExtractedBrandColors] = useState<string[]>([])
   const [extractingColors, setExtractingColors] = useState(false)
   const logoInputRef = useRef<HTMLInputElement>(null)
 
@@ -797,23 +798,38 @@ export default function Home() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = async (ev) => {
+    reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string
       setBrandLogo(dataUrl)
       setBrandLogoName(file.name)
-      setExtractingColors(true)
-      const extracted = await extractColorsFromImage(dataUrl)
-      if (extracted.length > 0) setBrandColors(extracted)
-      setExtractingColors(false)
+      setExtractedBrandColors([])
+      setBrandColors([])
     }
     reader.readAsDataURL(file)
     if (logoInputRef.current) logoInputRef.current.value = ''
+  }
+
+  const handleExtractBrandColors = async () => {
+    if (!brandLogo || extractingColors) return
+    setExtractingColors(true)
+    try {
+      const extracted = await extractColorsFromImage(brandLogo)
+      setExtractedBrandColors(extracted)
+    } finally {
+      setExtractingColors(false)
+    }
+  }
+
+  const handleApplyBrandColors = () => {
+    if (extractedBrandColors.length === 0) return
+    setBrandColors(extractedBrandColors)
   }
 
   const clearBrand = () => {
     setBrandLogo(null)
     setBrandLogoName(null)
     setBrandColors([])
+    setExtractedBrandColors([])
     if (logoInputRef.current) logoInputRef.current.value = ''
   }
 
@@ -1851,7 +1867,7 @@ export default function Home() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '10px', backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, marginBottom: '14px' }}>
                   <img src={brandLogo} alt="logo" style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 4 }} />
                   <span style={{ fontSize: '12px', color: F.ink, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{brandLogoName}</span>
-                  <button onClick={() => { setBrandLogo(null); setBrandLogoName(null) }} style={{ border: 'none', background: 'none', cursor: 'pointer', color: F.inkMuted, display: 'flex' }}>
+                  <button onClick={clearBrand} style={{ border: 'none', background: 'none', cursor: 'pointer', color: F.inkMuted, display: 'flex' }}>
                     <X size={14} />
                   </button>
                 </div>
@@ -1882,21 +1898,53 @@ export default function Home() {
                     로고에서 추출 중…
                   </span>
                 )}
+                {brandColors.length > 0 && !extractingColors && (
+                  <span style={{ fontSize: '11px', color: F.primary, fontWeight: 600 }}>적용됨</span>
+                )}
               </div>
               <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              {brandLogo && (
+                <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                  <button
+                    onClick={handleExtractBrandColors}
+                    disabled={extractingColors}
+                    style={{
+                      height: 32, padding: '0 11px', borderRadius: 9,
+                      border: `1px solid ${F.hairline}`, backgroundColor: F.surface2,
+                      color: extractingColors ? F.inkMuted : F.ink, fontSize: 12, fontWeight: 600,
+                      cursor: extractingColors ? 'default' : 'pointer',
+                    }}
+                  >
+                    {extractingColors ? '추출 중...' : '컬러 추출'}
+                  </button>
+                  <button
+                    onClick={handleApplyBrandColors}
+                    disabled={extractedBrandColors.length === 0}
+                    style={{
+                      height: 32, padding: '0 11px', borderRadius: 9, border: 'none',
+                      backgroundColor: extractedBrandColors.length > 0 ? F.ink : F.hairlineSoft,
+                      color: extractedBrandColors.length > 0 ? '#ffffff' : F.inkMuted,
+                      fontSize: 12, fontWeight: 700,
+                      cursor: extractedBrandColors.length > 0 ? 'pointer' : 'default',
+                    }}
+                  >
+                    적용하기
+                  </button>
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                {brandColors.map((color, i) => (
+                {extractedBrandColors.map((color, i) => (
                   <div key={i} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                     <label style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: color, cursor: 'pointer', display: 'block', border: '2px solid rgba(0,0,0,0.08)', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
                       <input
                         type="color"
                         value={color}
-                        onChange={e => { const next = [...brandColors]; next[i] = e.target.value; setBrandColors(next) }}
+                        onChange={e => { const next = [...extractedBrandColors]; next[i] = e.target.value; setExtractedBrandColors(next) }}
                         style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', border: 'none', padding: 0 }}
                       />
                     </label>
                     <button
-                      onClick={() => setBrandColors(brandColors.filter((_, j) => j !== i))}
+                      onClick={() => setExtractedBrandColors(extractedBrandColors.filter((_, j) => j !== i))}
                       style={{ position: 'absolute', top: '-4px', right: '-4px', width: '14px', height: '14px', borderRadius: '50%', backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
                     >
                       <X size={8} />
@@ -1904,13 +1952,19 @@ export default function Home() {
                     <span style={{ fontSize: '9px', fontFamily: 'monospace', color: F.inkMuted }}>{color.toUpperCase()}</span>
                   </div>
                 ))}
-                {brandColors.length < 5 && (
+                {extractedBrandColors.length < 5 && (
                   <button
-                    onClick={() => setBrandColors([...brandColors, '#000000'])}
+                    onClick={() => setExtractedBrandColors([...extractedBrandColors, '#000000'])}
                     style={{ width: '36px', height: '36px', borderRadius: '50%', border: `1.5px dashed ${F.hairline}`, backgroundColor: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: F.inkMuted, fontSize: '20px', lineHeight: 1 }}
                   >
                     +
                   </button>
+                )}
+                {extractedBrandColors.length === 0 && !brandLogo && (
+                  <span style={{ fontSize: 12, color: F.inkMuted }}>로고를 먼저 업로드해 주세요.</span>
+                )}
+                {extractedBrandColors.length === 0 && brandLogo && !extractingColors && (
+                  <span style={{ fontSize: 12, color: F.inkMuted }}>컬러 추출을 누르면 후보 컬러가 표시됩니다.</span>
                 )}
               </div>
             </div>
@@ -2010,7 +2064,7 @@ export default function Home() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '10px', backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, marginBottom: '14px' }}>
                       <img src={brandLogo} alt="logo" style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 4 }} />
                       <span style={{ fontSize: '12px', color: F.ink, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{brandLogoName}</span>
-                      <button onClick={() => { setBrandLogo(null); setBrandLogoName(null) }} style={{ border: 'none', background: 'none', cursor: 'pointer', color: F.inkMuted, display: 'flex' }}>
+                      <button onClick={clearBrand} style={{ border: 'none', background: 'none', cursor: 'pointer', color: F.inkMuted, display: 'flex' }}>
                         <X size={14} />
                       </button>
                     </div>
@@ -2033,20 +2087,50 @@ export default function Home() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                     <p style={{ fontSize: '12px', fontWeight: 600, color: F.inkMuted, letterSpacing: '-0.12px', margin: 0 }}>브랜드 컬러</p>
                     {extractingColors && <span style={{ fontSize: '11px', color: F.inkMuted }}>로고에서 추출 중...</span>}
+                    {brandColors.length > 0 && !extractingColors && <span style={{ fontSize: '11px', color: F.primary, fontWeight: 600 }}>적용됨</span>}
                   </div>
+                  {brandLogo && (
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                      <button
+                        onClick={handleExtractBrandColors}
+                        disabled={extractingColors}
+                        style={{
+                          height: 32, padding: '0 11px', borderRadius: 9,
+                          border: `1px solid ${F.hairline}`, backgroundColor: F.surface2,
+                          color: extractingColors ? F.inkMuted : F.ink, fontSize: 12, fontWeight: 600,
+                          cursor: extractingColors ? 'default' : 'pointer',
+                        }}
+                      >
+                        {extractingColors ? '추출 중...' : '컬러 추출'}
+                      </button>
+                      <button
+                        onClick={handleApplyBrandColors}
+                        disabled={extractedBrandColors.length === 0}
+                        style={{
+                          height: 32, padding: '0 11px', borderRadius: 9, border: 'none',
+                          backgroundColor: extractedBrandColors.length > 0 ? F.ink : F.hairlineSoft,
+                          color: extractedBrandColors.length > 0 ? '#ffffff' : F.inkMuted,
+                          fontSize: 12, fontWeight: 700,
+                          cursor: extractedBrandColors.length > 0 ? 'pointer' : 'default',
+                        }}
+                      >
+                        적용하기
+                      </button>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    {brandColors.map((color, i) => (
+                    {extractedBrandColors.map((color, i) => (
                       <div key={i} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                         <label style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: color, cursor: 'pointer', display: 'block', border: '2px solid rgba(0,0,0,0.08)', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
                           <input
                             type="color"
                             value={color}
-                            onChange={e => { const next = [...brandColors]; next[i] = e.target.value; setBrandColors(next) }}
+                            onChange={e => { const next = [...extractedBrandColors]; next[i] = e.target.value; setExtractedBrandColors(next) }}
                             style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', border: 'none', padding: 0 }}
                           />
                         </label>
                         <button
-                          onClick={() => setBrandColors(brandColors.filter((_, j) => j !== i))}
+                          onClick={() => setExtractedBrandColors(extractedBrandColors.filter((_, j) => j !== i))}
                           style={{ position: 'absolute', top: '-4px', right: '-4px', width: '14px', height: '14px', borderRadius: '50%', backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
                         >
                           <X size={8} />
@@ -2054,13 +2138,19 @@ export default function Home() {
                         <span style={{ fontSize: '9px', fontFamily: 'monospace', color: F.inkMuted }}>{color.toUpperCase()}</span>
                       </div>
                     ))}
-                    {brandColors.length < 5 && (
+                    {extractedBrandColors.length < 5 && (
                       <button
-                        onClick={() => setBrandColors([...brandColors, '#000000'])}
+                        onClick={() => setExtractedBrandColors([...extractedBrandColors, '#000000'])}
                         style={{ width: '36px', height: '36px', borderRadius: '50%', border: `1.5px dashed ${F.hairline}`, backgroundColor: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: F.inkMuted, fontSize: '20px', lineHeight: 1 }}
                       >
                         +
                       </button>
+                    )}
+                    {extractedBrandColors.length === 0 && !brandLogo && (
+                      <span style={{ fontSize: 12, color: F.inkMuted }}>로고를 먼저 업로드해 주세요.</span>
+                    )}
+                    {extractedBrandColors.length === 0 && brandLogo && !extractingColors && (
+                      <span style={{ fontSize: 12, color: F.inkMuted }}>컬러 추출을 누르면 후보 컬러가 표시됩니다.</span>
                     )}
                   </div>
                 </>
