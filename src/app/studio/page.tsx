@@ -14,19 +14,37 @@ import { getVariantStyles, getVariantInfo } from '@/lib/variant-refs'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import { saveHistoryItem, compressThumbnail, loadHistory, deleteHistoryItem, type HistoryItem } from '@/lib/history'
 
-// ─── Airbnb design tokens ────────────────────────────────────────────────────
+// ─── KTDS 디자인 토큰 ────────────────────────────────────────────────────────
 const F = {
-  canvas: '#ffffff', surface1: '#f7f7f7', surface2: '#f2f2f2',
-  ink: '#222222', inkMuted: '#6a6a6a', inkSubtle: '#b0b0b0',
-  primary: '#ff385c', primaryActive: '#e00b41',
-  hairline: '#dddddd', hairlineSoft: '#ebebeb',
+  // 서피스
+  canvas:          '#F2F5F9',   // 페이지 배경 (primary-fill-neutral)
+  surface:         '#ffffff',   // 카드/패널 배경
+  surface1:        '#ffffff',   // 하위 호환
+  surface2:        '#f4f4f5',   // 비활성 배경
+  // 텍스트
+  ink:             '#171719',
+  inkNeutral:      '#474a4f',
+  inkMuted:        '#474a4f',   // 하위 호환
+  inkAlternative:  '#9a9ba0',
+  inkSubtle:       '#9a9ba0',   // 하위 호환
+  inkDisabled:     '#caccce',
+  // Primary
+  primary:         '#1a75ff',
+  primaryActive:   '#186ae8',
+  // 보더
+  hairline:        '#c5c6c9',
+  hairlineSoft:    '#dcdde0',
+  // 상태
+  positive:        '#00c244',
+  negative:        '#ff4242',
+  surfaceDisabled: '#f4f4f5',
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3 | 4
 
-interface GenerateResult { html: string; image: string }
+interface GenerateResult { html: string; image: string; has3dHero?: boolean; imageWarnings?: string[] }
 
 interface ElementStyles {
   tagName: string; text: string; className: string
@@ -59,6 +77,9 @@ function defaultAnswersFromAnalysis(data: QuestionnaireResponse): Record<string,
     platform_intent: platformLabel(data.recommendedPlatform?.platform),
     domain: domainLabel,
     home_emphasis: homeOptions[0] ?? 'AI가 결정',
+    primary_journey: domain === 'health' ? '목표 달성/보상 수령' : 'AI가 결정',
+    first_screen_focus: domain === 'business' ? '핵심 지표' : '대표 CTA',
+    visual_density: '균형형',
     variant_strategy: '세 방향 모두 다르게',
     hero3d: data.heroImageDecision?.generate ? '사용' : '사용 안 함',
   }
@@ -281,6 +302,64 @@ function formatVarDisplay(value: number, v: TweakVariable): string {
   if (v.unit === '%') return `${value}%`
   if (value >= 1000) return `${value.toLocaleString('ko-KR')}${v.unit}`
   return `${value}${v.unit}`
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function htmlEncodeBasic(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function buildTextVariants(value: string): string[] {
+  const normalized = value.trim()
+  if (!normalized) return []
+  const variants = new Set<string>([normalized, htmlEncodeBasic(normalized)])
+  variants.add(normalized.replace(/\s+/g, ' '))
+  variants.add(normalized.replace(/\s+/g, '&nbsp;'))
+  variants.add(normalized.replace(/,/g, ''))
+  variants.add(normalized.replace(/(\d)\s+(\d)/g, '$1&nbsp;$2'))
+  return [...variants].filter(Boolean).sort((a, b) => b.length - a.length)
+}
+
+function replaceTweakText(html: string, from: string, to: string): string {
+  if (!from.trim() || from === to) return html
+  let next = html
+  for (const variant of buildTextVariants(from)) {
+    next = next.split(variant).join(to)
+    if (/\s/.test(variant)) {
+      const flexible = escapeRegExp(variant).replace(/\s+/g, '(?:\\s|&nbsp;)+')
+      next = next.replace(new RegExp(flexible, 'g'), to)
+    }
+  }
+  return next
+}
+
+function applyTweakSpecToHtml(
+  html: string,
+  tweakSpec: TweakSpec | null,
+  activeStateId: string,
+  varValues: Record<string, number>,
+): string {
+  if (!tweakSpec) return html
+  let next = html
+  const state = tweakSpec.states.find(s => s.id === activeStateId)
+  state?.replacements.forEach(r => { next = replaceTweakText(next, r.from, r.to) })
+  tweakSpec.variables.forEach(v => {
+    const val = varValues[v.id] ?? v.currentValue
+    if (val !== v.currentValue) {
+      const newDisplay = formatVarDisplay(val, v)
+      v.currentDisplayStrings.forEach(pattern => {
+        next = replaceTweakText(next, pattern, newDisplay)
+      })
+    }
+  })
+  return next
 }
 
 
@@ -644,20 +723,7 @@ export default function StudioPage() {
   // Computed HTML with state + variable replacements applied
   const displayHtml = useMemo(() => {
     if (!result?.html) return ''
-    let html = result.html
-    if (tweakSpec) {
-      const state = tweakSpec.states.find(s => s.id === activeStateId)
-      state?.replacements.forEach(r => { html = html.split(r.from).join(r.to) })
-      tweakSpec.variables.forEach(v => {
-        const val = varValues[v.id] ?? v.currentValue
-        if (val !== v.currentValue) {
-          const newDisplay = formatVarDisplay(val, v)
-          v.currentDisplayStrings.forEach(pattern => {
-            html = html.split(pattern).join(newDisplay)
-          })
-        }
-      })
-    }
+    let html = applyTweakSpecToHtml(result.html, tweakSpec, activeStateId, varValues)
     // 브랜드 컬러: HTML에 하드코딩된 hex를 교체 (CSS 변수를 안 쓰는 경우 대응)
     const origPrimary = html.match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1]?.toLowerCase()
     if (origPrimary && debouncedBrandColor.toLowerCase() !== origPrimary) {
@@ -1338,6 +1404,7 @@ export default function StudioPage() {
         .then(spec => {
           if (tweakRequestHtmlRef.current !== requestedHtml) return
           setTweakSpecA(spec?.states?.length ? spec : null)
+          setActiveStateId('typical')
           if (spec?.variables?.length) {
             const defaults: Record<string, number> = {}
             spec.variables.forEach((v: TweakVariable) => { defaults[v.id] = v.currentValue })
@@ -1448,7 +1515,13 @@ export default function StudioPage() {
       if (data.error) throw new Error(data.error)
       setVariants(prev => {
         const updated = [...prev] as [GenerateResult | null, GenerateResult | null]
-        if (updated[activeVariant]) updated[activeVariant] = { ...updated[activeVariant]!, html: data.html }
+        if (updated[activeVariant]) {
+          updated[activeVariant] = {
+            ...updated[activeVariant]!,
+            html: data.html,
+            imageWarnings: data.imageWarnings ?? updated[activeVariant]!.imageWarnings,
+          }
+        }
         return updated
       })
       if (activeVariant === 0) {
@@ -1472,6 +1545,7 @@ export default function StudioPage() {
           .then(spec => {
             if (tweakRequestHtmlRef.current !== refinedHtml) return
             setTweakSpecA(spec?.states?.length ? spec : null)
+            setActiveStateId('typical')
             if (spec?.variables?.length) {
               const defaults: Record<string, number> = {}
               spec.variables.forEach((v: TweakVariable) => { defaults[v.id] = v.currentValue })
@@ -1488,6 +1562,12 @@ export default function StudioPage() {
           .then(spec => {
             if (tweakRequestHtmlRef.current !== refinedHtml) return
             setTweakSpecB(spec?.states?.length ? spec : null)
+            setActiveStateId('typical')
+            if (spec?.variables?.length) {
+              const defaults: Record<string, number> = {}
+              spec.variables.forEach((v: TweakVariable) => { defaults[v.id] = v.currentValue })
+              setVarValues(defaults)
+            }
           })
           .catch(() => { if (tweakRequestHtmlRef.current === refinedHtml) setTweakSpecB(null) })
           .finally(() => { if (tweakRequestHtmlRef.current === refinedHtml) setIsAnalyzingTweakB(false) })
@@ -1605,14 +1685,14 @@ export default function StudioPage() {
       <div
         className="h-screen overflow-hidden flex flex-col text-[#111111] relative"
         style={{
-          fontFamily: "'Inter', -apple-system, sans-serif",
+          fontFamily: "var(--font-pretendard)",
           backgroundColor: '#f4f4f6',
         }}
       >
         {isExpandingPrototype && <ExpandingOverlay image={pickedVariantIdx !== null ? (mainVariants[pickedVariantIdx]?.image ?? undefined) : undefined} platform={platform} variantLabel={pickedVariantIdx !== null ? ['시안 A','시안 B','시안 C'][pickedVariantIdx] : undefined} />}
 
         {/* Header */}
-        <div className="h-11 border-b border-[rgba(0,0,0,0.09)] flex items-stretch shrink-0 bg-white">
+        <div className="border-b border-[rgba(0,0,0,0.09)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
           <a href="/" className="flex items-center px-4 text-[#111111] font-bold text-[15px] border-r border-[rgba(0,0,0,0.09)] hover:bg-[#ebebeb] transition-colors shrink-0">
             Aide
           </a>
@@ -1857,7 +1937,7 @@ export default function StudioPage() {
                     {variant && (
                       <button
                         onClick={() => handlePickVariant(variantIdx as 0|1|2)}
-                        style={{ marginTop: 16, width: '100%', padding: '11px 0', borderRadius: '10px', backgroundColor: '#111111', color: '#ffffff', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', letterSpacing: '-0.2px', transition: 'background 0.15s' }}
+                        style={{ marginTop: 16, width: '100%', padding: '11px 0', borderRadius: '8px', backgroundColor: '#111111', color: '#ffffff', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', letterSpacing: '-0.2px', transition: 'background 0.15s' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#333333' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#111111' }}
                       >
@@ -1865,7 +1945,7 @@ export default function StudioPage() {
                       </button>
                     )}
                     {!variant && (
-                      <div style={{ marginTop: 16, width: '100%', padding: '11px 0', borderRadius: '10px', backgroundColor: '#f4f4f6', color: '#cccccc', fontSize: 13, fontWeight: 600, textAlign: 'center', letterSpacing: '-0.2px' }}>
+                      <div style={{ marginTop: 16, width: '100%', padding: '11px 0', borderRadius: '8px', backgroundColor: '#f4f4f6', color: '#cccccc', fontSize: 13, fontWeight: 600, textAlign: 'center', letterSpacing: '-0.2px' }}>
                         생성 중...
                       </div>
                     )}
@@ -2198,7 +2278,7 @@ export default function StudioPage() {
             )
           })() : (
             /* No design system: simple spinner card */
-            <div className="shrink-0 flex flex-col items-center justify-center gap-4" style={{ width: 280, padding: '32px 24px', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.97)', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 8px 32px rgba(0,0,0,0.10)' }}>
+            <div className="shrink-0 flex flex-col items-center justify-center gap-4" style={{ width: 280, padding: '32px 24px', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.97)', border: `1px solid ${F.hairlineSoft}`, boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}>
               <div className="size-10 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#0055ff' }} />
               <p style={{ fontSize: 13, color: '#888888', textAlign: 'center', lineHeight: 1.6 }}>AI가 최적의 디자인을<br />설계하고 있습니다</p>
               <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -2244,6 +2324,15 @@ export default function StudioPage() {
                     {variant && !isLoadingThis && (
                       <span className="text-[12px]" style={{ color: '#888888' }}>완료</span>
                     )}
+                    {variant?.imageWarnings?.length ? (
+                      <span
+                        className="ml-auto text-[11px] px-1.5 py-0.5"
+                        style={{ color: '#b45309', backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6 }}
+                        title={variant.imageWarnings.join('\n')}
+                      >
+                        이미지 대체
+                      </span>
+                    ) : null}
                   </div>
                   <div
                     className="relative overflow-hidden bg-white"
@@ -2280,7 +2369,7 @@ export default function StudioPage() {
                     <button
                       onClick={() => handlePickVariant(idx as 0|1|2)}
                       className="w-full py-2.5 text-[13px] font-medium text-white transition-colors"
-                      style={{ borderRadius: '100px', backgroundColor: '#111111' }}
+                      style={{ borderRadius: '8px', backgroundColor: '#111111' }}
                       onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#333333' }}
                       onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#111111' }}
                     >
@@ -2310,10 +2399,10 @@ export default function StudioPage() {
   // ─── Step 4: Figma-style full-screen editor ──────────────────────────────
   if (step === 4 && result) {
     return (
-      <div className="h-screen overflow-hidden flex flex-col text-[#111111] relative" style={{ fontFamily: "'Inter', -apple-system, sans-serif", backgroundColor: '#f4f4f6' }}>
+      <div className="h-screen overflow-hidden flex flex-col text-[#111111] relative" style={{ fontFamily: "var(--font-pretendard)", backgroundColor: '#f4f4f6' }}>
 
         {/* Tab bar */}
-        <div className="h-11 border-b border-[rgba(0,0,0,0.09)] flex items-stretch shrink-0 bg-white">
+        <div className="border-b border-[rgba(0,0,0,0.09)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
           <a href="/" className="flex items-center px-4 text-[#111111] font-bold text-[15px] border-r border-[rgba(0,0,0,0.09)] hover:bg-[#ebebeb] transition-colors shrink-0">
             aide
           </a>
@@ -2333,7 +2422,7 @@ export default function StudioPage() {
                     padding: '0 8px 0 14px',
                     maxWidth: 180,
                     borderRight: '1px solid rgba(0,0,0,0.06)',
-                    borderBottom: isActive ? '2px solid #111111' : '2px solid transparent',
+                    borderBottom: isActive ? `2px solid ${F.primary}` : '2px solid transparent',
                     backgroundColor: 'transparent',
                     height: '100%',
                   }}
@@ -2347,7 +2436,7 @@ export default function StudioPage() {
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
-                      color: isActive ? '#111111' : '#666666',
+                      color: isActive ? F.primary : F.inkAlternative,
                       backgroundColor: 'transparent',
                       border: 'none',
                       cursor: 'pointer',
@@ -2355,8 +2444,8 @@ export default function StudioPage() {
                       textAlign: 'left',
                       transition: 'color 0.1s',
                     }}
-                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = '#111111' }}
-                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = '#666666' }}
+                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = F.ink }}
+                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = F.inkAlternative }}
                   >
                     {item.brief.length > 16 ? item.brief.slice(0, 16) + '…' : item.brief}
                   </button>
@@ -2378,7 +2467,7 @@ export default function StudioPage() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderRadius: '50%',
+                      borderRadius: '8px',
                       border: 'none',
                       backgroundColor: 'transparent',
                       cursor: 'pointer',
@@ -2404,14 +2493,14 @@ export default function StudioPage() {
               <button
                 onClick={() => setShareOpen(o => !o)}
                 className="text-[13px] font-medium text-[#111111] px-4 py-1.5 transition-colors shrink-0 flex items-center gap-1.5"
-                style={{ borderRadius: '100px', backgroundColor: '#ffffff' }}
+                style={{ borderRadius: '8px', backgroundColor: '#ffffff' }}
                 onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#e0e0e0' }}
                 onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#ffffff' }}
               >
                 공유 <ChevronDown size={11} />
               </button>
               {shareOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-52 bg-white border border-[rgba(0,0,0,0.09)] overflow-hidden z-50" style={{ borderRadius: '10px', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+                <div className="absolute right-0 top-full mt-1.5 w-52 bg-white overflow-hidden z-50" style={{ borderRadius: '8px', boxShadow: '0 8px 40px rgba(0,0,0,0.18)', border: `1px solid ${F.hairlineSoft}` }}>
                   <button onClick={handleCopyLink} className="w-full flex items-start gap-2.5 px-4 py-2.5 hover:bg-[#f0f0f0] transition-colors text-left">
                     {copyLinkDone
                       ? <><span className="text-[#22c55e] mt-0.5">✓</span><span className="text-[13px] text-[#22c55e]">복사됨!</span></>
@@ -2519,7 +2608,7 @@ export default function StudioPage() {
                 <ChevronDown size={11} />
               </button>
               {zoomOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-28 bg-white border border-[rgba(0,0,0,0.09)] overflow-hidden z-50" style={{ borderRadius: '8px', boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }}>
+                <div className="absolute right-0 top-full mt-1.5 w-28 bg-white overflow-hidden z-50" style={{ borderRadius: '8px', boxShadow: '0 8px 40px rgba(0,0,0,0.18)', border: `1px solid ${F.hairlineSoft}` }}>
                   {[50, 60, 75, 100].map(z => (
                     <button
                       key={z}
@@ -2552,7 +2641,7 @@ export default function StudioPage() {
                 key={s.id}
                 onClick={() => { setActiveScreenId(s.id); sendToIframe({ type: 'aide:navigate', id: s.id }) }}
                 className="px-3 py-1 text-[13px] shrink-0 transition-colors"
-                style={{ borderRadius: '100px', ...(activeScreenId === s.id ? { backgroundColor: '#111111', color: '#ffffff' } : { color: '#666666' }) }}
+                style={{ borderRadius: '8px', ...(activeScreenId === s.id ? { backgroundColor: '#111111', color: '#ffffff' } : { color: '#666666' }) }}
               >
                 {s.label}
               </button>
@@ -2799,7 +2888,7 @@ export default function StudioPage() {
 
         {figmaExportOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)' }}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.25)' }}>
+            <div className="bg-white w-full max-w-md mx-4 overflow-hidden" style={{ borderRadius: '16px', boxShadow: '0 8px 40px rgba(0,0,0,0.18)', border: `1px solid ${F.hairlineSoft}` }}>
               {figmaExportError ? (
                 <div className="flex flex-col items-center gap-5 px-8 py-10">
                   <div className="size-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#ff000010', border: '1.5px solid #ff000030' }}>
@@ -2896,11 +2985,11 @@ export default function StudioPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ fontFamily: "'Inter', -apple-system, sans-serif", backgroundColor: F.surface1, color: F.ink }}>
+    <div className="min-h-screen flex flex-col" style={{ fontFamily: "var(--font-pretendard)", backgroundColor: F.canvas, color: F.ink }}>
       {isExpandingPrototype && <ExpandingOverlay image={pickedVariantIdx !== null ? (mainVariants[pickedVariantIdx]?.image ?? undefined) : undefined} platform={platform} variantLabel={pickedVariantIdx !== null ? ['시안 A','시안 B','시안 C'][pickedVariantIdx] : undefined} />}
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-10 px-8 py-4 flex items-center" style={{ backgroundColor: F.canvas, borderBottom: `1px solid ${F.hairlineSoft}` }}>
+      <header className="sticky top-0 z-10 px-8 flex items-center" style={{ height: '56px', backgroundColor: F.surface, borderBottom: `1px solid ${F.hairlineSoft}` }}>
         <a href="/" className="font-bold text-lg transition-colors" style={{ letterSpacing: '-0.05em', color: F.ink, textDecoration: 'none' }}>
           Aide
         </a>
@@ -3088,13 +3177,13 @@ export default function StudioPage() {
                       <button
                         onClick={handleAnalyze}
                         disabled={!brief.trim() || isAnalyzing}
-                        style={{ height: 38, padding: '0 14px', borderRadius: 10, border: 'none', backgroundColor: F.ink, color: '#ffffff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                        style={{ height: 38, padding: '0 14px', borderRadius: 8, border: 'none', backgroundColor: F.ink, color: '#ffffff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                       >
                         다시 시도
                       </button>
                       <button
                         onClick={() => { setStartedFromLanding(false); setAnalyzeError('') }}
-                        style={{ height: 38, padding: '0 14px', borderRadius: 10, border: `1px solid ${F.hairline}`, backgroundColor: F.canvas, color: F.ink, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+                        style={{ height: 38, padding: '0 14px', borderRadius: 8, border: `1px solid ${F.hairline}`, backgroundColor: F.canvas, color: F.ink, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
                       >
                         입력 내용 수정
                       </button>
@@ -3136,9 +3225,9 @@ export default function StudioPage() {
                           onClick={() => setDesignPreset(isActive ? 'none' : key)}
                           className="flex flex-col gap-1.5 p-3 text-left border transition-all"
                           style={{
-                            borderRadius: '12px',
-                            borderColor: isActive ? F.ink : F.hairlineSoft,
-                            backgroundColor: isActive ? F.surface2 : F.canvas,
+                            borderRadius: '8px',
+                            borderColor: isActive ? F.primary : F.hairline,
+                            backgroundColor: isActive ? '#EBF3FF' : F.surface,
                             outline: 'none',
                           }}
                         >
@@ -3147,9 +3236,9 @@ export default function StudioPage() {
                               className="w-3 h-3 rounded-full flex-shrink-0"
                               style={{ backgroundColor: preset.color }}
                             />
-                            <span className="text-[13px] font-semibold" style={{ color: F.ink }}>{preset.label}</span>
+                            <span className="text-[13px] font-semibold" style={{ color: isActive ? F.primary : F.ink }}>{preset.label}</span>
                             {isActive && (
-                              <span className="ml-auto text-[11px] font-600 px-2 py-0.5 rounded-full" style={{ backgroundColor: F.primary, color: '#ffffff' }}>
+                              <span className="ml-auto text-[11px] font-600 px-2 py-0.5" style={{ borderRadius: '4px', backgroundColor: F.primary, color: '#ffffff' }}>
                                 선택됨
                               </span>
                             )}
@@ -3280,7 +3369,7 @@ export default function StudioPage() {
                   필요하면 아래 버튼만 바꾸고 바로 시안을 생성하면 됩니다.
                 </div>
               </div>
-              <div className="shrink-0 text-[12px] font-semibold px-3 py-2" style={{ borderRadius: 9999, backgroundColor: '#f5f5f5', color: '#111111', border: '1px solid rgba(0,0,0,0.08)' }}>
+              <div className="shrink-0 text-[12px] font-semibold px-3 py-2" style={{ borderRadius: 8, backgroundColor: '#f5f5f5', color: '#111111', border: '1px solid rgba(0,0,0,0.08)' }}>
                 {platform === 'web' ? '웹 프리뷰' : '모바일 프리뷰'}
               </div>
             </div>
@@ -3789,8 +3878,8 @@ function IconPickerPanel({ pickedIcon, onPick, onApply, onCancel }: {
 
   return (
     <div
-      className="fixed right-4 top-[60px] bottom-4 z-30 flex flex-col overflow-hidden bg-white border border-[rgba(0,0,0,0.09)] w-72"
-      style={{ borderRadius: '14px', boxShadow: 'rgba(0,0,0,0.08) 0 0 0 1px, rgba(0,0,0,0.12) 0 8px 24px 0' }}
+      className="fixed right-4 top-[60px] bottom-4 z-30 flex flex-col overflow-hidden bg-white w-72"
+      style={{ borderRadius: '16px', boxShadow: '0 8px 40px rgba(0,0,0,0.18)', border: `1px solid ${F.hairlineSoft}` }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[rgba(0,0,0,0.07)] shrink-0">
@@ -3882,7 +3971,7 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-end p-6 pointer-events-none">
-      <div className="pointer-events-auto bg-white border border-[rgba(0,0,0,0.09)] w-72 overflow-y-auto max-h-[90vh]" style={{ borderRadius: '14px', boxShadow: 'rgba(0,0,0,0.08) 0 0 0 1px, rgba(0,0,0,0.12) 0 8px 24px 0' }}>
+      <div className="pointer-events-auto bg-white w-72 overflow-y-auto max-h-[90vh]" style={{ borderRadius: '16px', boxShadow: '0 8px 40px rgba(0,0,0,0.18)', border: `1px solid ${F.hairlineSoft}` }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(0,0,0,0.07)]">
           <span className="text-[14px] font-semibold text-[#111111]">Tweaks</span>
           <button onClick={onClose} className="text-[#666666] hover:text-[#111111] transition-colors">
@@ -3973,7 +4062,7 @@ function PrimaryButton({ onClick, disabled, loading, loadingText, children }: {
       onClick={onClick}
       disabled={disabled}
       className="w-full h-12 text-white font-medium flex items-center justify-center gap-2.5 transition-colors text-[16px]"
-      style={{ borderRadius: '100px', backgroundColor: disabled ? F.hairline : F.primary, cursor: disabled ? 'not-allowed' : 'pointer' }}
+      style={{ borderRadius: '8px', backgroundColor: disabled ? F.hairline : F.primary, cursor: disabled ? 'not-allowed' : 'pointer' }}
       onMouseEnter={e => { if (!disabled) e.currentTarget.style.backgroundColor = F.primaryActive }}
       onMouseLeave={e => { if (!disabled) e.currentTarget.style.backgroundColor = F.primary }}
     >
@@ -4172,7 +4261,7 @@ function QuestionCard({ index, question, answer, onAnswer }: {
   return (
     <div>
       <div className="flex items-start gap-3 mb-3">
-        <span className="shrink-0 size-6 flex items-center justify-center text-xs font-medium mt-0.5 transition-colors" style={{ borderRadius: '9999px', ...(hasAnswer ? { backgroundColor: '#111111', color: '#ffffff' } : { backgroundColor: '#e8e8e8', color: '#666666', border: '1px solid rgba(0,0,0,0.09)' }) }}>
+        <span className="shrink-0 size-6 flex items-center justify-center text-xs font-medium mt-0.5 transition-colors" style={{ borderRadius: '8px', ...(hasAnswer ? { backgroundColor: '#111111', color: '#ffffff' } : { backgroundColor: '#e8e8e8', color: '#666666', border: '1px solid rgba(0,0,0,0.09)' }) }}>
           {hasAnswer ? <Check size={11} /> : index}
         </span>
         <div>
@@ -4200,19 +4289,19 @@ function QuestionCard({ index, question, answer, onAnswer }: {
                 key={option}
                 onClick={() => onAnswer(option)}
                 className="px-4 py-2 text-sm border transition-all inline-flex items-center gap-1.5"
-                style={{ borderRadius: '8px', ...(isSelected(option) ? { backgroundColor: '#111111', borderColor: '#111111', color: '#ffffff' } : { backgroundColor: '#f5f5f5', borderColor: 'rgba(0,0,0,0.09)', color: '#666666' }) }}
+                style={{ borderRadius: '8px', ...(isSelected(option) ? { backgroundColor: '#EBF3FF', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}
               >
                 {isSelected(option) && <Check size={13} />}
                 {option}
               </button>
             ))}
             {question.hasDecideForMe && (
-              <button onClick={() => onAnswer('AI가 결정')} className="px-4 py-2 text-sm border flex items-center gap-1.5 transition-all" style={{ borderRadius: '8px', borderStyle: 'dashed', ...(isSelected('AI가 결정') ? { backgroundColor: 'rgba(0,85,255,0.08)', borderColor: '#0055ff', color: '#0055ff' } : { backgroundColor: '#f5f5f5', borderColor: 'rgba(0,0,0,0.09)', color: '#666666' }) }}>
+              <button onClick={() => onAnswer('AI가 결정')} className="px-4 py-2 text-sm border flex items-center gap-1.5 transition-all" style={{ borderRadius: '8px', borderStyle: 'dashed', ...(isSelected('AI가 결정') ? { backgroundColor: '#EBF3FF', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}>
                 <Sparkles size={12} /> AI가 결정
               </button>
             )}
             {question.hasExplore && (
-              <button onClick={() => onAnswer('다양하게 보기')} className="px-4 py-2 text-sm border transition-all" style={{ borderRadius: '8px', borderStyle: 'dashed', ...(isSelected('다양하게 보기') ? { backgroundColor: '#e8e8e8', borderColor: 'rgba(0,0,0,0.25)', color: '#111111' } : { backgroundColor: '#f5f5f5', borderColor: 'rgba(0,0,0,0.09)', color: '#666666' }) }}>
+              <button onClick={() => onAnswer('다양하게 보기')} className="px-4 py-2 text-sm border transition-all" style={{ borderRadius: '8px', borderStyle: 'dashed', ...(isSelected('다양하게 보기') ? { backgroundColor: '#EBF3FF', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}>
                 ✦ 다양하게 보기
               </button>
             )}

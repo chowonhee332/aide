@@ -38,7 +38,8 @@ export async function POST(req: NextRequest) {
     console.log('[expand] step1: params parsed, starting expandToPrototype')
     let html = await expandToPrototype(mainHtml, params, apiKey)
     console.log('[expand] step2: html generated, length=', html.length)
-    html = await resolveImagePlaceholders(html, { heroImagePrompt: params.heroImagePrompt, apiKey, unsplashKey })
+    const imageWarnings: string[] = []
+    html = await resolveImagePlaceholders(html, { heroImagePrompt: params.heroSubject || params.heroImagePrompt, apiKey, unsplashKey, imageWarnings })
 
     const puppeteer = await import('puppeteer')
     browser = await puppeteer.default.launch({
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
     })
 
     console.log('[expand] step6: done')
-    return NextResponse.json({ html, image: `data:image/png;base64,${screenshot}` })
+    return NextResponse.json({ html, image: `data:image/png;base64,${screenshot}`, imageWarnings })
   } catch (err) {
     const name = err instanceof Error ? err.name : 'unknown'
     const message = err instanceof Error ? err.message : String(err)

@@ -41,10 +41,12 @@ export async function POST(req: NextRequest) {
     const html = await generateUI(params, apiKey)
     const has3dPlaceholder = /%%(?:HERO_3D_IMAGE|HERO_SCENE_3D|MASCOT_3D|REWARD_OBJECT_3D)/.test(html)
     const heroPrompt = params.heroSubject || params.heroImagePrompt || (has3dPlaceholder ? params.brief : undefined)
+    const imageWarnings: string[] = []
     const finalHtml = await resolveImagePlaceholders(html, {
       heroImagePrompt: heroPrompt,
       apiKey,
       unsplashKey,
+      imageWarnings,
     })
     console.log('[generate] step2: html generated, length=', finalHtml.length)
 
@@ -82,7 +84,7 @@ export async function POST(req: NextRequest) {
     })
 
     console.log('[generate] step6: screenshot done')
-    return NextResponse.json({ html: finalHtml, image: `data:image/png;base64,${screenshot}`, has3dHero: has3dPlaceholder })
+    return NextResponse.json({ html: finalHtml, image: `data:image/png;base64,${screenshot}`, has3dHero: has3dPlaceholder, imageWarnings })
   } catch (err) {
     const name = err instanceof Error ? err.name : 'unknown'
     const message = err instanceof Error ? err.message : String(err)
