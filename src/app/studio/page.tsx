@@ -20,24 +20,17 @@ const F = {
   canvas:          '#F2F5F9',   // 페이지 배경 (primary-fill-neutral)
   surface:         '#ffffff',   // 카드/패널 배경
   surface1:        '#ffffff',   // 하위 호환
-  surface2:        '#f4f4f5',   // 비활성 배경
   // 텍스트
   ink:             '#171719',
-  inkNeutral:      '#474a4f',
   inkMuted:        '#474a4f',   // 하위 호환
   inkAlternative:  '#9a9ba0',
   inkSubtle:       '#9a9ba0',   // 하위 호환
-  inkDisabled:     '#caccce',
   // Primary
   primary:         '#1a75ff',
   primaryActive:   '#186ae8',
   // 보더
   hairline:        '#c5c6c9',
   hairlineSoft:    '#dcdde0',
-  // 상태
-  positive:        '#00c244',
-  negative:        '#ff4242',
-  surfaceDisabled: '#f4f4f5',
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────

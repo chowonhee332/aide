@@ -89,18 +89,6 @@ export async function deleteHistoryItem(id: string): Promise<void> {
   } catch { /* ignore */ }
 }
 
-export async function clearHistory(): Promise<void> {
-  if (typeof window === 'undefined') return
-  try {
-    const db = await openDB()
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite')
-      tx.objectStore(STORE_NAME).clear()
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error)
-    })
-  } catch { /* ignore */ }
-}
 
 export async function compressThumbnail(dataUrl: string): Promise<string> {
   return new Promise((resolve) => {
