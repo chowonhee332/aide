@@ -1026,52 +1026,27 @@ div.aide-page {
 .tab-bar * {
   min-width: 0;
 }
-</style>`
-}
-
-function injectMobilePhoneFrame(html: string, platform?: string): string {
-  if (platform !== 'mobile') return html
-
-  const frameCSS = `
-<style data-aide-phone-frame="1">
 @media (min-width: 768px) {
-  html { background: #eef0f4 !important; }
-  body {
-    display: flex !important;
-    justify-content: center !important;
-    align-items: flex-start !important;
-    min-height: 100vh !important;
-    padding: 40px 0 !important;
-    box-sizing: border-box !important;
-    background: #eef0f4 !important;
+  .aide-page,
+  main.aide-page,
+  div.aide-page {
+    padding-bottom: var(--aide-section-gap);
   }
-  body > div:first-child,
-  body > .app-shell,
-  body > .app-wrapper,
-  body > .app-container,
-  body > .screen-container,
-  body > [class*="app-"],
-  body > [class*="shell"],
-  body > [class*="wrapper"] {
-    max-width: 390px !important;
-    width: 100% !important;
-    border-radius: 40px !important;
-    overflow: hidden !important;
-    box-shadow: 0 32px 80px rgba(0,0,0,0.22), 0 0 0 8px #1a1a1a, 0 0 0 9px #333 !important;
-    position: relative !important;
-    flex-shrink: 0 !important;
+  .mobile-tabbar,
+  .mobile-tab-bar,
+  .mobile-nav,
+  .bottom-tabbar,
+  .bottom-nav,
+  [class*="mobile-tabbar"],
+  [class*="mobile-tab-bar"],
+  [class*="mobile-nav"],
+  [class*="bottom-nav"] {
+    display: none !important;
   }
 }
 </style>`
-
-  if (html.includes('</head>')) {
-    return html.replace('</head>', frameCSS + '</head>')
-  }
-  if (html.includes('<body')) {
-    return html.replace('<body', frameCSS + '<body')
-  }
-  return frameCSS + html
 }
+
 
 function injectDesignContractStyle(html: string, designMd: string, hasBrandColors = false): string {
   const contract = buildDesignRhythmContract(designMd, hasBrandColors)
@@ -1093,6 +1068,32 @@ function collectStaticDesignContractIssues(html: string): string[] {
   if (!css.trim()) return ['CSS <style> block is missing.']
 
   const issues: string[] = []
+  const deviceShellPatterns = [
+    /\b(?:class|id)=["'][^"']*(?:phone|iphone|device|mockup|bezel|notch|home-indicator|status-bar|dynamic-island|hardware)[^"']*["']/i,
+    /(?:phone|iphone|device|mockup|bezel|notch|home-indicator|status-bar|dynamic-island|hardware)[\w-]*\s*\{/i,
+    /border-radius\s*:\s*(?:3[6-9]|[4-9]\d)px[^}]{0,180}(?:background|border)\s*:\s*(?:#000|#111|#1c1c1c|black)/i,
+  ]
+  if (deviceShellPatterns.some(pattern => pattern.test(html))) {
+    issues.push('Device mockup shell detected. Generated HTML must be the app/web screen itself, without phone frames, bezels, notches, status bars, home indicators, or hardware wrappers.')
+  }
+
+  const mediaMinWidthCount = (css.match(/@media\s*[^{]*min-width/gi) ?? []).length
+  const hasDesktopBreakpoint = /@media\s*[^{]*min-width\s*:\s*(?:768|900|960|1024|1200|1280)px/i.test(css)
+  const hasMobileOnlyNav = /\.(?:mobile-(?:nav|tabbar|tab-bar)|bottom-(?:nav|tabbar)|tabbar|tab-bar)\b|class\*=["'](?:bottom-nav|tabbar|tab-bar)/i.test(css)
+  const hidesMobileNavOnWideViewport = /@media\s*[^{]*min-width[\s\S]{0,1800}(?:mobile-(?:nav|tabbar|tab-bar)|bottom-(?:nav|tabbar)|tabbar|tab-bar)[\s\S]{0,420}display\s*:\s*none/i.test(css)
+  const narrowRootShell = /(?:\.|#)?(?:app|page|shell|wrapper|container|screen|root)[^{]{0,80}\{[^}]{0,500}(?:width|max-width)\s*:\s*(?:3[2-9]\d|4\d\d|5[0-2]\d)px/i.test(css)
+  const hasWideViewportExpansion = /@media\s*[^{]*min-width[\s\S]{0,1800}(?:grid-template-columns|display\s*:\s*grid|\.desktop-|desktop-nav|margin-left|aside|sidebar|max-width\s*:\s*(?:none|100%|12\d\dpx|14\d\dpx)|width\s*:\s*100%)/i.test(css)
+
+  if (mediaMinWidthCount < 2 || !hasDesktopBreakpoint || (hasMobileOnlyNav && !hidesMobileNavOnWideViewport) || (narrowRootShell && !hasWideViewportExpansion)) {
+    const details = [
+      mediaMinWidthCount < 2 ? `only ${mediaMinWidthCount} min-width @media rule(s)` : null,
+      !hasDesktopBreakpoint ? 'no tablet/desktop breakpoint at 768px+ detected' : null,
+      hasMobileOnlyNav && !hidesMobileNavOnWideViewport ? 'mobile/bottom tab navigation is not hidden or replaced on wide viewport' : null,
+      narrowRootShell && !hasWideViewportExpansion ? 'root shell appears fixed to mobile width without desktop expansion' : null,
+    ].filter(Boolean).join('; ')
+    issues.push(`Responsive layout contract failed: ${details}. HTML must visibly switch between mobile, tablet, and desktop layouts in the iframe.`)
+  }
+
   const requiredVars = [
     '--aide-page-padding',
     '--aide-section-gap',
@@ -1172,7 +1173,9 @@ async function enforceStaticDesignContract(
   const shouldRefine = issues.length > 0 && issues.some(issue =>
     issue.includes('Too many hardcoded') ||
     issue.includes('Card radius') ||
-    issue.includes('Missing semantic')
+    issue.includes('Missing semantic') ||
+    issue.includes('Device mockup shell') ||
+    issue.includes('Responsive layout contract')
   )
 
   if (!shouldRefine) return { html: nextHtml, refined: false, issues }
@@ -1184,6 +1187,9 @@ ${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
 - :root의 --aide-page-padding / --aide-section-gap / --aide-card-padding / --aide-card-gap / --aide-card-radius / --aide-button-height / --aide-input-height 변수를 유지하고 실제 섹션·카드·버튼·인풋에 재사용하세요.
 - 동일 컴포넌트 타입은 같은 padding, gap, radius, border/shadow 정책을 사용하세요.
 - DESIGN.md에 없는 새로운 spacing scale, radius scale, shadow, hex color를 만들지 마세요.
+- 폰/태블릿 목업, 베젤, 노치, 상태바, 홈 인디케이터, 하드웨어 wrapper를 전부 제거하세요. HTML은 기기 안에 들어가는 화면이 아니라 화면 그 자체여야 합니다.
+- 모바일/태블릿/데스크탑 반응형을 실제 CSS로 구현하세요. 최소 2개 이상의 min-width @media를 작성하고, 768px 이상에서는 모바일 하단 탭바를 숨기거나 상단/좌측 내비로 대체하며, 1024px 이상에서는 2~4컬럼 또는 사이드바/넓은 콘텐츠 영역으로 확장하세요.
+- 최상위 shell/container를 390~520px 폭으로만 고정하지 마세요. 모바일에서는 100%, 태블릿/데스크탑에서는 grid/flex/minmax/clamp로 확장해야 합니다.
 - 이미지 src, 3D placeholder, Unsplash placeholder, 데이터 URL, 텍스트 콘텐츠, 화면 구조는 유지하세요.
 - 시각 완성도는 유지하되 간격/정렬/카드 리듬만 계약에 맞게 정리하세요.`
 
@@ -2993,7 +2999,6 @@ ${effectivePlatform === 'web' ? `
 
   html = sanitizeGeneratedBranding(html, brief, effectiveDesignMd, logoDataUrl)
   html = applyLogoDataUrlOnce(html, logoDataUrl)
-  html = injectMobilePhoneFrame(html, effectivePlatform)
 
   const staticContractResult = await enforceStaticDesignContract(html, {
     brief,
@@ -3167,7 +3172,6 @@ ${buildQualityRules(heroSubject || heroImagePrompt, domain)}
   })
 
   html = injectDesignContractStyle(html, designMd || '', !!(expandBrandColors && expandBrandColors.length > 0))
-  html = injectMobilePhoneFrame(html, platform)
 
   return html
 }

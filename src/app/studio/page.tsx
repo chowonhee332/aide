@@ -2558,14 +2558,14 @@ export default function StudioPage() {
           <div className="flex items-center gap-3">
             <div className="flex items-center rounded overflow-hidden border border-[rgba(0,0,0,0.09)]">
               <button
-                onClick={() => { setPreviewWidth(390); setZoom(100) }}
+                onClick={() => { setPlatform('mobile'); setPreviewWidth(390); setZoom(100) }}
                 className="px-3 py-1 text-[12px] font-medium transition-colors"
-                style={previewWidth <= 768 ? { background: '#111111', color: '#ffffff' } : { color: '#666666', background: 'transparent' }}
+                style={platform === 'mobile' ? { background: '#111111', color: '#ffffff' } : { color: '#666666', background: 'transparent' }}
               >앱</button>
               <button
-                onClick={() => { setPreviewWidth(1440); setZoom(60) }}
+                onClick={() => { setPlatform('web'); setPreviewWidth(1440); setZoom(60) }}
                 className="px-3 py-1 text-[12px] font-medium transition-colors border-l border-[rgba(0,0,0,0.09)]"
-                style={previewWidth > 768 ? { background: '#111111', color: '#ffffff' } : { color: '#666666', background: 'transparent' }}
+                style={platform === 'web' ? { background: '#111111', color: '#ffffff' } : { color: '#666666', background: 'transparent' }}
               >웹</button>
             </div>
             <div className="w-px h-4 bg-[rgba(0,0,0,0.09)]" />
