@@ -1552,6 +1552,40 @@ function replaceLogoSlots(html: string, logoDataUrl: string): { html: string; us
   return { html: next, used }
 }
 
+const MATERIAL_SYMBOLS_CSS = `<style id="aide-material-symbols">
+@font-face {
+  font-family: 'Material Symbols Rounded';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url('/material-symbols-rounded.woff2') format('woff2');
+}
+.material-symbols-rounded {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+</style>`
+
+function injectMaterialSymbolsFont(html: string): string {
+  if (html.includes('id="aide-material-symbols"')) return html
+  if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, `${MATERIAL_SYMBOLS_CSS}\n</head>`)
+  if (/<body/i.test(html)) return html.replace(/<body/i, `${MATERIAL_SYMBOLS_CSS}\n<body`)
+  return MATERIAL_SYMBOLS_CSS + '\n' + html
+}
+
 function applyLogoDataUrlOnce(html: string, logoDataUrl?: string | null): string {
   if (!logoDataUrl) return html
 
@@ -2026,7 +2060,7 @@ export async function generateHeroImage(
       { text: prompt },
       ...refImages,
     ]
-    const imageModels = ['gemini-2.5-flash-image', 'gemini-3-pro-image', 'gemini-3.1-pro-image', 'gemini-3.1-flash-image']
+    const imageModels = ['gemini-3.1-pro-image', 'gemini-3.1-flash-image', 'gemini-2.5-flash-image']
     let res: Awaited<ReturnType<typeof ai.models.generateContent>> | null = null
     for (const model of imageModels) {
       try {
@@ -2246,7 +2280,11 @@ ${domainBlock}
 6. **아이콘 사용 규칙**
    - DESIGN.md가 아이콘 시스템을 정의하면 그 규칙을 최우선으로 따르십시오. KTDS의 경우 "KTDS Icon"으로 표현하고, ktds.md의 주요 icon name 목록을 사용하십시오.
    - 독립 실행 HTML에서 실제 패키지 import가 불가능할 때는 KTDS Icon을 inline SVG 또는 CSS mask 형태로 구현하되, 색상은 var(--color-icon) / var(--color-primary-icon) 등 KTDS 토큰을 사용하십시오.
-   - Material Symbols, emoji, 외부 아이콘 세트는 DESIGN.md가 명시하지 않은 경우 기본값으로 사용하지 마십시오.
+   - **아이콘 기본값: Material Symbols Rounded** — DESIGN.md가 별도 아이콘 시스템을 지정하지 않은 경우 반드시 아래 방식을 사용하십시오.
+     * 사용법: \`<span class="material-symbols-rounded">icon_name</span>\`
+     * 예시: \`<span class="material-symbols-rounded">home</span>\`, \`<span class="material-symbols-rounded">search</span>\`, \`<span class="material-symbols-rounded">arrow_forward</span>\`
+     * icon_name은 snake_case Material Symbols 이름 사용 (home, search, menu, person, settings, notifications, arrow_forward, arrow_back, check, star, favorite, close, add, edit, delete, shopping_cart, payment, account_circle, calendar_today, location_on, phone, mail, chat, send, more_vert 등)
+     * 폰트는 자동으로 주입되므로 @font-face나 별도 link 태그를 추가하지 마십시오.
 
 6. **이미지 및 비주얼 처리 규칙**
    - 3D 이미지는 **메인 히어로 섹션에서 최대 1회만** 사용하십시오. 반복 카드, 추천 카드, 리스트 썸네일, 상세 이미지에는 3D 이미지 사용 금지.
@@ -3809,6 +3847,7 @@ ${effectivePlatform === 'web' ? `
 
   html = sanitizeGeneratedBranding(html, brief, effectiveDesignMd, logoDataUrl)
   html = applyLogoDataUrlOnce(html, logoDataUrl)
+  html = injectMaterialSymbolsFont(html)
 
   onStep?.('디자인 계약 검수 중...')
   const staticContractResult = await enforceStaticDesignContract(html, {
@@ -3993,6 +4032,7 @@ ${buildQualityRules(heroSubject || heroImagePrompt, domain)}
 
   html = sanitizeGeneratedBranding(html, brief, designMd, expandLogoUrl)
   html = applyLogoDataUrlOnce(html, expandLogoUrl)
+  html = injectMaterialSymbolsFont(html)
   preservedDataUrls.forEach((src, i) => {
     html = html.split(`__PRESERVED_IMAGE_${i}__`).join(src)
   })
@@ -4038,6 +4078,7 @@ ${buildQualityRules(undefined, domain)}`;
   let result = mdMatch ? mdMatch[1].trim() : text;
   result = sanitizeGeneratedBranding(result, brief, designMd, logoDataUrl)
   result = applyLogoDataUrlOnce(result, logoDataUrl)
+  result = injectMaterialSymbolsFont(result)
   return result;
 }
 
