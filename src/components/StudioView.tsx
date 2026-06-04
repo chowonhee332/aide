@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo, type ReactNode } from 'react'
 import {
   Sparkles, Upload, Download, RefreshCw, ArrowLeft, Check,
   SlidersHorizontal, X, Moon, Sun, Pencil, Send, ChevronDown,
@@ -48,7 +48,10 @@ interface GenerateResult {
     intent?: string
     layoutThesis?: string
   }
+  screenBlueprint?: string
 }
+
+type UiGenerationMode = 'html' | 'react-tailwind'
 
 type GenerationEventStatus = 'active' | 'done' | 'error'
 type GenerationEventKind = 'read' | 'think' | 'design' | 'image' | 'render' | 'review' | 'artifact' | 'summary' | 'error'
@@ -154,8 +157,117 @@ function defaultAnswersFromAnalysis(data: QuestionnaireResponse): Record<string,
     first_screen_focus: domain === 'business' ? '핵심 지표' : '대표 CTA',
     visual_density: '균형형',
     variant_strategy: '세 방향 모두 다르게',
-    hero3d: data.heroImageDecision?.generate ? '사용' : '사용 안 함',
+    hero3d: 'AI 판단',
   }
+}
+
+function isMembershipRewardExperience(brief: string, domain?: AppDomain): boolean {
+  const normalized = brief.toLowerCase()
+  const hasMembership = /멤버십|membership|포인트|point|쿠폰|coupon|리워드|reward|혜택|benefit|vip|등급|제휴|partner|qr|바코드|barcode/.test(normalized)
+  const hasTelecom = /통신|telecom|kt|통신사|모바일 요금|회선/.test(normalized)
+  const isB2B = /b2b|기업 고객|회선 현황|청구서|권한 관리|관리 포털|대시보드/.test(normalized)
+  return hasMembership && !isB2B && (hasTelecom || domain === 'commerce' || domain === 'entertainment' || domain === 'other')
+}
+
+function buildMembershipHeroSceneSubject(brief: string): string {
+  const brandHint = /kt/i.test(brief) || /통신/.test(brief) ? 'telecom membership' : 'membership rewards'
+  return `full mobile app hero scene for a ${brandHint} service: friendly premium 3D character in an immersive reward world with membership coins, coupon tickets, gift box, partner benefit props, bright app-friendly lighting, clean upper-left safe space for HTML greeting and points, large naturally cropped character from lower center/right, no text, no logo, no UI elements inside the image`
+}
+
+function buildGenericHeroSceneSubject(brief: string, domain: AppDomain): string {
+  if (isMembershipRewardExperience(brief, domain)) return buildMembershipHeroSceneSubject(brief)
+  const domainScene: Partial<Record<AppDomain, string>> = {
+    food: 'fresh food recommendation world with a beautiful hero dish, warm kitchen light, ingredient props, app-friendly negative space',
+    travel: 'immersive travel destination scene with soft 3D depth, luggage and map props, bright optimistic lighting, app-friendly negative space',
+    commerce: 'premium product benefit scene with gift box, product props, soft gradient environment, app-friendly negative space',
+    health: 'wellness routine scene with friendly companion, progress props, calm bright environment, app-friendly negative space',
+    education: 'learning companion scene with books, laptop, progress props, warm study environment, app-friendly negative space',
+    entertainment: 'playful entertainment scene with media props, spotlight glow, collectible reward mood, app-friendly negative space',
+    social: 'community companion scene with message bubbles as abstract props, warm social energy, app-friendly negative space',
+    finance: 'premium finance goal scene with cards, coins, chart props, trustworthy lighting, app-friendly negative space',
+    productivity: 'focused productivity workspace scene with task cards as abstract props, calendar objects, clean lighting, app-friendly negative space',
+    business: 'executive data command-center scene with abstract dashboards, network nodes, calm professional lighting, app-friendly negative space',
+  }
+  return `full mobile app hero scene for ${domainScene[domain] ?? 'a modern digital service with meaningful service props, friendly premium 3D visual language, bright app-friendly lighting, clean safe space for HTML headline and CTA, large naturally cropped focal object or character, no text, no logo, no UI elements inside the image'}`
+}
+
+function getSharedPhotoKeyword(domain: AppDomain, brief: string): string {
+  if (isMembershipRewardExperience(brief, domain)) return 'membership rewards lifestyle shopping benefits'
+  const byDomain: Partial<Record<AppDomain, string>> = {
+    food: 'fresh healthy food lifestyle',
+    travel: 'travel destination lifestyle',
+    commerce: 'modern product lifestyle',
+    health: 'wellness healthcare lifestyle',
+    education: 'online learning study lifestyle',
+    entertainment: 'music entertainment lifestyle',
+    social: 'community people lifestyle',
+    business: 'business dashboard office',
+    finance: 'finance dashboard office',
+    productivity: 'productive workspace desk',
+  }
+  return byDomain[domain] ?? 'modern lifestyle product'
+}
+
+function getVariantVisualPolicy(args: {
+  variantIndex: 0 | 1 | 2;
+  brief: string;
+  domain: AppDomain;
+  hero3dMode: string;
+  questionnaire: QuestionnaireResponse;
+}): {
+  sharedVisualMode: '3d' | 'photo' | 'none';
+  sharedVisualSubject: string;
+  heroPrompt?: string;
+  heroSubject?: string;
+} {
+  const { variantIndex, brief, domain, hero3dMode, questionnaire } = args
+  const userDisabled3d = hero3dMode === '사용 안 함'
+  if (variantIndex === 0) {
+    return {
+      sharedVisualMode: 'none',
+      sharedVisualSubject: questionnaire.projectSummary,
+      heroPrompt: undefined,
+      heroSubject: undefined,
+    }
+  }
+
+  if (variantIndex === 1) {
+    if (userDisabled3d) {
+      const subject = getSharedPhotoKeyword(domain, brief)
+      return { sharedVisualMode: 'photo', sharedVisualSubject: subject }
+    }
+    const subject = buildGenericHeroSceneSubject(brief, domain)
+    return {
+      sharedVisualMode: '3d',
+      sharedVisualSubject: subject,
+      heroPrompt: subject,
+      heroSubject: subject,
+    }
+  }
+
+  const subject = getSharedPhotoKeyword(domain, brief)
+  return {
+    sharedVisualMode: 'photo',
+    sharedVisualSubject: subject,
+    heroPrompt: undefined,
+    heroSubject: undefined,
+  }
+}
+
+function getDomainCoreObjects(domain: AppDomain, brief: string): string[] {
+  if (isMembershipRewardExperience(brief, domain)) {
+    return ['잔여 포인트', 'VIP 등급', '소멸 예정 포인트', '보유 쿠폰', 'QR/바코드 결제', '최근 적립/사용 내역', '주변 제휴 매장']
+  }
+  if (domain === 'food') return ['추천 메뉴', '냉장고 재료', '매칭률', '부족한 재료', '레시피/장보기 CTA']
+  return ['핵심 상태', '주요 콘텐츠', '추천 항목', '진행 상태', '주요 CTA']
+}
+
+function getDomainKeyActions(domain: AppDomain, brief: string): string[] {
+  if (isMembershipRewardExperience(brief, domain)) {
+    return ['QR 결제 열기', '쿠폰 바로 사용', '주변 혜택 찾기', '포인트 내역 확인']
+  }
+  if (domain === 'food') return ['레시피 상세 보기', '오늘 메뉴 만들기', '부족한 재료 장보기']
+  return ['상태 확인', '상세 보기', '주요 액션 실행']
 }
 
 // Detect web vs mobile for history items that pre-date the platform field
@@ -592,6 +704,179 @@ function ExpandingOverlay({ image, platform, variantLabel }: { image?: string; p
           <div style={{ height: '100%', backgroundColor: '#111111', borderRadius: 2, animation: 'ep-bar 1.8s ease-in-out infinite' }} />
         </div>
       </div>
+    </div>
+  )
+}
+
+function VariantSkeletonPreview({ variant, platform }: { variant: 'A' | 'B' | 'C'; platform?: 'mobile' | 'web' }) {
+  const isWeb = platform === 'web'
+  const delay = variant === 'A' ? 0 : variant === 'B' ? 0.12 : 0.24
+  const line = (width: string, height = 8, extraDelay = 0) => (
+    <div className="aide-skel-shimmer" style={{ width, height, borderRadius: 999, animationDelay: `${delay + extraDelay}s` }} />
+  )
+  const block = (height: number | string, extraDelay = 0, radius = 10) => (
+    <div className="aide-skel-shimmer" style={{ height, borderRadius: radius, animationDelay: `${delay + extraDelay}s` }} />
+  )
+  const card = (children?: ReactNode, extraDelay = 0) => (
+    <div className="aide-skel-card" style={{ animationDelay: `${delay + extraDelay}s` }}>
+      {children}
+    </div>
+  )
+
+  return (
+    <div className="absolute inset-0 overflow-hidden" style={{ background: 'linear-gradient(180deg,#fbfcff 0%,#f4f7fb 100%)' }}>
+      <style>{`
+        @keyframes aideSkelIn {
+          from { opacity: 0; transform: translateY(8px) scale(.985); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes aideSkelShimmer {
+          0% { background-position: 120% 0; }
+          100% { background-position: -120% 0; }
+        }
+        .aide-skel-card {
+          background: rgba(255,255,255,.92);
+          border: 1px solid rgba(20,30,50,.08);
+          box-shadow: 0 8px 24px rgba(20,30,50,.06);
+          border-radius: 12px;
+          padding: 10px;
+          opacity: 0;
+          animation: aideSkelIn .52s cubic-bezier(.2,.8,.2,1) forwards;
+        }
+        .aide-skel-shimmer {
+          background: linear-gradient(90deg, rgba(218,225,235,.65), rgba(244,247,251,.95), rgba(218,225,235,.65));
+          background-size: 220% 100%;
+          animation: aideSkelShimmer 1.25s ease-in-out infinite;
+        }
+      `}</style>
+      <div
+        className="absolute left-0 right-0 top-0"
+        style={{
+          height: isWeb ? 44 : 46,
+          background: 'rgba(255,255,255,.9)',
+          borderBottom: '1px solid rgba(20,30,50,.08)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: isWeb ? '0 18px' : '0 12px',
+        }}
+      >
+        {line(isWeb ? '82px' : '58px', 10)}
+        <div style={{ flex: 1 }} />
+        {line('32px', 8, .08)}
+        {line('20px', 8, .16)}
+      </div>
+      <div
+        style={{
+          position: 'absolute',
+          inset: isWeb ? '62px 18px 18px' : '62px 14px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: isWeb ? 14 : 10,
+        }}
+      >
+        {variant === 'A' && (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: isWeb ? 'repeat(4,minmax(0,1fr))' : 'repeat(2,minmax(0,1fr))', gap: 8 }}>
+              {[0, 1, 2, 3].map(i => card(<>
+                {line('42%', 7, i * .05)}
+                <div style={{ height: 9 }} />
+                {line(i === 0 ? '64%' : '48%', 16, i * .06)}
+                <div style={{ height: 8 }} />
+                {line('72%', 7, i * .08)}
+              </>, i * .05))}
+            </div>
+            {card(<>
+              {line('38%', 9)}
+              <div style={{ height: 10 }} />
+              {block(isWeb ? 90 : 54, .08)}
+            </>, .2)}
+            {card(<>
+              {line('46%', 9)}
+              <div style={{ height: 8 }} />
+              {[0, 1, 2].map(i => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: i ? 8 : 0 }}>
+                  {block(24, i * .08, 7)}
+                  <div style={{ flex: 1 }}>{line(i === 0 ? '80%' : '68%', 8, i * .08)}</div>
+                  {line('24%', 7, i * .08)}
+                </div>
+              ))}
+            </>, .28)}
+          </>
+        )}
+        {variant === 'B' && (
+          <>
+            {card(<>
+              <div style={{ display: 'grid', gridTemplateColumns: isWeb ? '1.1fr .9fr' : '1fr', gap: 10, alignItems: 'center' }}>
+                <div>
+                  {line('34%', 8)}
+                  <div style={{ height: 12 }} />
+                  {line('72%', 18, .08)}
+                  <div style={{ height: 8 }} />
+                  {line('58%', 8, .14)}
+                  <div style={{ height: 14 }} />
+                  {line('44%', 18, .18)}
+                </div>
+                <div style={{ display: isWeb ? 'block' : 'none' }}>{block(104, .1, 14)}</div>
+              </div>
+            </>, .04)}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 8 }}>
+              {[0, 1, 2].map(i => card(<>
+                {block(20, i * .04, 8)}
+                <div style={{ height: 9 }} />
+                {line('70%', 8, i * .06)}
+              </>, .16 + i * .04))}
+            </div>
+            {card(<>
+              {line('42%', 9)}
+              <div style={{ height: 9 }} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {block(42, .08)}
+                {block(42, .12)}
+              </div>
+            </>, .3)}
+          </>
+        )}
+        {variant === 'C' && (
+          <>
+            <div style={{ display: 'flex', gap: 7, overflow: 'hidden' }}>
+              {[0, 1, 2, 3, 4].map(i => <div key={i}>{line(i === 0 ? '54px' : '46px', 20, i * .04)}</div>)}
+            </div>
+            {card(<>
+              {block(isWeb ? 120 : 92, .05, 14)}
+              <div style={{ height: 11 }} />
+              {line('68%', 15)}
+              <div style={{ height: 8 }} />
+              {line('86%', 8, .08)}
+              <div style={{ height: 12 }} />
+              {line('44%', 17, .12)}
+            </>, .08)}
+            <div style={{ display: 'grid', gridTemplateColumns: isWeb ? 'repeat(3,minmax(0,1fr))' : '1fr', gap: 8 }}>
+              {[0, 1, 2].map(i => card(
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {block(34, i * .04, 9)}
+                  <div style={{ flex: 1 }}>
+                    {line('74%', 8, i * .05)}
+                    <div style={{ height: 7 }} />
+                    {line('52%', 7, i * .07)}
+                  </div>
+                </div>,
+                .24 + i * .05
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      <div
+        className="absolute left-3 right-3 bottom-3"
+        style={{
+          height: 3,
+          borderRadius: 999,
+          background: 'linear-gradient(90deg, rgba(26,117,255,.18), rgba(26,117,255,.72), rgba(26,117,255,.18))',
+          backgroundSize: '220% 100%',
+          animation: 'aideSkelShimmer 1.15s ease-in-out infinite',
+        }}
+      />
     </div>
   )
 }
@@ -1372,86 +1657,56 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
       const iaImageFromStorage = sessionStorage.getItem('iaImage') ?? undefined
       const iaTextFromStorage = sessionStorage.getItem('iaText') ?? undefined
       const hero3dMode = typeof answers['hero3d'] === 'string' ? answers['hero3d'] : 'AI 판단'
-      const shouldUseHero3d = hero3dMode === '사용' || (hero3dMode === 'AI 판단' && questionnaire.heroImageDecision?.generate)
-      const heroPrompt = shouldUseHero3d ? (questionnaire.heroImageDecision?.prompt || brief) : undefined
-      const heroSubject = shouldUseHero3d ? (questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || brief) : undefined
       const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
       const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
-      const photoFirstDomains: AppDomain[] = ['food', 'travel', 'commerce', 'health', 'education', 'entertainment']
-      const dataFirstDomains: AppDomain[] = ['business', 'finance', 'productivity']
-      const sharedVisualMode: '3d' | 'photo' | 'none' = hero3dMode === '사용'
-        ? '3d'
-        : photoFirstDomains.includes(effectiveDomain)
-          ? 'photo'
-          : dataFirstDomains.includes(effectiveDomain)
-            ? 'none'
-          : shouldUseHero3d
-            ? '3d'
-            : 'photo'
-      const sharedPhotoKeywordByDomain: Partial<Record<AppDomain, string>> = {
-        food: 'fresh healthy salmon avocado rice bowl',
-        travel: 'hotel travel destination',
-        commerce: 'modern product lifestyle',
-        health: 'wellness healthcare lifestyle',
-        education: 'online learning study',
-        business: 'business dashboard office',
-        finance: 'finance dashboard office',
-      }
-      const sharedVisualSubject = sharedVisualMode === '3d'
-        ? (heroSubject || heroPrompt || questionnaire.projectSummary)
-        : (sharedPhotoKeywordByDomain[effectiveDomain] ?? 'modern lifestyle product')
+      const shouldUseMembershipScene = hero3dMode !== '사용 안 함' && isMembershipRewardExperience(brief, effectiveDomain)
       const generationPlan = {
         productBrief: {
           serviceIntent: questionnaire.projectSummary,
           targetUser: typeof answers['target_audience'] === 'string' ? answers['target_audience'] : '서비스의 핵심 사용자',
           primaryScenario: typeof answers['primary_journey'] === 'string' ? answers['primary_journey'] : '핵심 상태를 확인하고 다음 행동으로 이동',
           screenPurpose: platform === 'web' ? '웹 첫 화면에서 정보 구조와 주요 전환을 명확히 제시' : '모바일 첫 화면에서 요약, 추천, 주요 행동을 빠르게 완료',
-          coreObjects: effectiveDomain === 'food'
-            ? ['추천 메뉴', '냉장고 재료', '매칭률', '부족한 재료', '레시피/장보기 CTA']
-            : ['핵심 상태', '주요 콘텐츠', '추천 항목', '진행 상태', '주요 CTA'],
-          keyActions: effectiveDomain === 'food'
-            ? ['레시피 상세 보기', '오늘 메뉴 만들기', '부족한 재료 장보기']
-            : ['상태 확인', '상세 보기', '주요 액션 실행'],
+          coreObjects: getDomainCoreObjects(effectiveDomain, brief),
+          keyActions: getDomainKeyActions(effectiveDomain, brief),
           successCriteria: ['첫 화면에서 서비스 목적이 즉시 이해됨', '주요 CTA가 명확함', '반복 콘텐츠가 실제 서비스처럼 충분함', '선택한 design.md 리듬을 유지함'],
           assumptions: ['입력이 부족한 부분은 도메인 표준 홈 화면으로 보정', 'A/B/C는 같은 소재를 공유하고 UX 방향으로 차별화'],
         },
         visualStrategy: {
-          mode: sharedVisualMode,
-          sharedAsset: sharedVisualMode !== 'none',
-          subject: sharedVisualSubject,
-          reason: sharedVisualMode === 'photo'
-            ? '실사 이미지가 식욕, 장소성, 제품 신뢰감을 더 잘 전달합니다.'
-            : sharedVisualMode === '3d'
-              ? '캐릭터/마스코트/리워드 맥락에서 3D가 브랜드 감정을 강화합니다.'
-              : '이미지보다 정보 구조가 더 중요합니다.',
+          mode: 'data',
+          sharedAsset: false,
+          subject: 'variant-specific visual strategy',
+          reason: 'A/B/C는 같은 소재 반복이 아니라 서로 다른 시안 비교 축으로 생성합니다: A 카드/정보형, B 전체 배경 히어로형, C 실사 이미지/에디토리얼형.',
           usageByVariant: {
-            A: sharedVisualMode === 'photo' ? '작은 추천/상태 카드 썸네일' : sharedVisualMode === '3d' ? 'KPI 또는 추천 카드 안의 보조 companion' : 'KPI/status cards and dense information modules',
-            B: sharedVisualMode === 'photo' ? '큰 hero crop 또는 editorial hero visual' : sharedVisualMode === '3d' ? 'hero card 안의 큰 anchored/cropped visual' : 'summary dashboard hero with chart/action panel',
-            C: sharedVisualMode === 'photo' ? '상세/커머스형 visual area' : sharedVisualMode === '3d' ? 'product/detail visual area with chips and CTA' : 'workflow/detail layout with table/list/action conversion',
+            A: '기본 카드/정보형. 대형 히어로 없이 KPI, 리스트, 퀵 액션, 상태 카드로 실제 사용 화면을 구성합니다.',
+            B: shouldUseMembershipScene
+              ? '전체 배경 3D hero scene. 상단 scene 위 HTML 인사말/포인트/칩 overlay, 하단 white sheet overlap.'
+              : '전체 배경 히어로형. AI가 서비스 성격에 맞는 3D scene을 만들고, HTML CTA/proof/action panel을 결합합니다.',
+            C: '실사 이미지/에디토리얼형. Unsplash 기반 실제 사진, 카테고리 rail, 이미지 카드/추천 그리드로 탐색 경험을 구성합니다.',
           },
         },
         variantDirector: {
           A: {
-            strategy: 'Utility Dashboard',
-            layoutRole: '상태, 재고, 점수, 빠른 액션을 압축한 실사용 홈',
-            firstViewport: ['현재 맥락', '핵심 지표 2~3개', '추천 카드', '주요 CTA'],
-            mustDifferBy: ['카드 밀도', '상태/KPI 중심', '작은 visual usage'],
+            strategy: 'Card Utility',
+            layoutRole: '대형 이미지 없이 카드, KPI, 리스트, 퀵 액션으로 구성한 가장 기본적인 실사용 홈',
+            firstViewport: ['현재 맥락', '핵심 지표 2~3개', '퀵 액션 3개 이상', '리스트/카드 2개 이상', '주요 CTA'],
+            mustDifferBy: ['카드 밀도', '정보 구조 중심', '대형 히어로 금지', '작은 썸네일만 허용'],
           },
           B: {
-            strategy: 'Visual Hero',
-            layoutRole: '대표 소재와 강한 CTA로 추천 이유를 설득하는 히어로형',
-            firstViewport: ['대표 visual', '추천 이유', '메타 정보', 'primary CTA'],
-            mustDifferBy: ['hero crop/scale', 'CTA prominence', 'emotional hierarchy'],
+            strategy: 'Immersive Hero',
+            layoutRole: '전체 배경 히어로 visual과 강한 CTA로 서비스 감정과 첫 행동을 설득하는 시안',
+            firstViewport: ['상단 full/background hero', 'HTML headline/summary overlay', 'primary CTA', 'proof/KPI row', '다음 콘텐츠 카드'],
+            mustDifferBy: ['hero scene crop/scale', 'CTA prominence', 'white sheet/action panel overlap', 'emotional hierarchy'],
           },
           C: {
-            strategy: 'Commerce Detail',
-            layoutRole: '상세 정보와 부족 재료/구매 전환까지 이어지는 전환형',
-            firstViewport: ['상세 visual', '메타 chips', '설명', '장보기/상세 CTA'],
-            mustDifferBy: ['상세 카드 구조', '부족 재료 리스트', '전환 흐름'],
+            strategy: 'Real Photo Editorial',
+            layoutRole: '실사 이미지, 카테고리 rail, 에디토리얼 카드/그리드로 탐색 욕구를 만드는 시안',
+            firstViewport: ['실사 hero/photo card', '카테고리/필터 rail', '추천 이미지 카드 2개 이상', '설명/메타', '탐색 CTA'],
+            mustDifferBy: ['real photo usage', 'editorial crop', 'category rail', 'image grid/list exploration'],
           },
         },
       }
-      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, referenceImageKind, asIsAnalysis, platform, modelId, heroImagePrompt: heroPrompt, heroSubject, sharedVisualMode, sharedVisualSubject, generationPlan, prdDoc: prdDocFromStorage, iaImageBase64: iaImageFromStorage, iaText: iaTextFromStorage }
+      const uiGenerationMode = ((sessionStorage.getItem('aide_ui_generation_mode') as UiGenerationMode | null) ?? 'react-tailwind')
+      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, referenceImageKind, asIsAnalysis, platform, modelId, generationPlan, prdDoc: prdDocFromStorage, iaImageBase64: iaImageFromStorage, iaText: iaTextFromStorage, uiGenerationMode }
       const variantStyles = getVariantStyles(effectiveDomain)
       const headers = apiHeaders()
 
@@ -1490,10 +1745,17 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
           variant: variantLetter,
         })
         try {
+          const visualPolicy = getVariantVisualPolicy({
+            variantIndex: idx,
+            brief,
+            domain: effectiveDomain,
+            hero3dMode,
+            questionnaire,
+          })
           const res = await fetch('/api/generate', {
             method: 'POST',
             headers,
-            body: JSON.stringify({ ...baseParams, domain: effectiveDomain, variantStyle }),
+            body: JSON.stringify({ ...baseParams, ...visualPolicy, domain: effectiveDomain, variantStyle }),
             signal: abort.signal,
           })
           const json = await readGenerateStream(res, (label) => {
@@ -1596,7 +1858,11 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
     try {
       const asIsAnalysis = readAsIsAnalysis()
       const hero3dMode = typeof answers['hero3d'] === 'string' ? answers['hero3d'] : 'AI 판단'
-      const shouldUseHero3d = hero3dMode === '사용' || (hero3dMode === 'AI 판단' && questionnaire.heroImageDecision?.generate)
+      const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
+      const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
+      const shouldUseMembershipScene = hero3dMode !== '사용 안 함' && isMembershipRewardExperience(brief, effectiveDomain)
+      const shouldUseHero3d = hero3dMode === '사용' || shouldUseMembershipScene || (hero3dMode === 'AI 판단' && questionnaire.heroImageDecision?.generate)
+      const membershipSceneSubject = shouldUseMembershipScene ? buildMembershipHeroSceneSubject(brief) : ''
       const res = await fetch('/api/expand', {
         method: 'POST',
         headers: apiHeaders(),
@@ -1611,8 +1877,8 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
           asIsAnalysis,
           platform,
           modelId: sessionStorage.getItem('aide_model') ?? undefined,
-          heroImagePrompt: shouldUseHero3d ? (questionnaire.heroImageDecision?.prompt || brief) : undefined,
-          heroSubject: shouldUseHero3d ? (questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || brief) : undefined,
+          heroImagePrompt: shouldUseHero3d ? (membershipSceneSubject || questionnaire.heroImageDecision?.prompt || brief) : undefined,
+          heroSubject: shouldUseHero3d ? (membershipSceneSubject || questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || brief) : undefined,
         }),
       })
       const data = await res.json()
@@ -1714,7 +1980,14 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
     const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
     const variantStyles = getVariantStyles(effectiveDomain)
     const hero3dMode = typeof answers['hero3d'] === 'string' ? answers['hero3d'] : 'AI 판단'
-    const shouldUseHero3d = hero3dMode === '사용' || (hero3dMode === 'AI 판단' && questionnaire.heroImageDecision?.generate)
+    const visualPolicy = getVariantVisualPolicy({
+      variantIndex: idx,
+      brief,
+      domain: effectiveDomain,
+      hero3dMode,
+      questionnaire,
+    })
+    const uiGenerationMode = ((sessionStorage.getItem('aide_ui_generation_mode') as UiGenerationMode | null) ?? 'react-tailwind')
     const baseParams = {
       designMd: effectiveDesignMd,
       brief,
@@ -1728,13 +2001,13 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
       asIsAnalysis,
       platform,
       modelId,
-      heroImagePrompt: shouldUseHero3d ? (questionnaire.heroImageDecision?.prompt || brief) : undefined,
-      heroSubject: shouldUseHero3d ? (questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || brief) : undefined,
+      ...visualPolicy,
       domain: effectiveDomain,
       variantStyle: variantStyles[idx],
       prdDoc: prdDocFromStorage,
       iaImageBase64: iaImageFromStorage,
       iaText: iaTextFromStorage,
+      uiGenerationMode,
     }
     const headers = apiHeaders()
     const genId = generationIdRef.current
@@ -2656,6 +2929,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
               const isLoadingThis = idx === 0 ? isGenerating : idx === 1 ? isGeneratingB : isGeneratingC
               const isFailed = !variant && !isLoadingThis && idx > 0
               const cardW = isMobile ? 180 : isTablet ? 220 : 320
+              const imageFallbackWarnings = variant?.imageWarnings?.filter(w => /이미지 생성 실패|투명 이미지로 대체|HERO_3D_IMAGE|SHARED_HERO_3D|MASCOT_3D|REWARD_OBJECT_3D|HERO_SCENE_3D/.test(w)) ?? []
               return (
                 <div key={letter} className="flex flex-col gap-3 shrink-0" style={{ width: cardW }}>
                   <div className="flex items-center gap-2">
@@ -2672,13 +2946,13 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
                     {variant && !isLoadingThis && (
                       <span className="text-[12px]" style={{ color: '#888888' }}>완료</span>
                     )}
-                    {variant?.imageWarnings?.length ? (
+                    {imageFallbackWarnings.length ? (
                       <span
                         className="ml-auto text-[11px] px-1.5 py-0.5"
                         style={{ color: '#b45309', backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6 }}
-                        title={variant.imageWarnings.join('\n')}
+                        title={imageFallbackWarnings.join('\n')}
                       >
-                        이미지 대체
+                        이미지 생성 실패
                       </span>
                     ) : null}
                   </div>
@@ -2697,9 +2971,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
                     {variant ? (
                       <img src={variant.image} alt={`시안 ${letter}`} className="w-full h-full object-contain object-top bg-white" />
                     ) : isLoadingThis ? (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="size-8 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#0055ff' }} />
-                      </div>
+                      <VariantSkeletonPreview variant={letter} platform={platform} />
                     ) : isFailed ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
                         <span className="text-[13px] text-[#999999]">생성 실패</span>

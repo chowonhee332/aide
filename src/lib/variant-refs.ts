@@ -3,7 +3,7 @@ import type { AppDomain } from './gemini';
 // 3 invariant design philosophy axes — always structurally different regardless of domain
 // A: 정밀 정보형 — white bg, numbers dominate, color used sparingly
 // B: 임팩트 히어로형 — primary-color hero card, massive KPI, chart-forward
-// C: 감성 브랜드형 — mood/image/whitespace as hero, warm brand expression
+// C: 실사 에디토리얼형 — real photos, category rails, image grids, warm brand expression
 
 type DomainContext = {
   a: string; // 정밀 정보형 context
@@ -125,7 +125,7 @@ const PHILOSOPHY_B = `전환 중심형 (시안 B) — 멘탈 모델: "전환율 
 - [ ] 히어로 아래에 추천·혜택 항목이 이어진다
 - [ ] 선택한 DESIGN.md의 컬러·타입·카드 토큰이 일관되게 사용된다`;
 
-const PHILOSOPHY_C = `브랜드 탐색형 (시안 C) — 멘탈 모델: "라이프스타일 매거진 앱"
+const PHILOSOPHY_C = `실사 이미지 탐색형 (시안 C) — 멘탈 모델: "라이프스타일 매거진 앱"
 
 이 시안을 설계할 때 모든 결정은 다음 기준으로 내려라:
 "사용자가 이 화면을 보고 '더 둘러보고 싶다'는 느낌이 드는가?"
@@ -139,10 +139,10 @@ const PHILOSOPHY_C = `브랜드 탐색형 (시안 C) — 멘탈 모델: "라이�
 - 모바일: app bar → 이미지/큐레이션 hero → 카테고리 rail → 2열 이미지 카드 그리드 → 추천 리스트
 - 웹: GNB → full-width editorial band 또는 magazine grid → 카테고리·스토리 섹션 → 추천 컬렉션
 
-이미지·3D 역할:
-- 이미지·3D는 카드의 얼굴이다. 썸네일이나 악센트가 아니라, 카드에서 가장 먼저 보이는 요소다.
-- 3D 마스코트가 있다면 카드 상단 이미지 영역에 자연스럽게 배치한다. 캐릭터가 서비스 분위기를 전달한다.
-- 실사 사진과 3D를 섞어도 좋다. 단, 모든 이미지는 서비스 도메인과 직접 관련되어야 한다.
+이미지 역할:
+- 실사 사진이 카드의 얼굴이다. 썸네일이나 악센트가 아니라, 카드에서 가장 먼저 보이는 요소다.
+- 3D 마스코트/씬은 이 시안의 주인공이 아니다. 필요하더라도 작은 보조 이미지 수준으로만 제한한다.
+- 모든 실사 이미지는 서비스 도메인과 직접 관련되어야 한다.
 
 합격 조건:
 - [ ] 카드 면적의 50% 이상이 이미지 영역이다

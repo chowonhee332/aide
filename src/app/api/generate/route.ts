@@ -274,28 +274,38 @@ async function auditResponsiveHtml(browser: Browser, html: string, options: { re
             const yGap = Math.max(0, Math.max(rect.top, r.top) - Math.min(rect.bottom, r.bottom))
             return xGap < 180 && yGap < 160
           })
+          const imgStyle = window.getComputedStyle(img)
+          const isSceneRole = role === 'SHARED_HERO_3D_SCENE' || role === 'HERO_SCENE_3D'
           const parentText = ancestors.slice(0, 3).map(el => (el.textContent ?? '').trim()).join(' ').replace(/\s+/g, ' ')
           const hasSemanticContext = parentText.length >= 12 || nearbyMeaningful
+          const stageText = (stageEl?.textContent ?? '').replace(/\s+/g, ' ').trim()
+          const nearestCardText = (img.closest('.aide-card, .hero-card, .reward-card, .point-card, section, article')?.textContent ?? '').replace(/\s+/g, ' ').trim()
+          const stageIsImageOnly = !!stageRect &&
+            stageText.length < 8 &&
+            nearestCardText.length < 24 &&
+            !isSceneRole &&
+            !/compact-3d|thumb|small|mini/i.test(`${img.className ?? ''} ${stageEl?.className ?? ''}`)
           const hasSurface = ancestors.some(el => {
             const style = window.getComputedStyle(el)
             return style.backgroundColor !== 'rgba(0, 0, 0, 0)' || style.backgroundImage !== 'none' || style.boxShadow !== 'none' || style.borderRadius !== '0px'
           })
-          const imgStyle = window.getComputedStyle(img)
-          const isSceneRole = role === 'SHARED_HERO_3D_SCENE' || role === 'HERO_SCENE_3D'
           const min3dWidth = isSceneRole
             ? Math.min(260, vw * 0.62)
             : role === 'SHARED_HERO_3D'
               ? Math.min(220, vw * 0.48)
-              : Math.min(170, vw * 0.38)
-          const imageTooSmall = role !== 'REWARD_OBJECT_3D' && rect.width < min3dWidth
+              : role === 'REWARD_OBJECT_3D'
+                ? Math.min(150, vw * 0.34)
+                : Math.min(170, vw * 0.38)
+          const imageTooSmall = rect.width < min3dWidth
           const stageAreaRatio = stageRect ? (rect.width * rect.height) / Math.max(1, stageRect.width * stageRect.height) : 1
           const stageTooEmpty = stageRect
-            ? stageAreaRatio < (isSceneRole ? 0.28 : 0.22) && !/thumb|small|mini|compact/i.test(`${img.className ?? ''} ${stageEl?.className ?? ''}`)
+            ? stageAreaRatio < (isSceneRole ? 0.28 : role === 'REWARD_OBJECT_3D' ? 0.18 : 0.22) && !/thumb|small|mini|compact/i.test(`${img.className ?? ''} ${stageEl?.className ?? ''}`)
             : false
 
           if (!hasStage) issues.push({ role, issue: '3D image is not inside a visual/card/hero stage wrapper', className: img.className?.toString() ?? '', width: Math.round(rect.width), height: Math.round(rect.height) })
           if (!has3dClass) issues.push({ role, issue: '3D image is missing aide-hero-3d/aide-3d-asset class', className: img.className?.toString() ?? '', width: Math.round(rect.width), height: Math.round(rect.height) })
           if (!hasSurface && !isSceneRole) issues.push({ role, issue: 'transparent 3D has no designed surface/CSS grounding/stage background', className: img.className?.toString() ?? '', width: Math.round(rect.width), height: Math.round(rect.height) })
+          if (stageIsImageOnly) issues.push({ role, issue: 'transparent 3D sits in an image-only stage instead of the same card as KPI, CTA, badge, or reward copy', className: img.className?.toString() ?? '', width: Math.round(rect.width), height: Math.round(rect.height) })
           if (isSceneRole && (imgStyle.objectFit !== 'cover' || (stageRect && (rect.width < stageRect.width * 0.92 || rect.height < stageRect.height * 0.92)))) {
             issues.push({ role, issue: '3D scene image does not cover its visual stage', className: img.className?.toString() ?? '', width: Math.round(rect.width), height: Math.round(rect.height) })
           }
@@ -392,7 +402,7 @@ export async function POST(req: NextRequest) {
       const unsplashKey = req.headers.get('x-unsplash-key') ?? undefined
       console.log('[generate] step1: params parsed, starting generateUI')
 
-      const { html: rawHtml, variantDescription } = await generateUI({
+      const { html: rawHtml, variantDescription, screenBlueprint } = await generateUI({
         ...normalizedParams,
         onStep: (label: string) => emit('step', { label }),
       }, apiKey)
@@ -410,14 +420,22 @@ export async function POST(req: NextRequest) {
 
       emit('step', { label: '반응형 레이아웃 검수 중...' })
       let auditedRawHtml = rawHtml
+      const isAideTemplateRendered = /data-aide-template-renderer=["']1["']|data-aide-template=["']1["']/.test(auditedRawHtml)
       const auditOptions = { requireLogo: Boolean(normalizedParams.logoDataUrl) }
       let responsiveIssues = await auditResponsiveHtml(browser, auditedRawHtml, auditOptions)
+      if (isAideTemplateRendered && responsiveIssues.length > 0) {
+        console.warn('[generate] template responsive audit issues preserved without AI repair:', responsiveIssues)
+        responsiveIssues = []
+      }
       for (let repairAttempt = 1; repairAttempt <= 2 && responsiveIssues.length > 0; repairAttempt += 1) {
         emit('step', { label: repairAttempt === 1 ? '반응형 레이아웃 수정 중...' : '반응형 레이아웃 재수정 중...' })
         const repairMessage = `생성된 HTML이 실제 viewport 반응형 검사를 통과하지 못했습니다. 이번 수정은 ${repairAttempt}/2번째 반응형 repair입니다.
 
 발견된 문제:
 ${responsiveIssues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
+
+Screen Blueprint — 반드시 보존/충족할 필수 정보 계약:
+${screenBlueprint ? `\`\`\`json\n${screenBlueprint.slice(0, 5000)}\n\`\`\`` : '(없음)'}
 
 수정 지침:
 - 390px, 768px, 1440px 모두에서 horizontal overflow가 없어야 합니다.
@@ -435,18 +453,21 @@ ${responsiveIssues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
 - 3D는 반드시 .aide-visual-stage 또는 hero/card visual wrapper 안에 넣고, img에는 .aide-hero-3d 또는 .aide-3d-asset 클래스를 붙이세요.
 - 배경 포함 scene(%%SHARED_HERO_3D_SCENE%%/%%HERO_SCENE_3D%%)은 큰 hero image처럼 object-fit:cover로 stage를 채우고, CTA는 이미지 아래 action panel 또는 safe area에 두세요.
 - 투명 3D(%%SHARED_HERO_3D%%/MASCOT/REWARD)는 토큰 기반 surface, border-radius, overflow:hidden, CSS 기반 grounding(::after 또는 stage background), anchor alignment를 가진 stage 안에 배치하세요. 이미지 파일 자체에는 그림자를 추가하지 마세요.
+- 투명 3D를 3D만 들어 있는 이미지 박스에 넣고, 포인트/KPI/CTA/설명을 아래 별도 카드로 분리하지 마세요. 같은 .aide-card/.hero-card 안에서 KPI, badge, CTA, reward copy와 결합하세요.
+- 멤버십/포인트/쿠폰/리워드 화면에서는 3D가 포인트 카드나 리워드 CTA의 일부처럼 보여야 합니다. 별도 light-blue/white rectangle 중앙에 떠 있는 오브젝트는 실패입니다.
 - 3D 주변 120~180px 안에 해당 3D의 의미를 설명하는 텍스트, KPI, CTA, 진행률, 보상 정보 중 하나 이상이 있어야 합니다.
 - 큰 hero/stage 안에서 3D가 작은 스티커처럼 보이면 실패입니다. 투명 3D는 width:clamp(190px, 58vw, 340px), scene 3D는 width/height:100%; object-fit:cover 수준으로 키우거나, stage 자체를 줄이세요.
-- 헤더 상단에는 명확한 앱 브랜드/로고가 있어야 합니다. 제공된 로고가 있으면 헤더/앱바 브랜드 위치에 <span class="aide-logo-slot" aria-label="brand logo"></span> 슬롯을 유지하세요. Aide가 마지막에 실제 로고 이미지로 치환합니다. 텍스트 브랜드명으로 대체하면 실패입니다.
+- 헤더 상단에는 명확한 앱 브랜드/로고가 있어야 합니다. 제공된 로고가 있으면 헤더/앱바 브랜드 위치에 <span class="aide-logo-slot" aria-label="brand logo"></span> 슬롯을 유지하세요. Aide가 마지막에 실제 로고 이미지로 치환합니다. 텍스트 브랜드명으로 대체하면 실패입니다. 로고가 있으면 같은 헤더 안에 앱 이름 텍스트를 함께 표시하지 마세요.
 - KTDS는 디자인 시스템 이름일 뿐 제품 브랜드가 아닙니다. 헤더/로고/브랜드 영역의 "kt ds" 텍스트나 로고 이미지는 제거하세요. 제공된 로고가 있으면 로고 슬롯을, 로고가 없으면 브리프의 앱 이름 텍스트 브랜드를 사용하세요.
 - 브랜드명, 공간명, 사용자명, 식물명은 계층을 분리하세요. 예: 앱명 "초록이" / 공간 "거실" / 식물명 "몬스테라 문이".
 - 한국어 앱에서는 Today's Routine, Store, Magazine 같은 영어 UI 라벨을 쓰지 말고 "오늘의 루틴", "스토어", "매거진"처럼 한국어로 통일하세요.
 - 반려식물/식물 케어 썸네일은 %%THUMB:indoor plant:...%%, %%THUMB:monstera plant:...%%, %%THUMB:houseplant care:...%%, %%THUMB:succulent plant:...%%처럼 식물 관련 키워드만 사용하세요. 어둡거나 무관한 랜덤 이미지 금지.
 - 첫 viewport에는 실제 서비스 콘텐츠와 CTA가 충분히 보여야 합니다.
+- 실험 모드가 react-tailwind이면 .aide-page, .aide-section, .section-header, .aide-card, .kpi-grid, .quick-actions, .content-list, .aide-visual-stage, .primary-cta 같은 Aide UI Kit 의미 클래스를 유지하고, shadcn-like 컴포넌트 리듬을 디자인 시스템 토큰으로 구현하세요.
 - A/B/C는 시안 선택용 결과물이므로 모든 시안의 첫 viewport에 비교 가능한 정보량이 있어야 합니다. 빈 히어로/포스터형 화면은 실패입니다.
 - 첫 viewport에는 최소 5개 콘텐츠 단위가 보여야 합니다: 브랜드/현재상태, 핵심 KPI, primary CTA, 퀵 액션, 목록/카드, 섹션 힌트 중 5개 이상.
 - 브리프의 핵심 기능어를 첫 화면에 반영하세요. 멤버십 앱이면 포인트, 적립/사용 내역, 쿠폰, 등급 리워드, 제휴 매장, QR 결제 중 4개 이상이 보이게 하세요.
-- 시안 B가 visual/hero 중심이어도 hero 높이는 첫 viewport의 38% 이하로 제한하고, 히어로 바로 아래에 KPI 2개 이상, 퀵 액션 3개 이상, 혜택/내역 카드 1개 이상을 배치하세요.
+- 시안 B가 visual/hero 중심이면 hero/scene은 첫 viewport의 45~55%까지 허용하되, 히어로 바로 아래에 KPI/proof 2개 이상, 퀵 액션 3개 이상, 혜택/내역 카드 1개 이상을 배치하세요.
 - 기존 디자인 시스템 토큰, 이미지 placeholder, 데이터 URL, 라우터 스크립트, 콘텐츠 의미는 유지하세요.`
         try {
           auditedRawHtml = await refineUI(auditedRawHtml, repairMessage, normalizedParams.brief, normalizedParams.designMd, apiKey, normalizedParams.logoDataUrl, normalizedParams.domain)
@@ -473,7 +494,6 @@ ${responsiveIssues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
       const finalResponsiveIssues = await auditResponsiveHtml(browser, finalHtml, auditOptions)
       if (finalResponsiveIssues.length > 0) {
         console.warn('[generate] final responsive audit issues:', finalResponsiveIssues)
-        imageWarnings.push(`최종 이미지 치환 후 반응형 검수 경고: ${finalResponsiveIssues.slice(0, 3).join(' / ')}`)
       }
       console.log('[generate] step2: html generated, length=', finalHtml.length)
 
@@ -508,6 +528,7 @@ ${responsiveIssues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
         has3dHero: has3dPlaceholder,
         imageWarnings,
         variantDescription,
+        screenBlueprint,
       })
     } catch (err) {
       const name = err instanceof Error ? err.name : 'unknown'
