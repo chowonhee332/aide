@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: KTDS Design System
-description: "KT DS 엔터프라이즈 UI 시스템 — Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학으로 한다. 최종 기준은 DSCore Storybook(https://dscore-ui.ktds.co.kr/)에 게시된 stable Docs이다. 화이트 서피스(#ffffff)와 쿨 뉴트럴 구조 위에 Primary Blue(#1a75ff)를 유일한 인터랙션 강조색으로 사용한다. 버튼은 8px 라운드 사각형(pill 절대 금지), 입력 필드 기본 32px·small 24px·large 40px, 카드는 서비스 프로필에 따라 B2B border-only / B2C shadow-only로 적용한다. 페이지 배경은 반드시 primary-fill-neutral(#F2F5F9), 카드/컴포넌트 배경은 surface(#ffffff). Pretendard 폰트. 모바일=하단 탭 바(NavBottom), 데스크탑=좌측 레일(NavSide, 240px). 패키지: @ktds-ui/components (일반 컴포넌트), @ktds-ui/layout (레이아웃 컴포넌트: SideNavigation·Header·Footer·Content·ContentTitle·SplitLayout), Toast는 @ktds-ui/context/ToastContext. Carousel은 swiper 별도 설치, Chart는 chart.js 별도 설치."
+description: "KT DS 엔터프라이즈 UI 시스템 — Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학으로 한다. 최종 기준은 DSCore Storybook(https://dscore-ui.ktds.co.kr/)에 게시된 stable Docs이다. 화이트 서피스(#ffffff)와 쿨 뉴트럴 구조 위에 Primary Blue(#1a75ff)를 유일한 인터랙션 강조색으로 사용한다. 일반 Button은 8px 라운드 사각형이며 pill/capsule 버튼은 금지한다. 단, Badge·Chip·Avatar·FAB처럼 의미상 원형/캡슐형인 컴포넌트는 rounded.full 예외를 허용한다. 입력 필드는 default 32px·small 24px·large 40px, 카드는 서비스 프로필에 따라 B2B border-only / B2C shadow-only로 적용한다. 페이지 배경은 반드시 primary-fill-neutral(#F2F5F9), 카드/컴포넌트 배경은 surface(#ffffff). Pretendard 폰트. 모바일=하단 탭 바(NavBottom), 태블릿=상단 NavTop, 데스크탑=서비스 성격에 따라 Header/GNB 또는 NavSide(업무형 240px)를 선택한다. 패키지: @ktds-ui/components (일반 컴포넌트), @ktds-ui/layout (레이아웃 컴포넌트: SideNavigation·Header·Footer·Content·ContentTitle·SplitLayout), Toast는 @ktds-ui/context/ToastContext. Carousel은 swiper 별도 설치, Chart는 chart.js 별도 설치."
 
 colors:
   # Brand Primary
@@ -230,28 +230,42 @@ components:
     textColor: "{colors.text}"
     typography: "{typography.body-md}"
     rounded: "{rounded.md}"
-    height: "L=40px / M=32px / S=24px"
+    height: 32px
+    border: "1px solid {colors.border}"
+  input-large:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    typography: "{typography.body-md}"
+    rounded: "{rounded.md}"
+    height: 40px
+    border: "1px solid {colors.border}"
+  input-small:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    typography: "{typography.caption-lg}"
+    rounded: "{rounded.md}"
+    height: 24px
     border: "1px solid {colors.border}"
   input-focused:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
     typography: "{typography.body-md}"
     rounded: "{rounded.md}"
-    height: "L=40px / M=32px / S=24px"
+    height: 32px
     border: "1px solid {colors.primary-border}"
   input-error:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
     typography: "{typography.body-md}"
     rounded: "{rounded.md}"
-    height: "L=40px / M=32px / S=24px"
+    height: 32px
     border: "1px solid {colors.negative}"
   input-disabled:
     backgroundColor: "{colors.surface-disabled}"
     textColor: "{colors.text-disabled}"
     typography: "{typography.body-md}"
     rounded: "{rounded.md}"
-    height: "L=40px / M=32px / S=24px"
+    height: 32px
     border: "1px solid {colors.border-alt}"
   textarea-default:
     backgroundColor: "{colors.surface}"
@@ -270,6 +284,18 @@ components:
     backgroundColor: "{colors.surface}"
     rounded: "{rounded.xl}"
     padding: "{spacing.md}"
+  card-b2b:
+    backgroundColor: "{colors.surface}"
+    rounded: "{rounded.xl}"
+    padding: "{spacing.md}"
+    border: "1px solid {colors.border-alt}"
+    shadow: "none"
+  card-b2c:
+    backgroundColor: "{colors.surface}"
+    rounded: "{rounded.xl}"
+    padding: "{spacing.md}"
+    border: "none"
+    shadow: "{shadows.b2c-card}"
   list-item-default:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
@@ -431,26 +457,40 @@ components:
     textColor: "{colors.text}"
     typography: "{typography.body-md}"
     rounded: "{rounded.md}"
-    height: "L=40px / M=32px / S=24px"
+    height: 32px
+    border: "1px solid {colors.border}"
+  select-large:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    typography: "{typography.body-md}"
+    rounded: "{rounded.md}"
+    height: 40px
+    border: "1px solid {colors.border}"
+  select-small:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    typography: "{typography.caption-lg}"
+    rounded: "{rounded.md}"
+    height: 24px
     border: "1px solid {colors.border}"
   select-filled:
     backgroundColor: "{colors.fill-alt}"
     textColor: "{colors.text}"
     rounded: "{rounded.md}"
-    height: "L=40px / M=32px / S=24px"
+    height: 32px
     border: "none"
   select-ghost:
     backgroundColor: "transparent"
     textColor: "{colors.text}"
     rounded: "{rounded.md}"
-    height: "L=40px / M=32px / S=24px"
+    height: 32px
     border: "none"
   select-focused:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
     typography: "{typography.body-md}"
     rounded: "{rounded.md}"
-    height: "L=40px / M=32px / S=24px"
+    height: 32px
     border: "1px solid {colors.primary-border}"
   slider-default:
     trackColor: "{colors.fill-neutral}"
@@ -829,7 +869,7 @@ Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학
 이 문서는 **DSCore Storybook 최종 문서**를 기준으로 유지한다.
 
 - 기준 URL: `https://dscore-ui.ktds.co.kr/`
-- 확인일: 2026-05-27
+- 확인일: 2026-06-02
 - 기준 문서: Storybook `index.json`의 `type: docs` 항목과 각 `iframe.html?viewMode=docs&id=...` 문서
 - 컴포넌트 상태: Storybook에 stable Docs로 노출된 항목은 사용 가능 컴포넌트로 본다. 로컬 소스 확인 여부보다 Storybook 문서를 우선한다.
 - 단, B2B/B2C 카드 표면 정책처럼 서비스 적용을 위해 추가한 규칙은 **KTDS 적용 프로필 확장 규칙**으로 별도 표기한다.
@@ -844,13 +884,37 @@ Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학
 
 `Color`, `Font`, `Icon`, `Spacing`, `Border`, `Shadow`, `Transition`
 
+#### UX Guideline
+
+`적용 범위`, `적용 지침`, `서식 및 레이블 규칙`, `접근성`
+
+#### UX Principle for AI
+
+`AI Ethics`, `Transparency`, `Fairness`, `Accountability`, `Safety`, `Privacy`, `Reliability`
+
 #### Typography
 
 `Heading`, `Text`, `Text List`, `Link`, `Mark`
 
 #### Components
 
-`Accordion`, `Admonition`, `Alert Dialog`, `Anchor`, `Avatar`, `Badge`, `Bottom Sheet`, `Breadcrumb`, `Button`, `Button: FAB`, `Card`, `Carousel`, `Chart`, `Checkbox`, `Chip`, `Date Picker`, `Dialog`, `Drawer`, `Dropdown Menu`, `Editor`, `Empty`, `FileUploader`, `Input`, `List`, `Loading`, `Navigation: Bottom`, `Navigation: Side`, `Navigation: Top`, `Pagination`, `Radio`, `Rate`, `Select`, `Slider`, `Stepper`, `Switch`, `Tab: Menu Tab`, `TabList`, `Table`, `Tag`, `Textarea`, `Toast`, `Tooltip`, `Tree Menu`
+`Overview`, `Accordion`, `Admonition`, `Alert Dialog`, `Anchor`, `Avatar`, `Badge`, `Bottom Sheet`, `Breadcrumb`, `Button`, `Button: FAB`, `Card`, `Carousel`, `Chart`, `Checkbox`, `Chip`, `Date Picker`, `Dialog`, `Drawer`, `Dropdown Menu`, `Editor`, `Empty`, `FileUploader`, `Input`, `List`, `Loading`, `Navigation: Bottom`, `Navigation: Side`, `Navigation: Top`, `Pagination`, `Radio`, `Rate`, `Select`, `Slider`, `Stepper`, `Switch`, `Tab: Menu Tab`, `TabList`, `Table`, `Tag`, `Textarea`, `Toast`, `Tooltip`, `Tree Menu`
+
+#### High-Impact Story Variants
+
+생성 결과에서 자주 필요한 공식 Storybook variant는 아래를 우선 반영한다.
+
+- Button: `With Icon`, `Button Stack`, `Button Stack Vertical`, `Alignment`, `Alignment Vertical`
+- Input: `Input Clear`, `Input Reveal`, `With Slot`
+- Card: `Example 1`-`Example 4` 카드 레이아웃 패턴
+- Bottom Sheet: `Default`, `With Controls`
+- Navigation Bottom: `With Badge`
+- Table: `With Checkbox Selection`, `With Radio Selection`, `With Height`
+- Date Picker: `Date Range`, `With Min And Max Date`
+- Chart: `Line Chart`, `Bar Chart`, `Doughnut Chart`, `Pie Chart`, `Mix Chart`
+- Toast: `Primary Variant`, `With Icon`, `Long Message`
+- Empty: `Empty Text`, `Empty Icon Text`, `Empty Data`
+- FileUploader: `Button File Uploader`, `Max Files And Size`, `With Error Message`, `With Default Files`
 
 ---
 
@@ -866,6 +930,7 @@ import {
   Anchor,
   Avatar,
   Badge,
+  BottomSheet,
   Breadcrumb,
   Button, ButtonArea, Stack,
   Card,
@@ -926,7 +991,7 @@ npm install swiper    # Carousel 사용 시
 npm install chart.js  # Chart 사용 시
 ```
 
-**Bottom Sheet 사용:** Storybook 기준 Bottom Sheet는 별도 `BottomSheet` import가 아니라 `Drawer`의 `placement="bottom"` 패턴으로 구현한다.
+**Bottom Sheet 사용:** Storybook stable Docs 기준 `BottomSheet` 컴포넌트를 우선 사용한다. `Drawer placement="bottom"`은 `BottomSheet`를 사용할 수 없는 프로젝트 fallback으로만 사용한다.
 
 ---
 
@@ -1164,7 +1229,7 @@ KTDS의 레이아웃은 **8px 기본 그리드**를 중심으로 모든 spacing�
 | Mobile | < 480px | 16px | 1 |
 | Mobile-Large | 480–767px | 16px | 1–2 |
 | Tablet | 768–1023px | 24px | 2–3 |
-| Desktop | ≥ 1024px | 40px | 3–4 (max 1280px, 좌측 NavSide 240px) |
+| Desktop | ≥ 1024px | 40px | 3–4 (max 1280px, 업무형은 좌측 NavSide 240px / 탐색·커머스·브랜드형은 Header·GNB) |
 
 - **기본 그리드**: 8px — 모든 spacing은 8px 배수 (또는 4px 서브스텝)
 - **카드 간격**: 모바일 16px / 태블릿+ 20px
@@ -1178,7 +1243,7 @@ KTDS의 레이아웃은 **8px 기본 그리드**를 중심으로 모든 spacing�
 ### 반응형 내비게이션
 - **Mobile (≤ 767px)**: `NavBottom` 하단 탭 바 (최소 3개, 최대 5개 메뉴)
 - **Tablet (768–1023px)**: `NavTop` 상단 내비게이션 바
-- **Desktop (≥ 1024px)**: `NavSide` 좌측 레일 (240px, 기본 펼침 상태)
+- **Desktop (≥ 1024px)**: 서비스 성격에 따라 선택한다. B2B SaaS·어드민·CRM·ERP·대시보드·업무 도구는 `NavSide` 좌측 레일(240px, 기본 펼침 상태)을 사용하고, 포털·커머스·예약·여행·교육·엔터테인먼트·브랜드/마케팅형 서비스는 `Header`/상단 GNB를 사용한다.
 
 ---
 
@@ -1249,7 +1314,7 @@ KTDS 컴포넌트 시스템은 **엔터프라이즈 업무 흐름 효율성**을
 
 - **48px 버튼 높이**: WCAG 2.5.5 Target Size 기준(44px)보다 높게 설정해 모바일 터치 오류를 줄인다. 경험적으로 한국 사용자는 빠른 탭 습관으로 작은 버튼에서 오터치율이 높다.
 - **Input/Select 높이 체계**: Storybook props 기준 `size`는 `small` / `large`만 노출되며, 미지정 기본 상태가 32px이다. 실제 높이는 small 24px, default 32px, large 40px를 사용한다. outlined 변형이 기본이다.
-- **내비게이션 분리(Mobile/Tablet/Desktop)**: NavBottom(모바일)·NavTop(태블릿)·NavSide(데스크탑)를 각각 별개의 컴포넌트로 유지한다. 하나의 반응형 컴포넌트로 통합할 경우 복잡한 조건 분기가 생겨 유지보수 비용이 증가했다.
+- **내비게이션 분리(Mobile/Tablet/Desktop)**: NavBottom(모바일)·NavTop(태블릿)·NavSide/Header(데스크탑)를 각각 별개의 컴포넌트로 유지한다. 데스크탑에서 NavSide는 업무형 정보 구조에 우선하고, 상단 Header/GNB는 탐색·커머스·브랜드형 서비스에 우선한다. 하나의 반응형 컴포넌트로 통합할 경우 복잡한 조건 분기가 생겨 유지보수 비용이 증가했다.
 - **Toast vs Alert Dialog 분리**: 비차단(non-blocking) 알림은 Toast(`useToast`), 사용자 확인이 필요한 파괴적 행동(삭제·초기화)은 Alert Dialog(`useAlert`)를 사용한다. 두 패턴을 혼용하면 사용자가 경고 심각도를 구분하지 못한다.
 
 ### Button
@@ -1453,6 +1518,12 @@ chip-selected:  bg={colors.primary-fill-neutral}  text={colors.primary-text}  bo
 ```
 
 ### Navigation
+
+Desktop navigation must be chosen by service type, not by viewport alone.
+
+- Use `NavSide` / `SideNavigation` for B2B SaaS, admin, CRM, ERP, analytics dashboard, internal tools, and dense work management.
+- Use `Header` / top GNB for portal, commerce, booking, travel, education, entertainment, consumer, and brand/marketing services.
+- Never use mobile `NavBottom` on desktop web.
 
 #### NavBottom (Mobile 전용)
 
@@ -2942,6 +3013,8 @@ import { Heading, Chart, Table, Progress } from '@ktds-ui/components';
 - Input 레이블은 반드시 필드 위(above) 배치
 - Carousel 사용 전 `npm install swiper`, Chart 사용 전 `npm install chart.js`
 - Toast는 반드시 `useToast` hook 사용 (`@ktds-ui/context/ToastContext`)
+- Bottom Sheet는 공식 `BottomSheet` 컴포넌트를 우선 사용하고, 지원되지 않는 환경에서만 `Drawer placement="bottom"` fallback을 사용
+- AI 생성 UI는 UX Guideline의 접근성·레이블 규칙과 UX Principle for AI의 Transparency/Fairness/Accountability/Safety/Privacy/Reliability를 기본 체크리스트로 삼는다
 
 **Don't**
 - Primary Blue를 배경이나 장식 목적으로 남용하지 않는다
@@ -2952,6 +3025,57 @@ import { Heading, Chart, Table, Progress } from '@ktds-ui/components';
 - 한국어 레이블은 인라인 배치 금지 — 항상 input 위(above)에 위치
 - MenuTab을 모바일에서 사용하지 않는다 (PC 전용)
 - DatePicker에서 직접 텍스트 입력 허용하지 않는다 (달력 선택만 가능)
+- 사용자가 이해할 수 없는 AI 판단 결과를 설명 없이 표시하지 않는다. AI 추천/자동화 상태는 근거, 신뢰도, 사용자가 되돌릴 수 있는 행동을 함께 제공한다.
+
+---
+
+## Aide Generated UI Composition Rules
+
+이 섹션은 Aide가 KTDS를 HTML/CSS 시안으로 생성할 때 적용하는 제품 화면 품질 규칙이다. Storybook 컴포넌트 규칙을 덮어쓰지 않고, 생성 결과가 와이어프레임처럼 보이지 않게 하는 보조 계약이다.
+
+### First Viewport Contract
+
+- 첫 화면은 반드시 `상단 내비/브랜드`, `핵심 요약 또는 hero`, `주요 CTA`, `보조 콘텐츠 또는 다음 섹션 힌트`를 포함한다.
+- 화면을 빈 카드와 큰 공백으로 채우지 않는다. 각 섹션은 제목, 보조 설명, 상태/수치/시간/담당자/가격/진행률 등 실제 서비스 데이터를 포함한다.
+- KTDS의 기본 레이어는 `body/page background = var(--color-primary-fill-neutral)`, `content surface/card = var(--color-surface)`이다.
+- Primary Blue는 CTA, 활성 탭, 링크, 포커스, 핵심 상태 강조에만 사용한다. 넓은 장식 배경이나 그라데이션 용도로 사용하지 않는다.
+- B2B/관리자/대시보드는 `border-only card`를 우선하고, B2C/모바일 홈은 `shadow-only card`를 사용할 수 있다. 같은 카드에 border와 shadow를 동시에 쓰지 않는다.
+
+### Spacing Rhythm
+
+- 모바일 page padding: `var(--spacing-base)` 16px. 태블릿: `var(--spacing-lg)` 24px. 데스크탑: `var(--spacing-2xl)` 40px.
+- 모바일 section gap: 20-24px 범위에서 `var(--spacing-md)` 또는 `var(--spacing-lg)`를 사용한다. 같은 화면 안에서 section gap을 제각각 만들지 않는다.
+- 카드 gap: 모바일 `var(--spacing-base)` 16px, 태블릿 이상 `var(--spacing-md)` 20px.
+- 카드 padding: 기본 `var(--spacing-md)` 20px. 정보 밀도가 높은 리스트 카드는 16px까지 줄일 수 있지만, 같은 리스트 안에서는 동일해야 한다.
+- 제목-본문-CTA 간격은 `8px -> 12/16px -> 20/24px` 리듬으로 구성한다. 큰 여백을 감각적으로 넣지 말고 정보 그룹 단위로만 사용한다.
+- 하단 `NavBottom`, floating CTA, 장바구니 버튼이 있으면 스크롤 콘텐츠에 `padding-bottom: calc(72px + env(safe-area-inset-bottom) + var(--spacing-lg))` 이상을 둔다.
+
+### Button And Label Safety
+
+- 한국어 버튼 레이블은 한 줄 유지가 기본이다. 버튼 폭이 부족하면 버튼을 넓히거나 문구를 줄이고, 2줄 줄바꿈 버튼을 만들지 않는다.
+- 모바일 주요 CTA는 최소 48px 높이, 좌우 padding 24px, 텍스트 중앙 정렬, `white-space: nowrap`을 기본으로 한다.
+- 아이콘만 있는 액션은 반드시 `IconButton` 규칙을 따른다. 의미 없는 emoji, Material Symbols 텍스트(`home`, `star`)를 노출하지 않는다.
+- Input, Select, DatePicker, Textarea는 레이블을 필드 위에 둔다. placeholder만으로 필드 의미를 전달하지 않는다.
+
+### 3D And Media Integration
+
+KTDS는 엔터프라이즈 UI 시스템이므로 3D/이미지는 장식이 아니라 정보 구조를 보조해야 한다.
+
+- 3D 이미지를 빈 공간에 얹어 놓지 않는다. 반드시 카드/hero surface, soft patch, contact shadow, caption/CTA 중 하나와 관계를 만든다.
+- 3D가 hero의 주인공이면 visual zone을 명확히 확보한다. 권장 비율은 hero card 폭의 28-40%, 높이의 40-70%이다.
+- 3D 아래에는 `contact shadow` 또는 `soft surface patch`를 둬서 UI 표면 위에 서 있는 느낌을 만든다. 단, shadow는 KTDS shadow 토큰 또는 매우 약한 rgba만 사용한다.
+- 정보형 B2B 화면에서는 3D를 대형 hero로 쓰지 않는다. 필요한 경우 작은 badge/accent로만 사용하거나 실사/차트/아이콘으로 대체한다.
+- 음식, 커머스, 여행, 콘텐츠 탐색처럼 실물성이 중요한 화면은 무관한 3D보다 도메인 관련 실사/콘텐츠 이미지를 우선한다.
+- 모든 이미지에는 `object-fit: cover` 또는 `contain`을 명확히 지정하고, `aspect-ratio`로 영역을 안정화한다.
+
+### AI UX Principles For Generated Screens
+
+- Transparency: AI 추천, 자동 점수, 예측 결과에는 `왜 추천했는지`를 한 줄 근거로 제공한다.
+- Fairness: 사람/고객/직원 목록에서는 성별, 나이, 지역 등 민감 속성으로 차별적 우선순위를 암시하지 않는다.
+- Accountability: 자동화 액션에는 확인, 되돌리기, 수정 가능한 CTA를 제공한다.
+- Safety: 삭제, 결제, 전송, 승인 같은 위험 액션은 `Alert Dialog` 또는 명확한 confirm 패턴을 사용한다.
+- Privacy: 개인정보는 마스킹하거나 최소 노출한다. 예: 전화번호/이메일/식별자는 전체 노출 대신 일부 생략.
+- Reliability: 데이터가 없거나 로딩 중인 상태에는 `Empty`, `Loading`, `Skeleton`, `Toast` 등 공식 컴포넌트 패턴을 사용한다.
 
 ---
 
@@ -2964,7 +3088,7 @@ import { Heading, Chart, Table, Progress } from '@ktds-ui/components';
 | Mobile | < 480px | 1열 레이아웃 · NavBottom 하단 · 카드 전체폭 · 컨테이너 padding=16px |
 | Mobile-Large | 480–767px | NavBottom 유지 · 카드 최대 2열 가능 |
 | Tablet | 768–1023px | NavTop 상단 · 카드 2–3열 · 컨테이너 padding=24px |
-| Desktop | ≥ 1024px | NavSide 240px 좌측 · 카드 3–4열 · max-width 1280px · 컨테이너 padding=40px |
+| Desktop | ≥ 1024px | 업무형은 NavSide 240px 좌측 · 탐색/커머스/브랜드형은 Header/GNB · 카드 3–4열 · max-width 1280px · 컨테이너 padding=40px |
 
 ### 터치 타깃
 
@@ -2976,7 +3100,7 @@ import { Heading, Chart, Table, Progress } from '@ktds-ui/components';
 
 ### 콜랩스 전략
 
-- **Navigation**: 모바일(≤ 767px) → `NavBottom` 하단 · 태블릿 → `NavTop` 상단 · 데스크탑 → `NavSide` 240px 좌측
+- **Navigation**: 모바일(≤ 767px) → `NavBottom` 하단 · 태블릿 → `NavTop` 상단 · 데스크탑 업무형 → `NavSide` 240px 좌측 · 데스크탑 탐색/커머스/브랜드형 → `Header`/상단 GNB
 - **Card Grid**: 데스크탑 3–4열 → 태블릿 2열 → 모바일 1열. 카드 간격은 모바일 `var(--spacing-base)`(16px), 태블릿 이상 `var(--spacing-md)`(20px)로 고정한다.
 - **Modal/Dialog**: 데스크탑 `modal-default` max-width 480px 중앙 · 모바일 `bottom-sheet-default` 전환 권장
 - **Table**: 모바일에서 가로 스크롤 허용 — `overflow-x: auto` 래퍼 사용
@@ -3031,7 +3155,7 @@ Storybook Docs에 명시된 import, props, token 값을 최우선으로 사용�
 - **z-index 레이어**: 기본 콘텐츠 0 → Sticky 헤더 100 → Dropdown 200 → Modal/Dialog 300 → Snackbar/Toast 400 → Tooltip 500
 - **애니메이션 타이밍**: hover/press `var(--dsx-transition-base)` · expand/collapse `var(--dsx-transition-collapse)` · fade `var(--dsx-transition-fade)` · popover `var(--dsx-transition-popover)`
 - **Storybook stable 컴포넌트 우선:** `Accordion`, `List`, `Drawer`, `Slider`, `Stepper`, `Carousel` 등은 Storybook Docs 기준으로 사용 가능 컴포넌트다. 구현 시 각 Storybook 문서의 import/props/guideline을 우선한다.
-- **Bottom Sheet 구현:** Storybook 기준 Bottom Sheet는 `Drawer` 컴포넌트에 `placement="bottom"`을 지정해 구현한다.
+- **Bottom Sheet 구현:** Storybook stable Docs의 `BottomSheet` 컴포넌트를 우선한다. `Drawer placement="bottom"`은 공식 BottomSheet를 사용할 수 없는 환경에서만 fallback으로 사용한다.
 - **Editor 컴포넌트:** Storybook Docs에 등록되어 있으므로 사용 가능 목록에는 포함한다. 단, 실제 에디터 기능 범위와 플러그인 정책은 프로젝트 적용 전 Storybook 예제와 제품 정책을 함께 확인한다.
 
 ---

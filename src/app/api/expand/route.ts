@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { Browser, Page } from 'puppeteer'
 import { expandToPrototype, resolveImagePlaceholders, type GenerateParams } from '@/lib/gemini'
+import fs from 'fs'
+import path from 'path'
 
 export const maxDuration = 180
+
+function getDefaultAideLogoBase64(): string {
+  try {
+    const filePath = path.join(process.cwd(), 'public', 'logo_aide.png')
+    const data = fs.readFileSync(filePath)
+    return `data:image/png;base64,${data.toString('base64')}`
+  } catch {
+    return ''
+  }
+}
 
 async function safeBrowserClose(browser: Browser) {
   try {
@@ -33,13 +45,18 @@ export async function POST(req: NextRequest) {
   let browser: Browser | null = null
   try {
     const { mainHtml, ...params } = await req.json() as { mainHtml: string } & GenerateParams
+    const rawLogo = params.logoDataUrl
+    const normalizedParams: GenerateParams = {
+      ...params,
+      logoDataUrl: (!rawLogo || !rawLogo.startsWith('data:')) ? getDefaultAideLogoBase64() : rawLogo,
+    }
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
     const unsplashKey = req.headers.get('x-unsplash-key') ?? undefined
     console.log('[expand] step1: params parsed, starting expandToPrototype')
-    let html = await expandToPrototype(mainHtml, params, apiKey)
+    let html = await expandToPrototype(mainHtml, normalizedParams, apiKey)
     console.log('[expand] step2: html generated, length=', html.length)
     const imageWarnings: string[] = []
-    html = await resolveImagePlaceholders(html, { heroImagePrompt: params.heroSubject || params.heroImagePrompt, apiKey, unsplashKey, imageWarnings })
+    html = await resolveImagePlaceholders(html, { heroImagePrompt: normalizedParams.heroSubject || normalizedParams.heroImagePrompt, apiKey, unsplashKey, imageWarnings })
 
     const puppeteer = await import('puppeteer')
     browser = await puppeteer.default.launch({
@@ -54,7 +71,7 @@ export async function POST(req: NextRequest) {
 
     const page = await browser.newPage()
 
-    const isWeb = params.platform === 'web'
+    const isWeb = normalizedParams.platform === 'web'
     const vpWidth = isWeb ? 1440 : 390
     const vpHeight = isWeb ? 1024 : 844
 

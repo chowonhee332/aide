@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect, startTransition, type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   ArrowUp, ArrowRight, Sparkles, MessageSquare, Layers, Sliders, FileText, Upload, X,
   ChevronLeft, ChevronRight, Check, ChevronDown, Zap, Palette, MousePointer2, Share2,
@@ -13,6 +12,7 @@ import Grainient from '@/components/Grainient'
 import { DesignMdPreview } from '@/components/DesignMdPreview'
 import { type HistoryItem, loadHistory, deleteHistoryItem, relativeTime } from '@/lib/history'
 import dynamic from 'next/dynamic'
+import StudioView from '@/components/StudioView'
 
 const CircularGallery = dynamic(() => import('@/components/CircularGallery'), { ssr: false })
 
@@ -633,7 +633,6 @@ function extractColorsFromImage(dataUrl: string): Promise<string[]> {
 }
 
 export default function Home() {
-  const router = useRouter()
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
   const [apiKeyTab, setApiKeyTab] = useState<ApiKeyTab>('gemini')
   const [apiKeyInputs, setApiKeyInputs] = useState<Record<ApiKeyTab, string>>({ gemini: '', unsplash: '', figma: '' })
@@ -728,7 +727,7 @@ export default function Home() {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const [refPanelOpen, setRefPanelOpen] = useState(false)
-  const [sourceTab, setSourceTab] = useState<'asis' | 'wireframe' | 'reference' | 'brand'>('asis')
+  const [sourceTab, setSourceTab] = useState<'asis' | 'wireframe' | 'reference' | 'brand' | 'planning'>('asis')
   const [refPageImage, setRefPageImage] = useState<string | null>(null)
   const [refImageKind, setRefImageKind] = useState<'wireframe' | 'reference'>('reference')
   const [asIsAnalysis, setAsIsAnalysis] = useState<AsIsAnalysis | null>(null)
@@ -736,6 +735,14 @@ export default function Home() {
   const [refCapturing, setRefCapturing] = useState(false)
   const [refError, setRefError] = useState<string | null>(null)
   const [refPreviewOpen, setRefPreviewOpen] = useState(false)
+
+  const [prdDoc, setPrdDoc] = useState<string | null>(null)
+  const [prdDocFileName, setPrdDocFileName] = useState<string | null>(null)
+  const [iaImage, setIaImage] = useState<string | null>(null)
+  const [iaImageFileName, setIaImageFileName] = useState<string | null>(null)
+  const [iaText, setIaText] = useState<string | null>(null)
+  const prdFileInputRef = useRef<HTMLInputElement>(null)
+  const iaImageInputRef = useRef<HTMLInputElement>(null)
 
   const [modelId, setModelId] = useState<string>('gemini-3.1-pro-preview')
   const [modelDropOpen, setModelDropOpen] = useState(false)
@@ -752,6 +759,13 @@ export default function Home() {
   const [extractedBrandColors, setExtractedBrandColors] = useState<string[]>([])
   const [extractingColors, setExtractingColors] = useState(false)
   const logoInputRef = useRef<HTMLInputElement>(null)
+
+  const [studioTrigger, setStudioTrigger] = useState<{
+    brief: string
+    preset?: string
+    platform?: string
+    historyId?: string
+  } | null>(null)
 
   // URL → design.md 생성 전용 모달 state
   const [genMdModalOpen, setGenMdModalOpen] = useState(false)
@@ -1005,13 +1019,69 @@ export default function Home() {
     setRefError(null)
   }
 
+  const handlePrdFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const text = ev.target?.result as string
+      setPrdDoc(text)
+      setPrdDocFileName(file.name)
+    }
+    reader.readAsText(file)
+    if (prdFileInputRef.current) prdFileInputRef.current.value = ''
+  }
+
+  const handleIaImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
+    if (isExcel) {
+      const reader = new FileReader()
+      reader.onload = async ev => {
+        const data = ev.target?.result
+        const XLSX = await import('xlsx')
+        const workbook = XLSX.read(data, { type: 'array' })
+        const lines: string[] = []
+        workbook.SheetNames.forEach(sheetName => {
+          lines.push(`[시트: ${sheetName}]`)
+          const sheet = workbook.Sheets[sheetName]
+          const csv = XLSX.utils.sheet_to_csv(sheet, { blankrows: false })
+          lines.push(csv)
+        })
+        setIaText(lines.join('\n'))
+        setIaImage(null)
+        setIaImageFileName(file.name)
+      }
+      reader.readAsArrayBuffer(file)
+    } else {
+      const reader = new FileReader()
+      reader.onload = ev => {
+        const dataUrl = ev.target?.result as string
+        const base64 = dataUrl.split(',')[1]
+        setIaImage(base64)
+        setIaText(null)
+        setIaImageFileName(file.name)
+      }
+      reader.readAsDataURL(file)
+    }
+    if (iaImageInputRef.current) iaImageInputRef.current.value = ''
+  }
+
+  const clearPlanning = () => {
+    setPrdDoc(null)
+    setPrdDocFileName(null)
+    setIaImage(null)
+    setIaText(null)
+    setIaImageFileName(null)
+  }
+
   const handleSubmit = useCallback(() => {
     if (!brief.trim()) return
-    const params = new URLSearchParams({ brief: brief.trim() })
-    if (designPreset !== 'none') params.set('preset', designPreset)
     if (designMdContent) {
       sessionStorage.setItem('designMd', designMdContent)
-      params.set('hasDesignMd', '1')
+    } else {
+      sessionStorage.removeItem('designMd')
     }
     if (asIsAnalysis) {
       sessionStorage.setItem('asIsAnalysis', JSON.stringify(asIsAnalysis))
@@ -1035,9 +1105,27 @@ export default function Home() {
     } else {
       sessionStorage.removeItem('brandColors')
     }
+    if (prdDoc) {
+      sessionStorage.setItem('prdDoc', prdDoc)
+    } else {
+      sessionStorage.removeItem('prdDoc')
+    }
+    if (iaImage) {
+      sessionStorage.setItem('iaImage', iaImage)
+    } else {
+      sessionStorage.removeItem('iaImage')
+    }
+    if (iaText) {
+      sessionStorage.setItem('iaText', iaText)
+    } else {
+      sessionStorage.removeItem('iaText')
+    }
     sessionStorage.setItem('aide_model', modelId)
-    router.push(`/studio?${params.toString()}`)
-  }, [brief, designPreset, designMdContent, asIsAnalysis, refPageImage, refImageKind, brandLogo, brandColors, modelId, router])
+    setStudioTrigger({
+      brief: brief.trim(),
+      preset: designPreset !== 'none' ? designPreset : undefined,
+    })
+  }, [brief, designPreset, designMdContent, asIsAnalysis, refPageImage, refImageKind, brandLogo, brandColors, prdDoc, iaImage, iaText, modelId])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -1048,6 +1136,18 @@ export default function Home() {
 
   const canSubmit = brief.trim().length > 0
   const designButtonLabel = designMdFileName ?? null
+
+  if (studioTrigger) {
+    return (
+      <StudioView
+        triggerBrief={studioTrigger.brief}
+        triggerPreset={studioTrigger.preset}
+        triggerPlatform={studioTrigger.platform}
+        historyId={studioTrigger.historyId}
+        onBack={() => setStudioTrigger(null)}
+      />
+    )
+  }
 
   return (
     <div style={{
@@ -1419,9 +1519,14 @@ export default function Home() {
           }}>
             {/* 좌측: 로고 */}
             <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
-              <span style={{ color: F.ink, fontWeight: 700, fontSize: '18px', letterSpacing: '-0.8px', cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-                Aide
-              </span>
+              <button
+                type="button"
+                aria-label="Aide 홈으로 이동"
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              >
+                <img src="/logo_aide.png" alt="Aide" style={{ height: 58, width: 'auto', display: 'block', objectFit: 'contain' }} />
+              </button>
             </div>
 
 
@@ -1457,9 +1562,7 @@ export default function Home() {
                 onClick={async () => {
                   const items = await loadHistory()
                   if (items.length > 0) {
-                    router.push(`/studio?historyId=${items[0].id}`)
-                  } else {
-                    router.push('/studio')
+                    setStudioTrigger({ brief: '', historyId: items[0].id })
                   }
                 }}
                 style={{
@@ -1676,6 +1779,35 @@ export default function Home() {
                     </button>
                     <button
                       onClick={clearBrand}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '22px', height: '22px', borderRadius: '50%',
+                        border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#555555',
+                      }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+
+                {(prdDoc !== null || iaImage !== null) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <button
+                      onClick={() => { setRefPanelOpen(true); setSourceTab('planning'); setDesignPanelOpen(false) }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        padding: '0 12px', height: '38px', borderRadius: '100px',
+                        border: 'none', backgroundColor: `${F.primary}18`,
+                        color: F.primary, fontSize: '13px', fontWeight: 600,
+                        cursor: 'pointer', letterSpacing: '-0.13px',
+                      }}
+                    >
+                      <FileText size={11} />
+                      기획서
+                      {prdDoc && iaImage ? ' 2' : ''}
+                    </button>
+                    <button
+                      onClick={clearPlanning}
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         width: '22px', height: '22px', borderRadius: '50%',
@@ -2033,6 +2165,7 @@ export default function Home() {
 
               <div style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 12, backgroundColor: F.surface2, marginBottom: 14 }}>
                 {([
+                  ['planning', '기획서'],
                   ['asis', 'As-is URL'],
                   ['wireframe', '와이어프레임'],
                   ['reference', '참고자료'],
@@ -2061,18 +2194,105 @@ export default function Home() {
 
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: F.ink, letterSpacing: '-0.13px' }}>
-                  {sourceTab === 'asis' ? '리디자인할 기존 화면'
+                  {sourceTab === 'planning' ? 'PRD · IA · 기획 문서'
+                    : sourceTab === 'asis' ? '리디자인할 기존 화면'
                     : sourceTab === 'wireframe' ? '구조로 사용할 와이어프레임'
                     : sourceTab === 'reference' ? '분위기와 패턴 참고자료'
                     : '브랜드 정체성 자료'}
                 </div>
                 <div style={{ fontSize: 12, color: F.inkMuted, marginTop: 3, lineHeight: 1.45 }}>
-                  {sourceTab === 'asis' ? '기존 서비스의 정보 구조, 섹션, CTA, 문제점을 분석합니다. 스타일은 가져오지 않고 선택한 design.md를 따릅니다.'
+                  {sourceTab === 'planning' ? 'PRD 문서나 IA 메뉴구조도를 첨부하면 화면 구조·메뉴·기능을 기획 내용 그대로 구현합니다.'
+                    : sourceTab === 'asis' ? '기존 서비스의 정보 구조, 섹션, CTA, 문제점을 분석합니다. 스타일은 가져오지 않고 선택한 design.md를 따릅니다.'
                     : sourceTab === 'wireframe' ? '기획 와이어프레임, 손그림, 피그마 캡처를 올리면 구조를 기준으로 화면을 만듭니다.'
                     : sourceTab === 'reference' ? '좋아하는 이미지나 서비스 URL을 넣으면 무드, 밀도, 레이아웃 리듬만 참고합니다.'
                     : '로고와 컬러를 넣으면 브랜드 요소를 화면에 자연스럽게 반영합니다.'}
                 </div>
               </div>
+
+              {sourceTab === 'planning' && (
+                <>
+                  <input ref={prdFileInputRef} type="file" accept=".txt,.md,.markdown,.pdf" onChange={handlePrdFileUpload} style={{ display: 'none' }} />
+                  <input ref={iaImageInputRef} type="file" accept="image/*,.xlsx,.xls" onChange={handleIaImageUpload} style={{ display: 'none' }} />
+
+                  {/* PRD 문서 */}
+                  <div style={{ marginBottom: 10 }}>
+                    <p style={{ fontSize: '12px', fontWeight: 700, color: F.inkMuted, marginBottom: '8px', letterSpacing: '-0.12px' }}>PRD 문서</p>
+                    {prdDoc ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '10px', backgroundColor: F.surface2, border: `1px solid ${F.hairline}` }}>
+                        <FileText size={16} color={F.primary} style={{ flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: F.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{prdDocFileName}</div>
+                          <div style={{ fontSize: '11px', color: F.inkMuted, marginTop: 2 }}>{prdDoc.length.toLocaleString()}자</div>
+                        </div>
+                        <button onClick={() => { setPrdDoc(null); setPrdDocFileName(null) }} style={{ border: 'none', background: 'none', cursor: 'pointer', color: F.inkMuted, display: 'flex', padding: 2 }}>
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => prdFileInputRef.current?.click()}
+                        style={{
+                          width: '100%', padding: '14px', borderRadius: '10px',
+                          border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
+                          color: F.inkMuted, fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+                          letterSpacing: '-0.13px',
+                        }}
+                      >
+                        <Upload size={13} />
+                        PRD · 기획 문서 업로드 (.txt, .md)
+                      </button>
+                    )}
+                  </div>
+
+                  {/* IA 메뉴구조도 */}
+                  <div>
+                    <p style={{ fontSize: '12px', fontWeight: 700, color: F.inkMuted, marginBottom: '8px', letterSpacing: '-0.12px' }}>IA 메뉴구조도 / 와이어프레임</p>
+                    {iaText ? (
+                      <div style={{ position: 'relative', borderRadius: '10px', border: `1px solid ${F.hairline}`, backgroundColor: F.surface2, padding: '12px 14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ fontSize: 22 }}>📊</div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: F.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{iaImageFileName}</div>
+                            <div style={{ fontSize: 11, color: F.inkMuted, marginTop: 2 }}>엑셀 파싱 완료 · {iaText.length.toLocaleString()}자</div>
+                          </div>
+                          <button onClick={() => { setIaText(null); setIaImageFileName(null) }}
+                            style={{ marginLeft: 'auto', width: 24, height: 24, borderRadius: '50%', border: 'none', backgroundColor: F.hairline, color: F.inkMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <X size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : iaImage ? (
+                      <div style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: `1px solid ${F.hairline}`, backgroundColor: F.surface2 }}>
+                        <img src={`data:image/png;base64,${iaImage}`} alt="IA" style={{ width: '100%', maxHeight: 160, objectFit: 'contain', display: 'block' }} />
+                        <div style={{ position: 'absolute', top: 6, right: 6 }}>
+                          <button onClick={() => { setIaImage(null); setIaImageFileName(null) }}
+                            style={{ width: 24, height: 24, borderRadius: '50%', border: 'none', backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <X size={12} />
+                          </button>
+                        </div>
+                        {iaImageFileName && (
+                          <div style={{ padding: '6px 10px', fontSize: 11, color: F.inkMuted }}>{iaImageFileName}</div>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => iaImageInputRef.current?.click()}
+                        style={{
+                          width: '100%', padding: '14px', borderRadius: '10px',
+                          border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
+                          color: F.inkMuted, fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+                          letterSpacing: '-0.13px',
+                        }}
+                      >
+                        <Upload size={13} />
+                        IA 메뉴구조도 · 이미지 또는 엑셀 업로드
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
 
               {sourceTab === 'asis' && asIsAnalysis && (
                 <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, marginBottom: '14px' }}>
@@ -2370,7 +2590,7 @@ export default function Home() {
               borderRadius={0.025}
               scrollSpeed={2}
               scrollEase={0.05}
-              onItemClick={(itemId: string) => router.push(`/studio?historyId=${itemId}`)}
+              onItemClick={(itemId: string) => setStudioTrigger({ brief: '', historyId: itemId })}
             />
           </div>
         </section>
@@ -2650,7 +2870,7 @@ export default function Home() {
                               <Trash2 size={12} />
                             </button>
                             <button
-                              onClick={() => router.push(`/studio?historyId=${item.id}`)}
+                              onClick={() => setStudioTrigger({ brief: '', historyId: item.id })}
                               style={{
                                 width: '28px', height: '28px', borderRadius: '6px',
                                 border: 'none', backgroundColor: 'rgba(0,0,0,0.04)', cursor: 'pointer',

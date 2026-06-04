@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { refineUI, resolveImagePlaceholders } from '@/lib/gemini'
+import fs from 'fs'
+import path from 'path'
 
 export const maxDuration = 120
+
+function getDefaultAideLogoBase64(): string {
+  try {
+    const data = fs.readFileSync(path.join(process.cwd(), 'public', 'logo_aide.png'))
+    return `data:image/png;base64,${data.toString('base64')}`
+  } catch {
+    return ''
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,7 +20,10 @@ export async function POST(req: NextRequest) {
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
     const unsplashKey = req.headers.get('x-unsplash-key') ?? undefined
 
-    let text = await refineUI(html, message, brief, designMd, apiKey, logoDataUrl)
+    const effectiveLogoDataUrl = (!logoDataUrl || !logoDataUrl.startsWith('data:'))
+      ? getDefaultAideLogoBase64()
+      : logoDataUrl
+    let text = await refineUI(html, message, brief, designMd, apiKey, effectiveLogoDataUrl)
     const imageWarnings: string[] = []
     text = await resolveImagePlaceholders(text, { apiKey, unsplashKey, imageWarnings })
 

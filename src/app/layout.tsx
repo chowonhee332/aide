@@ -22,6 +22,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Aide — AI UI Generator",
   description: "기획서를 입력하면 AI가 맞춤형 UI 시안을 생성해드립니다",
+  icons: {
+    icon: "/logo_aide.png",
+    apple: "/logo_aide.png",
+  },
 };
 
 export default function RootLayout({

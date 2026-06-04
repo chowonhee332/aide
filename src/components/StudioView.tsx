@@ -36,8 +36,31 @@ const F = {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3 | 4
+const DEFAULT_AIDE_LOGO_SRC = '/logo_aide.png'
 
-interface GenerateResult { html: string; image: string; has3dHero?: boolean; imageWarnings?: string[] }
+interface GenerateResult {
+  html: string
+  image: string
+  has3dHero?: boolean
+  imageWarnings?: string[]
+  variantDescription?: {
+    strategy?: string
+    intent?: string
+    layoutThesis?: string
+  }
+}
+
+type GenerationEventStatus = 'active' | 'done' | 'error'
+type GenerationEventKind = 'read' | 'think' | 'design' | 'image' | 'render' | 'review' | 'artifact' | 'summary' | 'error'
+
+interface GenerationEvent {
+  id: string
+  kind: GenerationEventKind
+  title: string
+  detail?: string
+  status: GenerationEventStatus
+  variant?: 'A' | 'B' | 'C'
+}
 
 interface ElementStyles {
   tagName: string; text: string; className: string
@@ -58,6 +81,63 @@ function platformFromIntent(value?: string): 'mobile' | 'web' | null {
   if (value.includes('웹') || value.includes('랜딩') || value.includes('대시보드') || value.includes('포털')) return 'web'
   if (value.includes('모바일')) return 'mobile'
   return null
+}
+
+async function readGenerateStream(response: Response, onStep?: (label: string) => void): Promise<GenerateResult> {
+  if (!response.ok) {
+    const text = await response.text().catch(() => '')
+    throw new Error(text || `생성 요청에 실패했습니다. (${response.status})`)
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (!response.body || !contentType.includes('text/event-stream')) {
+    const json = await response.json()
+    if (json.error) throw new Error(json.error)
+    return json as GenerateResult
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let result: GenerateResult | null = null
+
+  const handleBlock = (block: string) => {
+    const lines = block.split('\n')
+    let eventName = 'message'
+    const dataLines: string[] = []
+
+    for (const line of lines) {
+      if (line.startsWith('event:')) eventName = line.slice(6).trim()
+      if (line.startsWith('data:')) dataLines.push(line.slice(5).trim())
+    }
+
+    if (dataLines.length === 0) return
+    const payload = JSON.parse(dataLines.join('\n'))
+    if (eventName === 'step') {
+      if (typeof payload.label === 'string') onStep?.(payload.label)
+      return
+    }
+    if (eventName === 'error') {
+      throw new Error(payload.error || '생성 중 오류가 발생했습니다')
+    }
+    if (eventName === 'done') result = payload as GenerateResult
+  }
+
+  while (true) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const blocks = buffer.split('\n\n')
+    buffer = blocks.pop() ?? ''
+    for (const block of blocks) {
+      if (block.trim()) handleBlock(block)
+    }
+  }
+
+  buffer += decoder.decode()
+  if (buffer.trim()) handleBlock(buffer)
+  if (!result) throw new Error('생성 결과를 받지 못했습니다')
+  return result
 }
 
 function defaultAnswersFromAnalysis(data: QuestionnaireResponse): Record<string, string> {
@@ -567,20 +647,38 @@ function parseCustomDesignMdMeta(md: string): {
   return { color, palette, fonts, isDark }
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// ─── Main component ───────────────────────────────────────────────────────────
 
-export default function StudioPage() {
+interface StudioViewProps {
+  triggerBrief: string
+  triggerPreset?: string
+  triggerPlatform?: string
+  historyId?: string
+  onBack?: () => void
+}
+
+export default function StudioView({ triggerBrief, triggerPreset, triggerPlatform, historyId, onBack }: StudioViewProps) {
   const [step, setStep] = useState<Step>(1)
   const [startedFromLanding, setStartedFromLanding] = useState(false)
   const [platform, setPlatform] = useState<'mobile' | 'web'>('mobile')
-  const [designPreset, setDesignPreset] = useState<DesignPreset>('ktds')
+  const [designPreset, setDesignPreset] = useState<DesignPreset>('none')
   const [customDesignMd, setCustomDesignMd] = useState<string | null>(null)
   const customDesignMdName = customDesignMd
     ? (customDesignMd.match(/name:\s*["']?([^"'\n]+)["']?/)?.[1]?.trim() ?? 'Custom')
     : null
   const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
+  const selectedDesignPreset = DESIGN_PRESETS[designPreset] ?? DESIGN_PRESETS.none
+  const visualizedDesignPreset = designPreset === 'none'
+    ? (DESIGN_PRESETS.ktds ?? selectedDesignPreset)
+    : selectedDesignPreset
+  const designSystemDisplayName = customDesignMdName ?? (designPreset === 'none' ? 'Aide design system' : `${designPreset}.md`)
+  const designSystemDescription = customDesignMd
+    ? 'custom design.md'
+    : designPreset === 'none'
+      ? '기본값으로 kt ds 기반 Aide design system을 사용합니다'
+      : selectedDesignPreset.description
 
-  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null)
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(DEFAULT_AIDE_LOGO_SRC)
   const [logoLoading, setLogoLoading] = useState(false)
   const [brandColors, setBrandColors] = useState<string[]>([])
   const logoInputRef = useRef<HTMLInputElement>(null)
@@ -611,6 +709,7 @@ export default function StudioPage() {
   const [mainVariants, setMainVariants] = useState<[GenerateResult|null, GenerateResult|null, GenerateResult|null]>([null, null, null])
   const [pickedVariantIdx, setPickedVariantIdx] = useState<0|1|2|null>(null)
   const [generateError, setGenerateError] = useState('')
+  const [generationEvents, setGenerationEvents] = useState<GenerationEvent[]>([])
   const generationIdRef = useRef(0)
   const bgFetchAbortRef = useRef<AbortController | null>(null)
   const tweakRequestHtmlRef = useRef<string | null>(null)
@@ -725,12 +824,9 @@ export default function StudioPage() {
     return editMode ? injectInspector(html) : injectBridge(html)
   }, [result, tweakSpec, activeStateId, varValues, debouncedBrandColor, editMode])
 
-  // Auto-start from landing page URL params
+  // Auto-start from props (triggered by landing page submit)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-
     // Load from history
-    const historyId = params.get('historyId')
     if (historyId) {
       loadHistory().then(items => {
         setGnbHistory(items.filter(h => !h.itemType || h.itemType === 'design').slice(0, 30))
@@ -740,39 +836,37 @@ export default function StudioPage() {
       return
     }
 
-    const briefParam = params.get('brief')
-    const presetParam = params.get('preset')
-    const platformParam = params.get('platform')
-    if (!briefParam) return
+    if (!triggerBrief) return
 
     setStartedFromLanding(true)
-    const preset: DesignPreset = (presetParam && presetParam in DESIGN_PRESETS)
-      ? presetParam as DesignPreset
-      : 'ktds'
+    const preset: DesignPreset = (triggerPreset && triggerPreset in DESIGN_PRESETS)
+      ? triggerPreset as DesignPreset
+      : 'none'
 
-    setBrief(briefParam)
+    setBrief(triggerBrief)
     setDesignPreset(preset)
-    if (platformParam === 'web' || platformParam === 'mobile') setPlatform(platformParam)
+    if (triggerPlatform === 'web' || triggerPlatform === 'mobile') setPlatform(triggerPlatform)
 
     const brandLogoFromStorage = sessionStorage.getItem('brandLogo')
-    if (brandLogoFromStorage) setLogoDataUrl(brandLogoFromStorage)
+    setLogoDataUrl(brandLogoFromStorage || DEFAULT_AIDE_LOGO_SRC)
 
     const brandColorsFromStorage = sessionStorage.getItem('brandColors')
     if (brandColorsFromStorage) {
       try { setBrandColors(JSON.parse(brandColorsFromStorage)) } catch { /* ignore */ }
     }
 
-    const customMdFromStorage = params.get('hasDesignMd') === '1' ? sessionStorage.getItem('designMd') : null
+    const customMdFromStorage = sessionStorage.getItem('designMd')
     if (customMdFromStorage) setCustomDesignMd(customMdFromStorage)
 
     const effectiveDesignMdForAnalyze = customMdFromStorage ?? DESIGN_PRESETS[preset].md
+    const prdDoc = sessionStorage.getItem('prdDoc') ?? undefined
     setIsAnalyzing(true)
     setAnalyzeError('')
     const autoStartAbort = new AbortController()
     fetch('/api/analyze', {
       method: 'POST',
       headers: apiHeaders(),
-      body: JSON.stringify({ designMd: effectiveDesignMdForAnalyze, brief: briefParam, platform: platformParam }),
+      body: JSON.stringify({ designMd: effectiveDesignMdForAnalyze, brief: triggerBrief, platform: triggerPlatform, prdDoc }),
       signal: autoStartAbort.signal,
     })
       .then(res => res.json())
@@ -985,6 +1079,13 @@ export default function StudioPage() {
 
   const sendToIframe = useCallback((msg: object) => {
     iframeRef.current?.contentWindow?.postMessage(msg, '*')
+  }, [])
+
+  const appendGenerationEvent = useCallback((event: Omit<GenerationEvent, 'id'>) => {
+    setGenerationEvents(prev => [
+      ...prev,
+      { ...event, id: `${Date.now()}-${Math.random().toString(36).slice(2)}` },
+    ].slice(-80))
   }, [])
 
   const handleUndo = useCallback(() => {
@@ -1237,6 +1338,29 @@ export default function StudioPage() {
     setIsGeneratingC(false)
     setGenerateError('')
     setMainVariants([null, null, null])
+    setGenerationEvents([
+      {
+        id: `seed-${Date.now()}-read`,
+        kind: 'read',
+        title: '기획서와 입력 맥락을 읽는 중',
+        detail: brief.trim().slice(0, 90) + (brief.trim().length > 90 ? '...' : ''),
+        status: 'done',
+      },
+      {
+        id: `seed-${Date.now()}-think`,
+        kind: 'think',
+        title: '서비스 의도와 핵심 사용자 여정 정리',
+        detail: questionnaire.projectSummary,
+        status: 'done',
+      },
+      {
+        id: `seed-${Date.now()}-design`,
+        kind: 'design',
+        title: `${designSystemDisplayName} 분석`,
+        detail: designSystemDescription,
+        status: 'done',
+      },
+    ])
     setStep(3)
     const genId = ++generationIdRef.current
     try {
@@ -1244,13 +1368,90 @@ export default function StudioPage() {
       const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
       const asIsAnalysis = readAsIsAnalysis()
       const modelId = sessionStorage.getItem('aide_model') ?? undefined
+      const prdDocFromStorage = sessionStorage.getItem('prdDoc') ?? undefined
+      const iaImageFromStorage = sessionStorage.getItem('iaImage') ?? undefined
+      const iaTextFromStorage = sessionStorage.getItem('iaText') ?? undefined
       const hero3dMode = typeof answers['hero3d'] === 'string' ? answers['hero3d'] : 'AI 판단'
       const shouldUseHero3d = hero3dMode === '사용' || (hero3dMode === 'AI 판단' && questionnaire.heroImageDecision?.generate)
       const heroPrompt = shouldUseHero3d ? (questionnaire.heroImageDecision?.prompt || brief) : undefined
       const heroSubject = shouldUseHero3d ? (questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || brief) : undefined
-      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, referenceImageKind, asIsAnalysis, platform, modelId, heroImagePrompt: heroPrompt, heroSubject }
       const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
       const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
+      const photoFirstDomains: AppDomain[] = ['food', 'travel', 'commerce', 'health', 'education', 'entertainment']
+      const dataFirstDomains: AppDomain[] = ['business', 'finance', 'productivity']
+      const sharedVisualMode: '3d' | 'photo' | 'none' = hero3dMode === '사용'
+        ? '3d'
+        : photoFirstDomains.includes(effectiveDomain)
+          ? 'photo'
+          : dataFirstDomains.includes(effectiveDomain)
+            ? 'none'
+          : shouldUseHero3d
+            ? '3d'
+            : 'photo'
+      const sharedPhotoKeywordByDomain: Partial<Record<AppDomain, string>> = {
+        food: 'fresh healthy salmon avocado rice bowl',
+        travel: 'hotel travel destination',
+        commerce: 'modern product lifestyle',
+        health: 'wellness healthcare lifestyle',
+        education: 'online learning study',
+        business: 'business dashboard office',
+        finance: 'finance dashboard office',
+      }
+      const sharedVisualSubject = sharedVisualMode === '3d'
+        ? (heroSubject || heroPrompt || questionnaire.projectSummary)
+        : (sharedPhotoKeywordByDomain[effectiveDomain] ?? 'modern lifestyle product')
+      const generationPlan = {
+        productBrief: {
+          serviceIntent: questionnaire.projectSummary,
+          targetUser: typeof answers['target_audience'] === 'string' ? answers['target_audience'] : '서비스의 핵심 사용자',
+          primaryScenario: typeof answers['primary_journey'] === 'string' ? answers['primary_journey'] : '핵심 상태를 확인하고 다음 행동으로 이동',
+          screenPurpose: platform === 'web' ? '웹 첫 화면에서 정보 구조와 주요 전환을 명확히 제시' : '모바일 첫 화면에서 요약, 추천, 주요 행동을 빠르게 완료',
+          coreObjects: effectiveDomain === 'food'
+            ? ['추천 메뉴', '냉장고 재료', '매칭률', '부족한 재료', '레시피/장보기 CTA']
+            : ['핵심 상태', '주요 콘텐츠', '추천 항목', '진행 상태', '주요 CTA'],
+          keyActions: effectiveDomain === 'food'
+            ? ['레시피 상세 보기', '오늘 메뉴 만들기', '부족한 재료 장보기']
+            : ['상태 확인', '상세 보기', '주요 액션 실행'],
+          successCriteria: ['첫 화면에서 서비스 목적이 즉시 이해됨', '주요 CTA가 명확함', '반복 콘텐츠가 실제 서비스처럼 충분함', '선택한 design.md 리듬을 유지함'],
+          assumptions: ['입력이 부족한 부분은 도메인 표준 홈 화면으로 보정', 'A/B/C는 같은 소재를 공유하고 UX 방향으로 차별화'],
+        },
+        visualStrategy: {
+          mode: sharedVisualMode,
+          sharedAsset: sharedVisualMode !== 'none',
+          subject: sharedVisualSubject,
+          reason: sharedVisualMode === 'photo'
+            ? '실사 이미지가 식욕, 장소성, 제품 신뢰감을 더 잘 전달합니다.'
+            : sharedVisualMode === '3d'
+              ? '캐릭터/마스코트/리워드 맥락에서 3D가 브랜드 감정을 강화합니다.'
+              : '이미지보다 정보 구조가 더 중요합니다.',
+          usageByVariant: {
+            A: sharedVisualMode === 'photo' ? '작은 추천/상태 카드 썸네일' : sharedVisualMode === '3d' ? 'KPI 또는 추천 카드 안의 보조 companion' : 'KPI/status cards and dense information modules',
+            B: sharedVisualMode === 'photo' ? '큰 hero crop 또는 editorial hero visual' : sharedVisualMode === '3d' ? 'hero card 안의 큰 anchored/cropped visual' : 'summary dashboard hero with chart/action panel',
+            C: sharedVisualMode === 'photo' ? '상세/커머스형 visual area' : sharedVisualMode === '3d' ? 'product/detail visual area with chips and CTA' : 'workflow/detail layout with table/list/action conversion',
+          },
+        },
+        variantDirector: {
+          A: {
+            strategy: 'Utility Dashboard',
+            layoutRole: '상태, 재고, 점수, 빠른 액션을 압축한 실사용 홈',
+            firstViewport: ['현재 맥락', '핵심 지표 2~3개', '추천 카드', '주요 CTA'],
+            mustDifferBy: ['카드 밀도', '상태/KPI 중심', '작은 visual usage'],
+          },
+          B: {
+            strategy: 'Visual Hero',
+            layoutRole: '대표 소재와 강한 CTA로 추천 이유를 설득하는 히어로형',
+            firstViewport: ['대표 visual', '추천 이유', '메타 정보', 'primary CTA'],
+            mustDifferBy: ['hero crop/scale', 'CTA prominence', 'emotional hierarchy'],
+          },
+          C: {
+            strategy: 'Commerce Detail',
+            layoutRole: '상세 정보와 부족 재료/구매 전환까지 이어지는 전환형',
+            firstViewport: ['상세 visual', '메타 chips', '설명', '장보기/상세 CTA'],
+            mustDifferBy: ['상세 카드 구조', '부족 재료 리스트', '전환 흐름'],
+          },
+        },
+      }
+      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, referenceImageKind, asIsAnalysis, platform, modelId, heroImagePrompt: heroPrompt, heroSubject, sharedVisualMode, sharedVisualSubject, generationPlan, prdDoc: prdDocFromStorage, iaImageBase64: iaImageFromStorage, iaText: iaTextFromStorage }
       const variantStyles = getVariantStyles(effectiveDomain)
       const headers = apiHeaders()
 
@@ -1278,39 +1479,103 @@ export default function StudioPage() {
       setIsGeneratingB(true)
       setIsGeneratingC(true)
 
-      const fetchVariant = (variantStyle: string) =>
-        fetch('/api/generate', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ ...baseParams, domain: effectiveDomain, variantStyle }),
-          signal: abort.signal,
-        }).then(r => r.json())
+      const variantLetters = ['A', 'B', 'C'] as const
+      const fetchVariant = async (variantStyle: string, idx: 0 | 1 | 2): Promise<GenerateResult | null> => {
+        const variantLetter = variantLetters[idx]
+        appendGenerationEvent({
+          kind: 'design',
+          title: `시안 ${variantLetter} 방향 설계 시작`,
+          detail: variantStyle,
+          status: 'done',
+          variant: variantLetter,
+        })
+        try {
+          const res = await fetch('/api/generate', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ ...baseParams, domain: effectiveDomain, variantStyle }),
+            signal: abort.signal,
+          })
+          const json = await readGenerateStream(res, (label) => {
+            const kind: GenerationEventKind =
+              label.includes('이미지') ? 'image'
+              : label.includes('스크린샷') ? 'render'
+              : label.includes('검수') || label.includes('개선') ? 'review'
+              : label.includes('코드') ? 'artifact'
+              : label.includes('인텐트') || label.includes('구조') ? 'think'
+              : 'design'
+            appendGenerationEvent({
+              kind,
+              title: `시안 ${variantLetter} · ${label}`,
+              status: 'done',
+              variant: variantLetter,
+            })
+          })
+          appendGenerationEvent({
+            kind: 'artifact',
+            title: `Created Design ${variantLetter}`,
+            detail: json.variantDescription?.layoutThesis ?? json.variantDescription?.intent ?? '메인 화면 시안 생성 완료',
+            status: 'done',
+            variant: variantLetter,
+          })
+          return json
+        } catch (err) {
+          if ((err as Error)?.name === 'AbortError') return null
+          appendGenerationEvent({
+            kind: 'error',
+            title: `시안 ${variantLetter} 생성 실패`,
+            detail: err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다',
+            status: 'error',
+            variant: variantLetter,
+          })
+          return null
+        }
+      }
 
       const [pA, pB, pC] = [
-        fetchVariant(variantStyles[0]),
-        fetchVariant(variantStyles[1]),
-        fetchVariant(variantStyles[2]),
+        fetchVariant(variantStyles[0], 0),
+        fetchVariant(variantStyles[1], 1),
+        fetchVariant(variantStyles[2], 2),
       ]
 
       pA.then((json) => {
-        if (generationIdRef.current !== genId || abort.signal.aborted || json.error) return
-        setMainVariants(prev => [json as GenerateResult, prev[1], prev[2]])
-        saveVariantHistory(json as GenerateResult)
+        if (!json || generationIdRef.current !== genId || abort.signal.aborted) return
+        setMainVariants(prev => [json, prev[1], prev[2]])
+        saveVariantHistory(json)
       })
 
       pB.then((json) => {
-        if (generationIdRef.current !== genId || abort.signal.aborted || json.error) return
-        setMainVariants(prev => [prev[0], json as GenerateResult, prev[2]])
-        saveVariantHistory(json as GenerateResult)
+        if (!json || generationIdRef.current !== genId || abort.signal.aborted) return
+        setMainVariants(prev => [prev[0], json, prev[2]])
+        saveVariantHistory(json)
       }).finally(() => setIsGeneratingB(false))
 
       pC.then((json) => {
-        if (generationIdRef.current !== genId || abort.signal.aborted || json.error) return
-        setMainVariants(prev => [prev[0], prev[1], json as GenerateResult])
-        saveVariantHistory(json as GenerateResult)
+        if (!json || generationIdRef.current !== genId || abort.signal.aborted) return
+        setMainVariants(prev => [prev[0], prev[1], json])
+        saveVariantHistory(json)
       }).finally(() => setIsGeneratingC(false))
 
-      await Promise.allSettled([pA, pB, pC])
+      const settled = await Promise.allSettled([pA, pB, pC])
+      const completed = settled
+        .map((item, idx) => {
+          const letter = variantLetters[idx] ?? 'A'
+          return {
+            letter,
+            result: item.status === 'fulfilled' ? item.value : null,
+          }
+        })
+        .filter((item): item is { letter: typeof variantLetters[number]; result: GenerateResult } => !!item.result)
+      if (generationIdRef.current === genId && !abort.signal.aborted && completed.length > 0) {
+        appendGenerationEvent({
+          kind: 'summary',
+          title: `${questionnaire.projectSummary}의 ${completed.length}가지 디자인 시안을 완성했습니다`,
+          detail: completed
+            .map(item => `시안 ${item.letter}: ${item.result.variantDescription?.strategy ?? item.result.variantDescription?.intent ?? '서로 다른 UX 방향으로 구성'}`)
+            .join('\n'),
+          status: 'done',
+        })
+      }
     } catch (err) {
       setGenerateError(err instanceof Error ? err.message : '오류가 발생했습니다')
     } finally {
@@ -1425,8 +1690,9 @@ export default function StudioPage() {
     setEditMode(false); setChatMessages([]); setChatInput('')
     setHistoryA([]); setHistoryIndexA(-1); setHistoryB([]); setHistoryIndexB(-1)
     setShareOpen(false); setZoomOpen(false); setZoom(60)
-    setDesignPreset('ktds'); setLogoDataUrl(null); setLogoLoading(false); setBrandColors([])
+    setDesignPreset('none'); setLogoDataUrl(null); setLogoLoading(false); setBrandColors([])
     setMainVariants([null, null, null]); setPickedVariantIdx(null)
+    setGenerationEvents([])
     setIsGeneratingB(false); setIsGeneratingC(false); setIsExpandingPrototype(false)
     setScreens([]); setActiveScreenId('')
     bgFetchAbortRef.current?.abort()
@@ -1441,6 +1707,9 @@ export default function StudioPage() {
     const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
     const asIsAnalysis = readAsIsAnalysis()
     const modelId = sessionStorage.getItem('aide_model') ?? undefined
+    const prdDocFromStorage = sessionStorage.getItem('prdDoc') ?? undefined
+    const iaImageFromStorage = sessionStorage.getItem('iaImage') ?? undefined
+    const iaTextFromStorage = sessionStorage.getItem('iaText') ?? undefined
     const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
     const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
     const variantStyles = getVariantStyles(effectiveDomain)
@@ -1463,6 +1732,9 @@ export default function StudioPage() {
       heroSubject: shouldUseHero3d ? (questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || brief) : undefined,
       domain: effectiveDomain,
       variantStyle: variantStyles[idx],
+      prdDoc: prdDocFromStorage,
+      iaImageBase64: iaImageFromStorage,
+      iaText: iaTextFromStorage,
     }
     const headers = apiHeaders()
     const genId = generationIdRef.current
@@ -1473,9 +1745,9 @@ export default function StudioPage() {
       setIsGeneratingB(true)
       try {
         const res = await fetch('/api/generate', { method: 'POST', headers, body: JSON.stringify(baseParams), signal: abort.signal })
-        const json = await res.json()
-        if (generationIdRef.current === genId && !abort.signal.aborted && !json.error)
-          setMainVariants(prev => [prev[0], json as GenerateResult, prev[2]])
+        const json = await readGenerateStream(res)
+        if (generationIdRef.current === genId && !abort.signal.aborted)
+          setMainVariants(prev => [prev[0], json, prev[2]])
       } catch (e) {
         if ((e as Error)?.name === 'AbortError') return
       } finally { setIsGeneratingB(false) }
@@ -1483,9 +1755,9 @@ export default function StudioPage() {
       setIsGeneratingC(true)
       try {
         const res = await fetch('/api/generate', { method: 'POST', headers, body: JSON.stringify(baseParams) })
-        const json = await res.json()
-        if (generationIdRef.current === genId && !json.error)
-          setMainVariants(prev => [prev[0], prev[1], json as GenerateResult])
+        const json = await readGenerateStream(res)
+        if (generationIdRef.current === genId)
+          setMainVariants(prev => [prev[0], prev[1], json])
       } catch { /* silent */ }
       finally { setIsGeneratingC(false) }
     }
@@ -1670,8 +1942,8 @@ export default function StudioPage() {
 
   // ─── Step 3: Generation canvas view ──────────────────────────────────────
   if (step === 3) {
-    const preset = DESIGN_PRESETS[designPreset]
-    const hasDesign = (designPreset !== 'none' && !!preset.palette) || !!customDesignMd
+    const preset = visualizedDesignPreset
+    const hasDesign = !!preset.palette || !!customDesignMd
     const isAnyGenerating = isGenerating || isGeneratingB || isGeneratingC
 
     return (
@@ -1686,9 +1958,9 @@ export default function StudioPage() {
 
         {/* Header */}
         <div className="border-b border-[rgba(0,0,0,0.09)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
-          <a href="/" className="flex items-center px-4 text-[#111111] font-bold text-[15px] border-r border-[rgba(0,0,0,0.09)] hover:bg-[#ebebeb] transition-colors shrink-0">
-            Aide
-          </a>
+          <button onClick={onBack} aria-label="Aide 홈으로 이동" className="flex items-center px-4 border-r border-[rgba(0,0,0,0.09)] hover:bg-[#ebebeb] transition-colors shrink-0">
+            <img src="/logo_aide.png" alt="Aide" className="h-14 w-auto object-contain" />
+          </button>
           <div className="px-5 text-[13px] flex items-center gap-2 text-[#666666]">
             {isAnyGenerating ? (
               <>
@@ -1729,12 +2001,12 @@ export default function StudioPage() {
           return (
             <div style={{ width: 252, flexShrink: 0, borderRight: '1px solid rgba(0,0,0,0.09)', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', padding: '24px 20px' }}>
               {selectedCard === 'design-md' ? (() => {
-                const preset = DESIGN_PRESETS[designPreset]
+                const preset = visualizedDesignPreset
                 const sidebarMeta = customDesignMd ? parseCustomDesignMdMeta(customDesignMd) : null
                 const sidebarPalette = sidebarMeta?.palette ?? preset.palette
                 const sidebarFonts = sidebarMeta?.fonts ?? preset.fonts
                 const sidebarColor = sidebarMeta?.color ?? preset.color
-                const sidebarLabel = customDesignMdName ?? preset.label
+                const sidebarLabel = designSystemDisplayName
                 return (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0, overflow: 'hidden' }}>
                     {/* Header */}
@@ -1859,14 +2131,97 @@ export default function StudioPage() {
                     </div>
                   </div>
                 )
-              })() : !selectedVariant ? (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, paddingBottom: 48 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: '#f4f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#aaaaaa" strokeWidth="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              })() : !selectedVariant ? (() => {
+                const iconForEvent = (event: GenerationEvent) => {
+                  const stroke = event.status === 'error' ? '#ef4444' : event.status === 'done' ? '#2f8f57' : '#8a8d93'
+                  if (event.status === 'active') {
+                    return <div className="animate-spin" style={{ width: 14, height: 14, borderRadius: '50%', border: '1.5px solid rgba(0,0,0,0.12)', borderTopColor: '#111111' }} />
+                  }
+                  if (event.kind === 'summary') {
+                    return <Sparkles size={14} color={stroke} strokeWidth={2} />
+                  }
+                  if (event.kind === 'image') {
+                    return <ImageIcon size={14} color={stroke} strokeWidth={1.9} />
+                  }
+                  if (event.kind === 'artifact' || event.kind === 'read') {
+                    return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.9"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>
+                  }
+                  if (event.kind === 'review') {
+                    return <Check size={14} color={stroke} strokeWidth={2.2} />
+                  }
+                  if (event.status === 'error') {
+                    return <X size={14} color={stroke} strokeWidth={2.2} />
+                  }
+                  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.9"><circle cx="12" cy="12" r="3"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+                }
+
+                const visibleEvents: GenerationEvent[] = generationEvents.length > 0
+                  ? generationEvents
+                  : [{
+                      id: 'empty',
+                      kind: 'design' as GenerationEventKind,
+                      title: '시안을 클릭하면 스타일 분석을 보여드립니다',
+                      detail: `${designSystemDisplayName} 기반으로 생성된 A/B/C 시안의 의도와 설계 포인트를 확인할 수 있습니다.`,
+                      status: 'done' as GenerationEventStatus,
+                    }]
+
+                return (
+                  <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <div style={{ paddingBottom: 16, borderBottom: '1px solid rgba(0,0,0,0.07)', marginBottom: 14 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: 7, backgroundColor: '#111111', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Sparkles size={13} />
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 750, color: '#111111', letterSpacing: '-0.25px' }}>생성 진행</span>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 650, color: '#1a75ff', backgroundColor: 'rgba(26,117,255,0.09)', borderRadius: 999, padding: '4px 8px', lineHeight: 1 }}>{designSystemDisplayName}</span>
+                        <span style={{ fontSize: 10.5, fontWeight: 650, color: '#555555', backgroundColor: '#f4f4f6', borderRadius: 999, padding: '4px 8px', lineHeight: 1 }}>{platformLabel(platform)}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 2 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {visibleEvents.map((event, idx) => {
+                          const isLast = idx === visibleEvents.length - 1
+                          const isSummary = event.kind === 'summary'
+                          return (
+                            <div key={event.id} style={{ display: 'grid', gridTemplateColumns: '22px 1fr', columnGap: 10 }}>
+                              <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+                                {!isLast && <div style={{ position: 'absolute', top: 19, bottom: -2, width: 1, backgroundColor: '#e7e7ea' }} />}
+                                <div style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: event.status === 'active' ? '#ffffff' : '#f7f7f8', border: '1px solid #e3e3e6', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+                                  {iconForEvent(event)}
+                                </div>
+                              </div>
+                              <div style={{ paddingBottom: isSummary ? 16 : 14 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+                                  <p style={{ fontSize: isSummary ? 13 : 12.2, fontWeight: isSummary ? 750 : 600, color: event.status === 'error' ? '#ef4444' : '#333333', letterSpacing: '-0.18px', lineHeight: 1.35, margin: 0 }}>{event.title}</p>
+                                  {event.variant && <span style={{ fontSize: 9.5, color: '#999999', backgroundColor: '#f4f4f6', borderRadius: 4, padding: '1px 4px', lineHeight: 1.2 }}>{event.variant}</span>}
+                                </div>
+                                {event.detail && (
+                                  <p style={{ whiteSpace: 'pre-line', fontSize: isSummary ? 12.2 : 11.4, color: isSummary ? '#333333' : '#888888', lineHeight: isSummary ? 1.72 : 1.55, letterSpacing: '-0.08px', margin: '5px 0 0' }}>{event.detail}</p>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+
+                      {generateError && (
+                        <div style={{ marginTop: 4, padding: '10px 11px', borderRadius: 8, backgroundColor: '#fff1f2', border: '1px solid #fecdd3', color: '#be123c', fontSize: 11.5, lineHeight: 1.55 }}>
+                          {generateError}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.07)', marginTop: 12 }}>
+                      <p style={{ fontSize: 11.2, color: '#999999', lineHeight: 1.55, letterSpacing: '-0.06px', margin: 0 }}>
+                        생성이 끝난 뒤 시안 카드를 클릭하면 각 방향의 UX 전략과 설계 포인트를 볼 수 있습니다.
+                      </p>
+                    </div>
                   </div>
-                  <p style={{ fontSize: 12.5, color: '#aaaaaa', textAlign: 'center', lineHeight: 1.65, letterSpacing: '-0.1px' }}>시안을 클릭하면<br />스타일 분석을 보여드립니다</p>
-                </div>
-              ) : (() => {
+                )
+              })() : (() => {
                 const info = VARIANT_INFO[selectedVariant]
                 return (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0, overflow: 'hidden' }}>
@@ -2017,7 +2372,7 @@ export default function StudioPage() {
                 <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888888" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                   <span style={{ fontSize: 12, fontWeight: 600, color: '#111111' }}>DESIGN.md</span>
-                  <span style={{ fontSize: 11, color: '#aaaaaa', marginLeft: 2 }}>{customDesignMdName ?? preset.label}</span>
+                  <span style={{ fontSize: 11, color: '#aaaaaa', marginLeft: 2 }}>{designSystemDisplayName}</span>
                 </div>
                 <div data-card-scroll="design-md" style={{ overflowY: 'auto', padding: '14px 14px 18px', flex: 1 }}>
                   {segs.map(seg => {
@@ -2125,7 +2480,7 @@ export default function StudioPage() {
               return parseInt(h.slice(0, 2), 16) * 0.299 + parseInt(h.slice(2, 4), 16) * 0.587 + parseInt(h.slice(4, 6), 16) * 0.114 > 150
             }
 
-            const stylePlanLabel = customDesignMdName ?? (designPreset === 'ktds' ? 'Aide' : preset.label)
+            const stylePlanLabel = designSystemDisplayName
 
             return (
               <div className="shrink-0 flex flex-col overflow-hidden" onClick={e => { e.stopPropagation(); setSelectedCard('style-plan') }} style={{ width: 680, height: 560, borderRadius: 16, backgroundColor: outerBg, border: selectedCard === 'style-plan' ? '2px solid #1a75ff' : (isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.06)'), cursor: 'default', outline: selectedCard === 'style-plan' ? '3px solid rgba(26,117,255,0.18)' : 'none', outlineOffset: '2px' }}>
@@ -2396,9 +2751,9 @@ export default function StudioPage() {
 
         {/* Tab bar */}
         <div className="border-b border-[rgba(0,0,0,0.09)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
-          <a href="/" className="flex items-center px-4 text-[#111111] font-bold text-[15px] border-r border-[rgba(0,0,0,0.09)] hover:bg-[#ebebeb] transition-colors shrink-0">
-            aide
-          </a>
+          <button onClick={onBack} aria-label="Aide 홈으로 이동" className="flex items-center px-3 border-r border-[rgba(0,0,0,0.09)] hover:bg-[#ebebeb] transition-colors shrink-0">
+            <img src="/logo_aide.png" alt="Aide" className="h-14 w-auto object-contain" />
+          </button>
           {/* Scrollable history tabs */}
           <div className="flex items-stretch overflow-x-auto" style={{ scrollbarWidth: 'none', flex: '1 1 0', minWidth: 0 }}>
             {gnbHistory.map(item => {
@@ -2983,9 +3338,9 @@ export default function StudioPage() {
 
       {/* ── Header ── */}
       <header className="sticky top-0 z-10 px-8 flex items-center" style={{ height: '56px', backgroundColor: F.surface, borderBottom: `1px solid ${F.hairlineSoft}` }}>
-        <a href="/" className="font-bold text-lg transition-colors" style={{ letterSpacing: '-0.05em', color: F.ink, textDecoration: 'none' }}>
-          Aide
-        </a>
+        <button onClick={onBack} aria-label="Aide 홈으로 이동" className="transition-colors" style={{ border: 'none', background: 'transparent', padding: 0, textDecoration: 'none' }}>
+          <img src="/logo_aide.png" alt="Aide" className="h-14 w-auto object-contain" />
+        </button>
       </header>
 
       <main className="flex-1 flex flex-col">
@@ -3116,7 +3471,7 @@ export default function StudioPage() {
                 </div>
 
                 {/* Logo + Design system row */}
-                {(logoDataUrl || designPreset !== 'none' || !!customDesignMd) && (
+                {(logoDataUrl || !!effectiveDesignMd) && (
                   <div style={{ display: 'flex', gap: 10 }}>
                     {logoDataUrl && (
                       <div style={{ padding: '10px 14px', borderRadius: 12, backgroundColor: '#f7f7f7', border: '1px solid #eeeeee', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 80 }}>
@@ -3124,13 +3479,13 @@ export default function StudioPage() {
                         <img src={logoDataUrl} alt="logo" style={{ height: 28, maxWidth: 72, objectFit: 'contain', borderRadius: 4 }} />
                       </div>
                     )}
-                    {(designPreset !== 'none' || !!customDesignMd) && (
+                    {!!effectiveDesignMd && (
                       <div style={{ flex: 1, padding: '10px 14px', borderRadius: 12, backgroundColor: '#f7f7f7', border: '1px solid #eeeeee' }}>
                         <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>Design System</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <div style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: customDesignMd ? '#6366f1' : (DESIGN_PRESETS[designPreset].color ?? '#888'), flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#111111' }}>{customDesignMdName ?? DESIGN_PRESETS[designPreset].label}</span>
-                          <span style={{ fontSize: 12, color: '#888888' }}>{customDesignMd ? 'custom design.md' : DESIGN_PRESETS[designPreset].description}</span>
+                          <div style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: customDesignMd ? '#6366f1' : (visualizedDesignPreset.color ?? '#888'), flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#111111' }}>{designSystemDisplayName}</span>
+                          <span style={{ fontSize: 12, color: '#888888' }}>{designSystemDescription}</span>
                         </div>
                       </div>
                     )}
@@ -3148,7 +3503,7 @@ export default function StudioPage() {
                   {[
                     { label: '요청사항 파악 완료', done: true },
                     ...(logoDataUrl ? [{ label: '브랜드 로고 인식 완료', done: true }] : []),
-                    ...(designPreset !== 'none' || !!customDesignMd ? [{ label: `${customDesignMdName ?? DESIGN_PRESETS[designPreset].label} 가이드라인 적용 완료`, done: true }] : []),
+                    ...(effectiveDesignMd ? [{ label: `${designSystemDisplayName} 가이드라인 적용 완료`, done: true }] : []),
                     { label: analyzeError ? '질문지 생성 실패' : '맞춤형 질문지 생성 중...', done: false, active: !analyzeError },
                   ].map((item, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -3242,7 +3597,7 @@ export default function StudioPage() {
                     })}
                   </div>
                   <p className="text-[13px]" style={{ color: F.inkMuted }}>
-                    {`${customDesignMdName ?? DESIGN_PRESETS[designPreset].label} 가이드라인을 적용합니다`}
+                    {`${designSystemDisplayName} 가이드라인을 적용합니다`}
                   </p>
                 </div>
 
@@ -3310,7 +3665,7 @@ export default function StudioPage() {
                       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px]" style={{ backgroundColor: F.surface1, border: `1px solid ${F.hairlineSoft}`, color: F.ink }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                         <span>{customDesignMdName ?? designPreset}.md</span>
-                        <button onClick={() => { setDesignPreset('ktds'); setCustomDesignMd(null) }} className="flex items-center" style={{ color: F.inkMuted }}>
+                        <button onClick={() => { setDesignPreset('none'); setCustomDesignMd(null) }} className="flex items-center" style={{ color: F.inkMuted }}>
                           <X size={11} />
                         </button>
                       </div>
@@ -3320,7 +3675,7 @@ export default function StudioPage() {
                   <textarea
                     value={brief}
                     onChange={e => setBrief(e.target.value.slice(0, 2000))}
-                    placeholder={`${customDesignMdName ?? DESIGN_PRESETS[designPreset].label} 디자인 시스템을 활용하여 어떤 화면을 만들고 싶으신가요?\n\n예시:\n${customDesignMdName ?? DESIGN_PRESETS[designPreset].label} 스타일로 대시보드를 만들어주세요. 주요 지표와 사용자 활동을 한눈에 볼 수 있어야 합니다.`}
+                    placeholder={`${designSystemDisplayName}을 활용하여 어떤 화면을 만들고 싶으신가요?\n\n예시:\n${designSystemDisplayName} 스타일로 대시보드를 만들어주세요. 주요 지표와 사용자 활동을 한눈에 볼 수 있어야 합니다.`}
                     className="flex-1 p-4 text-sm resize-none leading-relaxed bg-transparent outline-none"
                     style={{ color: F.ink }}
                   />

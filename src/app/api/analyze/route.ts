@@ -5,7 +5,7 @@ export const maxDuration = 120
 
 export async function POST(req: NextRequest) {
   try {
-    const { designMd, brief, platform } = await req.json()
+    const { designMd, brief, platform, prdDoc } = await req.json()
 
     if (!brief?.trim()) {
       return NextResponse.json({ error: '기획서를 입력해주세요' }, { status: 400 })
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
     const trimmedDesignMd = (designMd ?? '').slice(0, 10000)
     const platformHint = platform === 'web' || platform === 'mobile' ? platform : undefined
-    const result = await analyzeAndGenerateQuestions(trimmedDesignMd, brief, platformHint, apiKey)
+    const result = await analyzeAndGenerateQuestions(trimmedDesignMd, brief, platformHint, apiKey, prdDoc)
     return NextResponse.json(result)
   } catch (err) {
     const message = err instanceof Error ? err.message : '알 수 없는 오류'

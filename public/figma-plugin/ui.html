@@ -19,7 +19,12 @@
     align-items: center;
     gap: 8px;
   }
-  h1 .logo { font-size: 18px; }
+  h1 .logo {
+    width: 82px;
+    height: 46px;
+    object-fit: contain;
+    display: block;
+  }
   .desc {
     color: #666;
     line-height: 1.5;
@@ -105,7 +110,7 @@
 </style>
 </head>
 <body>
-  <h1><span class="logo">⬡</span> Aide — UI to Figma</h1>
+  <h1><img class="logo" src="../logo_aide.png" alt="Aide" /> UI to Figma</h1>
   <p class="desc">Aide에서 내보낸 디자인 JSON 파일을 선택하면<br>Figma에 화면이 자동으로 생성됩니다.</p>
 
   <div class="drop-zone" id="dropZone">
