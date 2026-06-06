@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Sparkles, Upload, Download, RefreshCw, ArrowLeft, Check,
   SlidersHorizontal, X, Moon, Sun, Pencil, Send, ChevronDown,
@@ -8,11 +8,12 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import DotField from '@/components/DotField'
-import type { Question, QuestionnaireResponse, TweakSpec, TweakVariable, AppDomain } from '@/lib/gemini'
+import type { Question, QuestionnaireResponse, TweakSpec, TweakVariable, AppDomain, LayoutBlueprint, LayoutBlueprintSection } from '@/lib/gemini'
 import { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY, DOMAIN_HOME_EMPHASIS_OPTIONS } from '@/lib/domain-constants'
 import { getVariantStyles, getVariantInfo } from '@/lib/variant-refs'
+import { buildDesignIntelligencePlan } from '@/lib/design-intelligence'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
-import { saveHistoryItem, compressThumbnail, loadHistory, deleteHistoryItem, type HistoryItem } from '@/lib/history'
+import { saveHistoryItem, updateHistoryItem, compressThumbnail, loadHistory, deleteHistoryItem, type HistoryItem } from '@/lib/history'
 
 // ─── KTDS 디자인 토큰 ────────────────────────────────────────────────────────
 const F = {
@@ -154,7 +155,6 @@ function defaultAnswersFromAnalysis(data: QuestionnaireResponse): Record<string,
     first_screen_focus: domain === 'business' ? '핵심 지표' : '대표 CTA',
     visual_density: '균형형',
     variant_strategy: '세 방향 모두 다르게',
-    hero3d: data.heroImageDecision?.generate ? '사용' : '사용 안 함',
   }
 }
 
@@ -520,7 +520,7 @@ function ExpandingOverlay({ image, platform, variantLabel }: { image?: string; p
               flexShrink: 0,
             }}>
               {image
-                ? <img src={image} style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'top center', display: 'block', background: '#ffffff' }} />
+                ? <img src={image} alt={`${variantLabel ?? '선택된 시안'} 미리보기`} style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'top center', display: 'block', background: '#ffffff' }} />
                 : <div style={{ width: '100%', height: '100%', background: '#e4e4e4' }} />}
             </div>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#111111', letterSpacing: '-0.01em' }}>{variantLabel ?? '선택된 시안'}</span>
@@ -705,6 +705,10 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const [isGenerating, setIsGenerating] = useState(false)
   const [isGeneratingB, setIsGeneratingB] = useState(false)
   const [isGeneratingC, setIsGeneratingC] = useState(false)
+  const [isGeneratingBlueprints] = useState(false)
+  const [blueprintLoadingIdx, setBlueprintLoadingIdx] = useState<number | null>(null)
+  const [variantGenerationStarted, setVariantGenerationStarted] = useState(false)
+  const [layoutBlueprints, setLayoutBlueprints] = useState<LayoutBlueprint[]>([])
   const [isExpandingPrototype, setIsExpandingPrototype] = useState(false)
   const [mainVariants, setMainVariants] = useState<[GenerateResult|null, GenerateResult|null, GenerateResult|null]>([null, null, null])
   const [pickedVariantIdx, setPickedVariantIdx] = useState<0|1|2|null>(null)
@@ -760,7 +764,6 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   // Figma export state
   const [figmaExportOpen, setFigmaExportOpen] = useState(false)
   const [isFigmaExporting, setIsFigmaExporting] = useState(false)
-  const [figmaExportDone, setFigmaExportDone] = useState(false)
   const [figmaExportError, setFigmaExportError] = useState<string | null>(null)
   const [figmaClipboardHtml, setFigmaClipboardHtml] = useState('')
   const [figmaClipboardCopied, setFigmaClipboardCopied] = useState(false)
@@ -774,6 +777,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   // GNB history tabs
   const [gnbHistory, setGnbHistory] = useState<HistoryItem[]>([])
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null)
+  const [currentBoardHistoryId, setCurrentBoardHistoryId] = useState<string | null>(null)
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([])
@@ -789,10 +793,8 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   // Detect device type from answers + platform state
   const answerStr = Object.values(answers).map(v => Array.isArray(v) ? v.join('') : v).join('')
   const isTablet = platform !== 'web' && (answerStr.includes('태블릿') || answerStr.includes('iPad'))
-  const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') && !answerStr.includes('데스크탑')
+const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') && !answerStr.includes('데스크탑')
 
-  const [canvasZoom, setCanvasZoom] = useState(1)
-  const [canvasPan, setCanvasPan] = useState({ x: 0, y: 0 })
   const [selectedCard, setSelectedCard] = useState<string | null>(null)
   const selectedCardRef = useRef<string | null>(null)
   const canvasZoomRef = useRef(1)
@@ -829,7 +831,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
     // Load from history
     if (historyId) {
       loadHistory().then(items => {
-        setGnbHistory(items.filter(h => !h.itemType || h.itemType === 'design').slice(0, 30))
+        setGnbHistory(items.filter(h => h.itemType === 'board' || !h.itemType || h.itemType === 'design').slice(0, 30))
         const item = items.find(h => h.id === historyId)
         if (item) loadHistoryItemIntoEditor(item)
       })
@@ -901,8 +903,6 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   }, [chatMessages])
 
   // Keep refs in sync for wheel handler
-  useEffect(() => { canvasZoomRef.current = canvasZoom }, [canvasZoom])
-  useEffect(() => { canvasPanRef.current = canvasPan }, [canvasPan])
   useEffect(() => { selectedCardRef.current = selectedCard }, [selectedCard])
 
   // Canvas zoom/pan (step 3)
@@ -1164,7 +1164,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
 
   useEffect(() => {
     if (step !== 4) return
-    loadHistory().then(items => setGnbHistory(items.filter(h => !h.itemType || h.itemType === 'design').slice(0, 30)))
+    loadHistory().then(items => setGnbHistory(items.filter(h => h.itemType === 'board' || !h.itemType || h.itemType === 'design').slice(0, 30)))
   }, [step])
 
   const handleStyleUpdate = useCallback((prop: string, value: string) => {
@@ -1180,6 +1180,42 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
     setBrief(item.brief)
     if (item.preset && item.preset in DESIGN_PRESETS) setDesignPreset(item.preset as DesignPreset)
     setPlatform(guessPlatform(item))
+    if (item.board) {
+      const boardVariantList = (item.board.mainVariants ?? []).slice(0, 3).map(v => v ? {
+        html: v.html,
+        image: v.image ?? item.thumbnail,
+        imageWarnings: v.imageWarnings,
+        variantDescription: v.variantDescription as GenerateResult['variantDescription'],
+      } : null)
+      const boardVariants: [GenerateResult | null, GenerateResult | null, GenerateResult | null] = [
+        boardVariantList[0] ?? null,
+        boardVariantList[1] ?? null,
+        boardVariantList[2] ?? null,
+      ]
+      const prototypeHtml = item.board.prototypeHtml ?? item.html
+      const prototypeImage = item.board.prototypeThumbnail ?? item.thumbnail
+      const loadedPrototype: GenerateResult = { html: prototypeHtml, image: prototypeImage }
+      setLayoutBlueprints((item.board.layoutBlueprints ?? []) as LayoutBlueprint[])
+      setMainVariants(boardVariants)
+      setPickedVariantIdx(item.board.pickedVariantIdx ?? null)
+      setVariants([loadedPrototype, null])
+      setActiveVariant(0)
+      setHistoryA([prototypeHtml]); setHistoryIndexA(0)
+      setHistoryB([]); setHistoryIndexB(-1)
+      setScreens(item.board.prototypeScreens ?? [])
+      setActiveScreenId(item.board.prototypeScreens?.[0]?.id ?? '')
+      const extractedColor = prototypeHtml.match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? '#0055ff'
+      setBrandColor(extractedColor); setDebouncedBrandColor(extractedColor)
+      setCurrentHistoryId(item.id)
+      setCurrentBoardHistoryId(item.id)
+      setVariantGenerationStarted(boardVariants.some(Boolean))
+      setEditMode(false)
+      setSelectedStyles(null)
+      setChatMessages([])
+      setZoom(60)
+      setStep(item.board.prototypeHtml ? 4 : 3)
+      return
+    }
     const loaded: GenerateResult = { html: item.html, image: item.thumbnail }
     setVariants([loaded, null])
     setActiveVariant(0)
@@ -1188,6 +1224,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
     const extractedColor = item.html.match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? '#0055ff'
     setBrandColor(extractedColor); setDebouncedBrandColor(extractedColor)
     setCurrentHistoryId(item.id)
+    setCurrentBoardHistoryId(null)
     setEditMode(false)
     setSelectedStyles(null)
     setChatMessages([])
@@ -1244,6 +1281,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
     const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
     setIsAnalyzing(true)
     setAnalyzeError('')
+    clearBlueprints()
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
@@ -1278,6 +1316,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   }, [questionnaire])
 
   const handleAnswer = useCallback((questionId: string, value: string, type: 'single' | 'multi' | 'text') => {
+    setLayoutBlueprints([])
     setAnswers(prev => {
       if (type === 'single') {
         return { ...prev, [questionId]: value }
@@ -1330,9 +1369,195 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
     }
   }
 
+  const buildGenerationContext = useCallback(() => {
+    if (!questionnaire) return null
+    const heroSubject = questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || undefined
+    const heroPrompt = heroSubject || (questionnaire.heroImageDecision?.generate ? brief : undefined)
+    const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
+    const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
+    const needsScene3d = Boolean(questionnaire.heroImageDecision?.generate || questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt)
+    const { generationPlan, visualPolicies, sharedVisualSubject } = buildDesignIntelligencePlan({
+      brief,
+      domain: effectiveDomain,
+      platform,
+      projectSummary: questionnaire.projectSummary,
+      answers,
+      heroSubject,
+      heroPrompt,
+      needsScene3d,
+    })
+    return { heroSubject, heroPrompt, effectiveDomain, sharedVisualSubject, generationPlan, visualPolicies }
+  }, [answers, brief, platform, questionnaire])
+
+  const refreshBoardHistoryTabs = useCallback(() => {
+    loadHistory().then(items => {
+      setGnbHistory(items.filter(h => h.itemType === 'board' || !h.itemType || h.itemType === 'design').slice(0, 30))
+    })
+  }, [])
+
+  const persistBoardHistory = useCallback(async (options?: {
+    mainVariantsOverride?: [GenerateResult | null, GenerateResult | null, GenerateResult | null]
+    prototypeHtml?: string
+    prototypeImage?: string
+    pickedIdx?: 0 | 1 | 2 | null
+    prototypeScreens?: Array<{ id: string; label: string }>
+  }) => {
+    const variantsSnapshot = options?.mainVariantsOverride ?? mainVariants
+    const firstVariant = variantsSnapshot.find((variant): variant is GenerateResult => !!variant)
+    const thumbnailSource = options?.prototypeImage ?? firstVariant?.image
+    const html = options?.prototypeHtml ?? firstVariant?.html ?? ''
+    if (!thumbnailSource || !html) return null
+
+    const thumbnail = await compressThumbnail(thumbnailSource)
+    const boardPayload: NonNullable<HistoryItem['board']> = {
+      designSystemName: designSystemDisplayName,
+      designMd: customDesignMd ?? DESIGN_PRESETS[designPreset].md,
+      layoutBlueprints,
+      mainVariants: variantsSnapshot.map(variant => variant ? {
+        html: variant.html,
+        image: variant.image,
+        imageWarnings: variant.imageWarnings,
+        variantDescription: variant.variantDescription,
+      } : null),
+      pickedVariantIdx: options?.pickedIdx ?? pickedVariantIdx,
+      prototypeHtml: options?.prototypeHtml ?? null,
+      prototypeThumbnail: options?.prototypeImage ? thumbnail : null,
+      prototypeScreens: options?.prototypeScreens ?? screens,
+    }
+    const item = {
+      brief,
+      preset: designPreset !== 'none' ? designPreset : null,
+      designMdFileName: sessionStorage.getItem('designMdFileName') ?? null,
+      html,
+      thumbnail,
+      platform,
+      itemType: 'board' as const,
+      board: boardPayload,
+    }
+
+    if (currentBoardHistoryId) {
+      await updateHistoryItem(currentBoardHistoryId, item)
+      refreshBoardHistoryTabs()
+      return currentBoardHistoryId
+    }
+
+    const newId = await saveHistoryItem(item)
+    if (newId) {
+      setCurrentBoardHistoryId(newId)
+      setCurrentHistoryId(newId)
+      refreshBoardHistoryTabs()
+    }
+    return newId
+  }, [brief, currentBoardHistoryId, customDesignMd, designPreset, designSystemDisplayName, layoutBlueprints, mainVariants, pickedVariantIdx, platform, refreshBoardHistoryTabs, screens])
+
+  const clearBlueprints = useCallback(() => {
+    setLayoutBlueprints([])
+    setVariantGenerationStarted(false)
+    setCurrentBoardHistoryId(null)
+  }, [])
+
+  const handleRegenerateSingleBlueprint = async (idx: number) => {
+    if (!questionnaire) return
+    const generationContext = buildGenerationContext()
+    if (!generationContext) return
+    const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
+    setBlueprintLoadingIdx(idx)
+    setGenerateError('')
+    try {
+      const res = await fetch('/api/layout-blueprint', {
+        method: 'POST',
+        headers: apiHeaders(),
+        body: JSON.stringify({
+          designMd: effectiveDesignMd,
+          brief,
+          answers,
+          projectSummary: questionnaire.projectSummary,
+          platform,
+          domain: generationContext.effectiveDomain,
+          generationPlan: generationContext.generationPlan,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? '스켈레톤 재생성에 실패했습니다')
+      const blueprints: LayoutBlueprint[] = Array.isArray(data.blueprints) ? data.blueprints : []
+      if (blueprints[idx]) {
+        setLayoutBlueprints(prev => {
+          const next = [...prev]
+          next[idx] = blueprints[idx]
+          return next
+        })
+      }
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : '스켈레톤 재생성 중 오류가 발생했습니다')
+    } finally {
+      setBlueprintLoadingIdx(null)
+    }
+  }
+
+  const handleGenerateSingleVariant = async (idx: 0 | 1 | 2) => {
+    if (!questionnaire) return
+    const generationContext = buildGenerationContext()
+    if (!generationContext) return
+    const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
+    const { heroSubject, heroPrompt, effectiveDomain, sharedVisualSubject, generationPlan, visualPolicies } = generationContext
+    const visualPolicy = visualPolicies[idx]
+    const sharedVisualMode = visualPolicy === 'scene-3d' || visualPolicy === 'creon-object-3d'
+      ? '3d' as const
+      : visualPolicy === 'real-photo'
+        ? 'photo' as const
+        : 'none' as const
+    const variantHeroPrompt = visualPolicy === 'scene-3d' || visualPolicy === 'creon-object-3d'
+      ? (heroPrompt || sharedVisualSubject || brief)
+      : heroPrompt
+    const referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
+    const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
+    const asIsAnalysis = readAsIsAnalysis()
+    const modelId = 'gemini-3.1-pro-preview'
+    const prdDoc = sessionStorage.getItem('prdDoc') ?? undefined
+    const iaImage = sessionStorage.getItem('iaImage') ?? undefined
+    const iaText = sessionStorage.getItem('iaText') ?? undefined
+    const variantStyles = getVariantStyles(effectiveDomain)
+    const setLoading = idx === 0 ? setIsGenerating : idx === 1 ? setIsGeneratingB : setIsGeneratingC
+    setLoading(true)
+    setVariantGenerationStarted(true)
+    setMainVariants(prev => { const next = [...prev] as typeof prev; next[idx] = null; return next })
+    const genId = ++generationIdRef.current
+    try {
+      const params = {
+        designMd: effectiveDesignMd, brief, answers,
+        projectSummary: questionnaire.projectSummary,
+        logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined,
+        mainOnly: true, referenceImageBase64, referenceImageKind, asIsAnalysis,
+        platform, modelId, heroImagePrompt: variantHeroPrompt, heroSubject,
+        sharedVisualMode, sharedVisualSubject, visualPolicy, generationPlan,
+        domain: effectiveDomain, variantStyle: variantStyles[idx],
+        layoutBlueprint: layoutBlueprints[idx],
+        qualityMode: 'draft' as const,
+        criticalReview: false,
+        prdDoc, iaImageBase64: iaImage, iaText,
+      }
+      const res = await fetch('/api/generate', { method: 'POST', headers: apiHeaders(), body: JSON.stringify(params) })
+      const json = await readGenerateStream(res)
+      if (generationIdRef.current === genId) {
+        const nextVariants = [...mainVariants] as [GenerateResult | null, GenerateResult | null, GenerateResult | null]
+        nextVariants[idx] = json
+        setMainVariants(nextVariants)
+        persistBoardHistory({ mainVariantsOverride: nextVariants }).catch(() => {})
+      }
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : '시안 생성 중 오류가 발생했습니다')
+    }
+    finally { setLoading(false) }
+  }
+
+  const handleGenerateAll = async () => {
+    await handleGenerate()
+  }
+
   const handleGenerate = async () => {
     if (!questionnaire) return
     const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
+    setVariantGenerationStarted(true)
     setIsGenerating(true)
     setIsGeneratingB(false)
     setIsGeneratingC(false)
@@ -1367,121 +1592,39 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
       const referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
       const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
       const asIsAnalysis = readAsIsAnalysis()
-      const modelId = sessionStorage.getItem('aide_model') ?? undefined
+      const modelId = 'gemini-3.1-pro-preview'
       const prdDocFromStorage = sessionStorage.getItem('prdDoc') ?? undefined
       const iaImageFromStorage = sessionStorage.getItem('iaImage') ?? undefined
       const iaTextFromStorage = sessionStorage.getItem('iaText') ?? undefined
-      const hero3dMode = typeof answers['hero3d'] === 'string' ? answers['hero3d'] : 'AI 판단'
-      const shouldUseHero3d = hero3dMode === '사용' || (hero3dMode === 'AI 판단' && questionnaire.heroImageDecision?.generate)
-      const heroPrompt = shouldUseHero3d ? (questionnaire.heroImageDecision?.prompt || brief) : undefined
-      const heroSubject = shouldUseHero3d ? (questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || brief) : undefined
-      const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
-      const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
-      const photoFirstDomains: AppDomain[] = ['food', 'travel', 'commerce', 'health', 'education', 'entertainment']
-      const dataFirstDomains: AppDomain[] = ['business', 'finance', 'productivity']
-      const sharedVisualMode: '3d' | 'photo' | 'none' = hero3dMode === '사용'
-        ? '3d'
-        : photoFirstDomains.includes(effectiveDomain)
-          ? 'photo'
-          : dataFirstDomains.includes(effectiveDomain)
-            ? 'none'
-          : shouldUseHero3d
-            ? '3d'
-            : 'photo'
-      const sharedPhotoKeywordByDomain: Partial<Record<AppDomain, string>> = {
-        food: 'fresh healthy salmon avocado rice bowl',
-        travel: 'hotel travel destination',
-        commerce: 'modern product lifestyle',
-        health: 'wellness healthcare lifestyle',
-        education: 'online learning study',
-        business: 'business dashboard office',
-        finance: 'finance dashboard office',
-      }
-      const sharedVisualSubject = sharedVisualMode === '3d'
-        ? (heroSubject || heroPrompt || questionnaire.projectSummary)
-        : (sharedPhotoKeywordByDomain[effectiveDomain] ?? 'modern lifestyle product')
-      const generationPlan = {
-        productBrief: {
-          serviceIntent: questionnaire.projectSummary,
-          targetUser: typeof answers['target_audience'] === 'string' ? answers['target_audience'] : '서비스의 핵심 사용자',
-          primaryScenario: typeof answers['primary_journey'] === 'string' ? answers['primary_journey'] : '핵심 상태를 확인하고 다음 행동으로 이동',
-          screenPurpose: platform === 'web' ? '웹 첫 화면에서 정보 구조와 주요 전환을 명확히 제시' : '모바일 첫 화면에서 요약, 추천, 주요 행동을 빠르게 완료',
-          coreObjects: effectiveDomain === 'food'
-            ? ['추천 메뉴', '냉장고 재료', '매칭률', '부족한 재료', '레시피/장보기 CTA']
-            : ['핵심 상태', '주요 콘텐츠', '추천 항목', '진행 상태', '주요 CTA'],
-          keyActions: effectiveDomain === 'food'
-            ? ['레시피 상세 보기', '오늘 메뉴 만들기', '부족한 재료 장보기']
-            : ['상태 확인', '상세 보기', '주요 액션 실행'],
-          successCriteria: ['첫 화면에서 서비스 목적이 즉시 이해됨', '주요 CTA가 명확함', '반복 콘텐츠가 실제 서비스처럼 충분함', '선택한 design.md 리듬을 유지함'],
-          assumptions: ['입력이 부족한 부분은 도메인 표준 홈 화면으로 보정', 'A/B/C는 같은 소재를 공유하고 UX 방향으로 차별화'],
-        },
-        visualStrategy: {
-          mode: sharedVisualMode,
-          sharedAsset: sharedVisualMode !== 'none',
-          subject: sharedVisualSubject,
-          reason: sharedVisualMode === 'photo'
-            ? '실사 이미지가 식욕, 장소성, 제품 신뢰감을 더 잘 전달합니다.'
-            : sharedVisualMode === '3d'
-              ? '캐릭터/마스코트/리워드 맥락에서 3D가 브랜드 감정을 강화합니다.'
-              : '이미지보다 정보 구조가 더 중요합니다.',
-          usageByVariant: {
-            A: sharedVisualMode === 'photo' ? '작은 추천/상태 카드 썸네일' : sharedVisualMode === '3d' ? 'KPI 또는 추천 카드 안의 보조 companion' : 'KPI/status cards and dense information modules',
-            B: sharedVisualMode === 'photo' ? '큰 hero crop 또는 editorial hero visual' : sharedVisualMode === '3d' ? 'hero card 안의 큰 anchored/cropped visual' : 'summary dashboard hero with chart/action panel',
-            C: sharedVisualMode === 'photo' ? '상세/커머스형 visual area' : sharedVisualMode === '3d' ? 'product/detail visual area with chips and CTA' : 'workflow/detail layout with table/list/action conversion',
-          },
-        },
-        variantDirector: {
-          A: {
-            strategy: 'Utility Dashboard',
-            layoutRole: '상태, 재고, 점수, 빠른 액션을 압축한 실사용 홈',
-            firstViewport: ['현재 맥락', '핵심 지표 2~3개', '추천 카드', '주요 CTA'],
-            mustDifferBy: ['카드 밀도', '상태/KPI 중심', '작은 visual usage'],
-          },
-          B: {
-            strategy: 'Visual Hero',
-            layoutRole: '대표 소재와 강한 CTA로 추천 이유를 설득하는 히어로형',
-            firstViewport: ['대표 visual', '추천 이유', '메타 정보', 'primary CTA'],
-            mustDifferBy: ['hero crop/scale', 'CTA prominence', 'emotional hierarchy'],
-          },
-          C: {
-            strategy: 'Commerce Detail',
-            layoutRole: '상세 정보와 부족 재료/구매 전환까지 이어지는 전환형',
-            firstViewport: ['상세 visual', '메타 chips', '설명', '장보기/상세 CTA'],
-            mustDifferBy: ['상세 카드 구조', '부족 재료 리스트', '전환 흐름'],
-          },
-        },
-      }
-      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, referenceImageKind, asIsAnalysis, platform, modelId, heroImagePrompt: heroPrompt, heroSubject, sharedVisualMode, sharedVisualSubject, generationPlan, prdDoc: prdDocFromStorage, iaImageBase64: iaImageFromStorage, iaText: iaTextFromStorage }
+      const generationContext = buildGenerationContext()
+      if (!generationContext) return
+      const { heroSubject, heroPrompt, effectiveDomain, sharedVisualSubject, generationPlan, visualPolicies } = generationContext
+      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, referenceImageKind, asIsAnalysis, platform, modelId, heroSubject, sharedVisualSubject, generationPlan, qualityMode: 'draft' as const, criticalReview: false, prdDoc: prdDocFromStorage, iaImageBase64: iaImageFromStorage, iaText: iaTextFromStorage }
       const variantStyles = getVariantStyles(effectiveDomain)
       const headers = apiHeaders()
 
-      const saveVariantHistory = (result: GenerateResult) => {
-        if (result.image) {
-          compressThumbnail(result.image).then(thumbnail => {
-            saveHistoryItem({
-              brief,
-              preset: designPreset !== 'none' ? designPreset : null,
-              designMdFileName: sessionStorage.getItem('designMdFileName') ?? null,
-              html: result.html,
-              thumbnail,
-              platform,
-              itemType: 'variant',
-            })
-          })
-        }
-      }
-
-      // 시안 A, B, C 병렬 동시 생성
+      // 시안 A, B, C를 순차 생성해 브라우저/이미지 생성 피크 사용량을 낮춘다.
       bgFetchAbortRef.current?.abort()
       const abort = new AbortController()
       bgFetchAbortRef.current = abort
 
-      setIsGeneratingB(true)
-      setIsGeneratingC(true)
-
       const variantLetters = ['A', 'B', 'C'] as const
+      const setVariantLoading = (idx: 0 | 1 | 2, loading: boolean) => {
+        if (idx === 0) setIsGenerating(loading)
+        else if (idx === 1) setIsGeneratingB(loading)
+        else setIsGeneratingC(loading)
+      }
       const fetchVariant = async (variantStyle: string, idx: 0 | 1 | 2): Promise<GenerateResult | null> => {
         const variantLetter = variantLetters[idx]
+        const visualPolicy = visualPolicies[idx]
+        const sharedVisualMode = visualPolicy === 'scene-3d' || visualPolicy === 'creon-object-3d'
+          ? '3d' as const
+          : visualPolicy === 'real-photo'
+            ? 'photo' as const
+            : 'none' as const
+        const variantHeroPrompt = visualPolicy === 'scene-3d' || visualPolicy === 'creon-object-3d'
+          ? (heroPrompt || sharedVisualSubject || brief)
+          : heroPrompt
         appendGenerationEvent({
           kind: 'design',
           title: `시안 ${variantLetter} 방향 설계 시작`,
@@ -1489,11 +1632,12 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
           status: 'done',
           variant: variantLetter,
         })
+        const bodyParams = { ...baseParams, domain: effectiveDomain, variantStyle, visualPolicy, sharedVisualMode, heroImagePrompt: variantHeroPrompt }
         try {
           const res = await fetch('/api/generate', {
             method: 'POST',
             headers,
-            body: JSON.stringify({ ...baseParams, domain: effectiveDomain, variantStyle }),
+            body: JSON.stringify(bodyParams),
             signal: abort.signal,
           })
           const json = await readGenerateStream(res, (label) => {
@@ -1521,10 +1665,26 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
           return json
         } catch (err) {
           if ((err as Error)?.name === 'AbortError') return null
+          const errMsg = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다'
+          const isRetryable = /429|rate|quota|overload|timeout/i.test(errMsg)
+          if (isRetryable) {
+            appendGenerationEvent({ kind: 'design', title: `시안 ${variantLetter} 재시도 중...`, status: 'done', variant: variantLetter })
+            await new Promise(r => setTimeout(r, 3000))
+            try {
+              return await (async () => {
+                const res2 = await fetch('/api/generate', {
+                  method: 'POST', headers,
+                  body: JSON.stringify(bodyParams),
+                  signal: abort.signal,
+                })
+                return await readGenerateStream(res2, () => {})
+              })()
+            } catch { /* fallthrough to null */ }
+          }
           appendGenerationEvent({
             kind: 'error',
             title: `시안 ${variantLetter} 생성 실패`,
-            detail: err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다',
+            detail: errMsg,
             status: 'error',
             variant: variantLetter,
           })
@@ -1532,41 +1692,31 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
         }
       }
 
-      const [pA, pB, pC] = [
-        fetchVariant(variantStyles[0], 0),
-        fetchVariant(variantStyles[1], 1),
-        fetchVariant(variantStyles[2], 2),
+      const sequence: Array<[string, 0 | 1 | 2]> = [
+        [variantStyles[0], 0],
+        [variantStyles[1], 1],
+        [variantStyles[2], 2],
       ]
+      const boardVariants: [GenerateResult | null, GenerateResult | null, GenerateResult | null] = [null, null, null]
+      const completed: Array<{ letter: typeof variantLetters[number]; result: GenerateResult }> = []
 
-      pA.then((json) => {
-        if (!json || generationIdRef.current !== genId || abort.signal.aborted) return
-        setMainVariants(prev => [json, prev[1], prev[2]])
-        saveVariantHistory(json)
-      })
-
-      pB.then((json) => {
-        if (!json || generationIdRef.current !== genId || abort.signal.aborted) return
-        setMainVariants(prev => [prev[0], json, prev[2]])
-        saveVariantHistory(json)
-      }).finally(() => setIsGeneratingB(false))
-
-      pC.then((json) => {
-        if (!json || generationIdRef.current !== genId || abort.signal.aborted) return
-        setMainVariants(prev => [prev[0], prev[1], json])
-        saveVariantHistory(json)
-      }).finally(() => setIsGeneratingC(false))
-
-      const settled = await Promise.allSettled([pA, pB, pC])
-      const completed = settled
-        .map((item, idx) => {
-          const letter = variantLetters[idx] ?? 'A'
-          return {
-            letter,
-            result: item.status === 'fulfilled' ? item.value : null,
-          }
+      for (const [variantStyle, idx] of sequence) {
+        if (generationIdRef.current !== genId || abort.signal.aborted) break
+        setVariantLoading(idx, true)
+        const json = await fetchVariant(variantStyle, idx)
+        setVariantLoading(idx, false)
+        if (!json || generationIdRef.current !== genId || abort.signal.aborted) continue
+        boardVariants[idx] = json
+        completed.push({ letter: variantLetters[idx], result: json })
+        setMainVariants(prev => {
+          const next = [...prev] as [GenerateResult | null, GenerateResult | null, GenerateResult | null]
+          next[idx] = json
+          return next
         })
-        .filter((item): item is { letter: typeof variantLetters[number]; result: GenerateResult } => !!item.result)
+      }
+
       if (generationIdRef.current === genId && !abort.signal.aborted && completed.length > 0) {
+        persistBoardHistory({ mainVariantsOverride: boardVariants }).catch(() => {})
         appendGenerationEvent({
           kind: 'summary',
           title: `${questionnaire.projectSummary}의 ${completed.length}가지 디자인 시안을 완성했습니다`,
@@ -1580,6 +1730,8 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
       setGenerateError(err instanceof Error ? err.message : '오류가 발생했습니다')
     } finally {
       setIsGenerating(false)
+      setIsGeneratingB(false)
+      setIsGeneratingC(false)
     }
   }
 
@@ -1595,8 +1747,8 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
     setGenerateError('')
     try {
       const asIsAnalysis = readAsIsAnalysis()
-      const hero3dMode = typeof answers['hero3d'] === 'string' ? answers['hero3d'] : 'AI 판단'
-      const shouldUseHero3d = hero3dMode === '사용' || (hero3dMode === 'AI 판단' && questionnaire.heroImageDecision?.generate)
+      const heroSubjectExpand = questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || undefined
+      const heroPromptExpand = heroSubjectExpand || (questionnaire.heroImageDecision?.generate ? brief : undefined)
       const res = await fetch('/api/expand', {
         method: 'POST',
         headers: apiHeaders(),
@@ -1611,8 +1763,8 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
           asIsAnalysis,
           platform,
           modelId: sessionStorage.getItem('aide_model') ?? undefined,
-          heroImagePrompt: shouldUseHero3d ? (questionnaire.heroImageDecision?.prompt || brief) : undefined,
-          heroSubject: shouldUseHero3d ? (questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || brief) : undefined,
+          heroImagePrompt: heroPromptExpand,
+          heroSubject: heroSubjectExpand,
         }),
       })
       const data = await res.json()
@@ -1634,23 +1786,17 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
       setStep(4)
 
       if (data.image) {
-        compressThumbnail(data.image).then(async thumbnail => {
-          const newId = await saveHistoryItem({
-            brief,
-            preset: designPreset !== 'none' ? designPreset : null,
-            designMdFileName: sessionStorage.getItem('designMdFileName') ?? null,
-            html: data.html,
-            thumbnail,
-            platform,
-            itemType: 'design',
-          })
+        persistBoardHistory({
+          prototypeHtml: data.html,
+          prototypeImage: data.image,
+          pickedIdx: idx,
+          prototypeScreens: [],
+        }).then(newId => {
           if (newId) {
             setCurrentHistoryId(newId)
-            loadHistory().then(items => {
-              setGnbHistory(items.filter(h => !h.itemType || h.itemType === 'design').slice(0, 30))
-            })
+            setCurrentBoardHistoryId(newId)
           }
-        })
+        }).catch(() => {})
       }
 
       const headers = apiHeaders()
@@ -1695,6 +1841,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
     setGenerationEvents([])
     setIsGeneratingB(false); setIsGeneratingC(false); setIsExpandingPrototype(false)
     setScreens([]); setActiveScreenId('')
+    clearBlueprints()
     bgFetchAbortRef.current?.abort()
     bgFetchAbortRef.current = null
     ++generationIdRef.current
@@ -1706,15 +1853,15 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
     const referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
     const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
     const asIsAnalysis = readAsIsAnalysis()
-    const modelId = sessionStorage.getItem('aide_model') ?? undefined
+    const modelId = 'gemini-3.1-pro-preview'
     const prdDocFromStorage = sessionStorage.getItem('prdDoc') ?? undefined
     const iaImageFromStorage = sessionStorage.getItem('iaImage') ?? undefined
     const iaTextFromStorage = sessionStorage.getItem('iaText') ?? undefined
     const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
     const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
     const variantStyles = getVariantStyles(effectiveDomain)
-    const hero3dMode = typeof answers['hero3d'] === 'string' ? answers['hero3d'] : 'AI 판단'
-    const shouldUseHero3d = hero3dMode === '사용' || (hero3dMode === 'AI 판단' && questionnaire.heroImageDecision?.generate)
+    const heroSubjectRetry = questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || undefined
+    const heroPromptRetry = heroSubjectRetry || (questionnaire.heroImageDecision?.generate ? brief : undefined)
     const baseParams = {
       designMd: effectiveDesignMd,
       brief,
@@ -1728,10 +1875,11 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
       asIsAnalysis,
       platform,
       modelId,
-      heroImagePrompt: shouldUseHero3d ? (questionnaire.heroImageDecision?.prompt || brief) : undefined,
-      heroSubject: shouldUseHero3d ? (questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || brief) : undefined,
+      heroImagePrompt: heroPromptRetry,
+      heroSubject: heroSubjectRetry,
       domain: effectiveDomain,
       variantStyle: variantStyles[idx],
+      layoutBlueprint: layoutBlueprints[idx],
       prdDoc: prdDocFromStorage,
       iaImageBase64: iaImageFromStorage,
       iaText: iaTextFromStorage,
@@ -1875,7 +2023,6 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
     setShareOpen(false)
     setFigmaExportOpen(true)
     setIsFigmaExporting(true)
-    setFigmaExportDone(false)
     setFigmaExportError(null)
     setFigmaClipboardHtml('')
     setFigmaClipboardCopied(false)
@@ -1892,7 +2039,6 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
       setFigmaClipboardHtml(bundle.clipboardHtml)
       const copied = await copyFigmaClipboard(bundle.clipboardHtml)
       setFigmaClipboardCopied(copied)
-      setFigmaExportDone(true)
     } catch (err) {
       setFigmaExportError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -1969,20 +2115,42 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
                   <path d="M21 12a9 9 0 00-9-9" />
                 </svg>
                 시안 생성 중...
-              </>
-            ) : '시안을 선택해주세요'}
+              </>) : isGeneratingBlueprints ? (
+              <>
+                <svg className="animate-spin shrink-0" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" strokeOpacity="0.3" />
+                  <path d="M21 12a9 9 0 00-9-9" />
+                </svg>
+                시안 준비 중...
+              </>) : mainVariants.every(v => !v) && layoutBlueprints.length === 0
+              ? '시안을 생성하세요'
+              : mainVariants.every(v => !v)
+              ? '시안을 생성하세요'
+              : '시안을 선택해주세요'}
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-3 px-4">
-            <button
-              onClick={handleGenerate}
-              disabled={isAnyGenerating}
-              className="flex items-center gap-1.5 text-[13px] text-[#666666] hover:text-[#111111] transition-colors disabled:opacity-40"
-            >
-              <RefreshCw size={13} /> 다시 생성
-            </button>
-            <button onClick={() => setStep(2)} disabled={isAnyGenerating} className="flex items-center gap-1.5 text-[13px] text-[#666666] hover:text-[#111111] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-              <ArrowLeft size={14} /> 뒤로
+            {mainVariants.every(v => !v) && !isAnyGenerating && (
+              <button
+                onClick={handleGenerateAll}
+                disabled={isGeneratingBlueprints || isAnyGenerating}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-semibold text-white transition-colors disabled:opacity-50"
+                style={{ borderRadius: 8, backgroundColor: '#1a75ff' }}
+              >
+                <Sparkles size={13} /> 시안 A/B/C 생성
+              </button>
+            )}
+            {mainVariants.some(v => !!v) && (
+              <button
+                onClick={() => handleGenerate()}
+                disabled={isAnyGenerating}
+                className="flex items-center gap-1.5 text-[13px] text-[#666666] hover:text-[#111111] transition-colors disabled:opacity-40"
+              >
+                <RefreshCw size={13} /> 다시 생성
+              </button>
+            )}
+            <button onClick={() => { clearBlueprints(); setStep(2) }} disabled={isAnyGenerating} className="flex items-center gap-1.5 text-[13px] text-[#666666] hover:text-[#111111] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              <ArrowLeft size={14} /> 설문
             </button>
           </div>
         </div>
@@ -2419,7 +2587,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
             const effectivePalette = (customMeta?.palette ?? preset.palette) ?? [{ name: 'Primary', hex: '#6366f1' }]
             const effectiveFonts = (customMeta?.fonts ?? preset.fonts) ?? { headline: 'sans-serif', body: 'sans-serif' }
             const effectiveColor = (customMeta?.color ?? preset.color) ?? '#6366f1'
-            const isDark = customMeta?.isDark ?? (designPreset === 'linear')
+            const isDark = customMeta?.isDark ?? false
             const outerBg = isDark ? '#111111' : '#e8e8eb'
             const cellBg = isDark ? '#1a1a1a' : '#ffffff'
             const gridLine = isDark ? '#272727' : '#e0e0e3'
@@ -2649,13 +2817,98 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
             </div>
           )}
 
-          {/* 3 variant artboard cards */}
-          <div className="flex items-center gap-6 overflow-x-auto">
+          {/* Skeleton cards — A/B/C side by side */}
+          {(() => {
+            const skeletonW = isMobile ? 160 : isTablet ? 200 : 240
+            return (
+              <div className="flex items-start gap-4 shrink-0">
+                {isGeneratingBlueprints ? (
+                  (['A', 'B', 'C'] as const).map(v => (
+                    <div key={v} className="flex flex-col gap-2 shrink-0" style={{ width: skeletonW }}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="size-5 flex items-center justify-center text-[11px] font-bold text-white bg-[#aaa]" style={{ borderRadius: 6 }}>{v}</span>
+                        <div className="h-3 w-16 bg-[#e5e5e5] rounded animate-pulse" />
+                      </div>
+                      <div className="bg-white flex items-center justify-center" style={{ borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)', minHeight: 340 }}>
+                        <div className="size-6 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#111' }} />
+                      </div>
+                    </div>
+                  ))
+                ) : layoutBlueprints.length > 0 ? (
+                  <div className="flex items-start gap-4">
+                    {layoutBlueprints.map((blueprint, bpIdx) => {
+                      const variantIdx = bpIdx as 0 | 1 | 2
+                      const isThisLoading = blueprintLoadingIdx === bpIdx
+                      const isVariantLoading = variantIdx === 0 ? isGenerating : variantIdx === 1 ? isGeneratingB : isGeneratingC
+                      const hasVariant = !!mainVariants[variantIdx]
+                      return (
+                        <div key={blueprint.variant} className="flex flex-col gap-2 shrink-0" style={{ width: skeletonW }}>
+                          {isThisLoading ? (
+                            <div className="flex items-center justify-center bg-white" style={{ borderRadius: 6, border: '1px solid rgba(0,0,0,0.1)', minHeight: 280 }}>
+                              <div className="size-5 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#111' }} />
+                            </div>
+                          ) : (
+                            <BlueprintPreview blueprint={blueprint} />
+                          )}
+                          {/* Per-card action buttons */}
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => handleRegenerateSingleBlueprint(bpIdx)}
+                              disabled={isThisLoading || blueprintLoadingIdx !== null}
+                              className="flex-1 flex items-center justify-center gap-1 text-[11px] font-medium transition-colors"
+                              style={{ padding: '5px 0', borderRadius: 5, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: '#555', cursor: isThisLoading || blueprintLoadingIdx !== null ? 'not-allowed' : 'pointer', opacity: isThisLoading || blueprintLoadingIdx !== null ? 0.5 : 1 }}
+                            >
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" />
+                                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" />
+                              </svg>
+                              재생성
+                            </button>
+                            <button
+                              onClick={() => handleGenerateSingleVariant(variantIdx)}
+                              disabled={isVariantLoading}
+                              className="flex-1 flex items-center justify-center gap-1 text-[11px] font-semibold transition-colors"
+                              style={{ padding: '5px 0', borderRadius: 5, border: 'none', background: hasVariant ? '#f0f0f0' : '#111', color: hasVariant ? '#555' : '#fff', cursor: isVariantLoading ? 'not-allowed' : 'pointer', opacity: isVariantLoading ? 0.6 : 1 }}
+                            >
+                              {isVariantLoading ? (
+                                <><div className="size-3 rounded-full animate-spin" style={{ border: '1.5px solid rgba(255,255,255,0.3)', borderTopColor: hasVariant ? '#555' : '#fff' }} /> 생성 중</>
+                              ) : (
+                                <>{hasVariant ? '재생성' : '시안 생성'}</>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div
+                    className="flex flex-col items-center justify-center cursor-pointer hover:bg-white transition-colors"
+                    style={{ borderRadius: 14, border: '2px dashed rgba(0,0,0,0.13)', minHeight: 280, width: skeletonW * 3 + 32, padding: 32 }}
+                    onClick={handleGenerateAll}
+                  >
+                    <div className="mb-3 size-11 flex items-center justify-center bg-[#f5f5f5]" style={{ borderRadius: 12 }}>
+                      <Shapes size={20} color="#888" />
+                    </div>
+                    <p className="text-[13px] font-semibold text-[#333] mb-1">시안 생성</p>
+                    <p className="text-[12px] text-[#999] text-center">A/B/C를 순차적으로 생성합니다</p>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+
+          {/* 3 variant artboard cards — only visible after generation starts */}
+          {variantGenerationStarted && <div className="flex items-center gap-6 overflow-x-auto">
             {(['A', 'B', 'C'] as const).map((letter, idx) => {
               const variant = mainVariants[idx]
               const isLoadingThis = idx === 0 ? isGenerating : idx === 1 ? isGeneratingB : isGeneratingC
               const isFailed = !variant && !isLoadingThis && idx > 0
               const cardW = isMobile ? 180 : isTablet ? 220 : 320
+              const previewNativeW = platform === 'mobile' ? 390 : 1440
+              const previewNativeH = platform === 'mobile' ? 844 : 1024
+              const previewScale = cardW / previewNativeW
+              const cardH = Math.round(previewNativeH * previewScale)
               return (
                 <div key={letter} className="flex flex-col gap-3 shrink-0" style={{ width: cardW }}>
                   <div className="flex items-center gap-2">
@@ -2687,7 +2940,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
                     onClick={e => { e.stopPropagation(); setSelectedCard(`variant-${letter}`) }}
                     style={{
                       borderRadius: '12px',
-                      aspectRatio: isMobile ? '390/844' : isTablet ? '834/1194' : '1440/1024',
+                      height: cardH,
                       border: selectedCard === `variant-${letter}` ? '2px solid #1a75ff' : '2px solid rgba(255,255,255,0.7)',
                       outline: selectedCard === `variant-${letter}` ? '3px solid rgba(26,117,255,0.18)' : 'none',
                       outlineOffset: '2px',
@@ -2695,7 +2948,21 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
                     }}
                   >
                     {variant ? (
-                      <img src={variant.image} alt={`시안 ${letter}`} className="w-full h-full object-contain object-top bg-white" />
+                      <iframe
+                        srcDoc={variant.html}
+                        title={`시안 ${letter} 프리뷰`}
+                        sandbox="allow-scripts allow-same-origin"
+                        scrolling="auto"
+                        style={{
+                          width: previewNativeW,
+                          height: previewNativeH,
+                          border: 'none',
+                          display: 'block',
+                          transform: `scale(${previewScale})`,
+                          transformOrigin: 'top left',
+                          backgroundColor: '#ffffff',
+                        }}
+                      />
                     ) : isLoadingThis ? (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="size-8 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#0055ff' }} />
@@ -2727,7 +2994,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
                 </div>
               )
             })}
-          </div>
+          </div>}
           </div>
         </div>
 
@@ -3703,7 +3970,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
                 <h1 className="text-[22px] font-bold mb-1" style={{ letterSpacing: '-0.05em' }}>이 기준으로 만들게요</h1>
                 <p className="text-[14px] text-[#666666]">{questionnaire.projectSummary}</p>
               </div>
-              <button onClick={() => { setStartedFromLanding(false); setStep(1) }} className="flex items-center gap-1.5 text-sm text-[#666666] hover:text-[#111111] transition-colors mt-1">
+              <button onClick={() => { clearBlueprints(); setStartedFromLanding(false); setStep(1) }} className="flex items-center gap-1.5 text-sm text-[#666666] hover:text-[#111111] transition-colors mt-1">
                 <ArrowLeft size={14} /> 뒤로
               </button>
             </div>
@@ -3734,157 +4001,13 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
               </div>
             )}
 
-            <PrimaryButton onClick={handleGenerate} disabled={isGenerating} loading={isGenerating} loadingText="시안 A/B/C를 생성하고 있습니다... (60~90초 소요)">
-              <Sparkles size={16} /> 이 기준으로 시안 생성하기
+            <PrimaryButton onClick={() => { setGenerateError(''); setStep(3); setTimeout(() => handleGenerate(), 50) }} disabled={false} loading={false} loadingText="">
+              바로 시안 생성하기 →
             </PrimaryButton>
-
-            <p className="text-center text-[13px] text-[#666666] mt-3">
-              복잡한 설계, 시안 차별화, 이미지 생성과 검수는 백단에서 자동으로 처리됩니다
-            </p>
           </div>
         )}
 
       </main>
-    </div>
-  )
-}
-
-// ─── Device frames ────────────────────────────────────────────────────────────
-
-function MobileFrame({ children, scale = 1, darkMode = false }: { children: React.ReactNode; scale?: number; darkMode?: boolean }) {
-  const frameW = 408
-  const frameH = 934
-  const scaledW = Math.round(frameW * scale)
-  const scaledH = Math.round(frameH * scale)
-  const now = new Date()
-  const timeStr = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
-  const statusBg = darkMode ? '#0f0f10' : '#fff'
-  const iconColor = darkMode ? '#fff' : '#1c1b14'
-  return (
-    <div className="shrink-0" style={{ width: scaledW, height: scaledH, position: 'relative' }}>
-      <div style={{ position: 'absolute', top: 0, left: 0, width: frameW, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-        <div className="relative" style={{ borderRadius: 46, background: '#1c1c1c', padding: '9px 9px 9px', boxShadow: '0 0 0 1px rgba(255,255,255,0.07) inset, 0 0 0 2px #000 inset' }}>
-          {/* Volume up — right (Android/Pixel) */}
-          <div style={{ position: 'absolute', top: 120, right: -3, width: 3, height: 36, background: '#2e2e2e', borderRadius: 9999 }} />
-          {/* Volume down — right */}
-          <div style={{ position: 'absolute', top: 166, right: -3, width: 3, height: 36, background: '#2e2e2e', borderRadius: 9999 }} />
-          {/* Power — right, below volume */}
-          <div style={{ position: 'absolute', top: 224, right: -3, width: 3, height: 56, background: '#2e2e2e', borderRadius: 9999 }} />
-          {/* Screen — 390×916 (390px = AI 생성 기준, 916 = 48 statusbar + 844 content + 24 nav) */}
-          <div style={{ borderRadius: 37, overflow: 'hidden', width: 390, height: 916, display: 'flex', flexDirection: 'column' }}>
-            {/* Android Material You Status Bar — 48px (Figma node 102:3 실측) */}
-            <div style={{ flexShrink: 0, height: 48, background: statusBg, display: 'flex', alignItems: 'center', paddingLeft: 17, paddingRight: 14, transition: 'background 0.3s' }}>
-              {/* Dot indicator (Figma: Ellipse 1, 4×4px) */}
-              <div style={{ width: 4, height: 4, background: iconColor, borderRadius: 9999, marginRight: 13, flexShrink: 0 }} />
-              {/* Time — Roboto Medium 14px, opacity 0.6 (Figma node 102:4) */}
-              <span style={{ fontSize: 14, fontWeight: 500, fontFamily: 'Roboto, sans-serif', color: iconColor, opacity: 0.6, letterSpacing: 0 }}>{timeStr}</span>
-              <div style={{ flex: 1 }} />
-              {/* Signal — filled wedge 17×13 (Figma node 102:6) */}
-              <svg width="17" height="13" viewBox="0 0 17 13" fill="none" style={{ marginRight: 4 }}>
-                <path d="M17 0 L17 13 L0 13 Z" fill={iconColor}/>
-              </svg>
-              {/* WiFi — filled arcs 14×14 (Figma node 102:7) */}
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: 4 }}>
-                <path d="M7 2.5C4.5 2.5 2.2 3.5 0.5 5.2L2 6.7C3.3 5.3 5.1 4.5 7 4.5s3.7.8 5 2.2l1.5-1.5C11.8 3.5 9.5 2.5 7 2.5z" fill={iconColor}/>
-                <path d="M7 6.5C5.5 6.5 4.2 7.1 3.2 8.1l1.5 1.5C5.3 9 6.1 8.5 7 8.5s1.7.5 2.3 1.1l1.5-1.5C9.8 7.1 8.5 6.5 7 6.5z" fill={iconColor}/>
-                <circle cx="7" cy="12.5" r="1.5" fill={iconColor}/>
-              </svg>
-              {/* Battery — solid filled with terminal (Figma node 102:8 Union) */}
-              <svg width="17" height="13" viewBox="0 0 19 13" fill="none">
-                <rect x="0" y="1.5" width="15" height="10" rx="2" fill={iconColor}/>
-                <path d="M16 4.5v4a2 2 0 0 0 0-4z" fill={iconColor}/>
-              </svg>
-            </div>
-            {/* App content area */}
-            <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-              {children}
-            </div>
-            {/* Android gesture nav — indicator 70×3px, borderRadius 21 (Figma 실측) */}
-            <div style={{ flexShrink: 0, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: statusBg, transition: 'background 0.3s' }}>
-              <div style={{ width: 70, height: 3, background: darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)', borderRadius: 21 }} />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function TabletFrame({ children, scale = 0.7 }: { children: React.ReactNode; scale?: number }) {
-  const frameW = 858
-  const frameH = 1218
-  const scaledW = Math.round(frameW * scale)
-  const scaledH = Math.round(frameH * scale)
-  const now = new Date()
-  const timeStr = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
-  return (
-    <div className="shrink-0" style={{ width: scaledW, height: scaledH, position: 'relative' }}>
-      <div style={{ position: 'absolute', top: 0, left: 0, width: frameW, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-        <div className="relative" style={{ borderRadius: 24, background: '#1a1a1a', padding: '12px 12px 16px', boxShadow: '0 40px 100px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08) inset, 0 0 0 2px #000 inset' }}>
-          {/* Side button */}
-          <div style={{ position: 'absolute', top: '50%', left: 6, transform: 'translateY(-50%)', width: 4, height: 60, background: '#2a2a2a', borderRadius: 9999 }} />
-          {/* Screen — iPad Air 10.9": 834×1194 */}
-          <div style={{ borderRadius: 14, overflow: 'hidden', width: 834, height: 1194, display: 'flex', flexDirection: 'column' }}>
-            {/* iPadOS Status Bar — real element, 24px */}
-            <div style={{ flexShrink: 0, height: 24, display: 'flex', alignItems: 'center', paddingLeft: 20, paddingRight: 16, background: '#000' }}>
-              <span style={{ fontSize: 13, fontWeight: 600, fontFamily: '-apple-system, SF Pro Display, sans-serif', color: '#fff' }}>{timeStr}</span>
-              <div style={{ flex: 1 }} />
-              <svg width="14" height="10" viewBox="0 0 17 12" fill="none" style={{ marginRight: 5 }}>
-                <rect x="0" y="7" width="3" height="5" rx="1" fill="white"/>
-                <rect x="4.5" y="4.5" width="3" height="7.5" rx="1" fill="white"/>
-                <rect x="9" y="2" width="3" height="10" rx="1" fill="white"/>
-                <rect x="13.5" y="0" width="3" height="12" rx="1" fill="white"/>
-              </svg>
-              <svg width="14" height="10" viewBox="0 0 16 12" fill="none" style={{ marginRight: 5 }}>
-                <path d="M8 9.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z" fill="white"/>
-                <path d="M3.5 6.5C4.8 5.2 6.3 4.5 8 4.5s3.2.7 4.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-                <path d="M1 3.5C3 1.5 5.4.5 8 .5s5 1 7 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-              </svg>
-              <svg width="22" height="10" viewBox="0 0 25 12" fill="none">
-                <rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="white" strokeOpacity="0.35"/>
-                <rect x="2" y="2" width="17" height="8" rx="2" fill="white"/>
-                <path d="M23 4v4a2 2 0 0 0 0-4z" fill="white" fillOpacity="0.4"/>
-              </svg>
-            </div>
-            {/* App content area — below status bar, no overlap */}
-            <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-              {children}
-            </div>
-          </div>
-          {/* Home bar */}
-          <div style={{ margin: '8px auto 0', width: 120, height: 5, background: 'rgba(255,255,255,0.35)', borderRadius: 9999 }} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function DesktopFrame({ children, scale = 0.6 }: { children: React.ReactNode; scale?: number }) {
-  const scaledW = Math.round(1440 * scale)
-  const scaledH = Math.round(1024 * scale)
-  return (
-    <div className="shrink-0" style={{ width: scaledW, borderRadius: 12, overflow: 'hidden', border: '0.5px solid rgba(0,0,0,0.13)' }}>
-      {/* macOS Sequoia title bar */}
-      <div style={{ height: 32, background: '#ebebeb', display: 'flex', alignItems: 'center', padding: '0 14px', gap: 8, borderBottom: '0.5px solid rgba(0,0,0,0.08)', position: 'relative' }}>
-        {/* Traffic lights */}
-        <div style={{ width: 13, height: 13, borderRadius: 9999, background: '#ff5f57' }} />
-        <div style={{ width: 13, height: 13, borderRadius: 9999, background: '#febc2e' }} />
-        <div style={{ width: 13, height: 13, borderRadius: 9999, background: '#28c840' }} />
-        {/* Centered toolbar area */}
-        <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 60, height: 20, background: 'rgba(0,0,0,0.06)', borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5 2l3 3-3 3" stroke="rgba(0,0,0,0.35)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </div>
-          <div style={{ width: 160, height: 20, background: 'rgba(0,0,0,0.05)', borderRadius: 5, display: 'flex', alignItems: 'center', paddingLeft: 7, gap: 5 }}>
-            <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><rect x="1.5" y="4.5" width="7" height="5" rx="1.2" stroke="rgba(0,0,0,0.3)" strokeWidth="1.1"/><path d="M3 4.5V3a2 2 0 0 1 4 0v1.5" stroke="rgba(0,0,0,0.3)" strokeWidth="1.1" strokeLinecap="round"/></svg>
-            <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)', fontFamily: '-apple-system, SF Pro Text, sans-serif', letterSpacing: 0.1 }}>localhost:3000</span>
-          </div>
-        </div>
-      </div>
-      {/* Viewport */}
-      <div style={{ width: scaledW, height: scaledH, overflow: 'hidden', background: '#fff' }}>
-        {children}
-      </div>
     </div>
   )
 }
@@ -4400,6 +4523,404 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
   )
 }
 
+// Single gray tone skeleton — shapes on white background, no color variation
+function BlueprintSectionContent({ role, scaledHeight, children, columns, density, heroType, imageStrategy, cPad, cGap }: {
+  role: LayoutBlueprintSection['role']
+  scaledHeight: number
+  children: string[]
+  columns?: number
+  density: LayoutBlueprintSection['density']
+  heroType?: LayoutBlueprint['heroType']
+  imageStrategy?: LayoutBlueprintSection['imageStrategy']
+  cPad: number
+  cGap: number
+}) {
+  const G = '#DEDEDE'
+  const GL = '#EBEBEB'
+  const circle = (size: number) => (
+    <div style={{ width: size, height: size, borderRadius: '50%', backgroundColor: G, flexShrink: 0 }} />
+  )
+  const bar = (w: string | number, h: number, color = G) => (
+    <div style={{ width: w, height: h, borderRadius: 2, backgroundColor: color, flexShrink: 0 }} />
+  )
+  const rect = (w: string | number, h: string | number, radius = 2, color = G) => (
+    <div style={{ width: w, height: h, borderRadius: radius, backgroundColor: color, flexShrink: 0 }} />
+  )
+  // density → item count
+  const densityCount = (sparse: number, balanced: number, dense: number) =>
+    density === 'sparse' ? sparse : density === 'dense' ? dense : balanced
+
+  if (role === 'nav') return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '100%', padding: `0 ${cPad}px` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: cGap }}>
+        {circle(14)} {bar(36, 5, GL)}
+      </div>
+      <div style={{ display: 'flex', gap: cGap }}>
+        {circle(12)} {circle(12)}
+      </div>
+    </div>
+  )
+
+  if (role === 'tabbar') {
+    const count = Math.max(3, Math.min(5, children.length || 4))
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', height: '100%', padding: `0 ${cPad}px` }}>
+        {Array.from({ length: count }).map((_, i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: Math.max(2, cGap - 2) }}>
+            {rect(16, 16, 2)}
+            {bar(18, 3, GL)}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (role === 'hero') {
+    // heroType별 구분 렌더링
+    const imgH = Math.round((scaledHeight - cPad * 2) * 0.52)
+    if (heroType === 'image-hero' || heroType === '3d-hero' || imageStrategy) {
+      const imgPos = imageStrategy?.position ?? 'top'
+      if (imgPos === 'background') return (
+        // 배경 이미지형 히어로
+        <div style={{ position: 'relative', height: '100%', borderRadius: 2, backgroundColor: GL, overflow: 'hidden' }}>
+          {rect('100%', '100%', 2, '#D0D0D0')}
+          <div style={{ position: 'absolute', bottom: cPad, left: cPad, right: cPad, display: 'flex', flexDirection: 'column', gap: cGap }}>
+            {bar('60%', 7)}
+            {bar('40%', 5, 'rgba(255,255,255,0.6)')}
+            {rect('30%', Math.max(10, cPad + cGap))}
+          </div>
+        </div>
+      )
+      if (imgPos === 'left') return (
+        // 좌측 이미지 + 우측 텍스트
+        <div style={{ display: 'flex', gap: cGap, height: '100%', padding: `${cPad}px` }}>
+          {rect(Math.round(scaledHeight * 0.7), '100%')}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: cGap }}>
+            {bar('80%', 6)}
+            {bar('65%', 4, GL)}
+            {rect('55%', Math.max(10, cPad))}
+          </div>
+        </div>
+      )
+      // top image (default)
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px` }}>
+          {imgH > 14 && rect('100%', imgH)}
+          {bar('65%', 7)}
+          {bar('45%', 5, GL)}
+          {rect('38%', Math.max(10, cPad + cGap))}
+        </div>
+      )
+    }
+    if (heroType === 'stat-dashboard') return (
+      // KPI 숫자 중심 히어로
+      <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px` }}>
+        {bar('55%', 7)}
+        {bar('38%', 4, GL)}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: cGap, marginTop: cGap }}>
+          {[0,1,2].map(i => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, backgroundColor: GL, borderRadius: 2, padding: `${Math.max(2, cPad - 2)}px` }}>
+              {bar('55%', 8)}
+              {bar('75%', 3, '#D8D8D8')}
+            </div>
+          ))}
+        </div>
+        {rect('35%', Math.max(10, cPad))}
+      </div>
+    )
+    if (heroType === 'search-bar') return (
+      // 검색창 중심 히어로
+      <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px` }}>
+        {bar('60%', 7)}
+        {rect('100%', Math.max(10, cPad + 6), 20)}
+        <div style={{ display: 'flex', gap: cGap }}>
+          {[0,1,2,3].map(i => (
+            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+              {rect(14, 14, 2)}
+              {bar(16, 3, GL)}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+    if (heroType === 'action-cta') return (
+      // 큰 CTA 중심 히어로
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: cGap, padding: `${cPad}px`, height: '100%' }}>
+        {bar('55%', 9)}
+        {bar('70%', 4, GL)}
+        {bar('45%', 4, GL)}
+        {rect('55%', Math.max(12, cPad + 4), 20)}
+      </div>
+    )
+    // none / fallback
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px` }}>
+        {bar('65%', 7)}
+        {bar('45%', 5, GL)}
+        {rect('38%', Math.max(10, cPad + cGap))}
+      </div>
+    )
+  }
+
+  if (role === 'banner') {
+    const imgPos = imageStrategy?.position ?? 'background'
+    if (imgPos === 'background') return (
+      <div style={{ position: 'relative', height: '100%', borderRadius: 2, overflow: 'hidden' }}>
+        {rect('100%', '100%', 2, '#D4D4D4')}
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: `${cPad}px`, gap: cGap }}>
+          {bar('50%', 7, 'rgba(255,255,255,0.7)')}
+          {rect('28%', Math.max(10, cPad), 20, 'rgba(255,255,255,0.5)')}
+        </div>
+      </div>
+    )
+    return (
+      <div style={{ display: 'flex', gap: cGap, height: '100%', padding: `${cPad}px`, alignItems: 'center' }}>
+        {rect(Math.round(scaledHeight * 0.75), '100%')}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: cGap }}>
+          {bar('80%', 6)}
+          {bar('55%', 4, GL)}
+          {rect('45%', Math.max(10, cPad))}
+        </div>
+      </div>
+    )
+  }
+
+  if (role === 'collection') {
+    const cardW = Math.round(scaledHeight * 0.65)
+    const count = densityCount(2, 3, 4)
+    return (
+      <div style={{ display: 'flex', gap: cGap, padding: `${cPad}px`, overflowX: 'hidden', height: '100%' }}>
+        {Array.from({ length: count }).map((_, i) => (
+          <div key={i} style={{ width: cardW, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: Math.max(2, cGap - 2) }}>
+            {rect(cardW, Math.round(scaledHeight * 0.55))}
+            {bar('70%', 4)}
+            {bar('50%', 3, GL)}
+          </div>
+        ))}
+        {/* scroll hint */}
+        <div style={{ width: 8, height: '100%', display: 'flex', alignItems: 'center' }}>
+          {bar(2, 16, GL)}
+        </div>
+      </div>
+    )
+  }
+
+  if (role === 'chart') return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px` }}>
+      {bar('40%', 5)}
+      <div style={{ flex: 1, backgroundColor: GL, borderRadius: 2, minHeight: 20 }} />
+    </div>
+  )
+
+  if (role === 'cta-block') return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: cGap, height: '100%', padding: `${cPad * 2}px ${cPad}px`, backgroundColor: GL, borderRadius: 2 }}>
+      {bar('50%', 8)}
+      {bar('65%', 4, '#D0D0D0')}
+      {rect('45%', Math.max(12, cPad + 4), 20)}
+    </div>
+  )
+
+  if (role === 'kpi') {
+    const cols = columns ?? Math.min(4, Math.max(2, children.length || 3))
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: cGap, height: '100%', padding: `${cPad}px` }}>
+        {Array.from({ length: cols }).map((_, i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: Math.max(2, cGap - 2), backgroundColor: GL, borderRadius: 2 }}>
+            {bar('50%', 8)}
+            {bar('70%', 4, '#D0D0D0')}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (role === 'actions') {
+    const count = densityCount(3, 4, 5)
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', height: '100%', padding: `${cPad}px` }}>
+        {Array.from({ length: count }).map((_, i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: Math.max(2, cGap - 2) }}>
+            {rect(20, 20, 2)}
+            {bar(20, 3, GL)}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (role === 'list') {
+    const itemCount = densityCount(2, 3, 5)
+    const hasThumb = imageStrategy != null || children.some(c => c.toLowerCase().includes('image') || c.toLowerCase().includes('thumb'))
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px 0` }}>
+        {Array.from({ length: itemCount }).map((_, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: cGap }}>
+            {hasThumb
+              ? rect(cPad + 12, cPad + 12, 2)
+              : circle(cPad + 4)
+            }
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: Math.max(2, cGap - 2) }}>
+              {bar('68%', 5)}
+              {bar('44%', 4, GL)}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (role === 'form') {
+    const inputH = Math.max(10, cPad + 6)
+    const fieldH = 4 + Math.max(2, cGap - 2) + inputH
+    const inputCount = Math.max(1, Math.min(4, Math.floor((scaledHeight - cPad * 2) / (fieldH + cGap))))
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px 0` }}>
+        {Array.from({ length: inputCount }).map((_, i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: Math.max(2, cGap - 2) }}>
+            {bar(28, 4, GL)}
+            {rect('100%', inputH)}
+          </div>
+        ))}
+        {rect('45%', Math.max(10, cPad + 4))}
+      </div>
+    )
+  }
+
+  if (role === 'media') {
+    const cols = columns ?? densityCount(2, 3, 4)
+    const rows = densityCount(1, 2, 3)
+    const cellH = Math.max(14, Math.round((scaledHeight - cPad * 2 - cGap * (rows - 1)) / rows))
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: cGap, padding: `${cPad}px` }}>
+        {Array.from({ length: cols * rows }).map((_, i) => (
+          <div key={i} style={{ borderRadius: 2, backgroundColor: G, height: cellH }} />
+        ))}
+      </div>
+    )
+  }
+
+  // content / fallback
+  const lineCount = densityCount(3, 4, 6)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px 0` }}>
+      {bar('55%', 7)}
+      {Array.from({ length: lineCount - 1 }).map((_, i) => (
+        <div key={i} style={{ width: i === lineCount - 2 ? '60%' : `${95 - i * 5}%`, height: 4, borderRadius: 2, backgroundColor: GL, flexShrink: 0 }} />
+      ))}
+    </div>
+  )
+}
+
+function BlueprintPreview({ blueprint }: {
+  blueprint: LayoutBlueprint
+}) {
+  const vpW = Math.max(blueprint.viewport?.width ?? 390, 1)
+  const isWeb = vpW > 700
+  const isLnb = blueprint.navType === 'lnb'
+
+  const sortedSections = [...blueprint.sections].sort((a, b) => a.y - b.y)
+
+  const INNER_W = isWeb ? 220 : 180
+  const scale = INNER_W / vpW
+
+  // Use actual rhythm values for spacing (reliable, not from LLM y/height)
+  const sGap = Math.max(3, Math.round((blueprint.rhythm?.sectionGap ?? 24) * scale))
+  const cPad = Math.max(2, Math.round((blueprint.rhythm?.cardPadding ?? 16) * scale))
+  const cGap = Math.max(1, Math.round((blueprint.rhythm?.cardGap ?? 12) * scale))
+  const hPad = Math.max(4, Math.round((blueprint.rhythm?.pagePadding ?? 16) * scale))
+  const lnbW = isLnb ? Math.round(240 * scale) : 0
+
+  const navSection = isLnb ? sortedSections.find(s => s.role === 'nav') : null
+  const mainSections = isLnb ? sortedSections.filter(s => s.role !== 'nav') : sortedSections
+
+  // Render the blueprint literally. The previous preview recalculated heights by role,
+  // which made different A/B/C blueprints look almost identical.
+  const sections = mainSections.map(s => ({
+    ...s,
+    _top: Math.max(0, Math.round(s.y * scale)),
+    _h: Math.max(14, Math.round(s.height * scale)),
+  }))
+  const contentBottom = sections.reduce((max, s) => Math.max(max, s._top + s._h), 0)
+  const viewportH = Math.round((blueprint.viewport?.height ?? 844) * scale)
+  const contentH = Math.max(viewportH, contentBottom + sGap)
+
+  return (
+    <>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="size-5 flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+          style={{ borderRadius: 6, backgroundColor: '#111' }}>
+          {blueprint.variant}
+        </span>
+        <span className="text-[13px] font-semibold text-[#111] truncate">{blueprint.strategy ?? `시안 ${blueprint.variant}`}</span>
+      </div>
+
+      <div style={{
+        position: 'relative',
+        display: 'flex',
+        height: contentH,
+        backgroundColor: '#fff',
+        borderRadius: 4,
+        border: '1px solid rgba(0,0,0,0.1)',
+        overflow: 'hidden',
+      }}>
+        {/* LNB sidebar */}
+        {isLnb && (
+          <div style={{
+            width: lnbW,
+            flexShrink: 0,
+            borderRight: '1px solid #EBEBEB',
+            backgroundColor: '#F8F8F8',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: cGap,
+            padding: `${cPad}px ${Math.max(3, cPad - 2)}px`,
+          }}>
+            {/* Logo area */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: Math.max(2, cGap - 2), marginBottom: cGap }}>
+              <div style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: '#DEDEDE', flexShrink: 0 }} />
+              <div style={{ height: 4, borderRadius: 2, backgroundColor: '#DEDEDE', flex: 1 }} />
+            </div>
+            {/* Nav items */}
+            {Array.from({ length: navSection?.children.length || 5 }).map((_, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: Math.max(2, cGap - 2), padding: `${Math.max(2, cPad - 2)}px ${Math.max(2, cPad - 2)}px`, borderRadius: 2, backgroundColor: i === 0 ? '#DEDEDE' : 'transparent' }}>
+                <div style={{ width: 9, height: 9, borderRadius: 2, backgroundColor: i === 0 ? '#BDBDBD' : '#E8E8E8', flexShrink: 0 }} />
+                <div style={{ height: 3, borderRadius: 1, backgroundColor: i === 0 ? '#BDBDBD' : '#EBEBEB', flex: 1 }} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Main content area */}
+        <div style={{ flex: 1, position: 'relative' }}>
+          {sections.map(s => (
+            <div key={s.id} style={{
+              position: 'absolute',
+              left: isLnb ? hPad : hPad,
+              right: hPad,
+              top: s._top,
+              height: s._h,
+              overflow: 'visible',
+            }}>
+              <BlueprintSectionContent
+                role={s.role}
+                scaledHeight={s._h}
+                columns={s.columns}
+                density={s.density}
+                heroType={s.role === 'hero' ? blueprint.heroType : undefined}
+                imageStrategy={s.imageStrategy}
+                cPad={cPad}
+                cGap={cGap}
+              >
+                {s.children}
+              </BlueprintSectionContent>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ─── UI primitives ────────────────────────────────────────────────────────────
 
 function PrimaryButton({ onClick, disabled, loading, loadingText, children }: {
@@ -4444,12 +4965,13 @@ function PropRow({ label, children, wide }: { label: string; children?: React.Re
 function EditField({ value, prop, suffix = '', onUpdate, wide }: {
   value: string; prop: string; suffix?: string; onUpdate: (prop: string, val: string) => void; wide?: boolean
 }) {
-  const [val, setVal] = useState(value)
+  const [localVal, setLocalVal] = useState({ source: value, value })
+  const val = localVal.source === value ? localVal.value : value
+  const setVal = (next: string) => setLocalVal({ source: value, value: next })
   const [scrubbing, setScrubbing] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const scrubRef = useRef<{ startX: number; startVal: number } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  useEffect(() => { setVal(value) }, [value])
   const numVal = parseFloat(val)
   const isNum = !isNaN(numVal)
   const commit = (raw: string) => { clearTimeout(timerRef.current); onUpdate(prop, raw) }
@@ -4495,7 +5017,7 @@ function EditField({ value, prop, suffix = '', onUpdate, wide }: {
         if (isNum && e.key === 'ArrowDown') { e.preventDefault(); const n = Math.max(0, numVal - (e.shiftKey ? 10 : 1)); setVal(String(n)); commit(String(n) + (suffix || '')) }
       }}
       onMouseDown={handleMouseDown}
-      style={{ cursor: isNum && document.activeElement !== inputRef.current ? (scrubbing ? 'ew-resize' : 'col-resize') : undefined }}
+      style={{ cursor: isNum ? (scrubbing ? 'ew-resize' : 'col-resize') : undefined }}
       className={cn(
         'text-[13px] text-[#111111] bg-[#f0f0f0] border border-transparent hover:border-[rgba(0,0,0,0.15)] focus:border-[rgba(0,0,0,0.4)] outline-none rounded-[4px] transition-colors font-mono',
         wide ? 'w-full px-2 py-1' : 'w-20 px-1.5 py-1 text-right'
@@ -4540,9 +5062,9 @@ function SliderField({ variable, value, onChange }: {
   value: number
   onChange: (id: string, value: number) => void
 }) {
-  const [display, setDisplay] = useState(value)
-
-  useEffect(() => { setDisplay(value) }, [value])
+  const [localDisplay, setLocalDisplay] = useState({ source: value, value })
+  const display = localDisplay.source === value ? localDisplay.value : value
+  const setDisplay = (next: number) => setLocalDisplay({ source: value, value: next })
 
   return (
     <div>
@@ -4676,72 +5198,4 @@ function QuestionCard({ index, question, answer, onAnswer }: {
 
 function Spinner() {
   return <div className="size-4 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.15)', borderTopColor: 'rgba(0,0,0,0.6)' }} />
-}
-
-function DesignSystemCardPreview({ preset }: { preset: DesignPreset }) {
-  const meta = DESIGN_PRESETS[preset]
-  const hasDesign = preset !== 'none' && !!meta.palette
-
-  if (!hasDesign) {
-    return (
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-        <div className="size-10 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.10)', borderTopColor: '#0055ff' }} />
-        <span className="text-[13px] text-[#666666]">생성 중...</span>
-      </div>
-    )
-  }
-
-  return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-5 py-5" style={{ backgroundColor: '#f0f0f0' }}>
-      <style>{`@keyframes aide-bar{0%{transform:translateX(-150%)}100%{transform:translateX(500%)}}`}</style>
-
-      <div className="flex flex-col items-center gap-2">
-        <div className="size-9 rounded-full flex items-center justify-center" style={{ background: `${meta.color}18`, border: `1.5px solid ${meta.color}50` }}>
-          <Sparkles size={16} style={{ color: meta.color }} className="animate-pulse" />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[13px] font-semibold px-2 py-0.5 rounded-full text-[#111111]" style={{ backgroundColor: meta.color }}>{meta.label}</span>
-          <span className="text-[13px] text-[#666666]">적용 중</span>
-        </div>
-      </div>
-
-      <div className="w-full max-w-[260px]">
-        <p className="text-[13px] font-semibold text-[#999999] uppercase tracking-wider mb-2">Color Palette</p>
-        <div className="flex gap-1.5">
-          {meta.palette!.map(swatch => (
-            <div key={swatch.name} className="flex flex-col items-center gap-1 flex-1">
-              <div className="w-full h-7 rounded-md border border-[#111111]/10" style={{ backgroundColor: swatch.hex }} />
-              <span className="text-[13px] text-[#999999] font-mono leading-none">{swatch.hex}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="w-full max-w-[260px]">
-        <p className="text-[13px] font-semibold text-[#999999] uppercase tracking-wider mb-2">Typography</p>
-        <div className="flex flex-col gap-1">
-          <div className="flex items-baseline gap-2">
-            <span className="text-[17px] font-bold text-[#111111] leading-none">{meta.label}</span>
-            <span className="text-[13px] text-[#999999]">{meta.fonts!.headline}</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-[13px] text-[#666666] leading-none">The quick brown fox</span>
-            <span className="text-[13px] text-[#999999]">{meta.fonts!.body}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="w-full max-w-[260px]">
-        <div className="flex flex-wrap gap-1">
-          {meta.traits!.map(trait => (
-            <span key={trait} className="text-[13px] px-2 py-0.5 rounded-full text-[#666666]" style={{ backgroundColor: '#e0e0e0' }}>{trait}</span>
-          ))}
-        </div>
-      </div>
-
-      <div className="w-full max-w-[260px] bg-[#f0f0f0] h-1 rounded-full overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: '40%', backgroundColor: meta.color, animation: 'aide-bar 1.4s ease-in-out infinite' }} />
-      </div>
-    </div>
-  )
 }

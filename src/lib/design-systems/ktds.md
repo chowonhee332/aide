@@ -136,6 +136,17 @@ spacing:
   5xl:     72px
   6xl:     80px
 
+# 페이지·섹션·카드 레이아웃 리듬 — 모든 화면에서 일관된 간격 기준
+layout:
+  page-padding:       16px   # 좌우 페이지 여백 (모바일 기준)
+  page-padding-web:   24px   # 좌우 페이지 여백 (태블릿/웹)
+  section-gap:        24px   # 섹션 간 수직 간격
+  card-padding:       16px   # 카드 내부 패딩
+  card-gap:           12px   # 카드 내부 아이템 간 간격
+  item-gap:           8px    # 인라인·행 내부 요소 간격
+  header-height:      56px   # 앱바/헤더 높이
+  tabbar-height:      72px   # 하단 탭바 높이
+
 shadows:
   1: "0px 1px 3px rgba(0,0,0,0.16)"    # --dsx-shadow-1 · Card subtle
   b2c-card: "0px 5px 10px rgba(0,0,0,0.05)"  # --dsx-shadow-b2c-card · B2C Card
@@ -3054,7 +3065,7 @@ import { Heading, Chart, Table, Progress } from '@ktds-ui/components';
 
 - 한국어 버튼 레이블은 한 줄 유지가 기본이다. 버튼 폭이 부족하면 버튼을 넓히거나 문구를 줄이고, 2줄 줄바꿈 버튼을 만들지 않는다.
 - 모바일 주요 CTA는 최소 48px 높이, 좌우 padding 24px, 텍스트 중앙 정렬, `white-space: nowrap`을 기본으로 한다.
-- 아이콘만 있는 액션은 반드시 `IconButton` 규칙을 따른다. 의미 없는 emoji, Material Symbols 텍스트(`home`, `star`)를 노출하지 않는다.
+- 아이콘은 반드시 Google Material Symbols Rounded를 사용한다. 아이콘만 있는 액션은 반드시 `IconButton` 규칙을 따르며, ligature 텍스트(`home`, `star`, `person`)가 일반 텍스트처럼 노출되면 실패로 간주한다.
 - Input, Select, DatePicker, Textarea는 레이블을 필드 위에 둔다. placeholder만으로 필드 의미를 전달하지 않는다.
 
 ### 3D And Media Integration
@@ -3789,51 +3800,87 @@ import { Button, ButtonArea, Stack } from '@ktds-ui/components';
 
 ---
 
-## KTDS Icon / IconButton
+## Google Material Symbols Icon / IconButton
 
-### KTDS Icon
+### Google Material Symbols Icon
 
-KTDS Icon은 DSCore에서 제공하는 SVG 아이콘 세트다. `--dsx-icon-*` CSS 변수로 등록되어 있으며 `<Icon name="...">` 으로 사용한다. Material Icons, emoji, 외부 아이콘 세트로 대체하지 않는다.
+Aide 생성 HTML/CSS 시안의 아이콘은 반드시 Google Material Symbols Rounded를 사용한다. DSCore SVG 아이콘, emoji, 외부 아이콘 세트, 임의 SVG path, 텍스트 약어로 대체하지 않는다.
 
-```tsx
-import { Icon } from '@ktds-ui/components';
+생성 HTML에는 다음 리소스와 클래스를 사용한다.
 
-<Icon name="chevron" />
-<Icon name="close" />
-<Icon name="search" />
+```html
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..700,0..1,0" rel="stylesheet">
+
+<span class="material-symbols-rounded" aria-hidden="true">search</span>
+<span class="material-symbols-rounded" aria-hidden="true">close</span>
+<span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
 ```
 
-**주요 KTDS Icon name 목록:**
+기본 CSS:
+
+```css
+.material-symbols-rounded {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'liga';
+  color: currentColor;
+}
+```
+
+**주요 Material Symbol name 목록:**
 
 | 카테고리 | name 목록 |
 |----------|-----------|
-| 방향 | chevron chevronLeft chevronTop chevronBottom chevronFirst chevronLast prev next arrow |
-| 동작 | close closeLarge closeFill plus plusFill edit delete refresh share copy download |
-| 상태 | check checked indeterminate info infoFill warning danger note tip successFill errorFill |
-| UI | search calendar sort expand moreHorizon moreVertical loading |
-| 콘텐츠 | star starFill heart bookmark bookmarkFill link folder eye eyeFill eyeSlash eyeSlashFill |
-| 기타 | homeFill smileFill pictureFill nodata return clock empty |
+| 방향 | chevron_left chevron_right keyboard_arrow_up keyboard_arrow_down arrow_back arrow_forward expand_more expand_less |
+| 동작 | close add edit delete refresh share content_copy download upload more_vert more_horiz |
+| 상태 | check check_circle info warning error cancel notifications notifications_active |
+| UI | search calendar_month sort filter_list menu home settings person account_circle |
+| 콘텐츠 | star favorite bookmark link folder visibility visibility_off image description receipt_long |
+| 데이터 | analytics monitoring calculate query_stats bar_chart pie_chart table_chart |
+| 커머스 | shopping_cart local_mall payments credit_card sell redeem |
 
-- **KTDS Icon 자체를 버튼으로 사용 금지** — 버튼으로 사용 시 `IconButton` 컴포넌트 사용
-- `--dsx-icon-size` CSS 변수로 아이콘 크기 제어
+- 아이콘 크기는 16px, 20px, 24px, 40px 중 하나를 사용한다.
+- 아이콘 색상은 `currentColor`를 기본으로 하며 부모 텍스트/버튼 색상을 상속한다.
+- 아이콘 ligature 텍스트가 보이면 렌더링 실패다. 예: `home`, `person`, `analytics`가 화면 텍스트처럼 보이면 안 된다.
+- 아이콘만 클릭 가능한 경우 반드시 접근성 이름을 제공한다. 예: `aria-label="검색"`.
+- Material Symbols는 아이콘 전용으로만 사용하고 일반 텍스트, 탭 레이블, 버튼 레이블을 대체하지 않는다.
 
 ---
 
-### KTDS IconButton
+### Material IconButton
 
 특정 컨트롤 요소를 아이콘으로 표현할 때 사용. `children`은 접근성을 위해 필수.
 
-```tsx
-import { IconButton } from '@ktds-ui/components';
+```html
+<button class="icon-button" type="button" aria-label="닫기">
+  <span class="material-symbols-rounded" aria-hidden="true">close</span>
+</button>
 
-<IconButton name="close" size="medium">닫기</IconButton>
-<IconButton name="search" size="small">검색</IconButton>
-<IconButton name="moreVertical" size="large">더보기</IconButton>
+<button class="icon-button" type="button" aria-label="검색">
+  <span class="material-symbols-rounded" aria-hidden="true">search</span>
+</button>
+
+<button class="icon-button" type="button" aria-label="더보기">
+  <span class="material-symbols-rounded" aria-hidden="true">more_vert</span>
+</button>
 ```
 
 | prop | type | default | values |
 |------|------|---------|--------|
-| `name` | string | — | (required) 아이콘 name |
+| `name` | string | — | (required) Google Material Symbol name |
 | `children` | node | — | (required) 접근성 텍스트 (시각적으로 숨겨짐) |
 | `size` | string | — | small medium large (미설정 시 부모 상속) |
 | `className` | string | — | — |

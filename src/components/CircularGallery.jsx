@@ -406,7 +406,7 @@ class App {
     const gap = 3;
     const widthTotal = this.medias.reduce((sum, media) => sum + media.plane.scale.x + gap, 0);
     let cursor = 0;
-    this.medias.forEach((media, index) => {
+    this.medias.forEach((media) => {
       media.padding = gap;
       media.width = media.plane.scale.x + gap;
       media.widthTotal = widthTotal;

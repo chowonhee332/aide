@@ -1,4 +1,4 @@
-import { useEffect, useRef, memo, useId } from 'react'
+import { useEffect, useRef, memo } from 'react'
 
 const TWO_PI = Math.PI * 2
 
@@ -9,14 +9,6 @@ interface DotFieldProps extends React.HTMLAttributes<HTMLDivElement> {
   gradientFrom?: string
   gradientTo?: string
   baseColor?: string
-  // 기존 props 호환성을 위해 유지 (사용 안함)
-  cursorForce?: number
-  bulgeOnly?: boolean
-  bulgeStrength?: number
-  glowRadius?: number
-  sparkle?: boolean
-  waveAmplitude?: number
-  glowColor?: string
 }
 
 const DotField = memo<DotFieldProps>(({
@@ -26,7 +18,6 @@ const DotField = memo<DotFieldProps>(({
   gradientFrom = 'rgba(168, 85, 247, 1)',
   gradientTo = 'rgba(180, 151, 207, 1)',
   baseColor = 'rgba(0, 0, 0, 0.08)',
-  cursorForce, bulgeOnly, bulgeStrength, sparkle, waveAmplitude, glowRadius, glowColor,
   style,
   ...rest
 }) => {

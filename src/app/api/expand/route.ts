@@ -77,7 +77,9 @@ export async function POST(req: NextRequest) {
 
     console.log('[expand] step3: browser launched, viewport', vpWidth, vpHeight)
     await page.setViewport({ width: vpWidth, height: vpHeight, deviceScaleFactor: 2 })
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 45000 })
+    const baseTag = '<base href="http://localhost:3000">'
+    const htmlWithBase = html.includes('<base ') ? html : html.replace(/(<head[^>]*>)/i, `$1\n${baseTag}`)
+    await page.setContent(htmlWithBase, { waitUntil: 'networkidle0', timeout: 45000 })
     console.log('[expand] step4: content loaded, waiting for fonts')
     await new Promise(r => setTimeout(r, 1500))
     await page.evaluate(() => document.fonts.ready.then(() => null)).catch(() => null)

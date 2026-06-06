@@ -7,7 +7,17 @@ export interface HistoryItem {
   thumbnail: string  // compressed jpeg base64
   createdAt: number
   platform?: 'mobile' | 'web'
-  itemType?: 'variant' | 'design'
+  itemType?: 'variant' | 'design' | 'board'
+  board?: {
+    designSystemName?: string | null
+    designMd?: string | null
+    layoutBlueprints?: unknown[]
+    mainVariants?: Array<{ html: string; image?: string; variantDescription?: unknown; imageWarnings?: string[] } | null>
+    pickedVariantIdx?: 0 | 1 | 2 | null
+    prototypeHtml?: string | null
+    prototypeThumbnail?: string | null
+    prototypeScreens?: Array<{ id: string; label: string }>
+  }
 }
 
 const DB_NAME = 'aide_db'
@@ -74,6 +84,29 @@ export async function saveHistoryItem(item: Omit<HistoryItem, 'id' | 'createdAt'
     // Silently ignore — IndexedDB not available (SSR, private mode with restrictions)
   }
   return null
+}
+
+export async function updateHistoryItem(id: string, patch: Partial<Omit<HistoryItem, 'id' | 'createdAt'>>): Promise<void> {
+  if (typeof window === 'undefined') return
+  try {
+    const db = await openDB()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite')
+      const store = tx.objectStore(STORE_NAME)
+      const getReq = store.get(id)
+      getReq.onsuccess = () => {
+        const existing = getReq.result as HistoryItem | undefined
+        if (!existing) {
+          resolve()
+          return
+        }
+        store.put({ ...existing, ...patch, board: patch.board ? { ...existing.board, ...patch.board } : existing.board })
+      }
+      getReq.onerror = () => reject(getReq.error)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch { /* ignore */ }
 }
 
 export async function deleteHistoryItem(id: string): Promise<void> {

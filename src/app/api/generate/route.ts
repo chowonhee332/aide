@@ -4,7 +4,7 @@ import { generateUI, resolveImagePlaceholders, extractDesignPaletteHint, refineU
 import fs from 'fs'
 import path from 'path'
 
-export const maxDuration = 180
+export const maxDuration = 300
 
 function getDefaultAideLogoBase64(): string {
   try {
@@ -246,12 +246,12 @@ async function auditResponsiveHtml(browser: Browser, html: string, options: { re
           }
         })
         const threeDAssets = Array.from(document.querySelectorAll<HTMLImageElement>('img')).filter(img =>
-          /%%(?:SHARED_HERO_3D_SCENE|SHARED_HERO_3D|HERO_3D_IMAGE|HERO_SCENE_3D|MASCOT_3D|REWARD_OBJECT_3D)/.test(img.getAttribute('src') ?? '')
+          /%%(?:SCENE_3D|HERO_3D|SHARED_HERO_3D_SCENE|SHARED_HERO_3D|HERO_SCENE_3D|MASCOT_3D|REWARD_OBJECT_3D|HERO_3D_IMAGE)/.test(img.getAttribute('src') ?? '')
         )
         const threeDIntegrationIssues = threeDAssets.flatMap(img => {
           const issues: Array<{ role: string; issue: string; className: string; width: number; height: number }> = []
           const src = img.getAttribute('src') ?? ''
-          const role = src.match(/%%(SHARED_HERO_3D_SCENE|SHARED_HERO_3D|HERO_3D_IMAGE|HERO_SCENE_3D|MASCOT_3D|REWARD_OBJECT_3D)/)?.[1] ?? '3D'
+          const role = src.match(/%%(SCENE_3D|HERO_3D|SHARED_HERO_3D_SCENE|SHARED_HERO_3D|HERO_SCENE_3D|MASCOT_3D|REWARD_OBJECT_3D|HERO_3D_IMAGE)(?::|%%)/)?.[1] ?? '3D'
           const rect = img.getBoundingClientRect()
           const ancestors: HTMLElement[] = []
           let node: HTMLElement | null = img.parentElement
@@ -281,13 +281,11 @@ async function auditResponsiveHtml(browser: Browser, html: string, options: { re
             return style.backgroundColor !== 'rgba(0, 0, 0, 0)' || style.backgroundImage !== 'none' || style.boxShadow !== 'none' || style.borderRadius !== '0px'
           })
           const imgStyle = window.getComputedStyle(img)
-          const isSceneRole = role === 'SHARED_HERO_3D_SCENE' || role === 'HERO_SCENE_3D'
+          const isSceneRole = role === 'SCENE_3D' || role === 'SHARED_HERO_3D_SCENE' || role === 'HERO_SCENE_3D'
           const min3dWidth = isSceneRole
             ? Math.min(260, vw * 0.62)
-            : role === 'SHARED_HERO_3D'
-              ? Math.min(220, vw * 0.48)
-              : Math.min(170, vw * 0.38)
-          const imageTooSmall = role !== 'REWARD_OBJECT_3D' && rect.width < min3dWidth
+            : Math.min(200, vw * 0.50)
+          const imageTooSmall = rect.width < min3dWidth
           const stageAreaRatio = stageRect ? (rect.width * rect.height) / Math.max(1, stageRect.width * stageRect.height) : 1
           const stageTooEmpty = stageRect
             ? stageAreaRatio < (isSceneRole ? 0.28 : 0.22) && !/thumb|small|mini|compact/i.test(`${img.className ?? ''} ${stageEl?.className ?? ''}`)
@@ -296,12 +294,31 @@ async function auditResponsiveHtml(browser: Browser, html: string, options: { re
           if (!hasStage) issues.push({ role, issue: '3D image is not inside a visual/card/hero stage wrapper', className: img.className?.toString() ?? '', width: Math.round(rect.width), height: Math.round(rect.height) })
           if (!has3dClass) issues.push({ role, issue: '3D image is missing aide-hero-3d/aide-3d-asset class', className: img.className?.toString() ?? '', width: Math.round(rect.width), height: Math.round(rect.height) })
           if (!hasSurface && !isSceneRole) issues.push({ role, issue: 'transparent 3D has no designed surface/CSS grounding/stage background', className: img.className?.toString() ?? '', width: Math.round(rect.width), height: Math.round(rect.height) })
-          if (isSceneRole && (imgStyle.objectFit !== 'cover' || (stageRect && (rect.width < stageRect.width * 0.92 || rect.height < stageRect.height * 0.92)))) {
-            issues.push({ role, issue: '3D scene image does not cover its visual stage', className: img.className?.toString() ?? '', width: Math.round(rect.width), height: Math.round(rect.height) })
+          if (isSceneRole && stageRect) {
+            const fit = imgStyle.objectFit
+            const coversStage = fit === 'cover' && rect.width >= stageRect.width * 0.92 && rect.height >= stageRect.height * 0.92
+            const integratedLayer = fit === 'contain' &&
+              rect.width >= Math.min(220, vw * 0.46) &&
+              rect.height >= Math.min(180, vh * 0.24) &&
+              (stageAreaRatio >= 0.18 || rect.width >= stageRect.width * 0.42 || rect.height >= stageRect.height * 0.45)
+            if (!coversStage && !integratedLayer) {
+              issues.push({ role, issue: '3D scene is neither a cover scene nor a substantial integrated scene layer', className: img.className?.toString() ?? '', width: Math.round(rect.width), height: Math.round(rect.height) })
+            }
           }
           if (!hasSemanticContext) issues.push({ role, issue: '3D image is not connected to nearby copy, KPI, CTA, progress, or reward content', className: img.className?.toString() ?? '', width: Math.round(rect.width), height: Math.round(rect.height) })
           if (imageTooSmall) issues.push({ role, issue: '3D image is too small and reads like a sticker', className: img.className?.toString() ?? '', width: Math.round(rect.width), height: Math.round(rect.height) })
           if (stageTooEmpty) issues.push({ role, issue: '3D stage has too much empty space around the asset', className: img.className?.toString() ?? '', width: Math.round(rect.width), height: Math.round(rect.height) })
+          // Check if a button/CTA significantly overlaps the 3D image
+          const coveringButton = Array.from(document.querySelectorAll<HTMLElement>('button, a, [class*="btn"], [class*="cta"]')).find(el => {
+            const br = el.getBoundingClientRect()
+            if (br.width < 60 || br.height < 28) return false
+            const overlapX = Math.max(0, Math.min(rect.right, br.right) - Math.max(rect.left, br.left))
+            const overlapY = Math.max(0, Math.min(rect.bottom, br.bottom) - Math.max(rect.top, br.top))
+            const overlapArea = overlapX * overlapY
+            const imgArea = rect.width * rect.height
+            return imgArea > 0 && overlapArea / imgArea > 0.25
+          })
+          if (coveringButton) issues.push({ role, issue: 'CTA button or interactive element covers more than 25% of the 3D image — separate them into distinct layout zones', className: img.className?.toString() ?? '', width: Math.round(rect.width), height: Math.round(rect.height) })
           return issues
         }).slice(0, 8)
         const thumbnailIssues = Array.from(document.querySelectorAll<HTMLImageElement>('img')).filter(img => {
@@ -353,7 +370,7 @@ async function auditResponsiveHtml(browser: Browser, html: string, options: { re
       }
       if (metrics.firstViewportContentCount < 8) issues.push(`${vp.name} ${vp.width}px: first viewport looks too sparse (${metrics.firstViewportContentCount} meaningful visible items)`)
       if (metrics.firstViewportTextChars < (vp.name === 'mobile' ? 160 : 240)) issues.push(`${vp.name} ${vp.width}px: first viewport has too little real content text (${metrics.firstViewportTextChars} chars); design variants need enough data to compare`)
-      if (metrics.firstViewportCards < (vp.name === 'mobile' ? 3 : 5)) issues.push(`${vp.name} ${vp.width}px: first viewport has too few content cards/items (${metrics.firstViewportCards}); add KPI, quick actions, list items, benefits, or history cards`)
+      if (metrics.firstViewportCards < (vp.name === 'mobile' ? 3 : 5)) issues.push(`${vp.name} ${vp.width}px: first viewport has too few content cards/items (${metrics.firstViewportCards}); add service-relevant comparison, recommendation, benefit, status, history, or action content`)
       if (metrics.firstViewportButtons < 1) issues.push(`${vp.name} ${vp.width}px: first viewport has no visible CTA/button`)
     } catch (err) {
       issues.push(`${vp.name} ${vp.width}px: responsive audit failed (${err instanceof Error ? err.message : String(err)})`)
@@ -387,13 +404,20 @@ export async function POST(req: NextRequest) {
       const resolvedLogoDataUrl = (!rawLogo || !rawLogo.startsWith('data:'))
         ? getDefaultAideLogoBase64()
         : rawLogo
-      const normalizedParams = { ...params, logoDataUrl: resolvedLogoDataUrl }
+      const isDraftRequest = params.qualityMode === 'draft'
+      const normalizedParams = {
+        ...params,
+        logoDataUrl: resolvedLogoDataUrl,
+        modelId: isDraftRequest ? 'gemini-3.1-pro-preview' : params.modelId,
+      }
       const apiKey = req.headers.get('x-gemini-key') ?? undefined
       const unsplashKey = req.headers.get('x-unsplash-key') ?? undefined
+      const isDraft = normalizedParams.qualityMode === 'draft'
       console.log('[generate] step1: params parsed, starting generateUI')
 
       const { html: rawHtml, variantDescription } = await generateUI({
         ...normalizedParams,
+        criticalReview: isDraft ? false : normalizedParams.criticalReview,
         onStep: (label: string) => emit('step', { label }),
       }, apiKey)
 
@@ -408,13 +432,14 @@ export async function POST(req: NextRequest) {
         ],
       })
 
-      emit('step', { label: '반응형 레이아웃 검수 중...' })
       let auditedRawHtml = rawHtml
       const auditOptions = { requireLogo: Boolean(normalizedParams.logoDataUrl) }
-      let responsiveIssues = await auditResponsiveHtml(browser, auditedRawHtml, auditOptions)
-      for (let repairAttempt = 1; repairAttempt <= 2 && responsiveIssues.length > 0; repairAttempt += 1) {
-        emit('step', { label: repairAttempt === 1 ? '반응형 레이아웃 수정 중...' : '반응형 레이아웃 재수정 중...' })
-        const repairMessage = `생성된 HTML이 실제 viewport 반응형 검사를 통과하지 못했습니다. 이번 수정은 ${repairAttempt}/2번째 반응형 repair입니다.
+      if (!isDraft) {
+        emit('step', { label: '반응형 레이아웃 검수 중...' })
+        let responsiveIssues = await auditResponsiveHtml(browser, auditedRawHtml, auditOptions)
+        for (let repairAttempt = 1; repairAttempt <= 2 && responsiveIssues.length > 0; repairAttempt += 1) {
+          emit('step', { label: repairAttempt === 1 ? '반응형 레이아웃 수정 중...' : '반응형 레이아웃 재수정 중...' })
+          const repairMessage = `생성된 HTML이 실제 viewport 반응형 검사를 통과하지 못했습니다. 이번 수정은 ${repairAttempt}/2번째 반응형 repair입니다.
 
 발견된 문제:
 ${responsiveIssues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
@@ -431,12 +456,15 @@ ${responsiveIssues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
 - 짧은 UI 라벨에는 white-space: nowrap, word-break: keep-all, overflow-wrap: normal, flex: 0 0 auto, min-width: max-content를 적용하세요.
 - CTA/button 내부는 justify-content:center, text-align:center, letter-spacing:0으로 두고, 글자 사이가 벌어지는 space-between/grid 배치를 쓰지 마세요.
 - 메타 row는 display:flex; align-items:center; gap: var(--spacing-*); flex-wrap: wrap으로 구성하고, 각 meta item은 inline-flex + white-space:nowrap으로 만드세요.
-- 3D placeholder(%%SHARED_HERO_3D_SCENE%%, %%SHARED_HERO_3D%%, %%HERO_SCENE_3D%%, %%MASCOT_3D%%, %%REWARD_OBJECT_3D%%, %%HERO_3D_IMAGE%%)는 단독 img로 빈 공간에 두지 마세요.
-- 3D는 반드시 .aide-visual-stage 또는 hero/card visual wrapper 안에 넣고, img에는 .aide-hero-3d 또는 .aide-3d-asset 클래스를 붙이세요.
-- 배경 포함 scene(%%SHARED_HERO_3D_SCENE%%/%%HERO_SCENE_3D%%)은 큰 hero image처럼 object-fit:cover로 stage를 채우고, CTA는 이미지 아래 action panel 또는 safe area에 두세요.
-- 투명 3D(%%SHARED_HERO_3D%%/MASCOT/REWARD)는 토큰 기반 surface, border-radius, overflow:hidden, CSS 기반 grounding(::after 또는 stage background), anchor alignment를 가진 stage 안에 배치하세요. 이미지 파일 자체에는 그림자를 추가하지 마세요.
+- 3D placeholder(%%SCENE_3D%%, %%HERO_3D%%)는 단독 img로 빈 공간에 두지 마세요.
+- %%HERO_3D%% 이미지는 모바일 기준 width: clamp(200px, 56%, 320px), height는 히어로 높이의 90~140%이어야 합니다. 160px 이하 작은 크기는 실패입니다.
+- Banner Character 패턴 필수: 히어로를 position:relative + overflow:hidden으로 만들고, 텍스트+CTA는 왼쪽 56%(z-index:2), 3D는 position:absolute; right:-6%; bottom:-10%; width:clamp(200px,56%,320px); height:130%로 배치하세요. width:100% 전체폭 CTA 버튼은 사용 금지입니다.
+- CTA 버튼이 %%HERO_3D%% 이미지를 25% 이상 덮으면 실패입니다.
+- 3D는 반드시 .aide-visual-stage 또는 hero/card visual wrapper 안에 넣고, img에는 .aide-hero-3d 클래스를 붙이세요.
+- %%SCENE_3D%%는 과한 wallpaper가 아니라 UI 캔버스에 통합되는 큰 3D scene layer입니다. Ambient Canvas, Split Workspace, Anchored Scene, Hero Cover 중 하나를 판단하고, cover는 정말 필요한 경우에만 사용하세요. contain/right-bottom anchor/grid split도 허용됩니다.
+- %%HERO_3D%%는 토큰 기반 surface, border-radius, overflow:hidden, CSS 기반 grounding(::after 또는 stage background), anchor alignment를 가진 stage 안에 배치하세요. 이미지 파일 자체에는 그림자가 없습니다.
 - 3D 주변 120~180px 안에 해당 3D의 의미를 설명하는 텍스트, KPI, CTA, 진행률, 보상 정보 중 하나 이상이 있어야 합니다.
-- 큰 hero/stage 안에서 3D가 작은 스티커처럼 보이면 실패입니다. 투명 3D는 width:clamp(190px, 58vw, 340px), scene 3D는 width/height:100%; object-fit:cover 수준으로 키우거나, stage 자체를 줄이세요.
+- 큰 hero/stage 안에서 3D가 작은 스티커처럼 보이면 실패입니다. 단, 무조건 같은 크기로 키우지 말고 HERO_3D/SCENE_3D 역할을 먼저 판단하세요. HERO_3D는 Banner Character/Product Object/Companion Accent/Scene Substitute 배율을 따르고, SCENE_3D는 Ambient Canvas/Split Workspace/Anchored Scene/Hero Cover 중 하나로 배치하세요.
 - 헤더 상단에는 명확한 앱 브랜드/로고가 있어야 합니다. 제공된 로고가 있으면 헤더/앱바 브랜드 위치에 <span class="aide-logo-slot" aria-label="brand logo"></span> 슬롯을 유지하세요. Aide가 마지막에 실제 로고 이미지로 치환합니다. 텍스트 브랜드명으로 대체하면 실패입니다.
 - KTDS는 디자인 시스템 이름일 뿐 제품 브랜드가 아닙니다. 헤더/로고/브랜드 영역의 "kt ds" 텍스트나 로고 이미지는 제거하세요. 제공된 로고가 있으면 로고 슬롯을, 로고가 없으면 브리프의 앱 이름 텍스트 브랜드를 사용하세요.
 - 브랜드명, 공간명, 사용자명, 식물명은 계층을 분리하세요. 예: 앱명 "초록이" / 공간 "거실" / 식물명 "몬스테라 문이".
@@ -444,21 +472,34 @@ ${responsiveIssues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
 - 반려식물/식물 케어 썸네일은 %%THUMB:indoor plant:...%%, %%THUMB:monstera plant:...%%, %%THUMB:houseplant care:...%%, %%THUMB:succulent plant:...%%처럼 식물 관련 키워드만 사용하세요. 어둡거나 무관한 랜덤 이미지 금지.
 - 첫 viewport에는 실제 서비스 콘텐츠와 CTA가 충분히 보여야 합니다.
 - A/B/C는 시안 선택용 결과물이므로 모든 시안의 첫 viewport에 비교 가능한 정보량이 있어야 합니다. 빈 히어로/포스터형 화면은 실패입니다.
-- 첫 viewport에는 최소 5개 콘텐츠 단위가 보여야 합니다: 브랜드/현재상태, 핵심 KPI, primary CTA, 퀵 액션, 목록/카드, 섹션 힌트 중 5개 이상.
-- 브리프의 핵심 기능어를 첫 화면에 반영하세요. 멤버십 앱이면 포인트, 적립/사용 내역, 쿠폰, 등급 리워드, 제휴 매장, QR 결제 중 4개 이상이 보이게 하세요.
-- 시안 B가 visual/hero 중심이어도 hero 높이는 첫 viewport의 38% 이하로 제한하고, 히어로 바로 아래에 KPI 2개 이상, 퀵 액션 3개 이상, 혜택/내역 카드 1개 이상을 배치하세요.
+- 모바일 첫 viewport에는 사용자가 서비스 목적, 현재 상태, 선택지, 다음 행동을 판단할 만큼 충분한 실제 콘텐츠가 보여야 합니다.
+- 각 시안은 현재보다 한 단계 더 풍부한 정보량을 목표로 하세요.
+- 첫 화면만 보고도 주요 판단 근거 4~6개를 확인할 수 있어야 합니다.
+- 시안 하나의 첫 화면에는 실제 데이터 포인트 10~16개가 보여야 합니다.
+- 데이터 포인트란 가격, 시간, 수량, 등급, 상태, 할인율, 적립 수, 쿠폰 수, 거리, 예상 결과, 비교 기준, 배지, 날짜 같은 판단 재료입니다.
+- 콘텐츠 단위의 종류와 순서는 서비스 목적에 맞게 선택하세요. 비교 서비스라면 비교표/추천/절약액, 루틴 서비스라면 상태/미션/진행률, 커머스라면 검색/카테고리/상품, 대시보드라면 KPI/필터/작업 큐를 우선 검토하세요.
+- 멤버십/통신 요금제 서비스라면 요금제 비교, 예상 절약액, 위약금/약정 상태, 추천 요금제, 멤버십 혜택, 전환 CTA를 서비스 맥락에 맞게 선택하세요.
+- 브리프의 핵심 기능어를 첫 화면에 반영하세요. 단, 모든 서비스에 같은 보조 블록과 같은 순서를 강제하지 마세요.
+- 시안 B가 visual/hero 중심이어도 빈 포스터가 되면 실패입니다. 전환에 필요한 계산 결과, 혜택, 추천, 신뢰 근거 중 해당 서비스에 맞는 정보를 자연스럽게 연결하세요.
+- Layout Rhythm Guard — 콘텐츠 종류는 자유롭게, 간격 리듬은 고정: section gap은 var(--aide-section-gap)을 사용하고, 모바일 주요 섹션 간 실제 간격은 14~20px 범위로 유지하세요.
+- card padding은 var(--aide-card-padding)을 사용하고, 모바일 주요 카드 내부 padding은 14~20px 범위로 유지하세요.
+- A/B/C 모두 첫 화면 하단에 다음 섹션의 제목 또는 카드 일부가 보여야 합니다.
+- A안 SCENE_3D는 modern glossy 3D scene이어야 합니다. no low-poly, no old game render, no generic 3D stock render.
 - 기존 디자인 시스템 토큰, 이미지 placeholder, 데이터 URL, 라우터 스크립트, 콘텐츠 의미는 유지하세요.`
-        try {
-          auditedRawHtml = await refineUI(auditedRawHtml, repairMessage, normalizedParams.brief, normalizedParams.designMd, apiKey, normalizedParams.logoDataUrl, normalizedParams.domain)
-          responsiveIssues = await auditResponsiveHtml(browser, auditedRawHtml, auditOptions)
-        } catch (err) {
-          console.warn('[generate] responsive repair skipped:', err instanceof Error ? err.message : String(err))
-          break
+          try {
+            auditedRawHtml = await refineUI(auditedRawHtml, repairMessage, normalizedParams.brief, normalizedParams.designMd, apiKey, normalizedParams.logoDataUrl, normalizedParams.domain)
+            responsiveIssues = await auditResponsiveHtml(browser, auditedRawHtml, auditOptions)
+          } catch (err) {
+            console.warn('[generate] responsive repair skipped:', err instanceof Error ? err.message : String(err))
+            break
+          }
         }
+      } else {
+        emit('step', { label: '빠른 초안 모드로 검수 단계를 줄이는 중...' })
       }
 
       emit('step', { label: '이미지 생성 중...' })
-      const has3dPlaceholder = /%%(?:SHARED_HERO_3D_SCENE|SHARED_HERO_3D|HERO_3D_IMAGE|HERO_SCENE_3D|MASCOT_3D|REWARD_OBJECT_3D)/.test(auditedRawHtml)
+      const has3dPlaceholder = /%%(?:SCENE_3D|HERO_3D|SHARED_HERO_3D_SCENE|SHARED_HERO_3D|HERO_SCENE_3D|MASCOT_3D|REWARD_OBJECT_3D|HERO_3D_IMAGE)/.test(auditedRawHtml)
       const heroPrompt = normalizedParams.sharedVisualMode === '3d'
         ? (normalizedParams.sharedVisualSubject || normalizedParams.heroSubject || normalizedParams.heroImagePrompt || normalizedParams.brief)
         : (normalizedParams.heroSubject || normalizedParams.heroImagePrompt || (has3dPlaceholder ? normalizedParams.brief : undefined))
@@ -469,11 +510,16 @@ ${responsiveIssues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
         unsplashKey,
         imageWarnings,
         paletteHint: extractDesignPaletteHint(normalizedParams.designMd),
+        sceneImageModel: normalizedParams.visualPolicy === 'scene-3d' ? 'gemini-3.1-flash-image' : undefined,
+        heroImageModel: normalizedParams.visualPolicy === 'creon-object-3d' ? 'gemini-2.5-flash-image' : undefined,
+        onImageEvent: (label: string) => emit('step', { label }),
       })
-      const finalResponsiveIssues = await auditResponsiveHtml(browser, finalHtml, auditOptions)
-      if (finalResponsiveIssues.length > 0) {
-        console.warn('[generate] final responsive audit issues:', finalResponsiveIssues)
-        imageWarnings.push(`최종 이미지 치환 후 반응형 검수 경고: ${finalResponsiveIssues.slice(0, 3).join(' / ')}`)
+      if (!isDraft) {
+        const finalResponsiveIssues = await auditResponsiveHtml(browser, finalHtml, auditOptions)
+        if (finalResponsiveIssues.length > 0) {
+          console.warn('[generate] final responsive audit issues:', finalResponsiveIssues)
+          imageWarnings.push(`최종 이미지 치환 후 반응형 검수 경고: ${finalResponsiveIssues.slice(0, 3).join(' / ')}`)
+        }
       }
       console.log('[generate] step2: html generated, length=', finalHtml.length)
 
@@ -486,19 +532,24 @@ ${responsiveIssues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
       const vpHeight = isWeb ? 1024 : 844
 
       console.log('[generate] step3: browser launched, setting viewport', vpWidth, vpHeight)
-      await page.setViewport({ width: vpWidth, height: vpHeight, deviceScaleFactor: 2 })
-      await page.setContent(finalHtml, { waitUntil: 'networkidle0', timeout: 45000 })
+      await page.setViewport({ width: vpWidth, height: vpHeight, deviceScaleFactor: isDraft ? 1 : 2 })
+      const baseTag = '<base href="http://localhost:3000">'
+      const htmlWithBase = finalHtml.includes('<base ') ? finalHtml : finalHtml.replace(/(<head[^>]*>)/i, `$1\n${baseTag}`)
+      await page.setContent(htmlWithBase, { waitUntil: isDraft ? 'domcontentloaded' : 'networkidle0', timeout: isDraft ? 20000 : 45000 })
       console.log('[generate] step4: content loaded, waiting for fonts')
-      await new Promise(r => setTimeout(r, 1500))
+      await new Promise(r => setTimeout(r, isDraft ? 300 : 1500))
       await page.evaluate(() => document.fonts.ready.then(() => null)).catch(() => null)
-      await waitForPageImages(page)
+      await Promise.race([
+        waitForPageImages(page),
+        new Promise(resolve => setTimeout(resolve, isDraft ? 2500 : 9000)),
+      ])
       console.log('[generate] step5: fonts ready, taking screenshot')
 
       const screenshot = await page.screenshot({
         type: 'png',
         encoding: 'base64',
-        fullPage: false,
-        optimizeForSpeed: false,
+        fullPage: true,
+        optimizeForSpeed: isDraft,
       })
 
       console.log('[generate] step6: screenshot done')

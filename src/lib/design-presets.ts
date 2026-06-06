@@ -29,8 +29,17 @@ export interface DesignPresetMeta {
   radiusTokens?: RadiusToken[]
 }
 
+interface WebpackRequireContext {
+  keys(): string[]
+  (key: string): string
+}
+
+interface WebpackRequire {
+  context(directory: string, useSubdirectories: boolean, regExp: RegExp): WebpackRequireContext
+}
+
 // Auto-import all .md files from design-systems directory via webpack require.context
-const mdContext = (require as any).context('./design-systems', false, /\.md$/)
+const mdContext = (require as unknown as WebpackRequire).context('./design-systems', false, /\.md$/)
 const MD_FILES: Record<string, string> = {}
 mdContext.keys().forEach((key: string) => {
   const id = key.replace('./', '').replace('.md', '')
@@ -53,6 +62,17 @@ function deriveLabel(md: string, id: string): string {
   const cleaned = rawName.replace(/-design-analysis$/i, '').replace(/-/g, ' ').trim()
   if (cleaned) return cleaned
   return id.charAt(0).toUpperCase() + id.slice(1)
+}
+
+function buildAideDefaultMd(sourceMd: string): string {
+  if (!sourceMd.trim()) return ''
+  return sourceMd
+    .replace(/^name:\s*["']?KTDS Design System["']?\s*$/m, 'name: Aide Design System')
+    .replace(/^description:\s*"KT DS 엔터프라이즈 UI 시스템/m, 'description: "Aide 기본 UI 시스템')
+    .replace(
+      /---\n/,
+      `---\n# Aide default preset: this virtual DESIGN.md reuses ktds.md tokens and component rules, but its design-system name is Aide. When no preset is selected, refer to the selected system as Aide, not KTDS or kt ds.\n`,
+    )
 }
 
 // Rich metadata for known presets — palette, fonts, traits, scale, etc.
@@ -122,35 +142,6 @@ const RICH_META: Record<string, Omit<DesignPresetMeta, 'md'>> = {
       { name: 'sm', value: '4px' },
     ],
   },
-  linear: {
-    label: 'Linear',
-    color: '#5e6ad2',
-    description: '다크 프로덕트 — 네어블랙 캔버스, 라벤더 블루 액센트',
-    palette: [
-      { name: 'Accent', hex: '#5e6ad2' },
-      { name: 'Canvas', hex: '#010102' },
-      { name: 'Surface', hex: '#0f1011' },
-      { name: 'Ink', hex: '#f7f8f8' },
-    ],
-    fonts: { headline: 'Linear Display', body: 'Linear Text' },
-    traits: ['dark canvas', 'hairline borders', 'negative tracking'],
-    typographyScale: [
-      { name: 'Display XL', size: '80px', weight: 600 },
-      { name: 'Display LG', size: '56px', weight: 600 },
-      { name: 'Display MD', size: '40px', weight: 600 },
-      { name: 'Headline', size: '28px', weight: 600 },
-      { name: 'Body LG', size: '18px', weight: 400 },
-      { name: 'Body', size: '16px', weight: 400 },
-      { name: 'Body SM', size: '14px', weight: 400 },
-    ],
-    radiusTokens: [
-      { name: 'xs', value: '4px' },
-      { name: 'sm', value: '6px' },
-      { name: 'md', value: '8px' },
-      { name: 'lg', value: '12px' },
-      { name: 'xl', value: '16px' },
-    ],
-  },
   notion: {
     label: 'Notion',
     color: '#5645d4',
@@ -207,33 +198,6 @@ const RICH_META: Record<string, Omit<DesignPresetMeta, 'md'>> = {
       { name: 'sm', value: '4px' },
     ],
   },
-  uber: {
-    label: 'Uber',
-    color: '#000000',
-    description: '모빌리티 플랫폼 — 흑백 듀엣, 기하학적 산스세리프, 필 버튼',
-    palette: [
-      { name: 'Ink', hex: '#000000' },
-      { name: 'Canvas', hex: '#ffffff' },
-      { name: 'Canvas Soft', hex: '#efefef' },
-      { name: 'Mute', hex: '#afafaf' },
-    ],
-    fonts: { headline: 'UberMove', body: 'UberMoveText' },
-    traits: ['monochrome', 'pill radius 999px', 'bold type', 'urban editorial'],
-    typographyScale: [
-      { name: 'Display XXL', size: '52px', weight: 700 },
-      { name: 'Display XL', size: '36px', weight: 700 },
-      { name: 'Display LG', size: '32px', weight: 700 },
-      { name: 'Display MD', size: '24px', weight: 700 },
-      { name: 'Body LG', size: '18px', weight: 500 },
-      { name: 'Body', size: '16px', weight: 400 },
-      { name: 'Caption', size: '13px', weight: 400 },
-    ],
-    radiusTokens: [
-      { name: 'pill', value: '999px' },
-      { name: 'md', value: '8px' },
-      { name: 'sm', value: '4px' },
-    ],
-  },
 }
 
 // ktds first, then alphabetical for the rest
@@ -247,17 +211,21 @@ const sortedIds = Object.keys(MD_FILES).sort((a, b) => {
   return a.localeCompare(b)
 })
 
+// Presets that exist as MD files but should not appear in the UI selector
+const HIDDEN_PRESETS = new Set(['aide'])
+
 // Build DESIGN_PRESETS: 'none' + all auto-discovered .md files (enriched with RICH_META)
 export const DESIGN_PRESETS: Record<string, DesignPresetMeta> = {
   none: {
     label: '기본',
-    md: MD_FILES.ktds ?? '',
+    md: buildAideDefaultMd(MD_FILES.ktds ?? ''),
     color: '#1a75ff',
-    description: '기본값으로 kt ds 디자인 시스템을 사용합니다',
+    description: 'kt ds 기반 규칙을 Aide 기본 디자인 시스템 명칭으로 사용합니다',
   },
 }
 
 for (const id of sortedIds) {
+  if (HIDDEN_PRESETS.has(id)) continue
   const md = MD_FILES[id]
   const rich = RICH_META[id]
   DESIGN_PRESETS[id] = {

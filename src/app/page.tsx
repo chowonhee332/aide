@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect, startTransition, type ReactNode } from 'react'
+import { useState, useCallback, useRef, useEffect, startTransition } from 'react'
 import {
-  ArrowUp, ArrowRight, Sparkles, MessageSquare, Layers, Sliders, FileText, Upload, X,
-  ChevronLeft, ChevronRight, Check, ChevronDown, Zap, Palette, MousePointer2, Share2,
+  ArrowUp, ArrowRight, FileText, Upload, X,
+  Check, ChevronDown, Zap, Palette, Share2,
   Clock, Trash2, ExternalLink, Link2, KeyRound,
-  RefreshCw, Download,
+  Download,
 } from 'lucide-react'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import Grainient from '@/components/Grainient'
@@ -82,461 +82,6 @@ type AsIsAnalysis = {
   primaryCtas: Array<{ text: string }>
   globalNavigation: Array<{ text: string }>
   redesignFocus: string[]
-}
-
-const HOW_IT_WORKS = [
-  {
-    step: '01', icon: <MessageSquare size={20} strokeWidth={1.5} />,
-    title: '화면을 묘사하세요',
-    desc: '만들고 싶은 UI를 자유롭게 설명합니다. 앱 이름, 목적, 타깃 사용자를 간단히 적어도 충분합니다.',
-  },
-  {
-    step: '02', icon: <Sparkles size={20} strokeWidth={1.5} />,
-    title: 'AI가 핵심을 파악합니다',
-    desc: 'AI가 레이아웃, 색상, 인터랙션에 관한 맞춤 질문을 던져 여러분의 의도를 정확히 이해합니다.',
-  },
-  {
-    step: '03', icon: <Layers size={20} strokeWidth={1.5} />,
-    title: '3가지 시안이 완성됩니다',
-    desc: '클래식·볼드·미니멀 스타일의 시안을 동시에 생성합니다. 마음에 드는 시안을 골라 바로 편집하세요.',
-  },
-]
-
-const LOGO_BRANDS = [
-  { name: 'Airbnb Design', color: '#FF5A5F', symbol: 'A' },
-  { name: 'Framer', color: '#0055FF', symbol: 'F' },
-  { name: 'Uber Design', color: '#09091A', symbol: 'U' },
-  { name: 'KT 디지털서비스', color: '#E60012', symbol: 'K' },
-  { name: 'Google', color: '#4285F4', symbol: 'G' },
-  { name: 'Figma', color: '#F24E1E', symbol: '◆' },
-  { name: 'Notion', color: '#191919', symbol: 'N' },
-  { name: 'Apple HIG', color: '#555555', symbol: '⌘' },
-]
-const LOGO_ITEMS = [...LOGO_BRANDS, ...LOGO_BRANDS]
-
-const TESTIMONIALS_A = [
-  { name: '김서연', role: 'Product Designer, Kakao', text: '3시간이면 충분했어요. 클라이언트 발표용 UI를 aide로 만들었는데 반응이 정말 좋았습니다.' },
-  { name: '이준호', role: 'Frontend Engineer, Toss', text: '디자이너 없이 혼자 MVP를 만들어야 했는데, aide 덕에 하루 만에 프로토타입이 완성됐습니다.' },
-  { name: 'Sarah K.', role: 'Startup Founder', text: '투자자 미팅 전날 밤에 쓴 도구인데 다음 날 "UI가 인상적이다"는 피드백을 받았어요.' },
-  { name: '박민준', role: 'UX Researcher, Naver', text: '사용자 테스트용 프로토타입을 빠르게 만들 때 정말 유용합니다. 시간이 10배 줄었어요.' },
-]
-const TESTIMONIALS_B = [
-  { name: '최유진', role: 'Brand Designer, Musinsa', text: 'Airbnb 스타일로 뽑아보니 놀라울 만큼 완성도가 높았습니다. 디자인 시스템 연동이 핵심이에요.' },
-  { name: '정대현', role: 'PM, Coupang', text: '스펙 문서만 있어도 UI 시안이 나오는 게 신기합니다. 개발팀과의 소통이 훨씬 쉬워졌어요.' },
-  { name: '윤소희', role: 'Design Lead, Line', text: '팀원들에게 바로 공유할 수 있는 클린한 아웃풋이 나옵니다. 리뷰 사이클이 절반으로 줄었어요.' },
-  { name: 'Jake L.', role: 'Growth PM, Viva Republica', text: '브리프 한 줄로 이 퀄리티가 나오다니 믿기지 않습니다. A/B 테스트 시안도 빠르게 만들 수 있어요.' },
-]
-
-const PRICING_PLANS = [
-  {
-    name: 'Starter',
-    price: '무료',
-    per: null,
-    desc: '개인 프로젝트와 탐색용',
-    features: ['월 5회 시안 생성', '기본 3가지 스타일', '템플릿 갤러리 이용', 'PNG 내보내기'],
-    cta: '무료로 시작',
-    featured: false,
-  },
-  {
-    name: 'Pro',
-    price: '₩29,000',
-    per: '/월',
-    desc: '개인 디자이너와 소규모 팀',
-    features: ['무제한 시안 생성', '4가지 디자인 시스템', 'DESIGN.md 업로드', '실시간 편집', '프로토타입 링크 공유', '우선 지원'],
-    cta: 'Pro 시작하기',
-    featured: true,
-  },
-  {
-    name: 'Team',
-    price: '₩79,000',
-    per: '/월',
-    desc: '팀과 함께 쓰는 플랜',
-    features: ['Pro의 모든 기능', '팀원 5명까지', '브랜드 킷 저장', 'Figma 연동 (출시 예정)', '전용 온보딩', 'SLA 보장'],
-    cta: 'Team 시작하기',
-    featured: false,
-  },
-]
-
-const FAQ = [
-  { q: '디자인 지식이 없어도 쓸 수 있나요?', a: '네, 완전히 자연어로 설명하면 됩니다. "음식 배달 앱 홈 화면, 따뜻하고 친근한 느낌"처럼 적어도 충분합니다.' },
-  { q: 'DESIGN.md가 무엇인가요?', a: '회사 디자인 가이드를 마크다운 형식으로 정리한 파일입니다. 업로드하면 AI가 해당 가이드에 맞춰 시안을 생성합니다.' },
-  { q: '생성된 UI는 어떻게 활용하나요?', a: '인터랙티브 시안으로 팀에 공유하거나, 프로토타입 링크를 클라이언트에게 보낼 수 있습니다. 실제 코드 추출은 로드맵에 포함되어 있습니다.' },
-  { q: '디자인 시스템은 어떻게 적용되나요?', a: 'Airbnb, Framer, KT 디지털서비스, Uber의 공식 가이드를 내재화했습니다. 프리셋을 선택하면 색상·타이포·컴포넌트가 해당 시스템에 맞게 생성됩니다.' },
-  { q: '무료 플랜에서 Pro로 업그레이드하면 이전 작업은 유지되나요?', a: '네, 계정의 모든 작업물은 그대로 유지됩니다. 업그레이드 즉시 무제한 생성이 가능합니다.' },
-]
-
-interface TemplateItem {
-  id: string
-  type: string
-  name: string
-  preset: DesignPreset
-  brief: string
-  bg: string
-  wide: boolean
-}
-
-const TEMPLATES: TemplateItem[] = [
-  {
-    id: 'logistics', type: 'Web Template', name: '물류 대시보드', preset: 'linear',
-    brief: '물류 배송 관리 SaaS 대시보드. 사이드바 네비게이션, 실시간 배송 지도, KPI 위젯 포함',
-    bg: 'linear-gradient(145deg, #9ecfac 0%, #e8c170 55%, #88c5d8 100%)', wide: true,
-  },
-  {
-    id: 'health', type: 'Mobile Template', name: '헬스 트래커', preset: 'notion',
-    brief: '헬스 & 웰니스 앱. 수면 품질 주간 그래프, 스트레스 지수 링 차트, 활동 통계 화면',
-    bg: 'linear-gradient(160deg, #f0e9e0 0%, #e5d9ce 100%)', wide: false,
-  },
-  {
-    id: 'streaming', type: 'Mobile Template', name: '엔터테인먼트 앱', preset: 'linear',
-    brief: '다크 테마 영화 스트리밍 앱. 검색 바, 장르 필터 칩, 추천 콘텐츠 2열 그리드',
-    bg: 'radial-gradient(ellipse at 40% 20%, #5a1a3a 0%, #0e0e0e 65%)', wide: false,
-  },
-  {
-    id: 'fashion', type: 'Mobile Template', name: '패션 쇼핑 앱', preset: 'ibm',
-    brief: '미니멀 패션 이커머스. 전신 상품 이미지, 브랜드명, 가격, 사이즈 선택 포함',
-    bg: '#efefef', wide: false,
-  },
-  {
-    id: 'pricing', type: 'Web Template', name: '요금제 비교', preset: 'ktds',
-    brief: '통신 서비스 요금제 비교 페이지. 3단 플랜 카드, 기능 비교 테이블, 추천 플랜 강조',
-    bg: 'linear-gradient(145deg, #dbeafe 0%, #bfdbfe 100%)', wide: true,
-  },
-  {
-    id: 'travel', type: 'Mobile Template', name: '여행 예약 앱', preset: 'notion',
-    brief: '여행 예약 앱 홈. 목적지 검색, 인기 여행지 카드 그리드, 카테고리 탭 포함',
-    bg: 'linear-gradient(145deg, #ffd6c4 0%, #ffb89a 100%)', wide: false,
-  },
-]
-
-function TemplateMockup({ id, wide }: { id: string; wide: boolean }) {
-  const [w, h, r] = wide ? [360, 218, 10] : [175, 318, 20]
-  const shell = (children: ReactNode, bg = '#ffffff') => (
-    <div style={{
-      width: w, height: h, borderRadius: r, backgroundColor: bg,
-      boxShadow: '0 20px 60px rgba(0,0,0,0.35)', overflow: 'hidden',
-      flexShrink: 0, display: 'flex', flexDirection: 'column',
-    }}>
-      {children}
-    </div>
-  )
-
-  if (id === 'logistics') return shell(
-    <>
-      <div style={{ height: 24, backgroundColor: '#e8e8e8', display: 'flex', alignItems: 'center', padding: '0 8px', gap: 4, flexShrink: 0 }}>
-        {['#ff5f57', '#ffbd2e', '#28c940'].map(c => (
-          <div key={c} style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: c }} />
-        ))}
-        <div style={{ flex: 1, height: 12, backgroundColor: '#d0d0d0', borderRadius: 3, marginLeft: 6 }} />
-      </div>
-      <div style={{ display: 'flex', flex: 1 }}>
-        <div style={{ width: 65, backgroundColor: '#1c2840', padding: '8px 6px', display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <div style={{ height: 14, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, marginBottom: 6 }} />
-          {[0.35, 0.1, 0.1, 0.1, 0.1].map((o, i) => (
-            <div key={i} style={{ height: 11, backgroundColor: `rgba(255,255,255,${o})`, borderRadius: 3 }} />
-          ))}
-        </div>
-        <div style={{ flex: 1, backgroundColor: '#f4f6f9', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ width: 90, height: 9, backgroundColor: '#333', borderRadius: 2 }} />
-            <div style={{ display: 'flex', gap: 3 }}>
-              <div style={{ width: 28, height: 14, backgroundColor: '#4CAF50', borderRadius: 4 }} />
-              <div style={{ width: 28, height: 14, backgroundColor: '#ddd', borderRadius: 4 }} />
-            </div>
-          </div>
-          <div style={{ flex: 1, backgroundColor: '#e8d8b4', borderRadius: 6, position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(0,0,0,0.08) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.08) 1px,transparent 1px)', backgroundSize: '14px 14px' }} />
-            <div style={{ position: 'absolute', top: '35%', left: '40%', width: 8, height: 8, borderRadius: '50%', backgroundColor: '#ff5722', boxShadow: '0 0 6px #ff5722' }} />
-            <div style={{ position: 'absolute', top: '60%', left: '65%', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#2196f3' }} />
-          </div>
-          <div style={{ display: 'flex', gap: 5 }}>
-            {[['24.5', '#4CAF50'], ['9.2', '#2196f3'], ['+4.2%', '#9c27b0']].map(([v, c]) => (
-              <div key={v} style={{ flex: 1, backgroundColor: '#fff', borderRadius: 5, padding: '5px 6px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                <div style={{ height: 7, backgroundColor: '#eee', borderRadius: 2, marginBottom: 4 }} />
-                <div style={{ fontSize: 11, fontWeight: 700, color: c as string, lineHeight: 1 }}>{v}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
-  )
-
-  if (id === 'health') return shell(
-    <div style={{ padding: '14px 12px' }}>
-      <div style={{ fontSize: 7, color: '#bbb', marginBottom: 12 }}>9:41</div>
-      <div style={{ fontSize: 7, color: '#888', fontWeight: 700, letterSpacing: '0.5px', marginBottom: 2 }}>SLEEP QUALITY</div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
-        <div style={{ fontSize: 6, color: '#aaa', border: '1px solid #ddd', borderRadius: 4, padding: '1px 5px' }}>Weekly</div>
-      </div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: '#111', lineHeight: 1 }}>7h 42m</div>
-      <div style={{ fontSize: 7, color: '#888', marginBottom: 8 }}>Average</div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 36, marginBottom: 4 }}>
-        {[55, 70, 80, 60, 95, 65, 78].map((hh, i) => (
-          <div key={i} style={{ flex: 1, height: `${hh}%`, backgroundColor: i === 4 ? '#111' : '#e0e0e0', borderRadius: '2px 2px 0 0' }} />
-        ))}
-      </div>
-      <div style={{ display: 'flex', marginBottom: 14 }}>
-        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-          <div key={i} style={{ flex: 1, fontSize: 6, color: '#ccc', textAlign: 'center' }}>{d}</div>
-        ))}
-      </div>
-      <div style={{ height: 1, backgroundColor: '#f0f0f0', marginBottom: 14 }} />
-      <div style={{ fontSize: 7, color: '#888', fontWeight: 700, letterSpacing: '0.5px', marginBottom: 4 }}>STRESS</div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: '#111', marginBottom: 12 }}>Low</div>
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <div style={{ width: 55, height: 55, borderRadius: '50%', background: 'conic-gradient(#111 0deg 88deg, #f0f0f0 88deg 360deg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: 38, height: 38, borderRadius: '50%', backgroundColor: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: 9, fontWeight: 700, color: '#111' }}>24%</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-
-  if (id === 'streaming') return shell(
-    <div style={{ padding: '14px 12px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: '#e91e8c' }} />
-          <span style={{ fontSize: 8, fontWeight: 700, color: '#fff' }}>CineSwipe</span>
-        </div>
-        <div style={{ width: 10, height: 10, border: '1px solid rgba(255,255,255,0.3)', borderRadius: '50%' }} />
-      </div>
-      <div style={{ height: 22, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6, display: 'flex', alignItems: 'center', padding: '0 8px', gap: 5, marginBottom: 10 }}>
-        <div style={{ width: 7, height: 7, border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50%' }} />
-        <div style={{ height: 5, flex: 1, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 2 }} />
-      </div>
-      <div style={{ display: 'flex', gap: 5, marginBottom: 12 }}>
-        <div style={{ fontSize: 6, color: '#111', backgroundColor: '#f472b6', borderRadius: 12, padding: '2px 7px', fontWeight: 700 }}>All</div>
-        {['Cyberpunk', 'Neo-Noir'].map(l => (
-          <div key={l} style={{ fontSize: 6, color: 'rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 12, padding: '2px 7px' }}>{l}</div>
-        ))}
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-        <div style={{ fontSize: 8, fontWeight: 700, color: '#fff' }}>Late Night Thrills</div>
-        <div style={{ fontSize: 6, color: 'rgba(255,255,255,0.35)' }}>See All</div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
-        {['#1a1a2e', '#0d1b2a', '#1a0a0a', '#0a1428'].map((bg, i) => (
-          <div key={i} style={{ height: 55, borderRadius: 6, backgroundColor: bg, position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(transparent, rgba(0,0,0,0.6))' }} />
-            <div style={{ position: 'absolute', bottom: 4, left: 5 }}>
-              <div style={{ height: 5, backgroundColor: 'rgba(255,255,255,0.8)', borderRadius: 1, width: 28, marginBottom: 2 }} />
-              <div style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 1, width: 18 }} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>,
-    '#0f0f0f'
-  )
-
-  if (id === 'fashion') return shell(
-    <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {[0, 1, 2].map(i => <div key={i} style={{ width: 14, height: 1, backgroundColor: '#000' }} />)}
-        </div>
-        <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '2px', color: '#000' }}>LUMIER</div>
-        <div style={{ width: 12, height: 12, border: '1px solid #000', borderRadius: '50%' }} />
-      </div>
-      <div style={{ flex: 1, backgroundColor: '#d8d8d8', borderRadius: 8, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 50, height: '78%', background: 'linear-gradient(180deg, #888 0%, #555 100%)', borderRadius: '6px 6px 0 0' }} />
-      </div>
-      <div>
-        <div style={{ height: 7, backgroundColor: '#111', borderRadius: 2, width: '60%', marginBottom: 5 }} />
-        <div style={{ height: 6, backgroundColor: '#bbb', borderRadius: 2, width: '40%', marginBottom: 8 }} />
-        <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
-          {['XS', 'S', 'M', 'L'].map(s => (
-            <div key={s} style={{ width: 20, height: 18, border: `1px solid ${s === 'M' ? '#000' : '#ddd'}`, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: 6, fontWeight: s === 'M' ? 700 : 400, color: s === 'M' ? '#000' : '#bbb' }}>{s}</span>
-            </div>
-          ))}
-        </div>
-        <div style={{ height: 22, backgroundColor: '#000', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontSize: 7, color: '#fff', fontWeight: 600, letterSpacing: '1px' }}>ADD TO BAG</span>
-        </div>
-      </div>
-    </div>
-  )
-
-  if (id === 'pricing') return shell(
-    <>
-      <div style={{ height: 24, backgroundColor: '#e0eaff', display: 'flex', alignItems: 'center', padding: '0 8px', gap: 4, flexShrink: 0 }}>
-        {['#ff5f57', '#ffbd2e', '#28c940'].map(c => (
-          <div key={c} style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: c }} />
-        ))}
-        <div style={{ flex: 1, height: 12, backgroundColor: '#c0d4ff', borderRadius: 3, marginLeft: 6 }} />
-      </div>
-      <div style={{ flex: 1, padding: '10px 10px 12px', backgroundColor: '#f0f5ff', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ height: 10, backgroundColor: '#1a75ff', borderRadius: 2, width: '50%', margin: '0 auto 16px' }} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, alignItems: 'start' }}>
-          {[false, true, false].map((featured, i) => (
-            <div key={i} style={{
-              backgroundColor: featured ? '#1a75ff' : '#fff', borderRadius: 8, padding: '8px 6px',
-              boxShadow: featured ? '0 4px 14px rgba(26,117,255,0.5)' : '0 1px 4px rgba(0,0,0,0.08)',
-              transform: featured ? 'scale(1.04)' : undefined,
-            }}>
-              {featured && <div style={{ fontSize: 5, color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginBottom: 4 }}>추천</div>}
-              <div style={{ height: 6, backgroundColor: featured ? 'rgba(255,255,255,0.35)' : '#eee', borderRadius: 2, marginBottom: 5 }} />
-              <div style={{ height: 10, backgroundColor: featured ? '#fff' : '#222', borderRadius: 2, width: '65%', marginBottom: 8 }} />
-              {[0, 1, 2, 3].map(j => (
-                <div key={j} style={{ height: 5, backgroundColor: featured ? 'rgba(255,255,255,0.2)' : '#eee', borderRadius: 1, marginBottom: 3 }} />
-              ))}
-              <div style={{ height: 14, backgroundColor: featured ? 'rgba(255,255,255,0.9)' : '#1a75ff', borderRadius: 3, marginTop: 6 }} />
-            </div>
-          ))}
-        </div>
-      </div>
-    </>,
-    '#f0f5ff'
-  )
-
-  if (id === 'travel') return shell(
-    <div style={{ padding: '14px 12px' }}>
-      <div style={{ fontSize: 7, color: '#bbb', marginBottom: 14 }}>9:41</div>
-      <div style={{ height: 24, backgroundColor: '#f7f7f7', borderRadius: 8, display: 'flex', alignItems: 'center', padding: '0 8px', gap: 5, marginBottom: 12 }}>
-        <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#ff385c' }} />
-        <div style={{ height: 6, flex: 1, backgroundColor: '#e8e8e8', borderRadius: 2 }} />
-      </div>
-      <div style={{ display: 'flex', gap: 5, marginBottom: 14 }}>
-        {['숙소', '투어', '항공'].map((l, i) => (
-          <div key={l} style={{ fontSize: 7, color: i === 0 ? '#fff' : '#888', backgroundColor: i === 0 ? '#ff385c' : '#f5f5f5', borderRadius: 12, padding: '3px 8px' }}>{l}</div>
-        ))}
-      </div>
-      <div style={{ fontSize: 8, fontWeight: 700, color: '#222', marginBottom: 8 }}>인기 여행지</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-        {[['#c8a882', '도쿄'], ['#82a8c8', '파리'], ['#82c8a8', '발리'], ['#c882a8', '뉴욕']].map(([bg, name]) => (
-          <div key={name} style={{ height: 55, borderRadius: 8, backgroundColor: bg, position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(transparent, rgba(0,0,0,0.45))' }} />
-            <div style={{ position: 'absolute', bottom: 4, left: 5 }}>
-              <div style={{ height: 5, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 1, width: 20 }} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-
-  return null
-}
-
-function StepVisual({ step }: { step: string }) {
-  if (step === '01') return (
-    <div style={{
-      marginTop: '32px', borderRadius: '20px', backgroundColor: '#fff',
-      border: `1px solid ${F.primary}15`, padding: '20px',
-      boxShadow: `0 8px 32px rgba(82,39,255,0.08)`,
-    }}>
-      <div style={{
-        borderRadius: '12px', padding: '14px 16px',
-        border: `1px solid ${F.hairlineSoft}`, backgroundColor: F.surface1,
-        marginBottom: '14px',
-      }}>
-        <p style={{ fontSize: '13px', lineHeight: 1.55, color: F.inkMuted, margin: 0, letterSpacing: '-0.13px' }}>
-          음식 배달 앱 홈 화면. 따뜻하고 친근한 느낌으로<br />추천 메뉴와 가게 카드 포함
-        </p>
-      </div>
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <div style={{ flex: 1, height: '38px', borderRadius: '12px', backgroundColor: F.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 16px ${F.primary}40` }}>
-          <span style={{ color: '#fff', fontSize: '12px', fontWeight: 700, letterSpacing: '-0.12px' }}>생성하기 →</span>
-        </div>
-        <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: F.surface1, border: `1px solid ${F.hairlineSoft}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px' }}>
-          📎
-        </div>
-      </div>
-    </div>
-  )
-
-  if (step === '02') return (
-    <div style={{
-      marginTop: '32px', borderRadius: '20px', backgroundColor: '#fff',
-      border: `1px solid ${F.hairlineSoft}`, padding: '20px',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.04)',
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <span style={{ fontSize: '11px', fontWeight: 700, color: F.inkMuted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>분석 중</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <div style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: F.primary }} />
-          <span style={{ fontSize: '11px', color: F.primary, fontWeight: 600 }}>98%</span>
-        </div>
-      </div>
-      {[
-        { label: 'Color Tokens', pct: 100 },
-        { label: 'Typography', pct: 85 },
-        { label: 'Components', pct: 72 },
-      ].map(({ label, pct }) => (
-        <div key={label} style={{ marginBottom: '12px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <span style={{ fontSize: '12px', color: 'rgba(0,0,0,0.5)', fontWeight: 500, letterSpacing: '-0.12px' }}>{label}</span>
-            <span style={{ fontSize: '11px', color: F.primary, fontWeight: 600, opacity: 0.7 }}>{pct}%</span>
-          </div>
-          <div style={{ height: '4px', backgroundColor: F.surface2, borderRadius: '2px' }}>
-            <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg, ${F.primary}70, ${F.primary})`, borderRadius: '2px' }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-
-  if (step === '03') return (
-    <div style={{ marginTop: '32px', display: 'flex', gap: '10px' }}>
-      {[
-        { label: 'Classic', bg: F.surface1, bar: '#1a1a1a', btnBg: '#1a1a1a', dark: false },
-        { label: 'Bold', bg: '#0f0c1e', bar: F.primary, btnBg: F.primary, dark: true },
-        { label: 'Minimal', bg: '#fff', bar: F.primary, btnBg: `${F.primary}18`, dark: false },
-      ].map(({ label, bg, bar, btnBg, dark }) => (
-        <div key={label} style={{
-          flex: 1, borderRadius: '16px', backgroundColor: bg,
-          border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : F.hairlineSoft}`,
-          padding: '16px 12px',
-          boxShadow: dark ? '0 12px 32px rgba(0,0,0,0.28)' : '0 4px 16px rgba(0,0,0,0.04)',
-          display: 'flex', flexDirection: 'column', gap: '6px',
-        }}>
-          <div style={{ height: '6px', borderRadius: '3px', backgroundColor: bar, width: '65%', opacity: 0.95 }} />
-          <div style={{ height: '3px', borderRadius: '2px', backgroundColor: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)', width: '90%' }} />
-          <div style={{ height: '3px', borderRadius: '2px', backgroundColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', width: '55%' }} />
-          <div style={{ marginTop: '6px', height: '24px', borderRadius: '8px', backgroundColor: btnBg, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: dark ? `0 4px 12px ${F.primary}50` : 'none' }}>
-            <span style={{ fontSize: '9px', fontWeight: 700, color: label === 'Minimal' ? F.primary : '#fff', opacity: 0.9, letterSpacing: '0.04em' }}>CTA</span>
-          </div>
-          <span style={{ fontSize: '9px', fontWeight: 600, color: dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)', textAlign: 'center', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
-        </div>
-      ))}
-    </div>
-  )
-
-  return null
-}
-
-function FAQItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div
-      style={{
-        borderBottom: `1px solid ${F.hairlineSoft}`,
-        padding: '20px 0',
-        cursor: 'pointer',
-      }}
-      onClick={() => setOpen(v => !v)}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-        <span style={{ color: F.ink, fontSize: '16px', fontWeight: 500, letterSpacing: '-0.4px', flex: 1 }}>{q}</span>
-        <ChevronDown
-          size={16}
-          style={{
-            color: F.inkMuted, flexShrink: 0,
-            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 0.2s',
-          }}
-        />
-      </div>
-      {open && (
-        <p style={{ color: F.inkMuted, fontSize: '15px', lineHeight: 1.6, marginTop: '12px', letterSpacing: '-0.15px' }}>
-          {a}
-        </p>
-      )}
-    </div>
-  )
 }
 
 function hexToHsl(hex: string): [number, number, number] {
@@ -699,7 +244,12 @@ export default function Home() {
 
   const [historyModalOpen, setHistoryModalOpen] = useState(false)
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([])
-  const [historyModalTab, setHistoryModalTab] = useState<'variant' | 'design'>('variant')
+  const [historyModalTab, setHistoryModalTab] = useState<'board' | 'variant' | 'design'>('board')
+  const historyMatchesTab = useCallback((item: HistoryItem, tab: 'board' | 'variant' | 'design') => {
+    if (tab === 'board') return item.itemType === 'board'
+    if (tab === 'variant') return item.itemType === 'variant'
+    return !item.itemType || item.itemType === 'design'
+  }, [])
 
   useEffect(() => {
     loadHistory().then(items => startTransition(() => setHistoryItems(items)))
@@ -724,7 +274,6 @@ export default function Home() {
   const [appliedUrlScreenshot, setAppliedUrlScreenshot] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const refImageInputRef = useRef<HTMLInputElement>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
 
   const [refPanelOpen, setRefPanelOpen] = useState(false)
   const [sourceTab, setSourceTab] = useState<'asis' | 'wireframe' | 'reference' | 'brand' | 'planning'>('asis')
@@ -776,10 +325,6 @@ export default function Home() {
   const [genMdScreenshot, setGenMdScreenshot] = useState<string | null>(null)
   const [genMdCopied, setGenMdCopied] = useState(false)
   const [genMdCaptureStatus, setGenMdCaptureStatus] = useState<'full' | 'partial' | 'blocked' | null>(null)
-
-  const scroll = (dir: 'left' | 'right') => {
-    scrollRef.current?.scrollBy({ left: dir === 'right' ? 380 : -380, behavior: 'smooth' })
-  }
 
   const handleGenMdAnalyze = async () => {
     if (!genMdUrl.trim() || genMdAnalyzing) return
@@ -2584,7 +2129,9 @@ export default function Home() {
           </div>
           <div style={{ height: 'calc(100vh - clamp(380px, 46vh, 500px))', minHeight: '420px', position: 'relative' }}>
             <CircularGallery
-              items={historyItems.filter(i => i.thumbnail).map(i => ({ id: i.id, image: i.thumbnail, text: i.brief, platform: i.platform ?? 'web' }))}
+              items={(historyItems.some(i => i.itemType === 'board') ? historyItems.filter(i => i.itemType === 'board') : historyItems)
+                .filter(i => i.thumbnail)
+                .map(i => ({ id: i.id, image: i.thumbnail, text: i.brief, platform: i.platform ?? 'web' }))}
               bend={4}
               textColor="#111111"
               borderRadius={0.025}
@@ -2728,12 +2275,12 @@ export default function Home() {
                   <span style={{ color: F.ink, fontSize: '15px', fontWeight: 600, letterSpacing: '-0.3px' }}>히스토리</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {historyItems.filter(h => historyModalTab === 'variant' ? h.itemType === 'variant' : !h.itemType || h.itemType === 'design').length > 0 && (
+                  {historyItems.filter(h => historyMatchesTab(h, historyModalTab)).length > 0 && (
                     <button
                       onClick={() => {
-                        const toDelete = historyItems.filter(h => historyModalTab === 'variant' ? h.itemType === 'variant' : !h.itemType || h.itemType === 'design')
+                        const toDelete = historyItems.filter(h => historyMatchesTab(h, historyModalTab))
                         Promise.all(toDelete.map(h => deleteHistoryItem(h.id))).then(() => {
-                          setHistoryItems(prev => prev.filter(h => historyModalTab === 'variant' ? h.itemType !== 'variant' : (h.itemType === 'variant')))
+                          setHistoryItems(prev => prev.filter(h => !historyMatchesTab(h, historyModalTab)))
                         })
                       }}
                       style={{
@@ -2761,9 +2308,9 @@ export default function Home() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '4px' }}>
-                {(['variant', 'design'] as const).map(tab => {
-                  const label = tab === 'variant' ? '시안' : '디자인'
-                  const count = historyItems.filter(h => tab === 'variant' ? h.itemType === 'variant' : !h.itemType || h.itemType === 'design').length
+                {(['board', 'variant', 'design'] as const).map(tab => {
+                  const label = tab === 'board' ? '대지' : tab === 'variant' ? '시안' : '디자인'
+                  const count = historyItems.filter(h => historyMatchesTab(h, tab)).length
                   const isActive = historyModalTab === tab
                   return (
                     <button
@@ -2796,10 +2343,12 @@ export default function Home() {
             </div>
             <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
               {(() => {
-                const filteredItems = historyItems.filter(h =>
-                  historyModalTab === 'variant' ? h.itemType === 'variant' : !h.itemType || h.itemType === 'design'
-                )
-                const emptyLabel = historyModalTab === 'variant' ? '아직 생성한 시안이 없습니다' : '아직 완성한 디자인이 없습니다'
+                const filteredItems = historyItems.filter(h => historyMatchesTab(h, historyModalTab))
+                const emptyLabel = historyModalTab === 'board'
+                  ? '아직 저장된 대지가 없습니다'
+                  : historyModalTab === 'variant'
+                    ? '아직 생성한 시안이 없습니다'
+                    : '아직 완성한 디자인이 없습니다'
                 return filteredItems.length === 0 ? (
                 <div style={{
                   padding: '64px 24px', textAlign: 'center',
@@ -2838,6 +2387,31 @@ export default function Home() {
                         } as React.CSSProperties}>
                           {item.brief}
                         </p>
+                        {item.itemType === 'board' && (
+                          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                            {[
+                              item.board?.designSystemName ? item.board.designSystemName : 'Design system',
+                              `${item.board?.layoutBlueprints?.length ?? 0} skeleton`,
+                              `${item.board?.mainVariants?.filter(Boolean).length ?? 0} 시안`,
+                              item.board?.prototypeHtml ? 'Prototype' : 'No prototype',
+                            ].map(label => (
+                              <span
+                                key={label}
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: 600,
+                                  color: label === 'No prototype' ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.72)',
+                                  backgroundColor: 'rgba(0,0,0,0.045)',
+                                  borderRadius: '100px',
+                                  padding: '2px 7px',
+                                  letterSpacing: '-0.1px',
+                                }}
+                              >
+                                {label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             {item.preset && item.preset in DESIGN_PRESETS && (
