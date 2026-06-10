@@ -4,16 +4,37 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Sparkles, Upload, Download, RefreshCw, ArrowLeft, Check,
   SlidersHorizontal, X, Moon, Sun, Pencil, Send, ChevronDown,
-  CornerUpLeft, CornerUpRight, Image as ImageIcon, Shapes,
+  CornerUpLeft, CornerUpRight, Image as ImageIcon, Shapes, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import DotField from '@/components/DotField'
-import type { Question, QuestionnaireResponse, TweakSpec, TweakVariable, AppDomain, LayoutBlueprint, LayoutBlueprintSection } from '@/lib/gemini'
+import type { Question, QuestionnaireResponse, TweakSpec, TweakEvent, TweakVariable, AppDomain, LayoutBlueprint, LayoutBlueprintSection } from '@/lib/gemini'
 import { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY, DOMAIN_HOME_EMPHASIS_OPTIONS } from '@/lib/domain-constants'
 import { getVariantStyles, getVariantInfo } from '@/lib/variant-refs'
 import { buildDesignIntelligencePlan } from '@/lib/design-intelligence'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import { saveHistoryItem, updateHistoryItem, compressThumbnail, loadHistory, deleteHistoryItem, type HistoryItem } from '@/lib/history'
+
+async function fetchAutoReferenceImage(keyword: string): Promise<string | undefined> {
+  try {
+    const res = await fetch(`/api/reference-search?q=${encodeURIComponent(keyword)}&source=all`)
+    if (!res.ok) return undefined
+    const data = await res.json()
+    if (!data.images?.length) return undefined
+    const preferred = data.images.find((img: { source: string }) => img.source === 'dribbble') ?? data.images[0]
+    const imgRes = await fetch(preferred.url)
+    if (!imgRes.ok) return undefined
+    const blob = await imgRes.blob()
+    return new Promise<string | undefined>(resolve => {
+      const reader = new FileReader()
+      reader.onload = ev => resolve((ev.target?.result as string).split(',')[1] ?? undefined)
+      reader.onerror = () => resolve(undefined)
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return undefined
+  }
+}
 
 // ─── KTDS 디자인 토큰 ────────────────────────────────────────────────────────
 const F = {
@@ -73,6 +94,75 @@ interface ElementStyles {
   borderWidth: string; borderRadius: string; backgroundColor: string; backgroundImage: string
 }
 
+function patchHeroToScene(html: string, base64: string, mimeType: string): string {
+  const dataUrl = `data:${mimeType};base64,${base64}`
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(html, 'text/html')
+
+  // 1) img.aide-hero-3d 찾기
+  const heroImg = doc.querySelector<HTMLImageElement>('img.aide-hero-3d')
+    ?? doc.querySelector<HTMLImageElement>('[data-aide-required-visual="creon-object-3d"] img')
+  if (!heroImg) return html
+
+  // 2) .aide-visual-stage (이미지 래퍼) 찾기
+  const stageClasses = ['aide-visual-stage', 'mascot-stage', 'hero-visual', 'scene-visual', 'reward-stage']
+  let stageEl: HTMLElement | null = heroImg.parentElement
+  while (stageEl && !stageClasses.some(c => stageEl!.classList.contains(c))) {
+    stageEl = stageEl.parentElement
+  }
+
+  // 3) 히어로 카드 = stage의 부모 (텍스트+이미지+CTA를 모두 품는 컨테이너)
+  const heroCard: HTMLElement | null = stageEl?.parentElement ?? heroImg.parentElement?.parentElement ?? null
+  if (!heroCard) return html
+
+  // 4) 히어로 카드를 scene 컨테이너로 변환
+  heroCard.setAttribute('data-aide-required-visual', 'scene-3d-card-cover')
+  heroCard.style.position = 'relative'
+  heroCard.style.overflow = 'hidden'
+  if (!heroCard.style.minHeight) heroCard.style.minHeight = '320px'
+
+  // 5) stage 자리에 씬 이미지 삽입 (absolute full-cover)
+  const sceneImg = doc.createElement('img')
+  sceneImg.className = 'aide-hero-3d aide-hero-scene-img'
+  sceneImg.src = dataUrl
+  sceneImg.alt = ''
+  sceneImg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;display:block;z-index:0;'
+  if (stageEl) {
+    heroCard.replaceChild(sceneImg, stageEl)
+  } else {
+    heroCard.insertBefore(sceneImg, heroCard.firstChild)
+  }
+
+  // 6) 그라데이션 오버레이
+  const overlay = doc.createElement('div')
+  overlay.className = 'aide-scene-overlay'
+  overlay.setAttribute('aria-hidden', 'true')
+  overlay.style.cssText = 'position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.75) 0%,rgba(0,0,0,0.4) 50%,rgba(0,0,0,0.1) 100%);pointer-events:none;z-index:1;'
+  sceneImg.insertAdjacentElement('afterend', overlay)
+
+  // 7) 나머지 자식(텍스트, CTA)을 씬 위로 올리고 white 계열 색상 적용
+  Array.from(heroCard.children).forEach(child => {
+    const el = child as HTMLElement
+    if (el === sceneImg || el === overlay) return
+    el.style.position = 'relative'
+    el.style.zIndex = '2'
+    // 텍스트가 어두운 씬 위에서 보이도록 색상 조정
+    const isBtn = el.tagName === 'BUTTON' || el.querySelector('button')
+    if (!isBtn) {
+      const computedColor = el.style.color
+      if (!computedColor || computedColor === 'inherit' || computedColor === 'initial') {
+        el.style.color = '#ffffff'
+      }
+    }
+    // 내부 텍스트 요소들도 white 적용
+    el.querySelectorAll<HTMLElement>('p, span, h1, h2, h3, h4, small, label').forEach(t => {
+      if (!t.style.color || t.style.color === 'inherit') t.style.color = '#ffffff'
+    })
+  })
+
+  return '<!DOCTYPE html>' + doc.documentElement.outerHTML
+}
+
 function platformLabel(platform?: 'mobile' | 'web') {
   return platform === 'web' ? '웹 서비스' : '모바일 앱'
 }
@@ -84,7 +174,11 @@ function platformFromIntent(value?: string): 'mobile' | 'web' | null {
   return null
 }
 
-async function readGenerateStream(response: Response, onStep?: (label: string) => void): Promise<GenerateResult> {
+async function readGenerateStream(
+  response: Response,
+  onStep?: (label: string) => void,
+  onHtmlChunk?: (partialHtml: string) => void,
+): Promise<GenerateResult> {
   if (!response.ok) {
     const text = await response.text().catch(() => '')
     throw new Error(text || `생성 요청에 실패했습니다. (${response.status})`)
@@ -118,6 +212,10 @@ async function readGenerateStream(response: Response, onStep?: (label: string) =
       if (typeof payload.label === 'string') onStep?.(payload.label)
       return
     }
+    if (eventName === 'html_chunk') {
+      if (typeof payload.html === 'string') onHtmlChunk?.(payload.html)
+      return
+    }
     if (eventName === 'error') {
       throw new Error(payload.error || '생성 중 오류가 발생했습니다')
     }
@@ -143,18 +241,51 @@ async function readGenerateStream(response: Response, onStep?: (label: string) =
 
 function defaultAnswersFromAnalysis(data: QuestionnaireResponse): Record<string, string> {
   const domain = data.domain ?? 'other'
-  const serviceType = domain === 'business' || domain === 'productivity' ? 'B2B' : 'B2C'
+  const isB2B = domain === 'business' || domain === 'productivity'
+  const serviceType = isB2B
+    ? 'B2B — 업무/기업용 (대시보드·관리자·SaaS 스타일, 정보 밀도 중심)'
+    : 'B2C — 소비자용 (Toss·카카오·네이버 스타일, 직관적·감성적)'
   const domainLabel = DOMAIN_KEY_TO_LABEL[domain] ?? '기타'
   const homeOptions = DOMAIN_HOME_EMPHASIS_OPTIONS[domain] ?? DOMAIN_HOME_EMPHASIS_OPTIONS.other
+  // hero_3d default: use AI's heroImageDecision result
+  const hero3dDefault = data.heroImageDecision?.generate === false
+    ? '3D 생성 안 함'
+    : data.heroImageDecision?.heroSubject
+    ? `직접 입력: ${data.heroImageDecision.heroSubject}`
+    : 'AI가 자동 결정'
+  // 제거된 질문들 — UI에는 안 나오지만 생성 코드가 여전히 사용하므로 스마트 기본값 유지
+  const primaryJourney = domain === 'health' || domain === 'entertainment' || domain === 'social'
+    ? '목표 달성/보상 수령'
+    : domain === 'commerce' || domain === 'food'
+    ? '신청/구매 전환'
+    : domain === 'business'
+    ? '데이터 확인'
+    : 'AI가 결정'
+  const firstScreenFocus = domain === 'business' ? '핵심 지표' : domain === 'commerce' || domain === 'food' ? '대표 CTA' : 'AI가 결정'
+
+  // 새 질문들 기본값 — 도메인 기반 추론
+  const targetAudience = domain === 'business' ? '30-40대 직장인'
+    : domain === 'entertainment' || domain === 'social' ? '10-20대 MZ세대'
+    : domain === 'finance' || domain === 'health' ? '30-40대 직장인'
+    : 'AI가 결정'
+  const visualDirection = domain === 'business' || domain === 'finance'
+    ? '신뢰감 있는 전문적 (금융·의료 스타일)'
+    : domain === 'entertainment' || domain === 'social'
+    ? '활기차고 강렬한 (게임·리워드 스타일)'
+    : '밝고 친근한 (카카오·토스 스타일)'
+
   return {
+    hero_3d: hero3dDefault,
     service_type: serviceType,
     platform_intent: platformLabel(data.recommendedPlatform?.platform),
     domain: domainLabel,
     home_emphasis: homeOptions[0] ?? 'AI가 결정',
-    primary_journey: domain === 'health' ? '목표 달성/보상 수령' : 'AI가 결정',
-    first_screen_focus: domain === 'business' ? '핵심 지표' : '대표 CTA',
+    primary_journey: primaryJourney,
+    first_screen_focus: firstScreenFocus,
     visual_density: '균형형',
     variant_strategy: '세 방향 모두 다르게',
+    target_audience: targetAudience,
+    visual_direction: visualDirection,
   }
 }
 
@@ -319,12 +450,17 @@ const INSPECTOR_SCRIPT = `<script data-aide-inject="1">
     }
     if(d.type==='aide:replaceImage'&&sel){
       var url=d.url;
+      var imgW=d.width; var imgH=d.height;
       if(sel.tagName==='IMG'){
         sel.src=url;
+        if(imgW){sel.style.width=imgW;sel.style.height='auto';}
+        if(imgH){sel.style.height=imgH;}
       } else {
         var childImg=sel.querySelector('img');
         if(childImg){
           childImg.src=url;
+          if(imgW){childImg.style.width=imgW;childImg.style.height='auto';}
+          if(imgH){childImg.style.height=imgH;}
         } else {
           sel.style.backgroundImage='url("'+url+'")';
           sel.style.backgroundSize='cover';
@@ -682,7 +818,17 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const [logoLoading, setLogoLoading] = useState(false)
   const [brandColors, setBrandColors] = useState<string[]>([])
   const logoInputRef = useRef<HTMLInputElement>(null)
-  const [brief, setBrief] = useState('')
+  const [briefDesc, setBriefDesc] = useState('')
+  const [briefFeatures, setBriefFeatures] = useState('')
+  const brief = [
+    briefDesc.trim(),
+    briefFeatures.trim() ? `핵심 기능:\n${briefFeatures.trim()}` : '',
+  ].filter(Boolean).join('\n\n')
+  const setBrief = (value: string) => {
+    const parts = value.split(/\n\n핵심 기능:\n/)
+    setBriefDesc(parts[0] ?? '')
+    setBriefFeatures(parts[1] ?? '')
+  }
 
   const apiHeaders = useCallback((): Record<string, string> => {
     if (typeof window === 'undefined') return { 'Content-Type': 'application/json' }
@@ -704,19 +850,26 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
   const [isGenerating, setIsGenerating] = useState(false)
   const [isGeneratingB, setIsGeneratingB] = useState(false)
+  const [isGeneratingBScene, setIsGeneratingBScene] = useState(false)
   const [isGeneratingC, setIsGeneratingC] = useState(false)
-  const [isGeneratingBlueprints] = useState(false)
+  const [bSceneImage, setBSceneImage] = useState<{ base64: string; mimeType: string } | null>(null)
+  const [bHeroStyle, setBHeroStyle] = useState<'object' | 'scene'>('object')
+  const [variantContentHeights, setVariantContentHeights] = useState<[number | null, number | null, number | null]>([null, null, null])
+  const variantIframeRefs = useRef<[HTMLIFrameElement | null, HTMLIFrameElement | null, HTMLIFrameElement | null]>([null, null, null])
   const [blueprintLoadingIdx, setBlueprintLoadingIdx] = useState<number | null>(null)
   const [variantGenerationStarted, setVariantGenerationStarted] = useState(false)
   const [layoutBlueprints, setLayoutBlueprints] = useState<LayoutBlueprint[]>([])
   const [isExpandingPrototype, setIsExpandingPrototype] = useState(false)
   const [mainVariants, setMainVariants] = useState<[GenerateResult|null, GenerateResult|null, GenerateResult|null]>([null, null, null])
+  const [streamingHtml, setStreamingHtml] = useState<[string|null, string|null, string|null]>([null, null, null])
   const [pickedVariantIdx, setPickedVariantIdx] = useState<0|1|2|null>(null)
   const [generateError, setGenerateError] = useState('')
   const [generationEvents, setGenerationEvents] = useState<GenerationEvent[]>([])
   const generationIdRef = useRef(0)
   const bgFetchAbortRef = useRef<AbortController | null>(null)
   const tweakRequestHtmlRef = useRef<string | null>(null)
+  const streamingIframeRefs = useRef<[HTMLIFrameElement|null, HTMLIFrameElement|null, HTMLIFrameElement|null]>([null, null, null])
+  const streamingDocOpenedRef = useRef<[boolean, boolean, boolean]>([false, false, false])
 
   // Screen navigation (step 4)
   const [screens, setScreens] = useState<Array<{ id: string; label: string }>>([])
@@ -743,6 +896,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const [editMode, setEditMode] = useState(false)
   const [creonOpen, setCreonOpen] = useState(false)
   const [creonAsset, setCreonAsset] = useState<string | null>(null)
+  const [creonImageWidth, setCreonImageWidth] = useState<number>(100)
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const [pickedIcon, setPickedIcon] = useState<string | null>(null)
   const [originalIconText, setOriginalIconText] = useState<string | null>(null)
@@ -751,6 +905,8 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const [debouncedBrandColor, setDebouncedBrandColor] = useState('#ff385c')
   const brandDebounceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const screenIframeRefs = useRef<Map<string, HTMLIFrameElement>>(new Map())
+  const [focusedScreenId, setFocusedScreenId] = useState<string>('')
 
   // Share / zoom UI state
   const [shareOpen, setShareOpen] = useState(false)
@@ -778,6 +934,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const [gnbHistory, setGnbHistory] = useState<HistoryItem[]>([])
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null)
   const [currentBoardHistoryId, setCurrentBoardHistoryId] = useState<string | null>(null)
+  const currentBoardHistoryIdRef = useRef<string | null>(null)
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([])
@@ -801,7 +958,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
   const canvasPanRef = useRef({ x: 0, y: 0 })
   const canvasAreaRef = useRef<HTMLDivElement>(null)
   const canvasTransformRef = useRef<HTMLDivElement>(null)
-  const studioAreaRef = useRef<HTMLDivElement>(null)
   const studioTransformRef = useRef<HTMLDivElement>(null)
   const studioScaleRef = useRef(1)
   const studioPanRef = useRef({ x: 0, y: 0 })
@@ -905,9 +1061,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
   // Keep refs in sync for wheel handler
   useEffect(() => { selectedCardRef.current = selectedCard }, [selectedCard])
 
-  // Canvas zoom/pan (step 3)
+  // Canvas zoom/pan (step 3 + step 4 unified — both use canvasAreaRef/canvasTransformRef)
   useEffect(() => {
-    if (step !== 3) return
+    if (step !== 3 && step !== 4) return
     const el = canvasAreaRef.current
     if (!el) return
     const applyTransform = (pan: { x: number; y: number }, zoom: number) => {
@@ -957,44 +1113,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     return () => el.removeEventListener('wheel', onWheel)
   }, [step])
 
-  // Canvas zoom/pan (step 4 studio)
-  useEffect(() => {
-    if (step !== 4) return
-    const el = studioAreaRef.current
-    if (!el) return
-    const applyTransform = (pan: { x: number; y: number }, scale: number) => {
-      const t = studioTransformRef.current
-      if (t) {
-        t.style.transition = 'transform 0.18s ease-out'
-        t.style.transform = `translate(${pan.x}px,${pan.y}px) scale(${scale})`
-      }
-    }
-    const onWheel = (e: WheelEvent) => {
-      // Ctrl/Meta + scroll → 줌
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault()
-        const factor = e.deltaY > 0 ? 0.95 : 1 / 0.95
-        const cur = studioScaleRef.current
-        const newScale = Math.min(Math.max(cur * factor, 0.15), 4)
-        studioScaleRef.current = newScale
-        applyTransform(studioPanRef.current, newScale)
-        return
-      }
-      // 트랙패드/마우스 스크롤 → 양방향 패닝
-      e.preventDefault()
-      const newPan = { x: studioPanRef.current.x - e.deltaX, y: studioPanRef.current.y - e.deltaY }
-      studioPanRef.current = newPan
-      applyTransform(newPan, studioScaleRef.current)
-    }
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  }, [step])
+  // (step 4 zoom/pan 제거됨 — step 3+4 공통 canvasAreaRef 효과로 통합)
 
-  // Spacebar pan: hold space → grab cursor, drag → pan canvas
+  // Spacebar pan: hold space → grab cursor, drag → pan canvas (step 3+4 공통 canvasAreaRef)
   useEffect(() => {
     if (step !== 3 && step !== 4) return
-    const isStudio = step === 4
-    const el = (isStudio ? studioAreaRef : canvasAreaRef).current
+    const el = canvasAreaRef.current
     if (!el) return
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1015,27 +1139,19 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       if (!spaceDownRef.current) return
       e.preventDefault()
       isPanningRef.current = true
-      const curPan = isStudio ? studioPanRef.current : canvasPanRef.current
-      panStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, panX: curPan.x, panY: curPan.y }
+      panStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, panX: canvasPanRef.current.x, panY: canvasPanRef.current.y }
       el.style.cursor = 'grabbing'
-        // Disable smooth transition while dragging for instant feedback
-        const panTarget = isStudio ? studioTransformRef.current : canvasTransformRef.current
-        if (panTarget) panTarget.style.transition = ''
+      const t = canvasTransformRef.current
+      if (t) t.style.transition = ''
     }
     const onMouseMove = (e: MouseEvent) => {
       if (!isPanningRef.current) return
       const dx = e.clientX - panStartRef.current.mouseX
       const dy = e.clientY - panStartRef.current.mouseY
       const newPan = { x: panStartRef.current.panX + dx, y: panStartRef.current.panY + dy }
-      if (isStudio) {
-        studioPanRef.current = newPan
-        const t = studioTransformRef.current
-        if (t) t.style.transform = `translate(${newPan.x}px,${newPan.y}px) scale(${studioScaleRef.current})`
-      } else {
-        canvasPanRef.current = newPan
-        const t = canvasTransformRef.current
-        if (t) t.style.transform = `translate(${newPan.x}px,${newPan.y}px) scale(${canvasZoomRef.current})`
-      }
+      canvasPanRef.current = newPan
+      const t = canvasTransformRef.current
+      if (t) t.style.transform = `translate(${newPan.x}px,${newPan.y}px) scale(${canvasZoomRef.current})`
     }
     const onMouseUp = () => {
       if (!isPanningRef.current) return
@@ -1078,8 +1194,16 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
   }, [])
 
   const sendToIframe = useCallback((msg: object) => {
-    iframeRef.current?.contentWindow?.postMessage(msg, '*')
-  }, [])
+    // 다중 프레임 모드: 포커스된 iframe으로 전송, 없으면 첫 번째로
+    if (screenIframeRefs.current.size > 0) {
+      const target = focusedScreenId
+        ? screenIframeRefs.current.get(focusedScreenId)
+        : screenIframeRefs.current.values().next().value
+      target?.contentWindow?.postMessage(msg, '*')
+    } else {
+      iframeRef.current?.contentWindow?.postMessage(msg, '*')
+    }
+  }, [focusedScreenId])
 
   const appendGenerationEvent = useCallback((event: Omit<GenerationEvent, 'id'>) => {
     setGenerationEvents(prev => [
@@ -1162,10 +1286,35 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     return () => window.removeEventListener('keydown', handler)
   }, [step, handleUndo, handleRedo])
 
+  useEffect(() => { currentBoardHistoryIdRef.current = currentBoardHistoryId }, [currentBoardHistoryId])
+
   useEffect(() => {
     if (step !== 4) return
     loadHistory().then(items => setGnbHistory(items.filter(h => h.itemType === 'board' || !h.itemType || h.itemType === 'design').slice(0, 30)))
   }, [step])
+
+  // 히스토리 로드 등으로 mainVariants가 바뀌면 iframe 높이 재측정
+  useEffect(() => {
+    if (mainVariants.every(v => !v)) return
+    const readHeights = () => {
+      setVariantContentHeights(prev => {
+        const next = [...prev] as [number | null, number | null, number | null]
+        let changed = false
+        variantIframeRefs.current.forEach((iframe, idx) => {
+          if (!iframe || !mainVariants[idx]) return
+          try {
+            const h = iframe.contentDocument?.documentElement.scrollHeight || iframe.contentDocument?.body?.scrollHeight
+            if (h && h > 100 && h !== prev[idx]) { next[idx] = h; changed = true }
+          } catch { /* cross-origin guard */ }
+        })
+        return changed ? next : prev
+      })
+    }
+    // 폰트/이미지 로드 대기 후 측정
+    const t1 = setTimeout(readHeights, 300)
+    const t2 = setTimeout(readHeights, 1000)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [mainVariants])
 
   const handleStyleUpdate = useCallback((prop: string, value: string) => {
     if (syncAllScreens && selectedSharedClasses.length > 0) {
@@ -1208,6 +1357,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       setBrandColor(extractedColor); setDebouncedBrandColor(extractedColor)
       setCurrentHistoryId(item.id)
       setCurrentBoardHistoryId(item.id)
+      setBSceneImage(item.board.bSceneImage ?? null)
+      if (item.board.questionnaire) setQuestionnaire(item.board.questionnaire as QuestionnaireResponse)
+      setBHeroStyle('object')
       setVariantGenerationStarted(boardVariants.some(Boolean))
       setEditMode(false)
       setSelectedStyles(null)
@@ -1371,11 +1523,22 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
   const buildGenerationContext = useCallback(() => {
     if (!questionnaire) return null
-    const heroSubject = questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || undefined
-    const heroPrompt = heroSubject || (questionnaire.heroImageDecision?.generate ? brief : undefined)
+
+    // hero_3d questionnaire answer takes priority
+    const hero3dAnswer = typeof answers['hero_3d'] === 'string' ? answers['hero_3d'] : ''
+    const analyzeHeroSubject = questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || undefined
+    let heroSubject: string | undefined
+    if (hero3dAnswer.startsWith('직접 입력: ')) {
+      heroSubject = hero3dAnswer.replace('직접 입력: ', '').trim() || undefined
+    } else if (hero3dAnswer === 'AI가 자동 결정' || hero3dAnswer === '') {
+      heroSubject = analyzeHeroSubject
+    }
+    // "3D 생성 안 함" → heroSubject remains undefined, needsScene3d = false
+    const wants3D = hero3dAnswer !== '3D 생성 안 함'
+    const heroPrompt = heroSubject || (wants3D && questionnaire.heroImageDecision?.generate ? brief : undefined)
     const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
     const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
-    const needsScene3d = Boolean(questionnaire.heroImageDecision?.generate || questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt)
+    const needsScene3d = wants3D && Boolean(heroSubject || questionnaire.heroImageDecision?.generate || questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt)
     const { generationPlan, visualPolicies, sharedVisualSubject } = buildDesignIntelligencePlan({
       brief,
       domain: effectiveDomain,
@@ -1423,6 +1586,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       prototypeHtml: options?.prototypeHtml ?? null,
       prototypeThumbnail: options?.prototypeImage ? thumbnail : null,
       prototypeScreens: options?.prototypeScreens ?? screens,
+      questionnaire,
     }
     const item = {
       brief,
@@ -1506,11 +1670,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       : visualPolicy === 'real-photo'
         ? 'photo' as const
         : 'none' as const
-    const variantHeroPrompt = visualPolicy === 'scene-3d' || visualPolicy === 'creon-object-3d'
-      ? (heroPrompt || sharedVisualSubject || brief)
-      : heroPrompt
-    const referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
+    const variantHeroPrompt = heroPrompt || sharedVisualSubject || brief
+    let referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
     const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
+    if (!referenceImageBase64 && generationPlan?.referenceSearchKeyword) {
+      referenceImageBase64 = await fetchAutoReferenceImage(generationPlan.referenceSearchKeyword)
+    }
     const asIsAnalysis = readAsIsAnalysis()
     const modelId = 'gemini-3.1-pro-preview'
     const prdDoc = sessionStorage.getItem('prdDoc') ?? undefined
@@ -1520,6 +1685,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     const setLoading = idx === 0 ? setIsGenerating : idx === 1 ? setIsGeneratingB : setIsGeneratingC
     setLoading(true)
     setVariantGenerationStarted(true)
+    if (idx === 1) { setBSceneImage(null); setBHeroStyle('object') }
     setMainVariants(prev => { const next = [...prev] as typeof prev; next[idx] = null; return next })
     const genId = ++generationIdRef.current
     try {
@@ -1537,21 +1703,52 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
         prdDoc, iaImageBase64: iaImage, iaText,
       }
       const res = await fetch('/api/generate', { method: 'POST', headers: apiHeaders(), body: JSON.stringify(params) })
-      const json = await readGenerateStream(res)
+      const json = await readGenerateStream(res, undefined, (partialHtml) => {
+        const iframe = streamingIframeRefs.current[idx]
+        if (iframe?.contentDocument) {
+          if (!streamingDocOpenedRef.current[idx]) {
+            iframe.contentDocument.open()
+            streamingDocOpenedRef.current[idx] = true
+            setStreamingHtml(prev => { const next = [...prev] as typeof prev; next[idx] = '1'; return next })
+          }
+          iframe.contentDocument.write(partialHtml)
+        }
+      })
+      const singleIframe = streamingIframeRefs.current[idx]
+      if (singleIframe?.contentDocument && streamingDocOpenedRef.current[idx]) {
+        singleIframe.contentDocument.close()
+        streamingDocOpenedRef.current[idx] = false
+      }
+      setStreamingHtml(prev => { const next = [...prev] as typeof prev; next[idx] = null; return next })
       if (generationIdRef.current === genId) {
         const nextVariants = [...mainVariants] as [GenerateResult | null, GenerateResult | null, GenerateResult | null]
         nextVariants[idx] = json
         setMainVariants(nextVariants)
         persistBoardHistory({ mainVariantsOverride: nextVariants }).catch(() => {})
+        // B 재생성 시 씬 이미지만 병렬 생성
+        if (idx === 1) {
+          const sceneSubject = variantHeroPrompt || sharedVisualSubject || brief
+          setIsGeneratingBScene(true)
+          fetch('/api/generate-hero-image', {
+            method: 'POST',
+            headers: apiHeaders(),
+            body: JSON.stringify({ subject: sceneSubject, designMd: effectiveDesignMd }),
+          })
+            .then(async r => {
+              const json = await r.json() as { base64?: string; mimeType?: string; error?: string }
+              if (json.error) { console.warn('[B scene image]', json.error); return }
+              if (json.base64 && json.mimeType && generationIdRef.current === genId) {
+                setBSceneImage({ base64: json.base64, mimeType: json.mimeType })
+              }
+            })
+            .catch(err => console.warn('[B scene image fetch]', err))
+            .finally(() => setIsGeneratingBScene(false))
+        }
       }
     } catch (err) {
       setGenerateError(err instanceof Error ? err.message : '시안 생성 중 오류가 발생했습니다')
     }
     finally { setLoading(false) }
-  }
-
-  const handleGenerateAll = async () => {
-    await handleGenerate()
   }
 
   const handleGenerate = async () => {
@@ -1560,9 +1757,13 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     setVariantGenerationStarted(true)
     setIsGenerating(true)
     setIsGeneratingB(false)
+    setIsGeneratingBScene(false)
     setIsGeneratingC(false)
     setGenerateError('')
     setMainVariants([null, null, null])
+    setBSceneImage(null)
+    setBHeroStyle('object')
+    setVariantContentHeights([null, null, null])
     setGenerationEvents([
       {
         id: `seed-${Date.now()}-read`,
@@ -1589,8 +1790,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     setStep(3)
     const genId = ++generationIdRef.current
     try {
-      const referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
-      const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
       const asIsAnalysis = readAsIsAnalysis()
       const modelId = 'gemini-3.1-pro-preview'
       const prdDocFromStorage = sessionStorage.getItem('prdDoc') ?? undefined
@@ -1599,6 +1798,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       const generationContext = buildGenerationContext()
       if (!generationContext) return
       const { heroSubject, heroPrompt, effectiveDomain, sharedVisualSubject, generationPlan, visualPolicies } = generationContext
+      let referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
+      const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
+      if (!referenceImageBase64 && generationPlan?.referenceSearchKeyword) {
+        referenceImageBase64 = await fetchAutoReferenceImage(generationPlan.referenceSearchKeyword)
+      }
       const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, referenceImageKind, asIsAnalysis, platform, modelId, heroSubject, sharedVisualSubject, generationPlan, qualityMode: 'draft' as const, criticalReview: false, prdDoc: prdDocFromStorage, iaImageBase64: iaImageFromStorage, iaText: iaTextFromStorage }
       const variantStyles = getVariantStyles(effectiveDomain)
       const headers = apiHeaders()
@@ -1622,9 +1826,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           : visualPolicy === 'real-photo'
             ? 'photo' as const
             : 'none' as const
-        const variantHeroPrompt = visualPolicy === 'scene-3d' || visualPolicy === 'creon-object-3d'
-          ? (heroPrompt || sharedVisualSubject || brief)
-          : heroPrompt
+        // 어떤 policy든 씬/오브젝트 플레이스홀더가 HTML에 들어갈 수 있으므로 항상 full fallback 사용
+        const variantHeroPrompt = heroPrompt || sharedVisualSubject || brief
         appendGenerationEvent({
           kind: 'design',
           title: `시안 ${variantLetter} 방향 설계 시작`,
@@ -1640,21 +1843,40 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             body: JSON.stringify(bodyParams),
             signal: abort.signal,
           })
-          const json = await readGenerateStream(res, (label) => {
-            const kind: GenerationEventKind =
-              label.includes('이미지') ? 'image'
-              : label.includes('스크린샷') ? 'render'
-              : label.includes('검수') || label.includes('개선') ? 'review'
-              : label.includes('코드') ? 'artifact'
-              : label.includes('인텐트') || label.includes('구조') ? 'think'
-              : 'design'
-            appendGenerationEvent({
-              kind,
-              title: `시안 ${variantLetter} · ${label}`,
-              status: 'done',
-              variant: variantLetter,
-            })
-          })
+          const json = await readGenerateStream(
+            res,
+            (label) => {
+              const kind: GenerationEventKind =
+                label.includes('이미지') ? 'image'
+                : label.includes('스크린샷') ? 'render'
+                : label.includes('검수') || label.includes('개선') ? 'review'
+                : label.includes('코드') ? 'artifact'
+                : label.includes('인텐트') || label.includes('구조') ? 'think'
+                : 'design'
+              appendGenerationEvent({
+                kind,
+                title: `시안 ${variantLetter} · ${label}`,
+                status: 'done',
+                variant: variantLetter,
+              })
+            },
+            (partialHtml) => {
+              const iframe = streamingIframeRefs.current[idx]
+              if (iframe?.contentDocument) {
+                if (!streamingDocOpenedRef.current[idx]) {
+                  iframe.contentDocument.open()
+                  streamingDocOpenedRef.current[idx] = true
+                  // 첫 청크 시 state 업데이트 (오버레이 표시 트리거)
+                  setStreamingHtml(prev => {
+                    const next = [...prev] as [string|null, string|null, string|null]
+                    next[idx] = '1'
+                    return next
+                  })
+                }
+                iframe.contentDocument.write(partialHtml)
+              }
+            },
+          )
           appendGenerationEvent({
             kind: 'artifact',
             title: `Created Design ${variantLetter}`,
@@ -1713,6 +1935,41 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           next[idx] = json
           return next
         })
+        // 스트리밍 document 닫기
+        const iframe = streamingIframeRefs.current[idx]
+        if (iframe?.contentDocument && streamingDocOpenedRef.current[idx]) {
+          iframe.contentDocument.close()
+          streamingDocOpenedRef.current[idx] = false
+        }
+        setStreamingHtml(prev => {
+          const next = [...prev] as [string|null, string|null, string|null]
+          next[idx] = null
+          return next
+        })
+        // B 완료 직후 씬 이미지만 백그라운드 생성
+        if (idx === 1) {
+          const sceneSubject = heroPrompt || sharedVisualSubject || brief
+          setIsGeneratingBScene(true)
+          fetch('/api/generate-hero-image', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ subject: sceneSubject, designMd: effectiveDesignMd }),
+            signal: abort.signal,
+          })
+            .then(async r => {
+              const json = await r.json() as { base64?: string; mimeType?: string; error?: string }
+              if (json.error) { console.warn('[B scene image]', json.error); return }
+              if (json.base64 && json.mimeType && generationIdRef.current === genId && !abort.signal.aborted) {
+                const sceneImg = { base64: json.base64, mimeType: json.mimeType }
+                setBSceneImage(sceneImg)
+                if (currentBoardHistoryIdRef.current) {
+                  updateHistoryItem(currentBoardHistoryIdRef.current, { board: { bSceneImage: sceneImg } }).catch(() => {})
+                }
+              }
+            })
+            .catch(err => console.warn('[B scene image fetch]', err))
+            .finally(() => setIsGeneratingBScene(false))
+        }
       }
 
       if (generationIdRef.current === genId && !abort.signal.aborted && completed.length > 0) {
@@ -1731,12 +1988,17 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     } finally {
       setIsGenerating(false)
       setIsGeneratingB(false)
+      setIsGeneratingBScene(false)
       setIsGeneratingC(false)
     }
   }
 
   const handlePickVariant = async (idx: 0|1|2) => {
-    const chosen = mainVariants[idx]
+    const baseChosen = mainVariants[idx]
+    const chosenHtml = idx === 1 && bHeroStyle === 'scene' && bSceneImage && baseChosen
+      ? patchHeroToScene(baseChosen.html, bSceneImage.base64, bSceneImage.mimeType)
+      : baseChosen?.html
+    const chosen = chosenHtml && baseChosen ? { ...baseChosen, html: chosenHtml } : baseChosen
     if (!chosen || !questionnaire) return
     bgFetchAbortRef.current?.abort()
     bgFetchAbortRef.current = null
@@ -1776,14 +2038,15 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       setIsAnalyzingTweakA(false); setIsAnalyzingTweakB(false)
       setActiveStateId('typical')
       setVarValues({})
-      setScreens([]); setActiveScreenId('')
+      setScreens([]); setActiveScreenId(''); setFocusedScreenId('')
+      screenIframeRefs.current.clear()
       const extractedColor = (data.html as string).match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? '#ff385c'
       setBrandColor(extractedColor); setDebouncedBrandColor(extractedColor)
       setHistoryA([data.html]); setHistoryIndexA(0)
       setHistoryB([]); setHistoryIndexB(-1)
       setZoom(isMobile ? 100 : isTablet ? 70 : 60)
       setPreviewWidth(isMobile ? 390 : isTablet ? 768 : 1440)
-      setStep(4)
+      // Stay on step 3 canvas — prototype card appears inline
 
       if (data.image) {
         persistBoardHistory({
@@ -1850,8 +2113,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
   const handleRetryVariant = async (idx: 1 | 2) => {
     if (!questionnaire) return
     const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
-    const referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
-    const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
     const asIsAnalysis = readAsIsAnalysis()
     const modelId = 'gemini-3.1-pro-preview'
     const prdDocFromStorage = sessionStorage.getItem('prdDoc') ?? undefined
@@ -1862,6 +2123,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     const variantStyles = getVariantStyles(effectiveDomain)
     const heroSubjectRetry = questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || undefined
     const heroPromptRetry = heroSubjectRetry || (questionnaire.heroImageDecision?.generate ? brief : undefined)
+    let referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
+    const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
+    if (!referenceImageBase64) {
+      referenceImageBase64 = await fetchAutoReferenceImage(brief.slice(0, 50) + ' mobile app UI')
+    }
     const baseParams = {
       designMd: effectiveDesignMd,
       brief,
@@ -2009,6 +2275,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     }, 250)
   }, [])
 
+  const handleTweakEvent = useCallback((script: string) => {
+    const iframe = variantIframeRefs.current[activeVariant]
+    if (!iframe?.contentWindow) return
+    try {
+      (iframe.contentWindow as Window & { eval: (s: string) => void }).eval(script)
+    } catch { /* ignore script errors */ }
+  }, [activeVariant])
+
   const downloadHtml = () => {
     if (!result) return
     const blob = new Blob([result.html], { type: 'text/html' })
@@ -2100,8 +2374,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           backgroundColor: '#f4f4f6',
         }}
       >
-        {isExpandingPrototype && <ExpandingOverlay image={pickedVariantIdx !== null ? (mainVariants[pickedVariantIdx]?.image ?? undefined) : undefined} platform={platform} variantLabel={pickedVariantIdx !== null ? ['시안 A','시안 B','시안 C'][pickedVariantIdx] : undefined} />}
-
         {/* Header */}
         <div className="border-b border-[rgba(0,0,0,0.09)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
           <button onClick={onBack} aria-label="Aide 홈으로 이동" className="flex items-center px-4 border-r border-[rgba(0,0,0,0.09)] hover:bg-[#ebebeb] transition-colors shrink-0">
@@ -2115,16 +2387,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   <path d="M21 12a9 9 0 00-9-9" />
                 </svg>
                 시안 생성 중...
-              </>) : isGeneratingBlueprints ? (
-              <>
-                <svg className="animate-spin shrink-0" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" strokeOpacity="0.3" />
-                  <path d="M21 12a9 9 0 00-9-9" />
-                </svg>
-                시안 준비 중...
-              </>) : mainVariants.every(v => !v) && layoutBlueprints.length === 0
-              ? '시안을 생성하세요'
-              : mainVariants.every(v => !v)
+              </>) : mainVariants.every(v => !v)
               ? '시안을 생성하세요'
               : '시안을 선택해주세요'}
           </div>
@@ -2132,8 +2395,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           <div className="flex items-center gap-3 px-4">
             {mainVariants.every(v => !v) && !isAnyGenerating && (
               <button
-                onClick={handleGenerateAll}
-                disabled={isGeneratingBlueprints || isAnyGenerating}
+                onClick={handleGenerate}
+                disabled={isAnyGenerating}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-semibold text-white transition-colors disabled:opacity-50"
                 style={{ borderRadius: 8, backgroundColor: '#1a75ff' }}
               >
@@ -2822,19 +3085,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             const skeletonW = isMobile ? 160 : isTablet ? 200 : 240
             return (
               <div className="flex items-start gap-4 shrink-0">
-                {isGeneratingBlueprints ? (
-                  (['A', 'B', 'C'] as const).map(v => (
-                    <div key={v} className="flex flex-col gap-2 shrink-0" style={{ width: skeletonW }}>
-                      <div className="flex items-center gap-1.5">
-                        <span className="size-5 flex items-center justify-center text-[11px] font-bold text-white bg-[#aaa]" style={{ borderRadius: 6 }}>{v}</span>
-                        <div className="h-3 w-16 bg-[#e5e5e5] rounded animate-pulse" />
-                      </div>
-                      <div className="bg-white flex items-center justify-center" style={{ borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)', minHeight: 340 }}>
-                        <div className="size-6 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#111' }} />
-                      </div>
-                    </div>
-                  ))
-                ) : layoutBlueprints.length > 0 ? (
+                {layoutBlueprints.length > 0 ? (
                   <div className="flex items-start gap-4">
                     {layoutBlueprints.map((blueprint, bpIdx) => {
                       const variantIdx = bpIdx as 0 | 1 | 2
@@ -2885,7 +3136,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   <div
                     className="flex flex-col items-center justify-center cursor-pointer hover:bg-white transition-colors"
                     style={{ borderRadius: 14, border: '2px dashed rgba(0,0,0,0.13)', minHeight: 280, width: skeletonW * 3 + 32, padding: 32 }}
-                    onClick={handleGenerateAll}
+                    onClick={handleGenerate}
                   >
                     <div className="mb-3 size-11 flex items-center justify-center bg-[#f5f5f5]" style={{ borderRadius: 12 }}>
                       <Shapes size={20} color="#888" />
@@ -2908,7 +3159,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               const previewNativeW = platform === 'mobile' ? 390 : 1440
               const previewNativeH = platform === 'mobile' ? 844 : 1024
               const previewScale = cardW / previewNativeW
-              const cardH = Math.round(previewNativeH * previewScale)
+              const fallbackCardH = Math.round(previewNativeH * previewScale)
+              const contentNativeH = variantContentHeights[idx]
+              const cardH = contentNativeH ? Math.round(contentNativeH * previewScale) : fallbackCardH
               return (
                 <div key={letter} className="flex flex-col gap-3 shrink-0" style={{ width: cardW }}>
                   <div className="flex items-center gap-2">
@@ -2925,7 +3178,31 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     {variant && !isLoadingThis && (
                       <span className="text-[12px]" style={{ color: '#888888' }}>완료</span>
                     )}
-                    {variant?.imageWarnings?.length ? (
+                    {/* B 시안 히어로 스타일 토글 */}
+                    {letter === 'B' && variant && (
+                      <div className="ml-auto flex items-center" style={{ gap: 2, padding: '2px', borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.06)' }}>
+                        <button
+                          onClick={e => { e.stopPropagation(); setBHeroStyle('object') }}
+                          style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500, border: 'none', cursor: 'pointer', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'object' ? '#fff' : 'transparent', color: bHeroStyle === 'object' ? '#111' : '#888', boxShadow: bHeroStyle === 'object' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}
+                        >
+                          오브젝트
+                        </button>
+                        <button
+                          onClick={e => { e.stopPropagation(); if (bSceneImage) setBHeroStyle('scene') }}
+                          disabled={!bSceneImage && !isGeneratingBScene}
+                          style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500, border: 'none', cursor: bSceneImage ? 'pointer' : 'not-allowed', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'scene' ? '#fff' : 'transparent', color: bHeroStyle === 'scene' ? '#111' : bSceneImage ? '#888' : '#ccc', boxShadow: bHeroStyle === 'scene' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+                        >
+                          {isGeneratingBScene && bHeroStyle !== 'scene' && (
+                            <svg className="animate-spin" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" strokeOpacity="0.3" />
+                              <path d="M21 12a9 9 0 00-9-9" />
+                            </svg>
+                          )}
+                          씬
+                        </button>
+                      </div>
+                    )}
+                    {letter !== 'B' && variant?.imageWarnings?.length ? (
                       <span
                         className="ml-auto text-[11px] px-1.5 py-0.5"
                         style={{ color: '#b45309', backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6 }}
@@ -2936,26 +3213,49 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     ) : null}
                   </div>
                   <div
-                    className="relative overflow-hidden bg-white"
+                    className="relative bg-white"
                     onClick={e => { e.stopPropagation(); setSelectedCard(`variant-${letter}`) }}
                     style={{
                       borderRadius: '12px',
                       height: cardH,
-                      border: selectedCard === `variant-${letter}` ? '2px solid #1a75ff' : '2px solid rgba(255,255,255,0.7)',
-                      outline: selectedCard === `variant-${letter}` ? '3px solid rgba(26,117,255,0.18)' : 'none',
+                      overflow: 'hidden',
+                      border: (isExpandingPrototype && pickedVariantIdx === idx) ? '2px solid #1a75ff' : selectedCard === `variant-${letter}` ? '2px solid #1a75ff' : '2px solid rgba(255,255,255,0.7)',
+                      outline: (isExpandingPrototype && pickedVariantIdx === idx) ? '3px solid rgba(26,117,255,0.28)' : selectedCard === `variant-${letter}` ? '3px solid rgba(26,117,255,0.18)' : 'none',
                       outlineOffset: '2px',
                       cursor: 'default',
                     }}
                   >
+                    {/* 프로토타입 생성 중 오버레이 */}
+                    {isExpandingPrototype && pickedVariantIdx === idx && (
+                      <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid rgba(26,117,255,0.2)', borderTopColor: '#1a75ff', animation: 'spin 0.85s linear infinite' }} />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#1a75ff', letterSpacing: '-0.1px' }}>프로토타입 생성 중...</span>
+                      </div>
+                    )}
                     {variant ? (
                       <iframe
-                        srcDoc={variant.html}
+                        ref={el => { variantIframeRefs.current[idx] = el }}
+                        srcDoc={letter === 'B' && bHeroStyle === 'scene' && bSceneImage ? patchHeroToScene(variant.html, bSceneImage.base64, bSceneImage.mimeType) : variant.html}
                         title={`시안 ${letter} 프리뷰`}
                         sandbox="allow-scripts allow-same-origin"
-                        scrolling="auto"
+                        scrolling="no"
+                        onLoad={e => {
+                          try {
+                            const doc = (e.currentTarget as HTMLIFrameElement).contentDocument
+                            if (!doc) return
+                            const h = doc.documentElement.scrollHeight || doc.body?.scrollHeight
+                            if (h && h > 100) {
+                              setVariantContentHeights(prev => {
+                                const next = [...prev] as [number | null, number | null, number | null]
+                                next[idx] = h
+                                return next
+                              })
+                            }
+                          } catch { /* cross-origin guard */ }
+                        }}
                         style={{
                           width: previewNativeW,
-                          height: previewNativeH,
+                          height: contentNativeH ?? previewNativeH,
                           border: 'none',
                           display: 'block',
                           transform: `scale(${previewScale})`,
@@ -2964,9 +3264,39 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         }}
                       />
                     ) : isLoadingThis ? (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="size-8 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#0055ff' }} />
-                      </div>
+                      <>
+                        <iframe
+                          ref={el => { streamingIframeRefs.current[idx] = el }}
+                          title={`시안 ${letter} 미리보기`}
+                          sandbox="allow-scripts allow-same-origin"
+                          scrolling="no"
+                          style={{
+                            width: previewNativeW,
+                            height: previewNativeH,
+                            border: 'none',
+                            display: 'block',
+                            transform: `scale(${previewScale})`,
+                            transformOrigin: 'top left',
+                            backgroundColor: '#ffffff',
+                            pointerEvents: 'none',
+                          }}
+                        />
+                        {streamingHtml[idx] ? (
+                          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 60%, rgba(255,255,255,0.9) 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 16, gap: 6 }}>
+                            <div className="flex items-center gap-1.5" style={{ color: '#555' }}>
+                              <svg className="animate-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" strokeOpacity="0.3" />
+                                <path d="M21 12a9 9 0 00-9-9" />
+                              </svg>
+                              <span style={{ fontSize: 11, fontWeight: 500 }}>생성 중...</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="size-8 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#0055ff' }} />
+                          </div>
+                        )}
+                      </>
                     ) : isFailed ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
                         <span className="text-[13px] text-[#999999]">생성 실패</span>
@@ -2995,6 +3325,95 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               )
             })}
           </div>}
+
+          {/* ── 프로토타입 카드: 생성 중 or 완료 ── */}
+          {(isExpandingPrototype || result) && pickedVariantIdx !== null && (() => {
+            const cardW = isMobile ? 180 : isTablet ? 220 : 320
+            const nativeW = platform === 'mobile' ? 390 : 1440
+            const nativeH = platform === 'mobile' ? 844 : 1024
+            const scale = cardW / nativeW
+            const cardH = Math.round(nativeH * scale)
+            const pickedLabel = ['A', 'B', 'C'][pickedVariantIdx]
+            return (
+              <div className="flex items-start gap-6 shrink-0">
+                {/* 구분 화살표 */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', gap: 4, paddingTop: 24, color: '#cccccc' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M13 6l6 6-6 6"/>
+                  </svg>
+                </div>
+                {/* 프로토타입 카드 */}
+                <div className="flex flex-col gap-3 shrink-0" style={{ width: cardW }}>
+                  {/* 헤더 */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] font-semibold" style={{ color: '#222222' }}>프로토타입 {pickedLabel}</span>
+                    {isExpandingPrototype && (
+                      <div className="flex items-center gap-1.5 text-[13px]" style={{ color: '#1a75ff' }}>
+                        <svg className="animate-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" strokeOpacity="0.3" />
+                          <path d="M21 12a9 9 0 00-9-9" />
+                        </svg>
+                        생성 중
+                      </div>
+                    )}
+                    {!isExpandingPrototype && result && (
+                      <>
+                        <span className="text-[12px]" style={{ color: '#22c55e' }}>완료</span>
+                        <button
+                          onClick={() => setStep(4)}
+                          className="ml-auto flex items-center gap-1 text-[12px] font-semibold transition-colors"
+                          style={{ color: '#1a75ff' }}
+                        >
+                          편집 →
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* 서브 화면 탭 (screens가 있을 때만) */}
+                  {!isExpandingPrototype && screens.length > 1 && (
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {screens.map(s => (
+                        <button
+                          key={s.id}
+                          onClick={() => {
+                            setActiveScreenId(s.id)
+                            sendToIframe({ type: 'aide:navigate', id: s.id })
+                          }}
+                          style={{
+                            padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 500, border: 'none', cursor: 'pointer', transition: 'all 0.12s',
+                            backgroundColor: activeScreenId === s.id ? '#111111' : 'rgba(0,0,0,0.06)',
+                            color: activeScreenId === s.id ? '#fff' : '#555',
+                          }}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 프레임 */}
+                  <div className="relative overflow-hidden bg-white" style={{ borderRadius: 12, height: cardH, border: '2px solid #1a75ff', outline: '3px solid rgba(26,117,255,0.18)', outlineOffset: 2 }}>
+                    {isExpandingPrototype ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid rgba(26,117,255,0.15)', borderTopColor: '#1a75ff', animation: 'spin 0.85s linear infinite' }} />
+                        <span style={{ fontSize: 11, color: '#888', letterSpacing: '-0.1px' }}>멀티스크린 확장 중</span>
+                      </div>
+                    ) : result ? (
+                      <iframe
+                        ref={iframeRef}
+                        srcDoc={result.html}
+                        style={{ width: nativeW, height: nativeH, border: 'none', display: 'block', transform: `scale(${scale})`, transformOrigin: 'top left' }}
+                        sandbox="allow-scripts allow-same-origin"
+                        title="프로토타입 미리보기"
+                      />
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
           </div>
         </div>
 
@@ -3005,7 +3424,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             {generateError}
           </div>
         )}
-
 
       </div>
     )
@@ -3337,35 +3755,172 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             </div>
           </div>
 
-          {/* Center: preview */}
-          <div ref={studioAreaRef} className="flex-1 overflow-hidden relative isolate flex flex-col items-center justify-center">
+          {/* Center: unified canvas — Design System + Variants + Prototype */}
+          <div ref={canvasAreaRef} className="flex-1 overflow-hidden relative isolate" onClick={() => setSelectedCard(null)}>
             <div className="absolute inset-0 pointer-events-none" style={{ zIndex: -1 }}>
               <DotField />
             </div>
-            <div
-              ref={studioTransformRef}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: 32,
-              }}
-            >
-              <ResponsiveFrame
-                previewWidth={previewWidth}
-                onWidthChange={setPreviewWidth}
-                zoom={zoom}
-                platform={platform}
-              >
-                <iframe
-                  ref={iframeRef}
-                  srcDoc={displayHtml}
-                  style={{ width: previewWidth, height: platform === 'mobile' ? 844 : 1024, border: 'none', display: 'block' }}
-                  sandbox="allow-scripts allow-same-origin"
-                  title="Generated UI"
-                />
-              </ResponsiveFrame>
+            <div ref={canvasTransformRef} style={{ transformOrigin: '0 0', display: 'flex', alignItems: 'flex-start', gap: 32, padding: 40, width: 'max-content' }}>
+
+              {/* ── 디자인 시스템 카드 ── */}
+              {(() => {
+                const p4Preset = visualizedDesignPreset
+                const p4HasDesign = !!p4Preset.palette || !!customDesignMd
+                if (!p4HasDesign) return null
+                const p4Meta = customDesignMd ? parseCustomDesignMdMeta(customDesignMd) : null
+                const p4Palette = (p4Meta?.palette ?? p4Preset.palette) ?? [{ name: 'Primary', hex: '#6366f1' }]
+                const p4Fonts = (p4Meta?.fonts ?? p4Preset.fonts) ?? { headline: 'sans-serif', body: 'sans-serif' }
+                const p4Color = (p4Meta?.color ?? p4Preset.color) ?? '#6366f1'
+                const p4Dark = p4Meta?.isDark ?? false
+                const p4Bg = p4Dark ? '#111111' : '#ffffff'
+                const p4Ink = p4Dark ? '#ffffff' : '#111111'
+                const p4Muted = p4Dark ? '#888888' : '#999999'
+                const p4Border = p4Dark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)'
+                return (
+                  <div
+                    onClick={e => { e.stopPropagation(); setSelectedCard('design-md') }}
+                    style={{
+                      width: 200, borderRadius: 14, backgroundColor: p4Bg, border: selectedCard === 'design-md' ? `2px solid ${p4Color}` : p4Border,
+                      outline: selectedCard === 'design-md' ? `3px solid ${p4Color}28` : 'none', outlineOffset: 2,
+                      overflow: 'hidden', flexShrink: 0, cursor: 'default',
+                    }}
+                  >
+                    {/* 헤더 */}
+                    <div style={{ padding: '10px 12px', borderBottom: p4Border, display: 'flex', alignItems: 'center', gap: 6, backgroundColor: p4Dark ? '#1a1a1a' : '#f7f7f8' }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={p4Color} strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: p4Ink, letterSpacing: '-0.1px' }}>DESIGN.md</span>
+                    </div>
+                    <div style={{ padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {/* 디자인 시스템 이름 */}
+                      <span style={{ fontSize: 13, fontWeight: 700, color: p4Ink, letterSpacing: '-0.3px' }}>{designSystemDisplayName}</span>
+                      {/* 팔레트 */}
+                      <div>
+                        <span style={{ fontSize: 10, color: p4Muted, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Colors</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 5 }}>
+                          {p4Palette.slice(0, 5).map((sw: { name: string; hex: string }) => (
+                            <div key={sw.name} title={`${sw.name} ${sw.hex}`} style={{ width: 20, height: 20, borderRadius: 5, backgroundColor: sw.hex, border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }} />
+                          ))}
+                        </div>
+                      </div>
+                      {/* 폰트 */}
+                      <div>
+                        <span style={{ fontSize: 10, color: p4Muted, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Typography</span>
+                        <p style={{ fontSize: 11, color: p4Ink, margin: '3px 0 0', lineHeight: 1.5, letterSpacing: '-0.1px' }}>
+                          {p4Fonts.headline !== p4Fonts.body
+                            ? <><span style={{ fontWeight: 700 }}>{p4Fonts.headline}</span><br/><span style={{ opacity: 0.7 }}>{p4Fonts.body}</span></>
+                            : <span style={{ fontWeight: 600 }}>{p4Fonts.headline}</span>
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* ── 시안 A/B/C 썸네일 ── */}
+              {mainVariants.some(v => !!v) && (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+                  {(['A', 'B', 'C'] as const).map((letter, idx) => {
+                    const variant = mainVariants[idx]
+                    const isPicked = pickedVariantIdx === idx
+                    const thumbW = platform === 'web' ? 260 : 160
+                    const nativeW = platform === 'mobile' ? 390 : 1440
+                    const nativeH = platform === 'mobile' ? 844 : 1024
+                    const thumbScale = thumbW / nativeW
+                    const thumbH = Math.round(nativeH * thumbScale)
+                    return (
+                      <div key={letter} style={{ display: 'flex', flexDirection: 'column', gap: 8, width: thumbW }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: isPicked ? '#1a75ff' : '#555555', letterSpacing: '-0.1px' }}>시안 {letter}</span>
+                          {isPicked && <span style={{ fontSize: 10, color: '#1a75ff', fontWeight: 700, background: 'rgba(26,117,255,0.1)', padding: '1px 6px', borderRadius: 4 }}>선택됨</span>}
+                        </div>
+                        <div style={{
+                          height: thumbH, borderRadius: 10, overflow: 'hidden', position: 'relative',
+                          border: isPicked ? '2px solid #1a75ff' : '1.5px solid rgba(0,0,0,0.1)',
+                          outline: isPicked ? '3px solid rgba(26,117,255,0.18)' : 'none',
+                          outlineOffset: 2,
+                          background: '#fff',
+                        }}>
+                          {variant ? (
+                            <iframe
+                              srcDoc={variant.html}
+                              style={{ width: nativeW, height: nativeH, border: 'none', display: 'block', transform: `scale(${thumbScale})`, transformOrigin: 'top left', pointerEvents: 'none' }}
+                              sandbox="allow-scripts allow-same-origin"
+                              scrolling="no"
+                              title={`시안 ${letter}`}
+                            />
+                          ) : (
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#aaaaaa', animation: 'spin 1s linear infinite' }} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* ── 구분선 화살표 ── */}
+              {mainVariants.some(v => !!v) && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', gap: 4, paddingTop: 24, color: '#cccccc' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 12h14M13 6l6 6-6 6"/>
+                  </svg>
+                  <span style={{ fontSize: 10, color: '#cccccc', letterSpacing: '-0.1px', whiteSpace: 'nowrap' }}>프로토타입</span>
+                </div>
+              )}
+
+              {/* ── 프로토타입 프레임(들) ── */}
+              {screens.length > 1 ? (
+                screens.map((screen, idx) => {
+                  const isFocused = focusedScreenId === screen.id || (idx === 0 && !focusedScreenId)
+                  return (
+                    <div
+                      key={screen.id}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}
+                      onClick={e => { e.stopPropagation(); setFocusedScreenId(screen.id); setActiveScreenId(screen.id) }}
+                    >
+                      <span style={{ fontSize: 12, fontWeight: 600, color: isFocused ? '#111111' : '#888888', letterSpacing: '-0.1px', userSelect: 'none' }}>
+                        {screen.label}
+                      </span>
+                      <div style={{ outline: isFocused ? '2px solid #1a75ff' : '2px solid transparent', outlineOffset: 4, borderRadius: platform === 'mobile' ? 12 : 8, transition: 'outline-color 0.15s' }}>
+                        <ResponsiveFrame previewWidth={previewWidth} onWidthChange={setPreviewWidth} zoom={zoom} platform={platform}>
+                          <iframe
+                            ref={el => {
+                              if (el) {
+                                screenIframeRefs.current.set(screen.id, el)
+                                if (idx === 0) (iframeRef as React.MutableRefObject<HTMLIFrameElement | null>).current = el
+                              }
+                            }}
+                            srcDoc={displayHtml}
+                            style={{ width: previewWidth, height: platform === 'mobile' ? 844 : 1024, border: 'none', display: 'block' }}
+                            sandbox="allow-scripts allow-same-origin"
+                            title={screen.label}
+                            onLoad={() => {
+                              const el = screenIframeRefs.current.get(screen.id)
+                              el?.contentWindow?.postMessage({ type: 'aide:navigate', id: screen.id }, '*')
+                            }}
+                          />
+                        </ResponsiveFrame>
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#111111', letterSpacing: '-0.1px', userSelect: 'none' }}>프로토타입</span>
+                  <ResponsiveFrame previewWidth={previewWidth} onWidthChange={setPreviewWidth} zoom={zoom} platform={platform}>
+                    <iframe
+                      ref={iframeRef}
+                      srcDoc={displayHtml}
+                      style={{ width: previewWidth, height: platform === 'mobile' ? 844 : 1024, border: 'none', display: 'block' }}
+                      sandbox="allow-scripts allow-same-origin"
+                      title="Generated UI"
+                    />
+                  </ResponsiveFrame>
+                </div>
+              )}
             </div>
           </div>
 
@@ -3425,7 +3980,29 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   {/\.(mp4|webm|mov)(\?|$)/i.test(creonAsset) ? (
                     <video src={creonAsset} autoPlay muted loop playsInline style={{ width: '100%', height: 72, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
                   ) : (
-                    <img src={creonAsset} alt="selected asset" style={{ width: '100%', height: 72, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+                    <img src={creonAsset} alt="selected asset" style={{ width: '100%', height: 72, objectFit: 'contain', borderRadius: 6, display: 'block', background: '#eee' }} />
+                  )}
+                  {/* 이미지 크기 조절 슬라이더 */}
+                  {!/\.(mp4|webm|mov)(\?|$)/i.test(creonAsset) && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 11, color: '#666' }}>이미지 크기</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: '#111', fontVariantNumeric: 'tabular-nums' }}>{creonImageWidth}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={20}
+                        max={200}
+                        value={creonImageWidth}
+                        onChange={e => setCreonImageWidth(Number(e.target.value))}
+                        style={{ width: '100%', accentColor: '#111' }}
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+                        <span style={{ fontSize: 10, color: '#aaa' }}>20%</span>
+                        <button onClick={() => setCreonImageWidth(100)} style={{ fontSize: 10, color: '#888', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>초기화</button>
+                        <span style={{ fontSize: 10, color: '#aaa' }}>200%</span>
+                      </div>
+                    </div>
                   )}
                   {selectedStyles && (() => {
                     const s = selectedStyles
@@ -3439,13 +4016,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                             onClick={() => {
                               const isSyncMode = syncAllScreens && selectedSharedClasses.length > 0
                               const selector = isSyncMode ? '.aide-screen ' + selectedSharedClasses.map(c => '.' + c).join('') : ''
+                              const widthVal = `${creonImageWidth}%`
                               if (/\.(mp4|webm|mov)(\?|$)/i.test(creonAsset)) {
                                 sendToIframe({ type: 'aide:update', prop: 'backgroundImage', value: 'none' })
                                 sendToIframe({ type: 'aide:setVideoSrc', url: creonAsset })
                               } else if (isSyncMode) {
                                 sendToIframe({ type: 'aide:replaceImage-all', selector, url: creonAsset })
                               } else {
-                                sendToIframe({ type: 'aide:replaceImage', url: creonAsset })
+                                sendToIframe({ type: 'aide:replaceImage', url: creonAsset, width: widthVal })
                               }
                               sendToIframe({ type: 'aide:pulse', on: false })
                             }}
@@ -3498,6 +4076,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             varValues={varValues}
             onStateChange={handleStateChange}
             onVarChange={handleVarChange}
+            onEvent={handleTweakEvent}
           />
         )}
 
@@ -3917,35 +4496,61 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                   <label className="text-[14px] font-medium" style={{ color: F.ink }}>
-                    기획서 / 요청사항 <span className="ml-2 text-[13px] font-normal" style={{ color: F.primary }}>필수</span>
+                    서비스 정보 <span className="ml-2 text-[13px] font-normal" style={{ color: F.primary }}>필수</span>
                   </label>
                   <span className="text-[13px]" style={{ color: F.inkMuted }}>{brief.length} / 2000</span>
                 </div>
-                <div
-                  className="flex-1 min-h-[360px] flex flex-col"
-                  style={{ borderRadius: '12px', border: `1px solid ${F.hairlineSoft}`, backgroundColor: F.canvas }}
-                  onFocusCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairline }}
-                  onBlurCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairlineSoft }}
-                >
-                  {(designPreset !== 'none' || !!customDesignMd) && (
-                    <div className="flex items-center gap-2 px-4 pt-3">
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px]" style={{ backgroundColor: F.surface1, border: `1px solid ${F.hairlineSoft}`, color: F.ink }}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                        <span>{customDesignMdName ?? designPreset}.md</span>
-                        <button onClick={() => { setDesignPreset('none'); setCustomDesignMd(null) }} className="flex items-center" style={{ color: F.inkMuted }}>
-                          <X size={11} />
-                        </button>
-                      </div>
-                      <span className="text-[12px]" style={{ color: F.inkMuted }}>이 design.md 파일의 디자인 시스템 사용</span>
+                {(designPreset !== 'none' || !!customDesignMd) && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px]" style={{ backgroundColor: F.surface1, border: `1px solid ${F.hairlineSoft}`, color: F.ink }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      <span>{customDesignMdName ?? designPreset}.md</span>
+                      <button onClick={() => { setDesignPreset('none'); setCustomDesignMd(null) }} className="flex items-center" style={{ color: F.inkMuted }}>
+                        <X size={11} />
+                      </button>
                     </div>
-                  )}
-                  <textarea
-                    value={brief}
-                    onChange={e => setBrief(e.target.value.slice(0, 2000))}
-                    placeholder={`${designSystemDisplayName}을 활용하여 어떤 화면을 만들고 싶으신가요?\n\n예시:\n${designSystemDisplayName} 스타일로 대시보드를 만들어주세요. 주요 지표와 사용자 활동을 한눈에 볼 수 있어야 합니다.`}
-                    className="flex-1 p-4 text-sm resize-none leading-relaxed bg-transparent outline-none"
-                    style={{ color: F.ink }}
-                  />
+                    <span className="text-[12px]" style={{ color: F.inkMuted }}>이 design.md 파일의 디자인 시스템 사용</span>
+                  </div>
+                )}
+                <div className="flex flex-col gap-3">
+                  {/* 서비스 설명 */}
+                  <div
+                    className="flex flex-col"
+                    style={{ borderRadius: '12px', border: `1px solid ${F.hairlineSoft}`, backgroundColor: F.canvas }}
+                    onFocusCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairline }}
+                    onBlurCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairlineSoft }}
+                  >
+                    <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+                      <span className="text-[12px] font-semibold" style={{ color: F.primary }}>ㅇ</span>
+                      <span className="text-[13px] font-semibold" style={{ color: F.ink }}>서비스 설명</span>
+                    </div>
+                    <textarea
+                      value={briefDesc}
+                      onChange={e => setBriefDesc(e.target.value)}
+                      placeholder="어떤 서비스인지, 무엇을 해결하는지 2-3문장으로 적어주세요.&#10;예) 반려식물을 키우는 사람들이 물주기·일조량·영양 상태를 기록하고 AI가 식물 상태를 진단해주는 앱"
+                      className="px-4 pb-4 pt-1 text-sm resize-none leading-relaxed bg-transparent outline-none min-h-[100px]"
+                      style={{ color: F.ink }}
+                    />
+                  </div>
+                  {/* 핵심 기능 */}
+                  <div
+                    className="flex flex-col"
+                    style={{ borderRadius: '12px', border: `1px solid ${F.hairlineSoft}`, backgroundColor: F.canvas }}
+                    onFocusCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairline }}
+                    onBlurCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairlineSoft }}
+                  >
+                    <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+                      <span className="text-[12px] font-semibold" style={{ color: F.primary }}>ㅇ</span>
+                      <span className="text-[13px] font-semibold" style={{ color: F.ink }}>핵심 기능</span>
+                    </div>
+                    <textarea
+                      value={briefFeatures}
+                      onChange={e => setBriefFeatures(e.target.value)}
+                      placeholder="주요 기능을 줄바꿈으로 나열해주세요. 구체적일수록 생성 품질이 올라가요.&#10;예) - 식물 상태 기록 (물주기, 햇빛, 온도)&#10;- AI 진단 및 케어 추천&#10;- 성장 일지 및 사진 기록&#10;- 스토어 (식물·용품 구매)"
+                      className="px-4 pb-4 pt-1 text-sm resize-none leading-relaxed bg-transparent outline-none min-h-[140px]"
+                      style={{ color: F.ink }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -4433,12 +5038,13 @@ function IconPickerPanel({ pickedIcon, onPick, onApply, onCancel }: {
 
 // ─── Tweaks modal ─────────────────────────────────────────────────────────────
 
-function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, tweakSpec, isLoadingTweaks, activeStateId, varValues, onStateChange, onVarChange }: {
+function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, tweakSpec, isLoadingTweaks, activeStateId, varValues, onStateChange, onVarChange, onEvent }: {
   darkMode: boolean; brandColor: string
   onDarkMode: (on: boolean) => void; onBrandColor: (c: string) => void; onClose: () => void
   tweakSpec: TweakSpec | null; isLoadingTweaks: boolean
   activeStateId: string; varValues: Record<string, number>
   onStateChange: (id: string) => void; onVarChange: (id: string, value: number) => void
+  onEvent: (script: string) => void
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-end p-6 pointer-events-none">
@@ -4492,6 +5098,26 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
                   value={varValues[v.id] ?? v.currentValue}
                   onChange={onVarChange}
                 />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 핵심 순간 */}
+        {!isLoadingTweaks && tweakSpec && tweakSpec.events.length > 0 && (
+          <div className="px-5 py-4 border-b border-[rgba(0,0,0,0.07)]">
+            <p className="text-[13px] font-semibold text-[#999999] uppercase tracking-wider mb-2.5">핵심 순간</p>
+            <div className="flex flex-col gap-2">
+              {tweakSpec.events.map(ev => (
+                <button
+                  key={ev.id}
+                  onClick={() => onEvent(ev.script)}
+                  className="flex items-center gap-2 w-full text-left text-[13px] py-2 px-3 border transition-all hover:bg-[#f5f5f5]"
+                  style={{ borderRadius: '8px', borderColor: 'rgba(0,0,0,0.09)', background: '#fafafa', color: '#111111' }}
+                >
+                  <Zap size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                  {ev.label}
+                </button>
               ))}
             </div>
           </div>
@@ -5120,8 +5746,15 @@ function QuestionCard({ index, question, answer, onAnswer }: {
     ? answer.slice('기타: '.length)
     : ''
 
+  const isHero3DQuestion = question.id === 'hero_3d'
+  const isHero3DManual = isHero3DQuestion && typeof answer === 'string' && (answer === '직접 입력' || answer.startsWith('직접 입력: '))
+  const hero3DKeyword = isHero3DManual && typeof answer === 'string' && answer.startsWith('직접 입력: ')
+    ? answer.slice('직접 입력: '.length)
+    : ''
+
   const isSelected = (value: string) => {
     if (isDomainQuestion && value === '기타') return isDomainOther
+    if (isHero3DQuestion && value === '직접 입력') return isHero3DManual
     if (!answer) return false
     if (Array.isArray(answer)) return answer.includes(value)
     return answer === value
@@ -5189,6 +5822,22 @@ function QuestionCard({ index, question, answer, onAnswer }: {
             onFocus={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.35)' }}
             onBlur={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.09)' }}
           />
+        )}
+        {isHero3DManual && (
+          <div className="mt-2">
+            <input
+              type="text"
+              value={hero3DKeyword}
+              onChange={e => onAnswer(e.target.value ? `직접 입력: ${e.target.value}` : '직접 입력')}
+              className="w-full bg-[#f0f0f0] border px-3 py-2 text-sm text-[#111111] placeholder:text-[#999999]"
+              style={{ borderRadius: '8px', outline: 'none', borderColor: 'rgba(0,0,0,0.09)' }}
+              placeholder="예: 귀여운 로봇, 스마트폰 캐릭터, 달리는 강아지..."
+              autoFocus
+              onFocus={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.35)' }}
+              onBlur={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.09)' }}
+            />
+            <p className="text-[11px] text-[#999] mt-1">한국어로 입력해도 돼요. Creon 3D 스타일로 생성됩니다.</p>
+          </div>
         )}
         {question.type === 'multi' && <p className="text-[13px] text-[#666666] mt-2">복수 선택 가능</p>}
       </div>

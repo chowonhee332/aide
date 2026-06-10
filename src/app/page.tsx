@@ -246,9 +246,15 @@ export default function Home() {
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([])
   const [historyModalTab, setHistoryModalTab] = useState<'board' | 'variant' | 'design'>('board')
   const historyMatchesTab = useCallback((item: HistoryItem, tab: 'board' | 'variant' | 'design') => {
+    // 대지 탭: 모든 board 레코드 (진행 단계 무관)
     if (tab === 'board') return item.itemType === 'board'
-    if (tab === 'variant') return item.itemType === 'variant'
-    return !item.itemType || item.itemType === 'design'
+    // 시안 탭: variants가 있는 board OR 구버전 variant 레코드
+    if (tab === 'variant') return (
+      (item.itemType === 'board' && (item.board?.mainVariants?.some(Boolean) ?? false)) ||
+      item.itemType === 'variant'
+    )
+    // 디자인 탭: 프로토타입이 있는 board (시안 데이터도 board 안에 함께 유지됨)
+    return item.itemType === 'board' && !!item.board?.prototypeHtml
   }, [])
 
   useEffect(() => {
@@ -261,7 +267,12 @@ export default function Home() {
     }
   }, [historyModalOpen])
 
-  const [brief, setBrief] = useState('')
+  const [briefDesc, setBriefDesc] = useState('')
+  const [briefFeatures, setBriefFeatures] = useState('')
+  const brief = [
+    briefDesc.trim(),
+    briefFeatures.trim() ? `핵심 기능:\n${briefFeatures.trim()}` : '',
+  ].filter(Boolean).join('\n\n')
   const [designPreset, setDesignPreset] = useState<DesignPreset>('none')
   const [designPanelOpen, setDesignPanelOpen] = useState(false)
   const [designMdContent, setDesignMdContent] = useState<string | null>(null)
@@ -284,6 +295,9 @@ export default function Home() {
   const [refCapturing, setRefCapturing] = useState(false)
   const [refError, setRefError] = useState<string | null>(null)
   const [refPreviewOpen, setRefPreviewOpen] = useState(false)
+  const [refSearchQuery, setRefSearchQuery] = useState('')
+  const [refSearchResults, setRefSearchResults] = useState<{ url: string; title: string; source: string }[]>([])
+  const [refSearching, setRefSearching] = useState(false)
 
   const [prdDoc, setPrdDoc] = useState<string | null>(null)
   const [prdDocFileName, setPrdDocFileName] = useState<string | null>(null)
@@ -548,6 +562,40 @@ export default function Home() {
       setRefError('네트워크 오류가 발생했습니다.')
     } finally {
       setRefCapturing(false)
+    }
+  }
+
+  const handleRefSearch = async () => {
+    if (!refSearchQuery.trim() || refSearching) return
+    setRefSearching(true)
+    setRefSearchResults([])
+    try {
+      const res = await fetch(`/api/reference-search?q=${encodeURIComponent(refSearchQuery.trim())}`)
+      const data = await res.json()
+      if (res.ok && data.images) setRefSearchResults(data.images)
+    } catch {
+      // silent fail — user can retry
+    } finally {
+      setRefSearching(false)
+    }
+  }
+
+  const handleRefSearchImageSelect = async (imageUrl: string) => {
+    try {
+      const res = await fetch(imageUrl)
+      const blob = await res.blob()
+      const reader = new FileReader()
+      reader.onload = ev => {
+        const dataUrl = ev.target?.result as string
+        const base64 = dataUrl.split(',')[1]
+        setRefPageImage(base64)
+        setRefImageKind('reference')
+        setRefPanelOpen(false)
+      }
+      reader.readAsDataURL(blob)
+    } catch {
+      // If CORS blocks direct fetch, open in new tab as fallback
+      window.open(imageUrl, '_blank')
     }
   }
 
@@ -1195,21 +1243,44 @@ export default function Home() {
                 </div>
               )
             })()}
-            <textarea
-              value={brief}
-              onChange={e => setBrief(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={designPreset !== 'none'
-                ? `${DESIGN_PRESETS[designPreset].label} 디자인 시스템을 활용하여 어떤 서비스를 만들고 싶으세요?\n\n예시:\n${DESIGN_PRESETS[designPreset].label} 스타일로 대시보드를 만들어주세요. 주요 지표와 사용자 활동을 한눈에 볼 수 있어야 합니다.`
-                : `어떤 서비스를 만들고 싶으세요? (예: 음식 배달 홈, 포털 메인, 스마트 요금제 비교 페이지...)`}
-              rows={3}
-              style={{
-                width: '100%', background: 'none', border: 'none', outline: 'none',
-                color: 'rgba(0,0,0,0.9)', fontSize: '15px', lineHeight: 1.30,
-                letterSpacing: '-0.15px', resize: 'none', fontFamily: 'inherit',
-                caretColor: F.primary,
-              }}
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: F.primary, marginBottom: '4px', letterSpacing: '-0.1px' }}>
+                  ㅇ 서비스 설명
+                </div>
+                <textarea
+                  value={briefDesc}
+                  onChange={e => setBriefDesc(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && briefDesc.trim()) { e.preventDefault(); handleSubmit() } }}
+                  placeholder="어떤 서비스인지 2-3문장으로 적어주세요.&#10;예) 반려식물을 키우는 사람들이 물주기·일조량을 기록하고 AI가 식물 상태를 진단해주는 앱"
+                  rows={2}
+                  style={{
+                    width: '100%', background: 'none', border: 'none', outline: 'none',
+                    color: 'rgba(0,0,0,0.9)', fontSize: '14px', lineHeight: 1.5,
+                    letterSpacing: '-0.13px', resize: 'none', fontFamily: 'inherit',
+                    caretColor: F.primary,
+                  }}
+                />
+              </div>
+              <div style={{ borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '12px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: F.primary, marginBottom: '4px', letterSpacing: '-0.1px' }}>
+                  ㅇ 핵심 기능
+                </div>
+                <textarea
+                  value={briefFeatures}
+                  onChange={e => setBriefFeatures(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && briefDesc.trim()) { e.preventDefault(); handleSubmit() } }}
+                  placeholder="주요 기능을 줄바꿈으로 나열해주세요.&#10;예) - 식물 상태 기록 (물주기, 햇빛, 온도)&#10;- AI 진단 및 케어 추천&#10;- 스토어 (식물·용품 구매)"
+                  rows={3}
+                  style={{
+                    width: '100%', background: 'none', border: 'none', outline: 'none',
+                    color: 'rgba(0,0,0,0.9)', fontSize: '14px', lineHeight: 1.5,
+                    letterSpacing: '-0.13px', resize: 'none', fontFamily: 'inherit',
+                    caretColor: F.primary,
+                  }}
+                />
+              </div>
+            </div>
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               marginTop: '14px',
@@ -1874,6 +1945,81 @@ export default function Home() {
                 </button>
               )}
 
+              {sourceTab === 'reference' && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                    <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
+                    <span style={{ color: F.inkMuted, fontSize: '11px', letterSpacing: '-0.11px' }}>또는 드리블·앱스토어 검색</span>
+                    <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                    <input
+                      type="text"
+                      value={refSearchQuery}
+                      onChange={e => setRefSearchQuery(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleRefSearch()}
+                      placeholder="예: coffee app, 배달 앱, fitness tracker"
+                      style={{
+                        flex: 1, padding: '10px 12px', borderRadius: '10px',
+                        border: `1px solid ${F.hairline}`, backgroundColor: F.surface2,
+                        color: F.ink, fontSize: '13px', fontFamily: 'inherit', outline: 'none',
+                        letterSpacing: '-0.13px',
+                      }}
+                    />
+                    <button
+                      onClick={handleRefSearch}
+                      disabled={!refSearchQuery.trim() || refSearching}
+                      style={{
+                        padding: '10px 14px', borderRadius: '10px', flexShrink: 0,
+                        border: 'none', cursor: refSearchQuery.trim() && !refSearching ? 'pointer' : 'default',
+                        backgroundColor: refSearchQuery.trim() && !refSearching ? F.ink : F.surface2,
+                        color: refSearchQuery.trim() && !refSearching ? F.canvas : 'rgba(0,0,0,0.25)',
+                        fontSize: '13px', fontWeight: 500, letterSpacing: '-0.13px',
+                        transition: 'all 0.15s', whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {refSearching ? '검색 중…' : '검색'}
+                    </button>
+                  </div>
+                  {refSearchResults.length > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '12px' }}>
+                      {refSearchResults.map((img, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleRefSearchImageSelect(img.url)}
+                          title={`${img.title} (${img.source})`}
+                          style={{
+                            padding: 0, border: `1px solid ${F.hairline}`, borderRadius: '8px',
+                            overflow: 'hidden', cursor: 'pointer', backgroundColor: F.surface2,
+                            aspectRatio: '4/3', position: 'relative',
+                          }}
+                        >
+                          <img
+                            src={img.url}
+                            alt={img.title}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                            onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                          />
+                          <div style={{
+                            position: 'absolute', bottom: 0, left: 0, right: 0,
+                            padding: '3px 5px', background: 'linear-gradient(transparent, rgba(0,0,0,0.55))',
+                            fontSize: '9px', color: '#fff', textAlign: 'left',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {img.source}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {refSearching && (
+                    <div style={{ textAlign: 'center', padding: '16px 0', color: F.inkMuted, fontSize: '12px' }}>
+                      드리블 · 앱스토어 검색 중…
+                    </div>
+                  )}
+                </>
+              )}
+
               {sourceTab === 'brand' && (
                 <>
                   <p style={{ fontSize: '12px', fontWeight: 600, color: F.inkMuted, marginBottom: '8px', letterSpacing: '-0.12px' }}>로고</p>
@@ -2372,11 +2518,21 @@ export default function Home() {
                       }}
                     >
                       <div style={{ position: 'relative', aspectRatio: '16/10', overflow: 'hidden', flexShrink: 0, backgroundColor: F.surface2 }}>
-                        <img
-                          src={item.thumbnail}
-                          alt={item.brief}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }}
-                        />
+                        {(() => {
+                          // 디자인 탭: 프로토타입 썸네일 우선, 시안 탭: 첫 시안 이미지 우선
+                          const thumbSrc = historyModalTab === 'design' && item.board?.prototypeThumbnail
+                            ? item.board.prototypeThumbnail
+                            : historyModalTab === 'variant'
+                            ? (item.board?.mainVariants?.find(v => v?.image)?.image ?? item.thumbnail)
+                            : item.thumbnail
+                          return (
+                            <img
+                              src={thumbSrc}
+                              alt={item.brief}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }}
+                            />
+                          )
+                        })()}
                       </div>
                       <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <p style={{
@@ -2387,31 +2543,31 @@ export default function Home() {
                         } as React.CSSProperties}>
                           {item.brief}
                         </p>
-                        {item.itemType === 'board' && (
-                          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                            {[
-                              item.board?.designSystemName ? item.board.designSystemName : 'Design system',
-                              `${item.board?.layoutBlueprints?.length ?? 0} skeleton`,
-                              `${item.board?.mainVariants?.filter(Boolean).length ?? 0} 시안`,
-                              item.board?.prototypeHtml ? 'Prototype' : 'No prototype',
-                            ].map(label => (
-                              <span
-                                key={label}
-                                style={{
-                                  fontSize: '10px',
-                                  fontWeight: 600,
-                                  color: label === 'No prototype' ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.72)',
-                                  backgroundColor: 'rgba(0,0,0,0.045)',
-                                  borderRadius: '100px',
-                                  padding: '2px 7px',
-                                  letterSpacing: '-0.1px',
-                                }}
-                              >
-                                {label}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                        {(() => {
+                          const variantCount = item.board?.mainVariants?.filter(Boolean).length ?? 0
+                          const hasPrototype = !!item.board?.prototypeHtml
+                          const tags: { label: string; accent?: boolean; muted?: boolean }[] = []
+                          if (item.itemType === 'board') {
+                            if (item.board?.designSystemName) tags.push({ label: item.board.designSystemName })
+                            if (variantCount > 0) tags.push({ label: `${variantCount} 시안` })
+                            if (hasPrototype) tags.push({ label: 'Prototype', accent: true })
+                          } else if (item.itemType === 'variant') {
+                            tags.push({ label: '시안', muted: true })
+                          }
+                          return tags.length > 0 ? (
+                            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                              {tags.map(({ label, accent, muted }) => (
+                                <span key={label} style={{
+                                  fontSize: '10px', fontWeight: 600, borderRadius: '100px', padding: '2px 7px', letterSpacing: '-0.1px',
+                                  color: accent ? '#0055ff' : muted ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.72)',
+                                  backgroundColor: accent ? 'rgba(0,85,255,0.08)' : 'rgba(0,0,0,0.045)',
+                                }}>
+                                  {label}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null
+                        })()}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             {item.preset && item.preset in DESIGN_PRESETS && (
@@ -2444,7 +2600,10 @@ export default function Home() {
                               <Trash2 size={12} />
                             </button>
                             <button
-                              onClick={() => setStudioTrigger({ brief: '', historyId: item.id })}
+                              onClick={() => {
+                                setHistoryModalOpen(false)
+                                setStudioTrigger({ brief: '', historyId: item.id })
+                              }}
                               style={{
                                 width: '28px', height: '28px', borderRadius: '6px',
                                 border: 'none', backgroundColor: 'rgba(0,0,0,0.04)', cursor: 'pointer',

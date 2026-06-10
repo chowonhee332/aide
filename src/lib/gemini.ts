@@ -2,10 +2,10 @@ import { GoogleGenAI } from '@google/genai';
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
-import { type AppDomain, DOMAIN_KEY_TO_LABEL, DOMAIN_HOME_EMPHASIS_OPTIONS } from './domain-constants';
+import { type AppDomain, DOMAIN_KEY_TO_LABEL, DOMAIN_HOME_EMPHASIS_OPTIONS, DOMAIN_PRIMARY_JOURNEY_OPTIONS, DOMAIN_FIRST_SCREEN_FOCUS_OPTIONS } from './domain-constants';
 import { getDomainGuidance } from './variant-refs';
 export type { AppDomain } from './domain-constants';
-export { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY, DOMAIN_HOME_EMPHASIS_OPTIONS } from './domain-constants';
+export { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY, DOMAIN_HOME_EMPHASIS_OPTIONS, DOMAIN_PRIMARY_JOURNEY_OPTIONS, DOMAIN_FIRST_SCREEN_FOCUS_OPTIONS } from './domain-constants';
 
 function getAi(apiKey?: string) {
   return new GoogleGenAI({ apiKey: apiKey || process.env.GEMINI_API_KEY! })
@@ -138,7 +138,7 @@ async function fetchUnsplashUrl(keyword: string, width: number, height: number, 
   }
 }
 
-async function generatePro(prompt: string, apiKey?: string, model = 'gemini-3.5-flash'): Promise<string> {
+async function generatePro(prompt: string, apiKey?: string, model = 'gemini-3.5-flash', onChunk?: (accumulated: string) => void): Promise<string> {
   const ai = getAi(apiKey)
   console.log('[gemini] generatePro start, model=', model, 'prompt length=', prompt.length)
   await geminiSemaphore.acquire()
@@ -150,7 +150,12 @@ async function generatePro(prompt: string, apiKey?: string, model = 'gemini-3.5-
         config: { temperature: 1, maxOutputTokens: 32768, httpOptions: { timeout: 300_000 } },
       })
       let text = ''; let chunkCount = 0
-      for await (const chunk of stream) { text += chunk.text ?? ''; chunkCount++ }
+      for await (const chunk of stream) {
+        text += chunk.text ?? ''
+        chunkCount++
+        if (onChunk && chunkCount % 8 === 0) onChunk(text)
+      }
+      if (onChunk) onChunk(text)
       console.log('[gemini] generatePro done, chunks=', chunkCount, 'output length=', text.length)
       return text
     }, `generatePro/${model}`)
@@ -165,7 +170,7 @@ async function generatePro(prompt: string, apiKey?: string, model = 'gemini-3.5-
   }
 }
 
-async function generateProWithImage(prompt: string, imageBase64: string, mimeType: string, apiKey?: string, model = 'gemini-3.5-flash'): Promise<string> {
+async function generateProWithImage(prompt: string, imageBase64: string, mimeType: string, apiKey?: string, model = 'gemini-3.5-flash', onChunk?: (accumulated: string) => void): Promise<string> {
   const ai = getAi(apiKey)
   console.log('[gemini] generateProWithImage start, model=', model, 'prompt length=', prompt.length)
   await geminiSemaphore.acquire()
@@ -177,7 +182,12 @@ async function generateProWithImage(prompt: string, imageBase64: string, mimeTyp
         config: { temperature: 1, maxOutputTokens: 32768, httpOptions: { timeout: 300_000 } },
       })
       let text = ''; let chunkCount = 0
-      for await (const chunk of stream) { text += chunk.text ?? ''; chunkCount++ }
+      for await (const chunk of stream) {
+        text += chunk.text ?? ''
+        chunkCount++
+        if (onChunk && chunkCount % 8 === 0) onChunk(text)
+      }
+      if (onChunk) onChunk(text)
       console.log('[gemini] generateProWithImage done, chunks=', chunkCount, 'output length=', text.length)
       return text
     }, `generateProWithImage/${model}`)
@@ -192,7 +202,7 @@ async function generateProWithImage(prompt: string, imageBase64: string, mimeTyp
   }
 }
 
-async function generateProWithMultipleImages(prompt: string, images: Array<{ data: string; mimeType: string }>, apiKey?: string, model = 'gemini-3.5-flash'): Promise<string> {
+async function generateProWithMultipleImages(prompt: string, images: Array<{ data: string; mimeType: string }>, apiKey?: string, model = 'gemini-3.5-flash', onChunk?: (accumulated: string) => void): Promise<string> {
   const ai = getAi(apiKey)
   const imageParts = images.map(img => ({ inlineData: { mimeType: img.mimeType, data: img.data } }))
   await geminiSemaphore.acquire()
@@ -203,8 +213,13 @@ async function generateProWithMultipleImages(prompt: string, images: Array<{ dat
         contents: [{ role: 'user', parts: [...imageParts, { text: prompt }] }],
         config: { temperature: 1, maxOutputTokens: 32768, httpOptions: { timeout: 300_000 } },
       })
-      let text = ''
-      for await (const chunk of stream) text += chunk.text ?? ''
+      let text = ''; let chunkCount = 0
+      for await (const chunk of stream) {
+        text += chunk.text ?? ''
+        chunkCount++
+        if (onChunk && chunkCount % 8 === 0) onChunk(text)
+      }
+      if (onChunk) onChunk(text)
       return text
     }, `generateProWithMultipleImages/${model}`)
   } finally {
@@ -433,7 +448,7 @@ export interface VariantDescription {
   layoutThesis: string;
 }
 
-export type VariantVisualPolicy = 'no-image' | 'scene-3d' | 'creon-object-3d' | 'real-photo';
+export type VariantVisualPolicy = 'no-image' | 'scene-3d' | 'creon-object-3d' | 'real-photo' | 'scene-3d-card-cover';
 
 export interface GenerateParams {
   designMd: string;
@@ -461,12 +476,14 @@ export interface GenerateParams {
   qualityMode?: 'draft' | 'full';
   precomputedDesignIntentPlan?: string;
   onStep?: (label: string) => void;
+  onHtmlChunk?: (partialHtml: string) => void;
   prdDoc?: string;
   iaImageBase64?: string;
   iaText?: string;
 }
 
 export interface AideGenerationPlan {
+  referenceSearchKeyword?: string;
   designIntelligence?: {
     serviceSubtype: string;
     selectedPatterns: string[];
@@ -521,7 +538,15 @@ export interface AideGenerationPlan {
     layoutRole: string;
     firstViewport: string[];
     mustDifferBy: string[];
+    componentSpec?: string;
+    forbidden?: string[];
   }>;
+  expectedSubScreens?: Array<{
+    id: string;
+    label: string;
+    purpose: string;
+  }>;
+  recommendedStrategy?: Record<'A' | 'B' | 'C', string>;
 }
 
 export interface LayoutBlueprintSection {
@@ -611,9 +636,16 @@ export interface TweakState {
   replacements: Array<{ from: string; to: string }>;
 }
 
+export interface TweakEvent {
+  id: string;
+  label: string;
+  script: string;
+}
+
 export interface TweakSpec {
   variables: TweakVariable[];
   states: TweakState[];
+  events: TweakEvent[];
 }
 
 export async function analyzeAndGenerateQuestions(
@@ -660,6 +692,12 @@ ${prdContext}${designSystemContext}
 - 커뮤니티·SNS·뉴스 피드 서비스
 
 generate: true일 때:
+- **최우선 규칙**: 사용자가 브리프에서 3D 오브젝트를 명시한 경우 반드시 그것을 사용하세요.
+  - 감지 패턴: "3D는 X로", "X 캐릭터로", "X로 만들어줘", "히어로 이미지는 X", "3D 이미지는 X", "X 마스코트", "X 캐릭터 써줘"
+  - 예: "3D는 토끼 캐릭터로 해줘" → heroSubject: "a cute rabbit character"
+  - 예: "강아지 마스코트로 만들어줘" → heroSubject: "a friendly dog mascot"
+  - 명시된 경우 AI가 임의로 다른 오브젝트로 바꾸지 말 것
+- 명시가 없을 때: 서비스를 상징하는 단일 오브젝트 자동 선정
 - prompt는 **영어**로, Creon 3D Studio 스타일에 적합한 단일 오브젝트/캐릭터 프롬프트 작성:
   - 스타일: cute isometric 3D mascot/icon, glossy plastic, soft studio lighting, clean shape
   - 예: "a cute sandwich mascot holding a coupon", "a delivery box mascot", "a friendly credit card character"
@@ -729,6 +767,23 @@ ${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는
       options: ['모바일 앱', '웹 서비스', '랜딩/브랜드', '대시보드/관리자', '포털/커머스'],
     },
     {
+      id: 'hero_3d',
+      question: '3D 히어로 이미지',
+      description: 'Creon 3D 스타일 오브젝트/캐릭터를 히어로 영역에 생성합니다. "직접 입력"을 선택하면 원하는 키워드를 지정할 수 있어요.',
+      type: 'single',
+      options: ['3D 생성 안 함', 'AI가 자동 결정', '직접 입력'],
+    },
+    {
+      id: 'service_type',
+      question: '서비스 성격',
+      description: '디자인 톤·레이아웃·시각 방향이 크게 달라집니다. 잘못 설정되면 B2B 대시보드처럼 딱딱하게 나올 수 있어요.',
+      type: 'single',
+      options: [
+        'B2C — 소비자용 (Toss·카카오·네이버 스타일, 직관적·감성적)',
+        'B2B — 업무/기업용 (대시보드·관리자·SaaS 스타일, 정보 밀도 중심)',
+      ],
+    },
+    {
       id: 'domain',
       question: '서비스 도메인',
       description: `AI가 "${inferredDomainLabel}"로 추론했습니다. 다르다면 변경해 주세요`,
@@ -743,32 +798,46 @@ ${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는
       options: DOMAIN_HOME_EMPHASIS_OPTIONS[parsed.domain ?? 'other'] ?? DOMAIN_HOME_EMPHASIS_OPTIONS['other'],
     },
     {
-      id: 'primary_journey',
-      question: '핵심 사용 흐름',
-      description: '사용자가 첫 화면에서 무엇을 끝내야 하는지 결정합니다.',
+      id: 'target_audience',
+      question: '주요 타겟',
+      description: '타겟에 따라 톤, 용어, 정보 구조가 달라집니다.',
       type: 'single',
-      options: ['목표 달성/보상 수령', '탐색/선택', '신청/구매 전환', '데이터 확인', '커뮤니티 참여', 'AI가 결정'],
+      options: ['20-30대 일반 소비자', '30-40대 직장인', '10-20대 MZ세대', '전문가/파워유저', '시니어 (50대+)', 'AI가 결정'],
     },
     {
-      id: 'first_screen_focus',
-      question: '첫 화면 주인공',
-      description: '첫 viewport에서 가장 크게 보일 요소를 정합니다.',
+      id: 'visual_direction',
+      question: '비주얼 방향',
+      description: '서비스 전반의 시각적 분위기를 설정합니다.',
       type: 'single',
-      options: ['핵심 지표', '대표 CTA', '콘텐츠 카드', '브랜드 히어로', '검색/필터', 'AI가 결정'],
+      options: ['밝고 친근한 (카카오·토스 스타일)', '세련되고 프리미엄한 (Apple·Airbnb 스타일)', '활기차고 강렬한 (게임·리워드 스타일)', '신뢰감 있는 전문적 (금융·의료 스타일)', 'AI가 결정'],
     },
     {
       id: 'visual_density',
       question: '정보 밀도',
-      description: '여백과 카드 개수, 텍스트 양의 균형을 정합니다.',
+      description: '화면 안에 얼마나 많은 정보를 담을지 결정합니다. 여백형은 고급감, 밀도형은 효율성을 강조합니다.',
       type: 'single',
-      options: ['균형형', '프리미엄 여백형', '정보 밀도 높게'],
+      options: ['프리미엄 여백형 (Apple·Airbnb — 여백 중심, 핵심만)', '균형형 (Toss·카카오 — 핵심과 보조를 고루)', '정보 밀도 높게 (금융·B2B — 데이터 최대)', 'AI가 결정'],
+    },
+    {
+      id: 'primary_journey',
+      question: '핵심 사용 흐름',
+      description: '첫 화면 안에서 사용자의 상태 확인 → 행동 → 결과를 연결하는 핵심 흐름입니다. 레이아웃 우선순위 결정에 사용됩니다.',
+      type: 'single',
+      options: DOMAIN_PRIMARY_JOURNEY_OPTIONS[parsed.domain ?? 'other'] ?? DOMAIN_PRIMARY_JOURNEY_OPTIONS['other'],
+    },
+    {
+      id: 'first_screen_focus',
+      question: '첫 화면 주인공',
+      description: '첫 viewport에서 가장 강한 시각 계층을 차지할 요소입니다. 나머지 요소는 이것을 보조합니다.',
+      type: 'single',
+      options: DOMAIN_FIRST_SCREEN_FOCUS_OPTIONS[parsed.domain ?? 'other'] ?? DOMAIN_FIRST_SCREEN_FOCUS_OPTIONS['other'],
     },
     {
       id: 'variant_strategy',
-      question: '시안 방향',
-      description: 'A/B/C가 서로 얼마나 다른 방향으로 나올지 결정합니다.',
+      question: 'A/B/C 시안 구성 방향',
+      description: '세 시안이 어떤 방향을 특히 강화할지 결정합니다. 기본은 A=정보형, B=전환형, C=탐색형입니다.',
       type: 'single',
-      options: ['세 방향 모두 다르게', '균형형', '정보형 강화', '전환형 강화', '탐색형 강화'],
+      options: ['세 방향 균형 (A=정보형, B=전환형, C=탐색형으로 균등하게)', '정보형 강화 (A안 데이터 밀도 특히 강화)', '전환형 강화 (B안 CTA와 히어로 특히 강화)', '탐색형 강화 (C안 이미지 큐레이션 특히 강화)', 'AI가 결정'],
     },
   ]
 
@@ -1411,9 +1480,11 @@ function collectStaticDesignContractIssues(html: string): string[] {
   if (!css.trim()) return ['CSS <style> block is missing.']
 
   const issues: string[] = []
+  // frame/bezel/notch 같은 단어를 서비스 UI 클래스명으로 쓸 수도 있으므로
+  // 실제 디바이스 껍데기 구조(배경 #000 + 대형 border-radius 조합)만 감지
   const deviceShellPatterns = [
-    /\b(?:class|id)=["'][^"']*(?:phone|iphone|device|mockup|bezel|notch|home-indicator|status-bar|dynamic-island|hardware)[^"']*["']/i,
-    /(?:phone|iphone|device|mockup|bezel|notch|home-indicator|status-bar|dynamic-island|hardware)[\w-]*\s*\{/i,
+    /\b(?:class|id)=["'][^"']*(?:phone-frame|iphone-frame|device-frame|device-mockup|phone-mockup|bezel-frame)[^"']*["']/i,
+    /(?:phone-frame|iphone-frame|device-frame|device-mockup|phone-mockup|bezel-frame)[\w-]*\s*\{/i,
     /border-radius\s*:\s*(?:3[6-9]|[4-9]\d)px[^}]{0,180}(?:background|border)\s*:\s*(?:#000|#111|#1c1c1c|black)/i,
   ]
   if (deviceShellPatterns.some(pattern => pattern.test(html))) {
@@ -1451,7 +1522,9 @@ function collectStaticDesignContractIssues(html: string): string[] {
   }
 
   // Detect hardcoded spacing values that should use contract variables
-  const arbitraryMatches = [...css.matchAll(/(^|[;\n]\s*)(padding|margin|gap|row-gap|column-gap)\s*:\s*([^;{}]+);/g)]
+  // calc()/clamp()/min()/max() 내부의 px는 의도된 수식이므로 제외
+  const cssWithoutFunctions = css.replace(/(?:calc|clamp|min|max)\([^)]+\)/g, '__fn__')
+  const arbitraryMatches = [...cssWithoutFunctions.matchAll(/(^|[;\n]\s*)(padding|margin|gap|row-gap|column-gap)\s*:\s*([^;{}]+);/g)]
   const arbitraryValues = arbitraryMatches
     .map(match => ({ prop: match[2], value: match[3].trim() }))
     .filter(({ value }) =>
@@ -1497,6 +1570,15 @@ function collectStaticDesignContractIssues(html: string): string[] {
     })
   if (sectionMarginMatches.length > 0) {
     issues.push(`Section elements have direct margin/padding-top/bottom values that fight parent flex gap. Remove them and rely on aide-page gap only. Found: ${sectionMarginMatches.slice(0, 3).join('; ')}.`)
+  }
+
+  // HERO_3D 이미지가 object-fit:cover로 생성되면 투명 배경이 배경색으로 채워짐
+  if (html.includes('%%HERO_3D:') || html.includes('HERO_3D')) {
+    const heroImgBlocks = [...html.matchAll(/<img[^>]*%%HERO_3D[^>]*>/gi)]
+    const hasWrongFit = heroImgBlocks.some(m => /object-fit\s*:\s*cover/i.test(m[0]))
+    if (hasWrongFit) {
+      issues.push('HERO_3D image has object-fit:cover which clips the transparent background object. Use object-fit:contain instead.')
+    }
   }
 
   return issues
@@ -1691,18 +1773,16 @@ function injectLogoIntoChrome(html: string, logoDataUrl: string): string {
 function replaceLogoSlots(html: string, logoDataUrl: string): { html: string; used: boolean } {
   const logoImg = buildLogoImg(logoDataUrl)
   let used = false
+  // Replace ALL logo slots across all screens (not just the first one)
   let next = html.replace(/<(div|span)\b(?=[^>]*class=(["'])[^"']*\baide-logo-slot\b[^"']*\2)[^>]*>[\s\S]*?<\/\1>/gi, () => {
-    if (used) return ''
     used = true
     return logoImg
   })
   next = next.replace(/<(div|span)\b(?=[^>]*class=(["'])[^"']*\baide-logo-slot\b[^"']*\2)[^>]*\/>/gi, () => {
-    if (used) return ''
     used = true
     return logoImg
   })
   next = next.replace(/<img\b(?=[^>]*class=(["'])[^"']*\baide-logo-slot\b[^"']*\1)[^>]*>/gi, () => {
-    if (used) return ''
     used = true
     return logoImg
   })
@@ -1792,7 +1872,7 @@ ${hasBottomTab ? `
   z-index:80 !important;
 }
 .content-scroll,.page-scroll,.aide-page,main[data-blueprint-scroll="content"],main,.main-content,.content,.scroll-content {
-  padding-bottom:calc(var(--aide-tabbar-height,72px) + env(safe-area-inset-bottom) + var(--aide-section-gap,24px)) !important;
+  padding-bottom:calc(var(--aide-tabbar-height,72px) + env(safe-area-inset-bottom) + var(--aide-section-gap,20px)) !important;
 }` : ''}
 </style>`
   const cleaned = html.replace(/<style\b[^>]*data-aide-layout-essentials=["'][^"']*["'][^>]*>[\s\S]*?<\/style>/gi, '')
@@ -1868,10 +1948,9 @@ function applyLogoDataUrlOnce(html: string, logoDataUrl?: string | null): string
   let normalized = html.split(logoDataUrl).join('__LOGO_DATA_URL__')
   const slotResult = replaceLogoSlots(normalized, logoDataUrl)
   normalized = slotResult.html
-  let used = false
-  if (slotResult.used) used = true
+  let used = slotResult.used
+  // Replace ALL logo img instances (not just first) — multi-screen HTML has one logo per screen
   normalized = normalized.replace(/<img\b[^>]*src=(["'])__LOGO_DATA_URL__\1[^>]*>/gi, (tag) => {
-    if (used) return ''
     used = true
     return normalizeLogoImgTag(tag).replace('__LOGO_DATA_URL__', logoDataUrl)
   })
@@ -1953,6 +2032,66 @@ function sanitizeGeneratedBranding(html: string, brief: string, designMd?: strin
   return next
 }
 
+const KO_TO_EN_MAP: Array<[RegExp, string]> = [
+  // 동물 캐릭터
+  [/강아지|강아지\s*캐릭터|강아지\s*마스코트/i, 'cute dog mascot'],
+  [/고양이|고양이\s*캐릭터/i, 'cute cat mascot'],
+  [/토끼|토끼\s*캐릭터/i, 'cute rabbit character'],
+  [/곰|곰\s*캐릭터|곰돌이/i, 'cute bear mascot'],
+  [/펭귄/i, 'cute penguin character'],
+  [/공룡|공룡\s*캐릭터/i, 'cute dinosaur mascot'],
+  [/로봇/i, 'friendly robot mascot'],
+  [/우주인|우주\s*캐릭터/i, 'cute astronaut character'],
+  [/여우/i, 'cute fox character'],
+  [/너구리/i, 'cute raccoon character'],
+  [/고슴도치/i, 'cute hedgehog character'],
+  [/오리/i, 'cute duck character'],
+  // 식물 도메인
+  [/반려\s*식물|원예|꽃\s*화분/i, 'cute potted flower plant'],
+  [/식물|화분|선인장|몬스테라|다육/i, 'cute potted plant'],
+  // 음식/배달 도메인
+  [/피자/i, 'glossy 3D pizza'],
+  [/햄버거|버거/i, 'glossy 3D burger'],
+  [/음식\s*배달|배달/i, 'cute delivery scooter'],
+  [/커피|카페/i, 'glossy 3D coffee cup'],
+  [/도시락|밥|식사/i, 'cute lunch box'],
+  // 통신/요금제 도메인
+  [/요금제|통신|5G|LTE/i, 'glossy 3D smartphone with signal'],
+  [/인터넷|와이파이|wifi/i, 'glossy 3D wifi router'],
+  // 멤버십/리워드 도메인
+  [/포인트|리워드|마일리지/i, 'glossy 3D reward coin'],
+  [/쿠폰|할인|혜택/i, 'glossy 3D coupon card'],
+  [/스탬프|도장/i, 'cute stamp card with stars'],
+  // 물류/배송 도메인
+  [/배송|택배|물류/i, 'cute 3D delivery box'],
+  [/트럭|배차/i, 'cute 3D delivery truck'],
+  // 건강/피트니스 도메인
+  [/운동|헬스|피트니스/i, 'glossy 3D dumbbell'],
+  [/다이어트|칼로리/i, 'cute 3D healthy meal bowl'],
+  // 금융 도메인
+  [/금융|저축|적금/i, 'glossy 3D piggy bank'],
+  [/카드|신용카드/i, 'glossy 3D credit card'],
+  // 일반 캐릭터
+  [/캐릭터/i, 'friendly mascot character'],
+  [/마스코트/i, 'friendly mascot'],
+]
+
+function translateKoreanSubjectToEnglish(subject: string): string {
+  if (!subject) return subject
+  // Already English (no Korean characters)
+  if (!/[가-힣]/.test(subject)) return subject
+  // Try each mapping
+  for (const [pattern, english] of KO_TO_EN_MAP) {
+    if (pattern.test(subject)) {
+      // Preserve any non-Korean suffix (e.g. "강아지 with wings" → "cute dog mascot with wings")
+      const suffix = subject.replace(pattern, '').trim()
+      return suffix ? `${english} ${suffix}` : english
+    }
+  }
+  // No match: keep as-is, Gemini handles Korean
+  return subject
+}
+
 export async function resolveImagePlaceholders(
   html: string,
   options: {
@@ -1964,10 +2103,11 @@ export async function resolveImagePlaceholders(
     paletteHint?: string;
     sceneImageModel?: string;
     heroImageModel?: string;
+    sceneCardCover?: boolean;
     onImageEvent?: (label: string) => void;
   } = {}
 ): Promise<string> {
-  const { heroImagePrompt, heroImageData, apiKey, unsplashKey, imageWarnings, paletteHint, sceneImageModel, heroImageModel, onImageEvent } = options
+  const { heroImagePrompt, heroImageData, apiKey, unsplashKey, imageWarnings, paletteHint, sceneImageModel, heroImageModel, sceneCardCover, onImageEvent } = options
   let result = html
   const fallbackVisual = (label: string) => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#eef4ff"/><stop offset="1" stop-color="#dbe8ff"/></linearGradient></defs><rect width="900" height="600" rx="48" fill="url(#g)"/><circle cx="690" cy="150" r="92" fill="#ffffff" opacity=".55"/><circle cx="240" cy="390" r="124" fill="#ffffff" opacity=".38"/><rect x="210" y="260" width="480" height="46" rx="23" fill="#ffffff" opacity=".72"/><rect x="285" y="330" width="330" height="28" rx="14" fill="#ffffff" opacity=".55"/><text x="450" y="430" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#6b7da8">${label}</text></svg>`
@@ -1978,9 +2118,15 @@ export async function resolveImagePlaceholders(
   const sceneMatches = [...result.matchAll(/%%(?:SCENE_3D|SHARED_HERO_3D_SCENE|HERO_SCENE_3D)(?::([^%]+))?%%/g)]
   if (sceneMatches.length > 0) {
     const detail = sceneMatches[0][1]?.trim()
-    const subject = buildHeroSubjectForScene(heroImagePrompt, detail)
+    // heroImagePrompt(서비스 키워드)가 있으면 그것만 사용.
+    // detail은 LLM이 HTML placeholder에 넣은 generic 맥락으로, 서비스 키워드와 합치면
+    // "피자 주문 colorful stacked balls" 같은 무관한 프롬프트가 생성된다.
+    const baseSceneKeyword = extractVisualKeyword(heroImagePrompt || '')
+    const sceneKeyword = baseSceneKeyword || detail || 'a helpful digital service companion'
+    const subject = buildHeroSubjectForScene(sceneKeyword)
     onImageEvent?.('3D 씬 이미지 생성 요청 중...')
-    const generated = await getSharedHeroImage(subject, apiKey, paletteHint, 'scene', sceneImageModel)
+    const sceneMode: HeroImageMode = sceneCardCover ? 'scene-card-cover' : 'scene'
+    const generated = await getSharedHeroImage(subject, apiKey, paletteHint, sceneMode, sceneImageModel)
     const src = generated ? `data:${generated.mimeType};base64,${generated.base64}` : fallbackVisual('3D scene')
     if (generated) onImageEvent?.('3D 씬 이미지 생성 완료')
     if (!generated) {
@@ -1994,11 +2140,16 @@ export async function resolveImagePlaceholders(
   const heroMatches = [...result.matchAll(/%%(?:HERO_3D|SHARED_HERO_3D|MASCOT_3D|REWARD_OBJECT_3D|HERO_3D_IMAGE)(?::([^%]+))?%%/g)]
   if (heroMatches.length > 0) {
     const detail = heroMatches[0][1]?.trim()
-    const subject = buildHeroSubjectForHero(heroImagePrompt, detail)
+    // heroImagePrompt(서비스 키워드)가 있으면 그것만 사용.
+    // detail과 합치면 "피자 마스코트 floating bubbles" 같은 무관한 이미지가 생성된다.
+    const baseHeroKeyword = extractVisualKeyword(heroImagePrompt || '')
+    const rawHeroKeyword = baseHeroKeyword || detail || 'a friendly companion mascot'
+    const cleanHeroKeyword = translateKoreanSubjectToEnglish(rawHeroKeyword)
+    const heroSubjectPrompt = buildHeroSubjectForHero(cleanHeroKeyword)
     let heroImg = heroImageData ?? null
     if (!heroImg) {
       onImageEvent?.('3D 히어로 이미지 생성 요청 중...')
-      heroImg = await getSharedHeroImage(subject, apiKey, paletteHint, 'transparent', heroImageModel)
+      heroImg = await getSharedHeroImage(heroSubjectPrompt, apiKey, paletteHint, 'transparent', heroImageModel)
     }
     const heroSrc = heroImg ? `data:${heroImg.mimeType};base64,${heroImg.base64}` : fallbackVisual('3D hero')
     if (heroImg) onImageEvent?.('3D 히어로 이미지 생성 완료')
@@ -2059,7 +2210,7 @@ export async function resolveImagePlaceholders(
   return result;
 }
 
-type HeroImageMode = 'scene' | 'transparent'
+type HeroImageMode = 'scene' | 'scene-card-cover' | 'transparent'
 
 function extractVisualKeyword(subject: string): string {
   // If subject is already short (user explicitly set it), use as-is
@@ -2261,26 +2412,29 @@ function loadCreonStyleBase(): Record<string, unknown> {
   }
 }
 
+const CREON_STYLE_FALLBACK: Record<string, unknown> = {
+  style: "cute isometric 3D icon, glossy plastic, soft studio lighting, clean rounded geometry, Creon-quality premium app icon",
+  camera: "isometric 30-degree bird's-eye view, subject centered, zoomed out leaving 30% padding on all sides",
+  background: "pure white #ffffff studio background, no floor plane, no environment",
+  composition: "single standalone object, no text, no labels, no UI elements, no scene environment",
+  output: "1:1 square composition, transparent background preferred, high quality premium render",
+}
+
 function buildCreon3DPrompt(subject: string, paletteHint?: string): string {
-  const base = loadCreonStyleBase()
+  const fileBase = loadCreonStyleBase()
+  // creon-style.md 없거나 비어 있으면 CREON_STYLE_FALLBACK으로 스타일 보장
+  const base = Object.keys(fileBase).length > 0 ? fileBase : CREON_STYLE_FALLBACK
 
   const prompt = {
     ...base,
     subject: subject || 'a friendly robot',
-    usage_context: {
-      role: "transparent 3D asset for a mobile app hero/banner/card section",
-      placement_expectation: "The UI will use this asset as a large hero visual zone, anchor it to one side of a banner, or crop it partially. Keep the silhouette clean and readable at large hero scale.",
-      avoid: "tiny icon composition, zoomed-out object, excessive empty padding, text, UI widgets, logos",
-    },
+    // Keep original creon-style.md composition framing (ZOOMED OUT, 30% padding)
+    // CSS in the HTML handles scaling up — do NOT force the model to fill the frame
     lighting: {
       ...(base.lighting as Record<string, unknown> ?? {}),
-      shadows: "no ground shadow, no cast shadow, no contact shadow, no drop shadow",
+      shadows: "no ground shadow, no cast shadow, no contact shadow, no drop shadow, no soft oval under feet, no floor reflection, no ambient occlusion blob",
     },
-    composition: {
-      ...(base.composition as Record<string, unknown> ?? {}),
-      framing: "Hero-banner ready. Subject must occupy 78-90% of the image canvas height. Use minimal transparent padding only. Do not create a tiny zoomed-out icon sheet.",
-      placement_flexibility: "Full subject with clean edges so HTML/CSS can anchor right, bottom, or center and crop slightly if needed. Keep empty margins tight.",
-    },
+    background_rules: "ABSOLUTE: white studio background only. The object must float with zero ground plane. No shadow baked into the image.",
     colors: {
       ...(base.colors as Record<string, unknown> ?? {}),
       ...(paletteHint ? { brand_palette_hint: `Harmonize with app palette: ${paletteHint}` } : {}),
@@ -2289,8 +2443,32 @@ function buildCreon3DPrompt(subject: string, paletteHint?: string): string {
   return JSON.stringify(prompt, null, 2)
 }
 
-function buildFreeformScene3DPrompt(subject: string, paletteHint?: string): string {
+function buildFreeformScene3DPrompt(subject: string, paletteHint?: string, mode: 'ambient' | 'card-cover' = 'ambient'): string {
   const cleanSubject = extractVisualKeyword(subject)
+  if (mode === 'card-cover') {
+    return `ABSOLUTE RULE — no exceptions:
+Generate a PURE VISUAL image with ZERO text, letters, numbers, prices, UI labels, buttons, icons with labels, or any readable characters. Any text in the output is an immediate failure.
+
+Create a premium full-bleed 3D scene for a mobile app hero card cover background.
+
+Visual subject and scene context:
+${cleanSubject || 'a friendly digital service companion in a vibrant environment'}
+
+Art direction:
+- Render as a modern glossy 3D scene with soft clay/plastic forms, polished app-brand quality, and contemporary mobile product art direction.
+- Creon-adjacent quality: clean, premium, cute/friendly when appropriate, with refined rounded geometry and studio lighting. Rich scene with character, environment, props, and atmospheric depth.
+- This image IS the full-bleed background of a mobile card. Fill the entire frame with a rich, well-composed scene.
+- CRITICAL COMPOSITION: The main subject (character, mascot, object) should be positioned in the upper-center or left-center area occupying roughly 40-65% of the frame height. Keep the upper 65% visually rich and lit.
+- CRITICAL BOTTOM ZONE: The lower 35% of the image must transition naturally to darker tones — use environmental depth, shadows, ground/grass/soil, or atmospheric darkening. This zone will have white text overlaid on top of it. Do NOT use hard vignette; use natural scene depth.
+- The scene should convey product state, emotion, growth, reward, or companion context — not a generic wallpaper.
+- Use rich environmental storytelling: sky, clouds, ground, props, ambient particles, magical elements — whatever fits the subject.
+- Lighting: bright and readable in the upper area, naturally dimming toward the bottom. Soft volumetric atmosphere.
+- Avoid: sparse compositions, tiny subjects, gray plastic, stiff characters, low-poly, muddy lighting, old game render, generic stock 3D.
+${paletteHint ? `- Harmonize with this app palette: ${paletteHint}` : ''}
+
+Output: PNG image, square or 4:3 portrait composition preferred (fills a tall mobile card), high quality, premium 3D render. NO TEXT anywhere in the image.`
+  }
+
   return `ABSOLUTE RULE — no exceptions:
 Generate a PURE VISUAL image with ZERO text, letters, numbers, prices, UI labels, buttons, icons with labels, or any readable characters. Any text in the output is an immediate failure.
 
@@ -2325,8 +2503,11 @@ function loadCreonRefImages(): Array<{ inlineData: { data: string; mimeType: str
       const data = fs.readFileSync(path.join(refsDir, file))
       parts.push({ inlineData: { data: data.toString('base64'), mimeType: 'image/png' } })
     } catch {
-      // skip missing ref
+      console.warn(`[gemini] Creon ref image missing: ${file} — 3D style consistency may be reduced`)
     }
+  }
+  if (parts.length === 0) {
+    console.warn('[gemini] No Creon ref images loaded — generating without style reference')
   }
   return parts
 }
@@ -2341,14 +2522,16 @@ export async function generateHeroImage(
   try {
     const ai = getAi(apiKey)
     const prompt = mode === 'scene'
-      ? buildFreeformScene3DPrompt(subject, paletteHint)
-      : buildCreon3DPrompt(subject, paletteHint)
+      ? buildFreeformScene3DPrompt(subject, paletteHint, 'ambient')
+      : mode === 'scene-card-cover'
+        ? buildFreeformScene3DPrompt(subject, paletteHint, 'card-cover')
+        : buildCreon3DPrompt(subject, paletteHint)
     const refImages = mode === 'transparent' ? loadCreonRefImages() : []
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [
       { text: prompt },
       ...refImages,
     ]
-    const imageModels = modelOverride ? [modelOverride, 'gemini-3.1-flash-image'] : ['gemini-3-pro-image', 'gemini-2.5-flash-image', 'gemini-3.1-flash-image']
+    const imageModels = modelOverride ? [modelOverride, 'gemini-2.5-flash-image'] : ['gemini-2.5-flash-image', 'gemini-2.5-pro-image']
     let res: Awaited<ReturnType<typeof ai.models.generateContent>> | null = null
     for (const model of imageModels) {
       try {
@@ -2370,8 +2553,8 @@ export async function generateHeroImage(
     if (!res) return null
     for (const part of res.candidates?.[0]?.content?.parts ?? []) {
       if (part.inlineData?.data) {
-        if (mode === 'scene') {
-          console.log('[gemini] 3D hero scene generated, preserving background')
+        if (mode === 'scene' || mode === 'scene-card-cover') {
+          console.log('[gemini] 3D hero scene generated, preserving background', mode === 'scene-card-cover' ? '(card-cover mode)' : '')
           return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType || 'image/png' }
         }
         try {
@@ -2555,6 +2738,14 @@ ${domainBlock}
    - 음식/배달/커머스/여행 등 이미지가 중요한 도메인은 무관한 랜덤 이미지 금지. 반드시 브리프와 직접 관련된 placeholder 설명을 작성한다.
    - 하단 내비게이션, floating CTA, 장바구니 버튼은 콘텐츠를 가리지 않도록 main content padding-bottom을 충분히 확보한다.
 
+   **⛔ 리스트/피드 아이템 패딩 일관성 (CRITICAL)**
+   - 같은 화면 안의 모든 리스트·피드 아이템은 **상하좌우 패딩이 동일해야 한다**.
+   - 퀘스트 카드 아이템, 식물 상태 아이템, 할 일 아이템처럼 **같은 성격의 리스트 행**은 반드시 동일한 padding 값을 사용하라.
+   - 리스트 아이템 기본 구조: padding은 var(--aide-card-padding) var(--aide-page-padding) 또는 섹션 카드 안에 있을 경우 var(--aide-card-padding) 사용.
+   - ❌ 실패: 같은 화면에서 퀘스트 아이템은 상하 padding이 있는데 식물 상태 아이템은 상하 padding이 0이거나 없는 경우.
+   - ❌ 실패: 카드(card) 안 아이템은 패딩이 있는데, 섹션 하위 리스트 아이템은 패딩이 0이거나 좌우만 있고 상하가 없는 경우.
+   - 모든 리스트 아이템의 min-height는 44px 이상(모바일 터치 타겟)이어야 한다.
+
 5. **[WCAG AA] 색상 대비 규칙 (CRITICAL — 절대 위반 금지)**
    - **Primary/Accent 배경(진한 색) 위 텍스트는 반드시 흰색(#ffffff)**: 배경이 파란색·보라색·검정·짙은 그라데이션인 경우
      * 올바른 예: style="background:#1A75FF; color:#ffffff;" ✅
@@ -2604,7 +2795,7 @@ ${domainBlock}
      4. Scene Substitute — 성장/게임/온보딩처럼 3D가 상태를 설명하는 경우. 3D는 stage 중앙 또는 하단에 55~75% 폭으로 크게 배치하고, 아래/옆에 진행률·미션·액션 카드를 연결.
    - 먼저 위 4개 중 하나를 내부적으로 선택하고, CSS class나 주석 없이 실제 배율/anchor/crop에 반영하십시오.
    - B안 HERO_3D는 작은 floating sticker가 아니라 히어로 카드의 명확한 visual zone입니다.
-   - HERO_3D visible object must read at 190px or larger on a 390px mobile viewport. 투명 캔버스의 빈 여백 때문에 실제 피사체가 작아 보이면 CSS width를 더 키우거나 일부 crop하세요.
+   - HERO_3D 이미지는 피사체가 캔버스의 65~75%를 차지하도록 생성됩니다. CSS width는 반드시 clamp(320px,82vw,480px) 이상으로 설정하세요. 피사체가 200px 이상으로 선명하게 보여야 합니다.
    - 실패 조건: 모든 %%HERO_3D%%를 120~160px 작은 아이콘처럼 넣기, 오른쪽 위 작은 스티커로 띄우기, 버튼 위 빈 공간에 애매하게 놓기, 텍스트/CTA와 의미 연결 없이 빈 공간에 놓기.
    - **히어로 이미지 배치 패턴:**
 
@@ -2612,7 +2803,7 @@ ${domainBlock}
      <section class="hero-with-image" style="display:grid;grid-template-columns:minmax(0,0.56fr) minmax(160px,0.44fr);align-items:center;overflow:hidden;">
        <div><!-- 헤드라인·서브카피·CTA --></div>
        <div class="hero-visual-zone" style="position:relative;min-height:190px;display:grid;place-items:center;overflow:visible;">
-         <img src="%%HERO_3D%%" alt="hero" style="width:clamp(190px,52vw,320px);height:auto;max-height:330px;object-fit:contain;" />
+         <img src="%%HERO_3D%%" alt="hero" style="width:clamp(320px,82vw,480px);height:auto;max-height:480px;object-fit:contain;" />
        </div>
      </section>
 
@@ -2644,6 +2835,28 @@ ${domainBlock}
        <div><!-- KPI·헤드라인·CTA --></div>
        <img src="%%HERO_3D%%" alt="hero" style="position:absolute;right:-6%;bottom:-8%;width:clamp(170px,42%,280px);height:auto;object-fit:contain;" />
      </section>
+
+     패턴 E. **Hero Card Cover / %%SCENE_3D%% full-bleed** — (B안 scene-3d-card-cover 전용) 씬이 카드 배경을 꽉 채우고 하단 오버레이에 콘텐츠를 올릴 때
+     <section class="hero-card-cover aide-visual-stage" style="position:relative;overflow:hidden;border-radius:var(--aide-card-radius,16px);min-height:320px;background:#111;">
+       <img class="aide-hero-3d aide-hero-scene-img" src="%%SCENE_3D%%" alt="hero scene" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;display:block;" />
+       <div aria-hidden="true" style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.78) 0%,rgba(0,0,0,0.42) 48%,transparent 100%);pointer-events:none;"></div>
+       <div style="position:relative;z-index:2;padding:var(--aide-card-padding,20px);display:flex;flex-direction:column;justify-content:flex-end;min-height:320px;gap:var(--aide-item-gap,8px);">
+         <!-- 상단 배지 (선택) -->
+         <span style="align-self:flex-start;background:rgba(255,255,255,0.18);backdrop-filter:blur(6px);color:#fff;font-size:12px;font-weight:600;padding:4px 10px;border-radius:100px;border:1px solid rgba(255,255,255,0.25);">배지 텍스트</span>
+         <!-- 헤드라인: 반드시 white -->
+         <h2 style="color:#ffffff;font-size:clamp(20px,5.5vw,26px);font-weight:800;line-height:1.25;letter-spacing:-0.5px;margin:0;">서비스 헤드라인</h2>
+         <!-- 상태/메타 정보 -->
+         <p style="color:rgba(255,255,255,0.82);font-size:13px;margin:0;line-height:1.5;">상태 정보 텍스트</p>
+         <!-- CTA 버튼 -->
+         <button style="align-self:flex-end;background:var(--color-primary);color:#fff;border:none;border-radius:var(--rounded-lg,12px);padding:12px 20px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;">CTA 텍스트</button>
+       </div>
+     </section>
+     ⚠️ 패턴 E 사용 시 필수 체크:
+     - img에 반드시 .aide-hero-3d .aide-hero-scene-img 클래스 부여
+     - section에 .aide-visual-stage 클래스 포함
+     - 텍스트는 모두 color:#ffffff 또는 rgba(255,255,255,...)
+     - 그라데이션 오버레이는 aria-hidden="true" div로 분리
+     - CTA 버튼 색상 대비: background:var(--color-primary); color:#fff
 
    - 3D 플레이스홀더를 절대 다른 URL이나 %%IMG%%로 교체하지 마십시오.
    - %%SCENE_3D%%를 사용할 때는 같은 히어로 안에 실사 이미지나 다른 3D를 겹치지 마십시오.
@@ -2713,6 +2926,7 @@ ${domainBlock}
    - 그리드 열 수와 내비게이션 형태는 서비스 성격과 선택한 디자인 시스템에 맞게 결정
    - \`@media\` 규칙이 하나도 없는 HTML은 실패입니다. 최소 2개 이상의 breakpoint를 작성하십시오.
    - \`.app\`, \`.phone\`, \`.container\`, \`.page\`, \`.shell\` 같은 최상위 wrapper에 \`width:390px\` 또는 \`width:1440px\`만 고정하고 끝내지 마십시오. \`width:100%; max-width:...; margin:auto;\` 조합으로 유연하게 구성하십시오.
+   - **모바일 앱 플랫폼이더라도** 데스크탑 브라우저에서 열었을 때 콘텐츠가 중앙에 오도록 반드시 처리하십시오. 모바일 전용 앱은 \`max-width:480px; margin:0 auto;\` 를 root에 적용하고, 태블릿/데스크탑에서는 양옆에 빈 여백이 보이는 폰 목업 형태로 표현하십시오. 절대로 모바일 레이아웃이 데스크탑에서 좌측으로 치우쳐 보이면 안 됩니다.
 
    **내비게이션 3종 세트 패턴 — [디자인 시스템].responsive의 breakpoint 값으로 대입:**
    \`\`\`css
@@ -2749,7 +2963,64 @@ ${domainBlock}
    - [ ] CSS @media 쿼리로 주요 레이아웃이 브레이크포인트에 따라 전환되는가?
    - [ ] 모바일에서 가로 스크롤이나 잘림이 없는가?
    - [ ] 데스크탑에서 콘텐츠 폭과 내비게이션이 안정적으로 배치되는가?
-   - [ ] DESIGN.md가 정의한 카드 gap, container padding, navigation 패턴을 우선했는가?`;
+   - [ ] DESIGN.md가 정의한 카드 gap, container padding, navigation 패턴을 우선했는가?
+
+## 🚀 출시 수준 Product UI 기준 (CRITICAL — 앱스토어 심사 통과 가능한 퀄리티)
+
+이 UI는 Figma 목업이나 데모가 아닌, **실제 서비스로 출시 가능한 Product UI**여야 합니다.
+
+### 8px 그리드 시스템
+- 모든 간격(margin, padding, gap)은 **8의 배수**여야 합니다: 8, 16, 24, 32, 40, 48, 64px
+- DESIGN.md spacing 토큰이 8의 배수가 아닌 경우에도 레이아웃 간격만큼은 8의 배수에 가장 가까운 값을 사용
+- 예외: 보더, 아이콘 stroke, 텍스트 자간은 제외
+- 체크: 인접한 요소 간 gap이 5px, 7px, 11px 같은 임의 값이면 실패
+
+### 인터랙션 상태 (Interactive States)
+모든 인터랙티브 요소는 반드시 상태별 스타일을 가져야 합니다:
+\`\`\`css
+/* 버튼 상태 */
+.btn-primary { background: var(--color-primary); transition: all 0.15s ease; }
+.btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn-primary:active { opacity: 0.75; transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.38; cursor: not-allowed; pointer-events: none; }
+
+/* 카드/리스트 항목 */
+.card, .list-item { transition: box-shadow 0.15s ease, transform 0.15s ease; }
+.card:hover { box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.1)); transform: translateY(-2px); }
+
+/* 입력 필드 */
+.input:focus { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+\`\`\`
+- hover/active/disabled/focus 상태가 없는 버튼·카드·입력은 실패
+- transition 없이 상태가 갑자기 바뀌는 것도 실패
+
+### 로딩·빈 상태·에러 상태 (Empty/Loading/Error States)
+- 데이터 목록이 있는 화면은 반드시 **스켈레톤 로딩** 또는 **로딩 스피너** 처리 영역을 포함
+- 빈 상태(empty state): 데이터가 없을 때 보여줄 일러스트 + 안내 텍스트 + CTA
+- 에러 상태: 네트워크 오류 시 재시도 버튼 포함
+\`\`\`html
+<!-- 스켈레톤 예시 -->
+<div class="skeleton-card" style="background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:var(--rounded-md);height:80px;"></div>
+<style>@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>
+\`\`\`
+
+### 접근성 (Accessibility — WCAG AA)
+- 모든 이미지에 의미 있는 \`alt\` 속성 (장식 이미지는 \`alt=""\`)
+- 모든 버튼·아이콘에 \`aria-label\` 또는 시각적 텍스트
+- 폼 입력에 \`<label>\` 연결 (\`for\`/\`id\` 쌍)
+- 키보드 포커스 시 \`focus-visible\` 스타일 보장:
+  \`\`\`css
+  :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  \`\`\`
+- 색상만으로 정보를 전달하지 않음 (빨간=에러면 아이콘·텍스트도 함께)
+- 터치 타겟 최소 44×44px (모바일)
+
+### 실제 서비스 데이터 품질
+- 숫자: 실제처럼 구체적으로 (✅ "₩24,500" ❌ "금액")
+- 날짜: 상대적 표현 (✅ "3일 전", "오늘 14:30" ❌ "YYYY-MM-DD")
+- 상태 뱃지: 의미 있는 색상+아이콘+텍스트 조합
+- 사용자명/프로필: 실제 이름처럼 (✅ "김민준" ❌ "User Name")
+- 리스트 항목은 최소 3~5개로 실제 서비스 느낌 (1~2개만 있으면 빈 화면처럼 보임)`;
 }
 
 function buildArtDirectionLayer(effectivePlatform: PlatformType): string {
@@ -2807,9 +3078,11 @@ function buildDesignDirectionSelectorLayer(_heroImagePrompt?: string, variantSty
   const domainHint = domain ? `\n도메인 힌트: ${domain}` : ''
   const visualPolicyRules = visualPolicy === 'scene-3d'
     ? `- **시안 A**: 이번에는 3D가 필요한 서비스로 판단되었습니다. A안 히어로는 %%SCENE_3D%%를 화면 전체에 통합되는 3D scene layer로 사용합니다. 과한 full-bleed wallpaper가 아니라 서비스 상태·공간·상황을 설명하는 큰 visual participant여야 합니다. 히어로에서 %%HERO_3D%% 단일 오브젝트와 실사 이미지는 금지. 단, 하위 콘텐츠 썸네일은 서비스 분석 결과에 따라 실사 사용 가능.`
-    : visualPolicy === 'creon-object-3d'
-      ? `- **시안 B**: 히어로는 3D 필요 여부와 무관하게 반드시 %%HERO_3D%% 단일 오브젝트를 사용합니다. Creon식 배경 없는 3D 아이콘/오브젝트만 허용. 히어로에서 %%SCENE_3D%%와 실사 이미지는 금지. 단, 하위 콘텐츠 카드/리스트에는 서비스 분석 결과에 따라 실사 썸네일 사용 가능.`
-      : visualPolicy === 'real-photo'
+    : visualPolicy === 'scene-3d-card-cover'
+      ? `- **시안 B**: 이번 브리프는 배경까지 포함된 몰입형 씬이 적합합니다. B안 히어로는 %%SCENE_3D%%를 **Hero Card Cover** 패턴으로 사용합니다. 카드를 꽉 채우는 배경 씬 위에 하단 그라데이션 오버레이를 깔고, 배지·헤드라인·상태 정보·CTA를 white 텍스트로 올리세요. 히어로에서 %%HERO_3D%% 단일 오브젝트와 실사 이미지는 금지. 단, 하위 콘텐츠 카드/리스트에는 서비스 분석 결과에 따라 실사 썸네일 사용 가능.`
+      : visualPolicy === 'creon-object-3d'
+        ? `- **시안 B**: 히어로는 3D 필요 여부와 무관하게 반드시 %%HERO_3D%% 단일 오브젝트를 사용합니다. Creon식 배경 없는 3D 아이콘/오브젝트만 허용. 히어로에서 %%SCENE_3D%%와 실사 이미지는 금지. 단, 하위 콘텐츠 카드/리스트에는 서비스 분석 결과에 따라 실사 썸네일 사용 가능.`
+        : visualPolicy === 'real-photo'
         ? `- **시안 C**: 히어로 섹션은 실사 이미지(Unsplash) 사용. 히어로에 반드시 %%IMG_1:관련 키워드%%를 사용합니다. 히어로에서 3D 플레이스홀더 금지. C안은 가능한 경우 Bold Editorial Hero를 백단 기본 패턴으로 우선 고려하세요. 사용자가 프롬프트에 과감한 히어로를 명시하지 않아도 Aide가 서비스 성격을 판단해 자동 적용합니다. C안이라고 해서 모든 이미지 영역을 실사로 채우지 마세요.`
         : `- **시안 A**: 히어로 이미지 없음. 데이터·수치·차트·카드가 첫 화면을 채운다. %%HERO_3D%%, %%SCENE_3D%%, %%IMG_1%% 등 어떤 이미지 플레이스홀더도 히어로 섹션에 사용 금지. 단, 하위 콘텐츠 썸네일은 서비스 분석 결과에 따라 실사 사용 가능.`
 
@@ -2854,7 +3127,8 @@ function buildMediaLayoutSafetyLayer(heroImagePrompt?: string): string {
    - 히어로 안에서 텍스트/CTA와 이미지가 함께 있을 때는 반드시 CSS grid 또는 flex로 영역을 분리합니다.
    - CTA를 이미지 위에 absolute로 올릴 수는 있지만, 반드시 이미지/hero의 하단 safe area에 붙입니다. 중앙에 애매하게 떠 있거나 핵심 피사체를 가리면 실패입니다.
    - 이미지가 absolute라면 텍스트 컨테이너에는 z-index와 readable scrim을 두고, 이미지의 safe area를 침범하지 않습니다.
-   - 모바일 390px 기준 hero 내부 좌우 padding은 디자인 시스템 토큰 기준으로 충분히 확보합니다.
+   - hero 내부 텍스트/CTA 컨테이너에는 반드시 padding: var(--aide-card-padding) var(--aide-page-padding) 를 적용합니다. 모바일·웹 모두 해당. 텍스트가 좌측/우측 끝에 붙어 있으면 즉시 실패입니다.
+   - full-bleed 배너(음수 마진으로 content-scroll padding을 탈출한 경우)의 내부 콘텐츠 div에는 반드시 클래스명 hero-inner 또는 hero-content 를 사용하고, padding-left:var(--aide-page-padding) 을 명시하세요.
 
 2. **3D 전용 컨테이너**
    - 3D img에는 반드시 전용 wrapper를 둡니다: .aide-visual-stage, .hero-visual, .mascot-stage, .scene-visual, .reward-stage 같은 의미 있는 컨테이너.
@@ -2896,7 +3170,7 @@ function buildMediaLayoutSafetyLayer(heroImagePrompt?: string): string {
      .aide-hero-3d {
        position: relative;
        z-index: 1;
-       width: clamp(190px, 58vw, 340px);
+       width: clamp(280px, 72vw, 400px);
        height: auto;
        object-fit: contain;
        display: block;
@@ -2911,7 +3185,7 @@ function buildMediaLayoutSafetyLayer(heroImagePrompt?: string): string {
        object-fit: contain;
      }
      \`\`\`
-   - 큰 히어로/추천 카드에서 투명 마스코트형은 width:clamp(190px, 58vw, 340px); max-height:340px; object-fit:contain을 기준으로 합니다.
+   - 큰 히어로/추천 카드에서 투명 마스코트형은 width:clamp(280px, 72vw, 400px); max-height:340px; object-fit:contain을 기준으로 합니다.
    - 작은 companion이 필요한 KPI 카드에서만 .compact-3d 클래스를 붙이고 width:clamp(96px, 30vw, 160px)까지 줄일 수 있습니다. 큰 빈 stage 안의 작은 중앙 3D는 금지입니다.
    - Hero Cover Scene이 정말 필요할 때만 img를 width:100%; height:100%; object-fit:cover로 씁니다. 기본은 contain/anchored/split 배치를 우선하고, UI 정보와 CTA가 겹치지 않게 주변 여백 또는 별도 패널을 사용합니다.
 
@@ -2955,6 +3229,10 @@ ${effectivePlatform === 'mobile' ? `### 모바일 상단 앱바 기준
   .app-bar, header, .top-bar {
     position: sticky;
     top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    box-sizing: border-box;
     z-index: 50;
     height: var(--aide-header-height, 56px);
     background: var(--color-surface);
@@ -3007,6 +3285,8 @@ function buildHeroVisualIntegrationLayer(heroImagePrompt?: string, variantStyle?
 
   const variantHint = visualPolicy === 'scene-3d'
     ? '시안 A는 이번 브리프에서 3D가 필요하므로 %%SCENE_3D%%를 사용한다. 이는 화면을 과하게 덮는 배경이 아니라, 서비스 상태·공간·상황을 설명하며 UI와 같은 캔버스에 통합되는 큰 3D scene layer다.'
+    : visualPolicy === 'scene-3d-card-cover'
+    ? '시안 B는 Hero Card Cover 방식이다. %%SCENE_3D%%를 카드 배경으로 꽉 채우고(object-fit:cover), 하단 그라데이션 오버레이 위에 배지·헤드라인·상태·CTA를 white 텍스트로 올린다. %%HERO_3D%% 단일 오브젝트와 실사 이미지는 히어로에서 금지.'
     : variantStyle?.includes('시안 A')
     ? '시안 A는 정보 구조와 사용성을 우선하며, 이번 정책이 no-image라면 히어로에는 3D/실사 이미지를 쓰지 않는다. 하위 콘텐츠 썸네일은 서비스 분석에 따라 허용된다.'
     : variantStyle?.includes('시안 B')
@@ -3033,6 +3313,9 @@ function buildHeroVisualIntegrationLayer(heroImagePrompt?: string, variantStyle?
     const characterOrGame = ['entertainment', 'social'].includes(domain ?? '')
 
     if (variant === 'B') {
+      if (visualPolicy === 'scene-3d-card-cover') {
+        return '시안 B + scene-3d-card-cover: %%SCENE_3D%%를 **패턴 E Hero Card Cover**로 배치하세요. section에 position:relative; overflow:hidden; border-radius:var(--aide-card-radius); min-height:320px를 주고, img를 position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 30%로 배경 전체를 채우세요. 그 위에 linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.45) 45%, transparent 100%) 오버레이를 올리고, z-index:2 레이어에 배지·헤드라인(white)·상태 정보·CTA를 하단 정렬로 배치하세요. %%HERO_3D%%와 실사 이미지는 히어로에서 금지.'
+      }
       if (foodOrReward || characterOrGame) {
         return '시안 B: 도메인과 무관하게 %%HERO_3D%% 단일 오브젝트만 사용합니다. 먼저 Banner Character, Product Object, Companion Accent, Scene Substitute 중 역할을 고르고, 그 역할에 맞는 배율·anchor·crop을 적용하세요. 배경 포함 scene처럼 cover 처리하지 마세요.'
       }
@@ -3198,6 +3481,10 @@ export async function generateDesignIntentAndHeroVisualPlan(args: {
   const variant = getVariantLabel(args.variantStyle)
   const designContext = args.designMd ? extractDesignMdForPrompt(args.designMd).slice(0, 5000) : ''
   const domainContext = args.domain ? getDomainGuidance(args.domain).slice(0, 1800) : ''
+  const variantKey = (['A', 'B', 'C'] as const).find(k => args.variantStyle?.toUpperCase().includes(k)) ?? 'A'
+  const recommendedStrategyHint = args.generationPlan?.recommendedStrategy?.[variantKey]
+    ? `\n## 이 시안(${variantKey})의 권장 디자인 전략 (서비스 서브타입 분석 기반)\n\`${args.generationPlan.recommendedStrategy[variantKey]}\` 전략을 이 시안의 기본 방향으로 우선 고려하세요. 전략 선택 근거와 다른 전략을 선택할 경우 그 이유를 assumptions에 명시하세요.\n`
+    : ''
   const prompt = `당신은 AI UI 생성 전 단계의 프로덕트 디자이너 겸 아트 디렉터입니다.
 HTML을 만들지 말고, 아래 입력을 바탕으로 시안 ${variant}의 Product Brief + Design Intent + Layout Composition Plan만 짧은 JSON으로 작성하세요.
 
@@ -3312,7 +3599,7 @@ ${args.generationPlan ? `\`\`\`json\n${JSON.stringify(args.generationPlan, null,
 
 ## 시안 방향
 ${args.variantStyle || '(단일 시안)'}
-
+${recommendedStrategyHint}
 ## 기준 플랫폼
 ${args.platform}
 
@@ -3435,9 +3722,9 @@ function normalizeLayoutBlueprint(raw: Partial<LayoutBlueprint>, variant: Layout
     : fallbackSections
   const rhythm = {
     pagePadding: clampNumber(raw.rhythm?.pagePadding, 12, 64, isWeb ? 40 : 16),
-    sectionGap: clampNumber(raw.rhythm?.sectionGap, 12, 48, 24),
+    sectionGap: clampNumber(raw.rhythm?.sectionGap, 12, 48, 20),
     cardGap: clampNumber(raw.rhythm?.cardGap, 8, 32, 12),
-    cardPadding: clampNumber(raw.rhythm?.cardPadding, 12, 32, 16),
+    cardPadding: clampNumber(raw.rhythm?.cardPadding, 12, 32, 20),
     // These are populated from design.md in generateLayoutBlueprints — defaults until then
     headerHeight: (raw.rhythm as LayoutBlueprint['rhythm'])?.headerHeight ?? 56,
     tabbarHeight: (raw.rhythm as LayoutBlueprint['rhythm'])?.tabbarHeight ?? 72,
@@ -3497,20 +3784,24 @@ export async function generateLayoutBlueprints(args: {
   const answerLines = Object.entries(args.answers ?? {})
     .map(([key, value]) => `- ${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
     .join('\n')
+  // Explicitly extract B2C/B2B to control blueprint style
+  const serviceTypeAnswer = String(args.answers?.['service_type'] ?? '')
+  const isB2C = serviceTypeAnswer.includes('B2C') || (!serviceTypeAnswer.includes('B2B') && args.domain !== 'business' && args.domain !== 'productivity')
+  const isB2B = !isB2C
 
   // Extract actual design token values BEFORE building the prompt so the LLM
   // can use them directly when calculating section y/height.
   const rhythmContract = buildDesignRhythmContract(args.designMd, false)
   const designRhythm = rhythmContract ? {
     pagePadding: parseNumericPx(rhythmContract.layoutRhythm.pagePadding) ?? 16,
-    sectionGap: parseNumericPx(rhythmContract.layoutRhythm.sectionGap) ?? 24,
+    sectionGap: parseNumericPx(rhythmContract.layoutRhythm.sectionGap) ?? 20,
     cardGap: parseNumericPx(rhythmContract.layoutRhythm.cardGap) ?? 12,
-    cardPadding: parseNumericPx(rhythmContract.layoutRhythm.cardPadding) ?? 16,
+    cardPadding: parseNumericPx(rhythmContract.layoutRhythm.cardPadding) ?? 20,
     headerHeight: parseNumericPx(rhythmContract.layoutRhythm.headerHeight) ?? 56,
     tabbarHeight: parseNumericPx(rhythmContract.layoutRhythm.tabbarHeight) ?? 72,
     buttonHeight: parseNumericPx(rhythmContract.layoutRhythm.buttonHeight) ?? 48,
     inputHeight: parseNumericPx(rhythmContract.layoutRhythm.inputHeight) ?? 52,
-  } : { pagePadding: 16, sectionGap: 24, cardGap: 12, cardPadding: 16, headerHeight: 56, tabbarHeight: 72, buttonHeight: 48, inputHeight: 52 }
+  } : { pagePadding: 16, sectionGap: 20, cardGap: 12, cardPadding: 20, headerHeight: 56, tabbarHeight: 72, buttonHeight: 48, inputHeight: 52 }
 
   const { pagePadding, sectionGap, cardGap, cardPadding, headerHeight, tabbarHeight, buttonHeight, inputHeight } = designRhythm
 
@@ -3619,9 +3910,17 @@ ${designContract}
 - tabbar는 화면 하단 고정: y = viewport.height - tabbarHeight
 - 섹션이 겹치면 안 된다. 빈 공간이 생기면 안 된다.
 
-## 대시보드/B2B 서비스 규칙
-- 웹 플랫폼 + 데이터/업무 도메인이면 반드시 navType: "lnb" 사용 (A 시안)
-- lnb 시 sections에 nav 제외하고 main content 섹션들만 나열
+## 서비스 성격에 따른 디자인 방향
+${isB2C ? `### 이 서비스는 B2C 소비자용입니다
+- heroType A는 "action-cta" 또는 "image-hero"를 사용하라. "stat-dashboard"(B2B 대시보드)는 절대 금지.
+- heroType B는 "3d-hero" 또는 "image-hero"로 비주얼을 강조하라.
+- heroType C는 "image-hero"로 라이프스타일·감성 이미지를 사용하라.
+- navType: 모바일은 "bottom-tab", 웹은 "gnb". "lnb"(사이드바)는 B2B 전용이므로 절대 사용 금지.
+- 정보보다 감성·행동·탐색을 우선하라. Toss·카카오·네이버 수준의 직관적 소비자 앱 톤.
+- "banner", "collection", "cta-block" role을 적극 활용하라.` : `### 이 서비스는 B2B 업무/기업용입니다
+- heroType A는 "stat-dashboard"로 핵심 지표를 우선 노출하라.
+- 웹 플랫폼이면 navType: "lnb" 사용 (A 시안). lnb 시 sections에 nav 제외.
+- 정보 밀도를 높이고 "kpi", "chart", "list" role을 중심으로 구성하라.`}
 
 반드시 JSON만 출력하세요. 마크다운 금지.
 스키마 (각 섹션에 imageStrategy 포함 예시):
@@ -3629,10 +3928,10 @@ ${designContract}
   "blueprints": [
     {
       "variant": "A",
-      "strategy": "정보 밀도형",
+      "strategy": "${isB2C ? '탐색·행동 중심형' : '정보 밀도형'}",
       "viewport": { "width": ${isWeb ? 1440 : 390}, "height": ${isWeb ? 900 : 844} },
-      "navType": "${isWeb ? 'lnb' : 'bottom-tab'}",
-      "heroType": "stat-dashboard",
+      "navType": "${isB2B && isWeb ? 'lnb' : isWeb ? 'gnb' : 'bottom-tab'}",
+      "heroType": "${isB2C ? 'action-cta' : 'stat-dashboard'}",
       "firstViewport": ["히어로/요약", "핵심 KPI", "primary CTA", "빠른 실행", "콘텐츠 리스트", "최근 활동/인사이트"],
       "rhythm": { "pagePadding": ${pagePadding}, "sectionGap": ${sectionGap}, "cardGap": ${cardGap}, "cardPadding": ${cardPadding} },
       "sections": [
@@ -3823,10 +4122,38 @@ body { overflow:hidden; }
   gap:var(--aide-card-gap);
   margin:0 0 8px;
 }
+/* Full-bleed hero/banner 섹션: content-scroll padding을 음수 마진으로 탈출했더라도 내부 콘텐츠에 좌우 패딩 강제 적용 */
+.hero-section > .hero-content,
+.hero-section > .hero-inner,
+.hero-section > .hero-body,
+.hero-section > .hero-text,
+.hero-section > .hero-info,
+.hero-section > .hero-description,
+.hero-section > .hero-copy,
+.hero-section > .hero-wrap,
+.hero-section > .hero-caption,
+.hero-banner > .hero-body,
+.hero-banner > .hero-inner,
+.hero-banner > .hero-text,
+.hero-banner > .hero-info,
+.hero-banner > .hero-wrap,
+.hero-banner > .hero-content,
+[data-blueprint-section] > .hero-body,
+[data-blueprint-section] > .hero-inner,
+[data-blueprint-section] > .hero-content,
+[data-blueprint-section] > .hero-text,
+[data-blueprint-section] > .hero-info,
+[data-blueprint-section] > .hero-description,
+[data-blueprint-section] > .hero-copy,
+[data-blueprint-section] > .hero-wrap,
+[data-blueprint-section] > .hero-caption {
+  padding-left:var(--aide-page-padding);
+  padding-right:var(--aide-page-padding);
+}
 ${hasBottomTabbar ? '.content-scroll { padding-bottom:calc(var(--aide-tabbar-height) + env(safe-area-inset-bottom) + var(--aide-section-gap)); }' : ''}
 ${hasLnb ? '.app-shell { padding-left:240px; } .content-scroll { height:100dvh; }' : ''}
 ${hasTopHeader && !hasLnb ? '.content-scroll { min-height:0; }' : ''}
-${isWeb ? '@media (min-width:1024px) { .content-scroll { padding:40px; } }' : ''}
+${isWeb ? '@media (min-width:1024px) { .content-scroll { padding:var(--aide-section-gap) var(--aide-page-padding); } }' : ''}
 \`\`\`
 
 ### Scaffold Fill Rules
@@ -3869,15 +4196,23 @@ function auditLayoutBlueprintHtml(html: string, blueprint?: LayoutBlueprint): st
 export async function generateUI(params: GenerateParams, apiKey?: string): Promise<GenerateUIResult> {
   const { designMd, brief, answers, projectSummary, logoDataUrl, brandColors, mainOnly = false, variantStyle, referenceImageBase64, referenceImageKind = 'reference', asIsAnalysis, platform, modelId = 'gemini-3.1-pro-preview', heroImagePrompt, heroSubject, sharedVisualMode, sharedVisualSubject, visualPolicy, generationPlan, layoutBlueprint, domain, onStep, prdDoc, iaImageBase64, iaText } = params;
   const effectiveHeroImagePrompt = heroSubject || heroImagePrompt
-  const effectiveVisualPolicy = visualPolicy ?? (getVariantLabel(variantStyle) === 'B' ? 'creon-object-3d' : undefined)
+  const effectiveVisualPolicy = visualPolicy ?? (() => {
+    if (getVariantLabel(variantStyle) !== 'B') return undefined
+    const hasSceneSignal = /마스코트|캐릭터|반려|성장|게임|퀘스트|리워드|자연|식물|숲|동물|날씨|감성|mascot|character|pet|growth|game|quest|reward|nature|plant|forest|animal|weather/.test(
+      (brief ?? '') + ' ' + (heroImagePrompt ?? '') + ' ' + (heroSubject ?? '')
+    )
+    const isSceneDomain = ['entertainment', 'social', 'food', 'health', 'travel', 'education'].includes(domain ?? '')
+    return (hasSceneSignal || isSceneDomain) ? 'scene-3d-card-cover' : 'creon-object-3d'
+  })()
   const effectiveSharedVisualMode = sharedVisualMode ?? (
-    effectiveVisualPolicy === 'scene-3d' || effectiveVisualPolicy === 'creon-object-3d'
+    effectiveVisualPolicy === 'scene-3d' || effectiveVisualPolicy === 'creon-object-3d' || effectiveVisualPolicy === 'scene-3d-card-cover'
       ? '3d'
       : effectiveVisualPolicy === 'real-photo'
         ? 'photo'
         : 'none'
   )
-  const effectiveSharedVisualSubject = sharedVisualSubject || heroSubject || heroImagePrompt || projectSummary || brief
+  // projectSummary/brief까지 폴백하면 기획 텍스트 전체가 3D 이미지 subject가 됨 → heroSubject/heroImagePrompt까지만 사용
+  const effectiveSharedVisualSubject = sharedVisualSubject || heroSubject || heroImagePrompt || ''
   const visual3dPrompt = effectiveSharedVisualMode === 'photo' ? undefined : effectiveHeroImagePrompt
   const isDraftMode = params.qualityMode === 'draft'
 
@@ -3903,16 +4238,20 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
   const mood = str('mood')
 
   const serviceTypeRule = serviceType.includes('B2C')
-    ? '- 서비스 성격(B2C): 탐색, 선택, 구매/예약/신청 흐름을 선명하게 구성한다. CTA, 제품/콘텐츠 카드, 선택 UI는 디자인 시스템의 컴포넌트와 토큰 규칙을 따른다.'
+    ? `- 서비스 성격(B2C 소비자용): 이 서비스는 Toss·카카오·네이버 수준의 소비자 앱이다.
+  - 히어로는 감성적이고 행동 중심으로 만든다. stat-dashboard(B2B 대시보드) 스타일 절대 금지.
+  - C 시안은 반드시 라이프스타일 실사 이미지 히어로를 사용한다.
+  - 따뜻하고 직관적인 색상과 여백. 딱딱한 테이블·그리드 레이아웃 지양.
+  - CTA는 크고 명확하게. 탐색과 발견 경험을 우선한다.`
     : serviceType.includes('B2B')
-    ? '- 서비스 성격(B2B): 정보 밀도 높은 대시보드, 데이터 테이블·차트 중심, 전문 용어 허용, 컴팩트 레이아웃'
+    ? '- 서비스 성격(B2B 업무용): 정보 밀도 높은 대시보드, 데이터 테이블·차트 중심, 전문 용어 허용, 컴팩트 레이아웃'
     : ''
-  const targetRule = targetAudience.includes('10~20대')
+  const targetRule = (targetAudience.includes('10-20대') || targetAudience.includes('MZ세대') || targetAudience.includes('10~20대'))
     ? '- 타겟층(청소년·청년): 짧은 텍스트, 빠른 탐색, 공유/반응 요소를 우선하되 색상과 비주얼 톤은 디자인 시스템을 따른다.'
-    : targetAudience.includes('40~60대')
+    : (targetAudience.includes('시니어') || targetAudience.includes('50대') || targetAudience.includes('40~60대'))
     ? '- 타겟층(장년층): 명확한 정보 구조, 읽기 쉬운 텍스트, 단순한 네비게이션, 충분한 터치 영역을 디자인 시스템 범위 안에서 확보한다.'
-    : targetAudience.includes('전문가')
-    ? '- 타겟층(전문가): 정보 밀도 최대화, 데이터 시각화 적극 활용, 고급 필터·정렬 기능, 컴팩트 UI'
+    : (targetAudience.includes('전문가') || targetAudience.includes('파워유저'))
+    ? '- 타겟층(전문가/파워유저): 정보 밀도 최대화, 데이터 시각화 적극 활용, 고급 필터·정렬 기능, 컴팩트 UI'
     : ''
   const homeEmphasisRule = homeEmphasis.includes('핵심 지표')
     ? '- 홈 강조(KPI): 핵심 지표, 보조 지표, 추이, 변화량을 디자인 시스템의 typography/card/chart 규칙으로 명확히 보여준다.'
@@ -3969,6 +4308,17 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
     ? '- 무드(활기·젊은): 빠른 리듬의 레이아웃과 명확한 강조를 사용하되, 임의 그라데이션/강한 그림자/새 컬러를 만들지 않고 디자인 시스템 토큰 안에서 표현한다.'
     : ''
 
+  const visualDirection = str('visual_direction')
+  const visualDirectionRule = visualDirection.includes('밝고 친근')
+    ? '- 비주얼 방향(친근·따뜻): 부드러운 곡선, 따뜻한 색조 활용, 캐릭터·일러스트 친화적 레이아웃. 딱딱한 테이블·그리드 최소화.'
+    : visualDirection.includes('세련되고 프리미엄')
+    ? '- 비주얼 방향(프리미엄·세련): 충분한 여백, 절제된 색상 사용, 정돈된 타이포그래피 계층. 과한 장식·강한 그림자 없이 품격 표현.'
+    : visualDirection.includes('활기차고 강렬')
+    ? '- 비주얼 방향(게임·리워드): 강한 색상 대비, 포인트 컬러 적극 사용, 뱃지·레벨·보상 요소 전면 배치. 에너지 넘치는 레이아웃.'
+    : visualDirection.includes('신뢰감')
+    ? '- 비주얼 방향(전문·신뢰): 깔끔한 정보 구조, 데이터 중심 레이아웃, 중립 색조. 브랜드 컬러는 포인트로만 사용.'
+    : ''
+
   const structuredAnswerRules = [
     serviceTypeRule,
     platformIntentRule,
@@ -3980,6 +4330,7 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
     variantStrategyRule,
     hero3dRule,
     moodRule,
+    visualDirectionRule,
   ].filter(Boolean).join('\n')
 
   const effectiveDesignMd = designMd || loadDefaultDesignMd();
@@ -4070,31 +4421,96 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
 - Creon식 흰 배경 단일 오브젝트만 덩그러니 놓는 방식은 A안에서 금지입니다.
 - ⛔ GNB 필수: 상단 앱바 첫 번째 자식에 반드시 <span class="aide-logo-slot" aria-label="brand logo"></span> 를 넣으세요. 텍스트 브랜드명으로 대체하면 로고가 표시되지 않습니다.
 - A안은 3D scene이 전체 경험의 맥락을 만들고, 그 위/옆/아래에 실제 UI 정보가 촘촘히 연결되어야 합니다.`
-    : effectiveVisualPolicy === 'creon-object-3d'
-      ? `이번 시안 비주얼 정책: B안/creon-object-3d
+    : effectiveVisualPolicy === 'scene-3d-card-cover'
+      ? `이번 시안 비주얼 정책: B안/scene-3d-card-cover — Hero Card Cover
+- 반드시 <img class="aide-hero-3d aide-hero-scene-img" src="%%SCENE_3D:${effectiveSharedVisualSubject.replace(/[%:]/g, '')}%%" alt=""> 형태의 배경 포함 3D scene 이미지를 1회 사용하세요.
+- **패턴 E Hero Card Cover**를 사용합니다:
+  * section에 class="hero-card-cover aide-visual-stage" style="position:relative;overflow:hidden;border-radius:var(--aide-card-radius,16px);min-height:320px;background:#111;"
+  * img: position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;display:block;
+  * 그라데이션 오버레이(aria-hidden div): background:linear-gradient(to top,rgba(0,0,0,0.78) 0%,rgba(0,0,0,0.42) 48%,transparent 100%)
+  * 콘텐츠 레이어: position:relative;z-index:2; — 배지·헤드라인·상태·CTA를 하단 정렬로 배치
+  * 모든 텍스트: color:#ffffff 또는 rgba(255,255,255,...) (WCAG AA 필수)
+- %%HERO_3D%%, 실사 %%IMG_1%% 등 다른 히어로 이미지 타입은 금지입니다.
+- 히어로 아래에는 필터 rail, 상태 카드, 콘텐츠 리스트 등 서비스 맥락에 맞는 섹션을 이어주세요.
+- ⛔ GNB 필수: 상단 앱바 첫 번째 자식에 반드시 <span class="aide-logo-slot" aria-label="brand logo"></span>를 넣으세요.`
+      : effectiveVisualPolicy === 'creon-object-3d'
+        ? `이번 시안 비주얼 정책: B안/creon-object-3d
 - 반드시 <img class="aide-hero-3d aide-3d-asset" src="%%HERO_3D:${effectiveSharedVisualSubject.replace(/[%:]/g, '')}%%" alt=""> 형태의 배경 없는 단일 3D 오브젝트를 사용하세요.
 - %%SCENE_3D%%, 실사 %%IMG_1%%, 배경 포함 scene 이미지는 B안 히어로에 사용 금지입니다.
 - 먼저 3D 역할을 정한 뒤 배치하세요: Banner Character, Product Object, Companion Accent, Scene Substitute 중 서비스에 가장 자연스러운 하나.
 - B안 HERO_3D는 작은 floating sticker가 아니라 히어로 카드의 명확한 visual zone입니다.
-- 크기 규칙: HERO_3D visible object must read at 190px or larger on a 390px mobile viewport. 모바일 기준 img CSS width는 보통 clamp(190px,52vw,320px) 이상이어야 하며, 투명 캔버스 여백 때문에 실제 피사체가 작아 보이면 더 키우거나 right/bottom crop하세요.
+- 크기 규칙: HERO_3D visible object must read at 200px or larger on a 390px mobile viewport. 모바일 기준 img CSS width는 clamp(320px,82vw,480px) 이상으로 설정하세요. 피사체가 캔버스의 65~75%를 차지하므로, 320px img = 약 220px 피사체입니다. 작아 보이면 더 키우거나 right/bottom anchor + overflow:hidden crop을 사용하세요.
 - 배치 규칙: 버튼 위 빈 공간에 애매하게 떠 있으면 실패입니다. 3D는 split hero visual zone, right/bottom anchored crop, card edge overlap 중 하나로 의도적으로 배치하세요.
 - 3D가 텍스트·CTA·가격·KPI를 가리면 실패입니다. 텍스트/CTA 영역과 visual zone을 grid/flex 또는 z-index safe area로 분리하세요.
 - B안은 Creon처럼 배경 없는 단일 3D 오브젝트가 UI의 상징물로 보이게 하되, 서비스 목적에 필요한 정보량과 CTA 흐름은 반드시 유지하세요.`
       : effectiveVisualPolicy === 'real-photo'
         ? `이번 시안 비주얼 정책: C안/real-photo — 에디토리얼 이미지 탐색형
 - 히어로 섹션에는 실사 이미지 placeholder를 사용하세요.
-- %%IMG_1:keyword%% keyword는 반드시 브리프 서비스 도메인과 직접 관련된 영문 명사구로 작성하세요. 예: 만보기앱 → "person walking fitness outdoor", 요리앱 → "fresh cooking ingredients", 금융앱 → "mobile payment finance".
-  서비스 키워드: ${extractVisualKeyword(effectiveSharedVisualSubject || brief).slice(0, 40)}
+- %%IMG_1:keyword%% keyword는 반드시 브리프 서비스 도메인과 직접 관련된 영문 명사구로 작성하세요.
+  서비스 키워드: ${extractVisualKeyword(effectiveSharedVisualSubject || brief)}
 - C안 히어로에서 3D placeholder(%%HERO_3D%%, %%SCENE_3D%%)는 사용 금지입니다.
 - C안은 가능한 경우 Bold Editorial Hero를 백단 기본 패턴으로 우선 고려하세요.
-- 사용자가 프롬프트에 과감한 히어로를 명시하지 않아도 Aide가 서비스 성격을 판단해 자동 적용합니다.
-- Bold Editorial Hero 구조: 상단 app header 아래에 큰 실사/scene hero card를 배치하고, 이미지 위에 badge, headline, status/meta, CTA를 올리되 반드시 readable scrim/gradient로 가독성을 확보하세요.
+
+⛔ **Bold Editorial Hero — 반드시 이 구조를 사용하세요 (레이아웃 붕괴 방지)**
+
+\`\`\`html
+<!-- C안 Hero Card: 이미지 collapse 방지를 위해 min-height 필수 -->
+<section class="hero-editorial" style="
+  position:relative; overflow:hidden;
+  border-radius:var(--aide-card-radius,16px);
+  min-height:clamp(240px,55vw,340px);
+  background:var(--color-surface-variant,#e0e0e0);
+  margin-bottom:var(--aide-section-gap);
+">
+  <!-- 1) 이미지: absolute fill, object-fit:cover 필수 -->
+  <img
+    src="%%IMG_1:keyword%%"
+    alt="hero"
+    style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;display:block;"
+    loading="eager"
+  />
+  <!-- 2) 스크림: 하단 그라데이션, aria-hidden -->
+  <div aria-hidden="true" style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.72) 0%,rgba(0,0,0,0.28) 55%,transparent 100%);pointer-events:none;"></div>
+  <!-- 3) 콘텐츠: z-index:2, padding은 CSS 변수 사용 -->
+  <div style="position:relative;z-index:2;display:flex;flex-direction:column;justify-content:flex-end;min-height:clamp(240px,55vw,340px);padding:var(--aide-card-padding,16px);gap:var(--aide-item-gap,8px);">
+    <!-- 배지 (선택) -->
+    <span style="align-self:flex-start;background:var(--color-primary);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px;white-space:nowrap;">배지</span>
+    <!-- 헤드라인: 반드시 white -->
+    <h2 style="color:#fff;font-size:clamp(18px,4.8vw,24px);font-weight:800;line-height:1.3;letter-spacing:-0.4px;margin:0;">헤드라인 텍스트</h2>
+    <!-- 상태/메타 -->
+    <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0;line-height:1.5;">상태 정보</p>
+    <!-- CTA -->
+    <button style="align-self:stretch;background:var(--color-primary);color:#fff;border:none;border-radius:var(--rounded-md,8px);height:var(--aide-button-height,48px);font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;">CTA 텍스트</button>
+  </div>
+</section>
+\`\`\`
+
+⛔ **히어로 아래 chip/filter rail — 간격 필수**
+\`\`\`html
+<div class="chip-rail" style="display:flex;flex-wrap:wrap;gap:var(--aide-item-gap,8px);align-items:center;padding:0 var(--aide-page-padding,16px);margin-bottom:var(--aide-section-gap,16px);">
+  <button style="background:var(--color-primary);color:#fff;border:none;border-radius:100px;padding:6px 14px;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;">선택 칩</button>
+  <button style="background:var(--color-surface);color:var(--color-text);border:1px solid var(--color-border,#ddd);border-radius:100px;padding:6px 14px;font-size:13px;white-space:nowrap;cursor:pointer;">비선택 칩</button>
+</div>
+\`\`\`
+
+⛔ **카드 그리드 — 반드시 gap 포함**
+\`\`\`html
+<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--aide-card-gap,12px);padding:0 var(--aide-page-padding,16px);">
+  <!-- 카드들 -->
+</div>
+\`\`\`
+
+**C안 레이아웃 금지 사항 (이게 레이아웃 붕괴의 직접 원인):**
+- ❌ hero 컨테이너에 min-height 없이 img만 absolute → 이미지 로드 전 height:0 붕괴
+- ❌ 콘텐츠 레이어에 z-index:2 없이 이미지 위에 올리기 → 이미지가 텍스트 가림
+- ❌ chip row에 gap 없이 margin/padding으로만 간격 → flex-wrap 시 간격 무너짐
+- ❌ 카드 grid에 gap 대신 margin → 반응형에서 간격 불일치
+- ❌ padding 하드코딩(16px) → CSS 변수 미사용으로 디자인 시스템 불일치
+
 - 히어로 아래에는 category/filter rail, 혜택/추천/콘텐츠 카드 등 탐색 흐름이 이어져야 합니다.
-- B2B/관리자/업무형 서비스라면 Bold Editorial Hero를 과하게 쓰지 말고 신뢰형 visual panel로 톤다운하세요.
-- C안은 실사 이미지가 서비스의 신뢰, 혜택, 탐색, 생활 맥락 중 무엇을 강화해야 하는지 먼저 판단하세요.
-- 서비스에 맞다면 에디토리얼 히어로, 카테고리 rail, 이미지 카드 그리드, 혜택 비교, 후기/신뢰 카드 중 필요한 패턴을 선택하세요.
-- C안이라고 해서 모든 이미지 영역을 실사로 채우지 마세요. 실사 이미지는 히어로와 분석상 필요한 콘텐츠 썸네일에만 사용하세요.
-- A/B와 같은 구조를 반복하지 마세요. 단, 서비스가 비교/추천형이면 C안도 필요한 수치와 선택지는 충분히 보여야 합니다.
+- B2B/관리자/업무형 서비스라면 Bold Editorial Hero를 신뢰형 visual panel로 톤다운하세요.
+- C안이라고 해서 모든 이미지 영역을 실사로 채우지 마세요.
+- A/B와 같은 구조를 반복하지 마세요.
 - ⛔ C안 스크롤 필수: 메인 콘텐츠 컨테이너에 반드시 overflow-y:auto; height:calc(100dvh - var(--aide-tabbar-height) - var(--aide-header-height)); 를 적용하세요.`
         : `이번 시안 비주얼 정책: no-image
 - 히어로 이미지 placeholder를 사용하지 마세요. KPI, 리스트, 차트, 액션 카드 같은 실제 UI 컴포넌트로 화면을 구성하세요.`
@@ -4417,7 +4833,7 @@ ${usesKtdsCompatibleRules ? `> - [ ] ⛔ ${ktdsCompatibleLabel} 치수 준수: �
 > - [ ] Input floating label 구현했는가? (placeholder 단독 사용 금지)
 > - [ ] Google Fonts Roboto CDN이 <head>에 포함되었는가?` : ''}
 ` : ''}
-${logoDataUrl ? `\n## ⚠️ 브랜드 로고 슬롯 (CRITICAL)\n- 로고 이미지를 직접 작성하지 마세요. src, data URL, placeholder 이미지, 텍스트 로고를 만들지 마세요.\n- 모든 화면의 GNB/헤더/앱바 브랜드 위치에 반드시 아래 슬롯을 1회만 삽입하세요.\n${AIDE_LOGO_SLOT_HTML}\n- Aide가 생성 후 마지막 단계에서 이 슬롯을 실제 업로드 로고 이미지로 치환합니다.\n- 텍스트 브랜드명(앱 이름, 서비스명 등)으로 대체 금지. 로고 슬롯이 항상 우선입니다.\n- ❌ 히어로 배경, 대형 이미지, 히어로 카드 안에 슬롯을 넣지 마세요. 헤더/앱바 전용입니다.\n- ❌ 로고를 화면 폭의 큰 영역으로 확대하지 마세요. 헤더/앱바 안의 작은 브랜드 영역만 예약하세요.` : `\n## 브랜드명 표시 규칙\n- 로고 입력이 없습니다. 앱/서비스 브랜드는 텍스트로 표시하세요.\n- <img src="FreshFit">처럼 존재하지 않는 로고 이미지를 만들지 마세요.\n- 선택된 디자인 시스템의 로고나 회사명(예: kt ds)을 최종 서비스 로고로 표시하지 마세요.`}
+${logoDataUrl ? `\n## ⚠️ 브랜드 로고 슬롯 (CRITICAL)\n- 로고 이미지를 직접 작성하지 마세요. src, data URL, placeholder 이미지, 텍스트 로고를 만들지 마세요.\n- **메인 화면과 모든 서브 화면(탭 목적지, 내부 페이지)의 헤더/앱바 브랜드 위치에 각각 1개씩 슬롯을 삽입하세요.** 화면이 3개면 슬롯도 3개입니다.\n${AIDE_LOGO_SLOT_HTML}\n- Aide가 생성 후 마지막 단계에서 모든 슬롯을 실제 업로드 로고 이미지로 치환합니다.\n- 텍스트 브랜드명(앱 이름, 서비스명 등)으로 대체 금지. 모든 화면의 로고 슬롯이 항상 우선입니다.\n- ❌ 히어로 배경, 대형 이미지, 히어로 카드 안에 슬롯을 넣지 마세요. 헤더/앱바 전용입니다.\n- ❌ 로고를 화면 폭의 큰 영역으로 확대하지 마세요. 헤더/앱바 안의 작은 브랜드 영역만 예약하세요.` : `\n## 브랜드명 표시 규칙\n- 로고 입력이 없습니다. 앱/서비스 브랜드는 텍스트로 표시하세요.\n- <img src="FreshFit">처럼 존재하지 않는 로고 이미지를 만들지 마세요.\n- 선택된 디자인 시스템의 로고나 회사명(예: kt ds)을 최종 서비스 로고로 표시하지 마세요.`}
 ${hasBrandColors ? `\n## 브랜드 컬러 적용 규칙\n로고에서 추출한 브랜드 컬러는 사용자의 회사 정체성을 반영하기 위한 값입니다. DESIGN.md가 기본 UI 품질과 컴포넌트 구조를 보장하고, 브랜드 컬러는 primary/action/accent 계열만 치환합니다.\n\n메인 브랜드 컬러: ${brandColors![0]}${brandColors![1] ? `\n보조 브랜드 컬러: ${brandColors![1]}` : ''}${brandColors!.length > 2 ? `\n추가 브랜드 컬러: ${brandColors!.slice(2).join(', ')}` : ''}\n\nCSS 변수 선언 규칙:\n- --color-primary, --color-primary-text, --color-primary-fill, --color-primary-border, --color-primary-icon 등 primary/action/accent 계열은 브랜드 컬러 기반으로 선언\n- --color-secondary는 보조 브랜드 컬러가 있을 때만 선언\n- --color-surface, --color-surface-alt, --color-background, --color-text, --color-border, --color-fill, --color-disabled, --color-positive, --color-caution, --color-negative, --color-info 등 neutral/surface/background/border/status 계열은 DESIGN.md 값을 유지\n- spacing, rounded, typography, component height/padding/radius/card rules는 DESIGN.md 값을 유지\n- 브랜드 컬러와 DESIGN.md 토큰 외 임의 hex 사용 금지\n- CTA, 주요 액션, 활성 탭, 링크, primary icon에만 브랜드 컬러를 사용하고 카드 배경/페이지 배경/본문 텍스트를 브랜드 컬러로 덮지 않음` : ''}
 ${asIsAnalysis ? `\n## As-is URL 구조 분석 — 리디자인 대상 정보 구조 (스타일 금지)\n아래 데이터는 기존 서비스의 정보 구조, 섹션 순서, 주요 CTA, 내비게이션, 콘텐츠 재료를 파악하기 위한 것입니다.\n\n절대 규칙:\n- As-is URL의 색상, 폰트, 라운드, 카드 그림자, 아이콘 스타일, 시각 톤을 복사하지 마세요.\n- 최종 시각 스타일은 DESIGN.md와 브랜드 규칙만 따릅니다.\n- As-is는 \"무엇을 유지/개선할지\" 판단하는 입력입니다.\n- 기존 화면의 핵심 섹션/CTA/콘텐츠 의미는 유지하되, 정보 위계·스캔성·반응형 레이아웃·CTA 발견성을 개선하세요.\n\n분석 JSON:\n\`\`\`json\n${JSON.stringify(asIsAnalysis, null, 2).slice(0, 12000)}\n\`\`\`` : ''}
 ${prdDoc?.trim() ? `\n## PRD / IA 문서 (기획 문서 원문 — 화면 구조·메뉴·플로우의 근거)\n아래는 사용자가 첨부한 PRD·IA·메뉴 구조 문서입니다.\n- 이 문서에 명시된 메뉴 구조, 화면 목록, 핵심 기능, 유저 플로우를 UI 레이아웃과 네비게이션 설계에 정확히 반영하세요.\n- 기획서 요약(brief)보다 이 문서가 화면 구성의 우선 근거입니다.\n- 스타일·컬러·타이포그래피는 DESIGN.md를 따릅니다.\n\`\`\`\n${prdDoc.slice(0, 10000)}\n\`\`\`` : ''}
@@ -4471,6 +4887,9 @@ generationPlan.designIntelligence가 있으면 먼저 serviceSubtype, selectedPa
 - visualStrategy.sharedAsset이 true인 경우에만 A/B/C가 같은 소재를 공유합니다. false이면 A/B/C는 variantBriefs.heroPolicy에 맞춰 서로 다른 visual strategy를 사용하세요.
 - visualStrategy.mode가 none/data 계열이면 이미지로 빈 공간을 채우지 말고, 차트/테이블/리스트/KPI/필터/액션 패널 같은 실제 UI 컴포넌트로 완성도를 만들어야 합니다.
 - variantDirector의 A/B/C 역할은 해당 시안의 정보 구조와 첫 화면 구성에 반드시 반영해야 합니다.
+- variantDirector[variant].layoutRole에 명시된 섹션 순서와 비율(%, px)을 정확히 따르세요. 예: 'hero 40-50%'이면 hero div의 min-height가 실제로 viewport의 40-50%여야 합니다.
+- variantDirector[variant].forbidden 배열이 있으면 해당 항목은 이 시안에 절대 사용하지 마세요. 예: 'KPI 숫자 그리드'가 forbidden이면 수치만 나열하는 그리드 섹션을 만들지 않습니다.
+- A/B/C는 섹션 목록 자체가 달라야 합니다. **각 시안의 컴포넌트 구성은 variantDirector[variant].componentSpec을 최우선으로 따르세요.** componentSpec은 이 서비스 유형에 맞게 미리 결정된 컴포넌트 목록입니다. 방향 원칙: A=밀도형(히어로 최소 + 이 서비스 정보 컴포넌트로 조밀하게), B=전환형(히어로 40-50% + 이 서비스 핵심 오브젝트/CTA), C=탐색형(이미지 중심 + 이 서비스 카테고리 탐색). componentSpec에 명시된 컴포넌트가 실제로 화면에 존재해야 합니다. 다른 서비스의 componentSpec과 혼동하지 마세요.
 - 시안 차이를 랜덤 이미지, 랜덤 색상, 랜덤 radius, 랜덤 shadow로 만들지 마세요. 디자인 시스템은 공유하고 UX 방향만 다르게 만드세요.
 
 ## Content Seed Contract — 화면 정보량의 실제 재료 (CRITICAL)
@@ -4483,7 +4902,7 @@ ${generationPlan?.contentInventory ? `\`\`\`json\n${JSON.stringify(generationPla
 - 콘텐츠 단위의 종류와 순서는 서비스 목적에 맞게 선택하세요.
 - 비교 서비스라면 비교표/추천/절약액, 루틴 서비스라면 상태/미션/진행률, 커머스라면 검색/카테고리/상품, 대시보드라면 KPI/필터/작업 큐를 우선 검토하세요.
 - 멤버십/통신 요금제 서비스라면 요금제 비교, 예상 절약액, 위약금/약정 상태, 추천 요금제, 멤버십 혜택, 전환 CTA를 서비스 맥락에 맞게 선택하세요.
-- B안은 3D 히어로가 있어도 실제 기능 정보가 비면 실패입니다. 단, 특정 보조 블록을 무조건 붙이지 말고, 전환에 필요한 계산/혜택/추천/신뢰 근거를 자연스러운 구조로 연결하세요.
+- B안은 3D 히어로가 있어도 실제 기능 정보가 비면 실패입니다. 3D 히어로는 화면의 35-45%를 차지하고, 나머지 55-65%에는 A안과 동일한 정보 밀도의 콘텐츠 섹션이 채워져야 합니다. 히어로 아래에 콘텐츠 덩어리 4개 이상, 데이터 포인트 10개 이상이 없으면 실패입니다. contentInventory의 listItems(3개 이상), activityItems(1개 이상), kpis(4개), quickActions(2개)를 히어로 아래에 배치하세요. 단, 특정 보조 블록을 무조건 붙이지 말고, 전환에 필요한 계산/혜택/추천/신뢰 근거를 자연스러운 구조로 연결하세요.
 - 카드 제목만 쓰지 말고 value, meta, badge를 함께 보여주세요. 예: "월 예상 절약액 24,500원 / 현재 사용량 기준".
 - 첫 viewport가 예쁜 히어로와 카드 1~2개로 끝나면 실패입니다. 다만 덩어리 개수보다 서비스 의사결정에 필요한 정보가 충분한지가 더 중요합니다.
 
@@ -4512,11 +4931,13 @@ Aide의 A/B/C는 최종 빈 랜딩 포스터가 아니라 사용자가 방향을
 
 ## Layout Rhythm Guard — 콘텐츠 종류는 자유롭게, 간격 리듬은 고정 (CRITICAL)
 콘텐츠 종류와 순서는 서비스 목적에 맞게 선택하지만, spacing/padding/radius/card rhythm은 흔들리면 실패입니다.
-- section gap은 var(--aide-section-gap)을 사용하고, 모바일 주요 섹션 간 실제 간격은 14~20px 범위로 유지하세요.
-- card padding은 var(--aide-card-padding)을 사용하고, 모바일 주요 카드 내부 padding은 14~20px 범위로 유지하세요.
-- card gap/item gap은 var(--aide-card-gap), var(--aide-item-gap)을 우선 사용하고, 반복 카드/리스트의 간격은 일정해야 합니다.
+- **section gap: 반드시 var(--aide-section-gap) 사용. 인라인 margin-top/padding-top에 임의 픽셀값 금지.**
+- **card padding: 반드시 var(--aide-card-padding) 사용. 카드 내부 p-3/p-4/p-5 같은 임의 Tailwind 클래스 금지.**
+- **card gap: 반드시 var(--aide-card-gap) 사용. 카드 간 gap-2/gap-3/gap-4 같은 임의 클래스 금지.**
+- **button: 높이는 반드시 var(--aide-button-height) 사용. 버튼에 py-2/py-3/py-4 같은 임의 패딩 금지.**
+- 모바일 페이지 좌우 여백은 var(--aide-page-padding) 1종류만 사용. 요소마다 다른 px-3/px-4/px-5 혼용 금지.
+- 반복되는 카드·리스트 아이템은 같은 CSS 클래스를 공유해야 합니다. 각 아이템마다 다른 padding/margin 금지.
 - hero가 크더라도 다음 카드/섹션과의 간격을 과하게 벌리지 마세요. 24px 이상 빈 여백이 반복되면 느슨하고 미완성으로 보입니다.
-- 카드가 서로 붙어 보이거나, 반대로 같은 화면 안에서 gap이 제각각이면 실패입니다.
 - 디자인 시스템 토큰을 바꾸지 말고, 토큰을 안정적으로 재사용해 이전 시안과 같은 깔끔한 밀도와 리듬을 유지하세요.
 
 시안별 판단 기준:
@@ -4600,7 +5021,7 @@ ${designIntentPlan}
 모바일:
 - 상단 app header/GNB가 있으면 \`position:sticky; top:0; z-index:50\` 또는 \`position:fixed; top:0; left:0; right:0\`로 고정합니다.
 - 하단 NavBottom/tabbar가 있으면 \`position:fixed; bottom:0; left:0; right:0; z-index:50\`로 고정합니다.
-- 본문 scroll container는 헤더 아래에서 시작하고, 하단 탭바에 가리지 않도록 \`padding-bottom:calc(var(--aide-tabbar-height,72px) + env(safe-area-inset-bottom) + var(--aide-section-gap,24px))\`를 확보하세요.
+- 본문 scroll container는 헤더 아래에서 시작하고, 하단 탭바에 가리지 않도록 \`padding-bottom:calc(var(--aide-tabbar-height,72px) + env(safe-area-inset-bottom) + var(--aide-section-gap,20px))\`를 확보하세요.
 - fixed header를 쓰면 본문에 \`padding-top:var(--aide-header-height,56px)\` 이상을 확보하세요. sticky header를 쓰면 header는 normal flow에 두고 본문만 스크롤하세요.
 
 웹:
@@ -4818,11 +5239,23 @@ ${effectivePlatform === 'web' ? `
     ...(referenceImageBase64 ? [{ data: referenceImageBase64, mimeType: 'image/png' }] : []),
   ]
 
+  const { onHtmlChunk } = params
+  const streamChunkHandler = onHtmlChunk
+    ? (accumulated: string) => {
+        const htmlStart = accumulated.indexOf('<!DOCTYPE') !== -1
+          ? accumulated.indexOf('<!DOCTYPE')
+          : accumulated.indexOf('<html')
+        if (htmlStart !== -1 && accumulated.length - htmlStart > 800) {
+          onHtmlChunk(accumulated.slice(htmlStart))
+        }
+      }
+    : undefined
+
   const text = images.length > 1
-    ? await generateProWithMultipleImages(fullPrompt, images, apiKey, modelId)
+    ? await generateProWithMultipleImages(fullPrompt, images, apiKey, modelId, streamChunkHandler)
     : images.length === 1
-      ? await generateProWithImage(fullPrompt, images[0].data, images[0].mimeType, apiKey, modelId)
-      : await generatePro(fullPrompt, apiKey, modelId)
+      ? await generateProWithImage(fullPrompt, images[0].data, images[0].mimeType, apiKey, modelId, streamChunkHandler)
+      : await generatePro(fullPrompt, apiKey, modelId, streamChunkHandler)
 
   let html: string
   const htmlMatch = text.match(/```html\n?([\s\S]*?)```/);
@@ -4958,6 +5391,22 @@ export async function expandToPrototype(mainHtml: string, params: GenerateParams
     ? `\n## 보존 이미지 토큰 (CRITICAL)\n메인 화면 안의 기존 이미지 data URL은 프롬프트 길이를 줄이기 위해 토큰으로 치환되어 있습니다.\n- ${preservedDataUrls.map((_, i) => `__PRESERVED_IMAGE_${i}__`).join(', ')}\n- 이 토큰들은 실제 이미지 src 자리입니다. 삭제하거나 다른 URL/placeholder/빈 이미지로 바꾸지 마세요.\n- 특히 3D 히어로 이미지가 있으면 선택한 시안의 핵심 비주얼이므로 screen-home에서 반드시 그대로 유지하세요.\n`
     : ''
 
+  // 메인 HTML에서 CSS 변수(:root 블록) 추출 — 서브 화면 일관성 강화
+  const extractedCssVars = (() => {
+    const styleText = extractStyleText(safeMainHtml)
+    const rootMatches = [...styleText.matchAll(/:root\s*\{([^}]+)\}/g)]
+    if (rootMatches.length === 0) return ''
+    const combined = rootMatches.map(m => m[1].trim()).join('\n')
+    return `:root {\n${combined}\n}`
+  })()
+  const cssVarsGuide = extractedCssVars
+    ? `\n## 🔒 CSS 변수 잠금 — 서브 화면도 이 변수만 사용 (CRITICAL)\n메인 화면에서 추출한 CSS 변수입니다. 서브 화면의 \`<style>\` 최상단에 이 블록을 **그대로 복사**하고, 모든 색상·간격·폰트는 반드시 이 변수를 참조하세요.\n임의 hex(#xxx), px 하드코딩 금지 — 변수를 벗어나는 순간 스타일이 깨집니다.\n\`\`\`css\n${extractedCssVars}\n\`\`\`\n`
+    : ''
+
+  const expectedSubScreensGuide = params.generationPlan?.expectedSubScreens && params.generationPlan.expectedSubScreens.length > 0
+    ? `\n## ★ 서비스 핵심 화면 목록 (CRITICAL — 이 목록 기준으로 서브 화면 구성)\n아래는 이 서비스의 실제 핵심 화면 정의입니다. 탭바 탭 이름만 보고 임의로 화면을 만들지 말고, 반드시 아래 id/label/purpose를 기준으로 서브 화면을 구성하세요.\n${params.generationPlan.expectedSubScreens.map(s => `- id: \`${s.id}\`, 탭 레이블: "${s.label}", 콘텐츠 목적: ${s.purpose}`).join('\n')}\n`
+    : ''
+
   const navExtractionGuide = isWeb
     ? `- 상단 GNB/nav 전체 (<nav>, <header> 또는 최상단 고정 영역)
 - 사이드바 (<aside>, .sidebar, .side-nav 등 — 있는 경우만)`
@@ -4975,9 +5424,9 @@ export async function expandToPrototype(mainHtml: string, params: GenerateParams
 \`\`\`html
 ${safeMainHtml}
 \`\`\`
-${preservedImageGuide}
+${preservedImageGuide}${cssVarsGuide}
 ${designMd ? `\n## 디자인 시스템 (서브 화면에도 동일하게 적용 — 임의 색상·폰트 사용 절대 금지)\n${extractDesignMdForPrompt(designMd)}\n` : ''}${expandBrandColors && expandBrandColors.length > 0 ? `\n## 브랜드 컬러 적용\n- primary/action/accent 계열만 브랜드 컬러로 유지: --color-primary: ${expandBrandColors[0]};${expandBrandColors[1] ? ` --color-secondary: ${expandBrandColors[1]};` : ''}\n- neutral/surface/background/border/status 색상, spacing, rounded, typography, component sizing은 DESIGN.md 값을 유지\n- 카드 배경, 페이지 배경, 본문 텍스트를 브랜드 컬러로 덮지 말 것\n` : ''}
-${designSystemContract ? `\n${designSystemContract}\n\n## Contract 유지 규칙\n- 서브 화면도 메인 화면과 동일한 Design System Contract와 rhythm variables를 사용하세요.\n- 새로 만드는 카드/리스트/폼/버튼은 메인 화면의 padding/gap/radius/border/shadow 정책을 복제하세요.\n- A/B/C 선택 이후 전체 페이지 확장 단계에서 새로운 spacing scale이나 임의 radius를 만들면 실패입니다.\n` : ''}
+${designSystemContract ? `\n${designSystemContract}\n\n## Contract 유지 규칙\n- 서브 화면도 메인 화면과 동일한 Design System Contract와 rhythm variables를 사용하세요.\n- 새로 만드는 카드/리스트/폼/버튼은 메인 화면의 padding/gap/radius/border/shadow 정책을 복제하세요.\n- A/B/C 선택 이후 전체 페이지 확장 단계에서 새로운 spacing scale이나 임의 radius를 만들면 실패입니다.\n\n## ⛔ 카드·섹션 Spacing 하드코딩 절대 금지\n- 서브 화면의 모든 카드 내부 padding은 반드시 \`padding: var(--aide-card-padding)\`을 사용하세요.\n- \`padding: 12px\`, \`padding: 16px\`, \`padding: 16px 20px\` 등 하드코딩 값 사용 금지.\n- 카드 간 gap은 \`gap: var(--aide-card-gap)\`, 섹션 간격은 \`margin-top: var(--aide-section-gap)\`을 사용하세요.\n- 좌우 페이지 여백은 \`padding-left: var(--aide-page-padding); padding-right: var(--aide-page-padding)\`을 사용하세요.\n` : ''}
 ${asIsAnalysis ? `\n## As-is URL 구조 분석 — 서브 화면 확장 참고\n아래 데이터는 기존 서비스의 정보 구조와 콘텐츠 재료입니다. 색상·폰트·라운드·그림자는 복사하지 말고, DESIGN.md 스타일을 유지하세요.\n\`\`\`json\n${JSON.stringify(asIsAnalysis, null, 2).slice(0, 9000)}\n\`\`\`\n` : ''}
 ## 프로젝트 개요
 ${projectSummary}
@@ -4994,6 +5443,7 @@ ${answersText || '없음'}
 메인 화면 HTML에서 다음 요소의 HTML을 정확히 파악하세요:
 ${navExtractionGuide}
 
+${expectedSubScreensGuide}
 **Step 2 — 서브 화면 구성 (3~4개):**
 ⚠️ 서브 화면 기준 (CRITICAL):
 - 모바일 앱: 하단 탭바의 각 탭 목적지를 서브 화면으로 만드세요 (예: 레시피 탭 → screen-recipe, 냉장고 탭 → screen-fridge, 장보기 탭 → screen-cart, 마이 탭 → screen-profile)
@@ -5155,6 +5605,28 @@ ${trimmedHtml}
 - 헤비 유저 상태는 완료 상태가 자연스럽게 느껴져야 합니다: 목표 달성, 100%, 보상 수령 가능, VIP/연속 기록/완료 배지 문구.
 - HTML에 없는 문구를 from으로 만들지 말고, 현재 보이는 문구 중 상태 의미를 가장 잘 드러내는 텍스트를 골라 to를 바꾸세요.
 
+### events (0~4개)
+이 앱에서 사용자가 "와!" 하는 결정적 순간을 버튼 하나로 재현하세요.
+예: 스탬프 10개 완성, 포인트 적립 애니메이션, 레벨업, 쿠폰 발급, 목표 달성, 출석 체크
+
+각 이벤트:
+- id: camelCase 식별자 (예: "stampComplete", "levelUp")
+- label: 버튼에 표시할 짧은 한국어 (예: "스탬프 완성", "레벨업")
+- script: iframe document 내부에서 실행되는 순수 JavaScript (외부 라이브러리 금지)
+
+script 작성 규칙:
+1. document.querySelector/querySelectorAll로 실제 DOM 요소를 조작
+2. 모든 querySelector 결과에 반드시 null 체크: if (!el) return;
+3. CSS 인라인 스타일로 트랜지션/애니메이션 직접 적용 (transition, transform, opacity, background 등)
+4. 단계적 연출은 setTimeout으로 순차 실행 (100ms~500ms 간격)
+5. 완성/달성 팝업은 position:fixed 오버레이를 동적으로 생성해서 2~3초 후 자동 제거
+6. confetti 파티클은 canvas API로 직접 구현하거나 간단한 div 애니메이션으로 대체
+7. 스탬프/진행률 같은 요소는 클래스 추가/CSS 변경으로 채워지는 효과
+8. 숫자 카운터 올라가는 효과: setInterval로 숫자를 단계적으로 올리고 clearInterval
+
+실제 HTML에 있는 클래스명/ID/텍스트를 그대로 사용하세요. 없는 선택자를 만들지 마세요.
+이 앱에 적합한 이벤트가 없으면 빈 배열 []을 반환하세요.
+
 반드시 아래 JSON 형식으로만 응답 (마크다운 없이):
 {
   "variables": [
@@ -5187,6 +5659,13 @@ ${trimmedHtml}
         { "from": "Silver", "to": "VIP" }
       ]
     }
+  ],
+  "events": [
+    {
+      "id": "stampComplete",
+      "label": "스탬프 완성",
+      "script": "(function() { var stamps = document.querySelectorAll('.stamp-empty'); if (!stamps.length) return; var i = 0; var fill = setInterval(function() { if (i >= stamps.length) { clearInterval(fill); var overlay = document.createElement('div'); overlay.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:9999;'; overlay.innerHTML = '<div style=\"background:#fff;border-radius:20px;padding:32px 40px;text-align:center;font-family:sans-serif;\"><div style=\"font-size:48px;\">☕</div><div style=\"font-size:20px;font-weight:700;margin-top:12px;\">무료 음료 획득!</div><div style=\"color:#666;margin-top:8px;\">스탬프 10개를 모았어요</div></div>'; document.body.appendChild(overlay); setTimeout(function() { overlay.remove(); }, 2500); return; } stamps[i].style.cssText = 'transition:transform 0.2s,opacity 0.2s;transform:scale(1.3);opacity:0.5;'; setTimeout(function(j) { return function() { stamps[j].style.cssText = 'transition:transform 0.3s,background 0.3s;transform:scale(1);background:#6f4e37;border-radius:50%;'; }; }(i), 200); i++; }, 150); })();"
+    }
   ]
 }
 `;
@@ -5194,9 +5673,10 @@ ${trimmedHtml}
   try {
     const text = await generatePro(prompt, apiKey, 'gemini-3.1-flash-lite');
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return { variables: [], states: [] };
-    return JSON.parse(jsonMatch[0]);
+    if (!jsonMatch) return { variables: [], states: [], events: [] };
+    const parsed = JSON.parse(jsonMatch[0]);
+    return { variables: [], states: [], events: [], ...parsed };
   } catch {
-    return { variables: [], states: [] };
+    return { variables: [], states: [], events: [] };
   }
 }

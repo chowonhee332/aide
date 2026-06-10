@@ -176,12 +176,15 @@ class Media {
           vec2 fittedSize = vec2(1.0);
 
           if (planeAspect > imageAspect) {
-            fittedSize.x = imageAspect / planeAspect;
-          } else {
             fittedSize.y = planeAspect / imageAspect;
+          } else {
+            fittedSize.x = imageAspect / planeAspect;
           }
 
-          vec2 uv = centered / fittedSize + 0.5;
+          // cover + top-aligned: X는 중앙 정렬, Y는 상단(첫 화면) 기준
+          vec2 uv;
+          uv.x = centered.x / fittedSize.x + 0.5;
+          uv.y = vUv.y / fittedSize.y;
           bool insideImage = uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0;
           vec4 color = insideImage ? texture2D(tMap, uv) : vec4(1.0, 1.0, 1.0, 1.0);
           color = vec4(mix(vec3(1.0), color.rgb, color.a), 1.0);

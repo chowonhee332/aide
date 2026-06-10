@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: KTDS Design System
-description: "KT DS 엔터프라이즈 UI 시스템 — Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학으로 한다. 최종 기준은 DSCore Storybook(https://dscore-ui.ktds.co.kr/)에 게시된 stable Docs이다. 화이트 서피스(#ffffff)와 쿨 뉴트럴 구조 위에 Primary Blue(#1a75ff)를 유일한 인터랙션 강조색으로 사용한다. 일반 Button은 8px 라운드 사각형이며 pill/capsule 버튼은 금지한다. 단, Badge·Chip·Avatar·FAB처럼 의미상 원형/캡슐형인 컴포넌트는 rounded.full 예외를 허용한다. 입력 필드는 default 32px·small 24px·large 40px, 카드는 서비스 프로필에 따라 B2B border-only / B2C shadow-only로 적용한다. 페이지 배경은 반드시 primary-fill-neutral(#F2F5F9), 카드/컴포넌트 배경은 surface(#ffffff). Pretendard 폰트. 모바일=하단 탭 바(NavBottom), 태블릿=상단 NavTop, 데스크탑=서비스 성격에 따라 Header/GNB 또는 NavSide(업무형 240px)를 선택한다. 패키지: @ktds-ui/components (일반 컴포넌트), @ktds-ui/layout (레이아웃 컴포넌트: SideNavigation·Header·Footer·Content·ContentTitle·SplitLayout), Toast는 @ktds-ui/context/ToastContext. Carousel은 swiper 별도 설치, Chart는 chart.js 별도 설치."
+description: "KT DS 엔터프라이즈 UI 시스템 — Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학으로 한다. 최종 기준은 DSCore Storybook(https://dscore-ui.ktds.co.kr/)에 게시된 stable Docs이다. 화이트 서피스(#ffffff)와 쿨 뉴트럴 구조 위에 Primary Blue(#1a75ff)를 유일한 인터랙션 강조색으로 사용한다. 일반 Button은 8px 라운드 사각형이며 pill/capsule 버튼은 금지한다. 단, Badge·Chip·Avatar·FAB처럼 의미상 원형/캡슐형인 컴포넌트는 rounded.full 예외를 허용한다. 입력 필드는 default 32px·small 24px·large 40px, 카드는 B2B/B2C 구분 없이 shadow-only(B2C 스타일)로 통일한다. 페이지 배경은 반드시 primary-fill-neutral(#F2F5F9), 카드/컴포넌트 배경은 surface(#ffffff). Pretendard 폰트. 모바일=하단 탭 바(NavBottom), 태블릿=상단 NavTop, 데스크탑=서비스 성격에 따라 Header/GNB 또는 NavSide(업무형 240px)를 선택한다. 패키지: @ktds-ui/components (일반 컴포넌트), @ktds-ui/layout (레이아웃 컴포넌트: SideNavigation·Header·Footer·Content·ContentTitle·SplitLayout), Toast는 @ktds-ui/context/ToastContext. Carousel은 swiper 별도 설치, Chart는 chart.js 별도 설치."
 
 colors:
   # Brand Primary
@@ -299,8 +299,8 @@ components:
     backgroundColor: "{colors.surface}"
     rounded: "{rounded.xl}"
     padding: "{spacing.md}"
-    border: "1px solid {colors.border-alt}"
-    shadow: "none"
+    border: "none"
+    shadow: "{shadows.b2c-card}"
   card-b2c:
     backgroundColor: "{colors.surface}"
     rounded: "{rounded.xl}"

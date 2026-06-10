@@ -16,7 +16,7 @@ description: "Aide 히어로 이미지 생성용 3D 아이콘 스타일 가이�
 {
   "task": "generate isometric 3D icon",
   "style_lock": true,
-  "subject": "",
+  "subject": "귀여운 캐릭터",
   "guidance": {
     "aspect_ratio": "16:9",
     "instruction_strength": "strict",
@@ -36,8 +36,13 @@ description: "Aide 히어로 이미지 생성용 3D 아이콘 스타일 가이�
     "background": "#FFFFFF",
     "alpha": true,
     "safety_settings": {
-      "allowed_content": ["stylized_character"],
-      "disallowed_content": ["photographic_realism", "text"]
+      "allowed_content": [
+        "stylized_character"
+      ],
+      "disallowed_content": [
+        "photographic_realism",
+        "text"
+      ]
     }
   },
   "render": {

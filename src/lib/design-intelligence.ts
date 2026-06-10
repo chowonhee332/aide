@@ -29,6 +29,12 @@ export function detectServiceSubtype(brief: string, domain: AppDomain): string {
   if (includesAny(brief, [/포인트|쿠폰|멤버십|등급|리워드|적립|혜택/])) return 'membership-reward'
   if (includesAny(brief, [/식물|물주기|몬스테라|화분|성장|루틴/])) return 'plant-care-companion'
   if (includesAny(brief, [/물류|배송|트럭|화물|창고|배차|route|fleet/])) return 'b2b-logistics-dashboard'
+  if (includesAny(brief, [/운동|헬스|피트니스|걷기|칼로리|다이어트|체중|workout|fitness|체지방/])) return 'health-fitness-tracker'
+  if (includesAny(brief, [/투자|주식|펀드|수익률|포트폴리오|ETF|etf|가계부|지출|저축|절세/])) return 'fintech-investment'
+  if (includesAny(brief, [/여행|항공|호텔|숙박|투어|패키지|여행지|flight|hotel|booking/])) return 'travel-booking'
+  if (includesAny(brief, [/학습|강의|과제|수강|교육|공부|퀴즈|학원|curriculum/])) return 'education-learning'
+  if (includesAny(brief, [/커뮤니티|피드|팔로우|소셜|채팅|게시글|댓글|feed|social/])) return 'social-community'
+  if (includesAny(brief, [/쇼핑|장바구니|위시리스트|shopping|checkout|wishlist/])) return 'e-commerce-shopping'
   if (domain === 'food') return 'food-order-commerce'
   if (domain === 'commerce') return 'local-store-commerce'
   if (domain === 'business') return 'b2b-dashboard'
@@ -52,6 +58,42 @@ export function selectReferencePatterns(serviceSubtype: string, domain: AppDomai
     return {
       selected: ['companion-status-home', 'routine-progress', 'growth-scene-3d', 'bold-editorial-hero'],
       avoid: ['dense-finance-table', 'generic-storefront'],
+    }
+  }
+  if (serviceSubtype === 'health-fitness-tracker') {
+    return {
+      selected: ['progress-ring-home', 'goal-tracker', 'activity-log', 'wellness-editorial-hero'],
+      avoid: ['dense-finance-table', 'generic-storefront', 'b2b-dashboard'],
+    }
+  }
+  if (serviceSubtype === 'fintech-investment') {
+    return {
+      selected: ['portfolio-dashboard', 'chart-summary', 'savings-goal', 'trust-editorial-hero'],
+      avoid: ['cute-mascot-first', 'food-commerce-grid', 'bottom-tab-heavy-app'],
+    }
+  }
+  if (serviceSubtype === 'travel-booking') {
+    return {
+      selected: ['destination-editorial', 'booking-flow', 'itinerary-card', 'bold-photo-hero'],
+      avoid: ['dense-finance-table', 'b2b-dashboard', 'generic-storefront'],
+    }
+  }
+  if (serviceSubtype === 'education-learning') {
+    return {
+      selected: ['course-progress', 'lesson-list', 'achievement-badge', 'companion-editorial'],
+      avoid: ['bold-consumer-editorial', 'finance-chart-heavy', 'generic-storefront'],
+    }
+  }
+  if (serviceSubtype === 'social-community') {
+    return {
+      selected: ['activity-feed', 'user-profile-card', 'community-highlight', 'editorial-hero'],
+      avoid: ['b2b-dashboard', 'dense-finance-table', 'empty-landing'],
+    }
+  }
+  if (serviceSubtype === 'e-commerce-shopping') {
+    return {
+      selected: ['product-grid', 'flash-sale-hero', 'category-rail', 'bold-editorial-hero'],
+      avoid: ['b2b-dashboard', 'empty-landing', 'generic-finance-dashboard'],
     }
   }
   if (domain === 'business') {
@@ -119,6 +161,150 @@ export function buildIntelligentContentInventory(
       ],
       sectionIdeas: ['히어로 절약 요약', '위약금 대비 절약액 비교', '퀵 액션 그리드', '추천 요금제 3개', '최근 비교 활동', '혜택 체크리스트'],
       requiredAboveFoldUnits: ['절약액 KPI', '위약금/사용량/추천적합도', '퀵 액션', '요금제 카드', '실시간 활동', '혜택 안내'],
+    }
+  }
+
+  if (serviceSubtype === 'health-fitness-tracker') {
+    return {
+      kpis: [
+        { label: '오늘 걸음 수', value: '7,842보', meta: '목표 10,000보의 78%' },
+        { label: '소모 칼로리', value: '432kcal', meta: '기초대사량 포함' },
+        { label: '이번 주 운동', value: '4회', meta: '목표 5회 중' },
+        { label: '체중 변화', value: '-0.8kg', meta: '지난 주 대비' },
+      ],
+      quickActions: ['운동 시작', '식단 기록', '체중 입력', '루틴 보기', '목표 확인', '수면 기록'],
+      listItems: [
+        { title: '30분 유산소', meta: '오늘 11:00 · 약 200kcal', value: '시작하기', badge: '추천' },
+        { title: '상체 근력 루틴', meta: '8동작 · 35분 예상', value: '루틴 보기', badge: '오늘 예정' },
+        { title: '요가 스트레칭', meta: '초급 · 20분', value: '따라하기', badge: '회복' },
+      ],
+      activityItems: [
+        { title: '어제 달리기 완료', meta: '5.2km · 32분', value: '320kcal' },
+        { title: '물 섭취 알림', meta: '지금', value: '2/8잔' },
+        { title: '주간 목표 달성', meta: '이번 주', value: '4/5회 완료' },
+      ],
+      sectionIdeas: ['오늘 활동 요약', '운동 KPI', '루틴 추천', '식단/칼로리', '주간 목표', '최근 기록'],
+      requiredAboveFoldUnits: ['걸음수/칼로리/운동 횟수 KPI', '퀵 액션', '오늘 루틴 카드', '목표 달성률', '최근 활동'],
+    }
+  }
+
+  if (serviceSubtype === 'fintech-investment') {
+    return {
+      kpis: [
+        { label: '총 자산', value: '42,850,000원', meta: '전일 대비 +1.2%' },
+        { label: '수익률', value: '+8.4%', meta: '연간 기준' },
+        { label: '이번 달 지출', value: '324,000원', meta: '예산의 64%' },
+        { label: '저축 목표', value: '72%', meta: '12월까지 달성 예정' },
+      ],
+      quickActions: ['입금', '출금', '투자하기', '포트폴리오', '지출 분석', '목표 설정'],
+      listItems: [
+        { title: '삼성전자 ETF', meta: '보유 30주 · 수익률 +12.3%', value: '2,430,000원', badge: '수익 중' },
+        { title: '미국 S&P500 펀드', meta: '적립식 월 50,000원', value: '1,850,000원', badge: '자동 적립' },
+        { title: '비상금 계좌', meta: '연 3.8% 이자', value: '3,000,000원', badge: '안전자산' },
+      ],
+      activityItems: [
+        { title: '배당금 입금', meta: '오늘 09:32', value: '+12,500원' },
+        { title: '자동 적립 완료', meta: 'S&P500 펀드', value: '50,000원' },
+        { title: '지출 예산 알림', meta: '식비 80% 도달', value: '확인하기' },
+      ],
+      sectionIdeas: ['자산 현황 요약', '수익률/지출 KPI', '퀵 액션', '보유 자산 리스트', '최근 거래 내역', '목표 저축 진행'],
+      requiredAboveFoldUnits: ['총 자산/수익률 KPI', '퀵 액션', '보유 종목 카드', '거래 내역', '목표 진행률'],
+    }
+  }
+
+  if (serviceSubtype === 'travel-booking') {
+    return {
+      kpis: [
+        { label: '예약 여행', value: '2건', meta: '다음 출발 D-18' },
+        { label: '항공 마일리지', value: '24,500마일', meta: '왕복 1회 사용 가능' },
+        { label: '적립 혜택', value: '38,000원', meta: '이번 달 예약 시' },
+        { label: '인기 여행지', value: '오사카', meta: '이번 달 검색 1위' },
+      ],
+      quickActions: ['항공권 검색', '호텔 예약', '내 여행 확인', '마일리지 조회', '투어 패키지', '여행 기록'],
+      listItems: [
+        { title: '오사카 3박 4일 패키지', meta: '12/20~23 · 왕복 항공 포함', value: '348,000원', badge: '인기' },
+        { title: '도쿄 비즈니스 호텔', meta: '중심부 · 조식 포함', value: '89,000원/박', badge: '추천' },
+        { title: '방콕 리조트 얼리버드', meta: '30% 할인 · 잔여 3실', value: '124,000원/박', badge: '특가' },
+      ],
+      activityItems: [
+        { title: '예약 확정', meta: '오사카 항공 · 12/20 출발', value: 'KE 723' },
+        { title: '마일리지 적립', meta: '지난 여행 완료', value: '+1,200마일' },
+        { title: '가격 알림 도달', meta: '도쿄 왕복 항공', value: '목표가 도달' },
+      ],
+      sectionIdeas: ['다가오는 여행', 'KPI 요약', '퀵 액션', '추천 상품 카드', '가격 알림', '최근 여행 기록'],
+      requiredAboveFoldUnits: ['다음 여행 일정/마일리지 KPI', '퀵 액션', '추천 패키지 카드', '가격/날짜 메타', '예약 내역'],
+    }
+  }
+
+  if (serviceSubtype === 'education-learning') {
+    return {
+      kpis: [
+        { label: '오늘 학습', value: '42분', meta: '목표 60분 중 70%' },
+        { label: '연속 학습', value: '12일', meta: '개인 최고 기록 도전 중' },
+        { label: '완료 강의', value: '18/42', meta: '이번 과정' },
+        { label: '획득 뱃지', value: '7개', meta: '이번 달 4개' },
+      ],
+      quickActions: ['학습 이어하기', '오늘 과제', '강의 목록', '퀴즈 풀기', '학습 기록', '목표 설정'],
+      listItems: [
+        { title: 'React 기초 마스터하기', meta: '3강 남음 · 23분', value: '82% 완료', badge: '진행 중' },
+        { title: 'TypeScript 실전 패턴', meta: '다음 학습 추천', value: '신규', badge: '추천' },
+        { title: '오늘의 퀴즈 챌린지', meta: '10문제 · 5분 예상', value: '+50포인트', badge: '오늘 마감' },
+      ],
+      activityItems: [
+        { title: '강의 완료', meta: 'React Hooks 이해하기', value: '+15포인트' },
+        { title: '연속 학습 갱신', meta: '12일째', value: '뱃지 획득' },
+        { title: '과제 제출', meta: '어제 23:45', value: '검토 중' },
+      ],
+      sectionIdeas: ['오늘 학습 요약', '진행률 KPI', '이어하기 CTA', '추천 강의', '퀴즈/챌린지', '성취/뱃지'],
+      requiredAboveFoldUnits: ['학습 시간/진행률 KPI', '이어하기 CTA', '오늘 과제/추천', '연속 학습', '최근 활동'],
+    }
+  }
+
+  if (serviceSubtype === 'social-community') {
+    return {
+      kpis: [
+        { label: '새 알림', value: '23개', meta: '읽지 않은 메시지 5개' },
+        { label: '팔로워', value: '1,284명', meta: '이번 주 +48명' },
+        { label: '인기 게시글', value: '342 좋아요', meta: '내 게시글 기준' },
+        { label: '활동 지수', value: '상위 8%', meta: '이번 달' },
+      ],
+      quickActions: ['게시글 작성', '피드 보기', '채팅', '알림 확인', '프로필 편집', '검색'],
+      listItems: [
+        { title: '오늘의 인기 게시글', meta: '운동 루틴 공유 · 2시간 전', value: '342 좋아요', badge: '인기' },
+        { title: '새 댓글 알림', meta: '내 게시글에 5개', value: '확인하기', badge: '새 알림' },
+        { title: '추천 팔로우', meta: '비슷한 관심사 · 공통 친구 3명', value: '팔로우', badge: '추천' },
+      ],
+      activityItems: [
+        { title: '내 게시글 반응', meta: '30분 전', value: '좋아요 +12' },
+        { title: '새 팔로워', meta: '오늘', value: '+3명' },
+        { title: '댓글 알림', meta: '오늘의 인기 게시글', value: '2개' },
+      ],
+      sectionIdeas: ['피드 요약', '알림/팔로워 KPI', '퀵 액션', '인기 게시글 카드', '추천 팔로우', '최근 활동'],
+      requiredAboveFoldUnits: ['알림/팔로워 KPI', '퀵 액션', '인기 게시글', '추천 팔로우', '최근 활동'],
+    }
+  }
+
+  if (serviceSubtype === 'e-commerce-shopping') {
+    return {
+      kpis: [
+        { label: '장바구니', value: '5개', meta: '총 128,500원' },
+        { label: '포인트', value: '3,200P', meta: '다음 주문에 사용 가능' },
+        { label: '쿠폰', value: '4장', meta: '오늘 만료 1장' },
+        { label: '배송 중', value: '2건', meta: '오늘 도착 예정 1건' },
+      ],
+      quickActions: ['장바구니', '주문 내역', '위시리스트', '쿠폰함', '배송 조회', '최근 본 상품'],
+      listItems: [
+        { title: '나이키 에어맥스 270', meta: '270mm · 관심 상품 할인', value: '98,000원', badge: '15% 할인' },
+        { title: '스탠리 텀블러 30oz', meta: '인기 색상 · 무료배송', value: '42,000원', badge: '인기' },
+        { title: '유기농 그래놀라 세트', meta: '3팩 묶음 · 리뷰 4.9', value: '24,500원', badge: '리뷰 최고' },
+      ],
+      activityItems: [
+        { title: '배송 출발', meta: '스탠리 텀블러 · 오늘 09:14', value: '오늘 도착 예정' },
+        { title: '쿠폰 만료 예정', meta: '내일까지', value: '10,000원 할인' },
+        { title: '위시리스트 가격 변동', meta: '에어팟 Pro 2세대', value: '-20,000원' },
+      ],
+      sectionIdeas: ['장바구니 요약', '쿠폰/포인트 KPI', '퀵 액션', '추천 상품 카드', '배송 현황', '최근 본 상품'],
+      requiredAboveFoldUnits: ['장바구니/쿠폰/배송 KPI', '퀵 액션', '추천 상품', '가격/할인 메타', '배송 현황'],
     }
   }
 
@@ -194,6 +380,127 @@ export function buildIntelligentContentInventory(
   }
 }
 
+function getSubtypeComponentHints(serviceSubtype: string, domain: AppDomain): { a: string; b: string; c: string } {
+  if (serviceSubtype === 'pizza-order-membership') {
+    return {
+      a: '스탬프 카드(격자형) + 메뉴 리스트 아이템(이름/가격/배지) × 4개 이상 + 픽업 시간 chip',
+      b: '마스코트 3D 피자 오브젝트 히어로(primary 배경) + "지금 주문하기" 단일 CTA + 스탬프 현황 행',
+      c: '피자 사진 2열 그리드 + 카테고리 rail(시그니처/스페셜/세트/음료) + 추천 에디토리얼 카드',
+    }
+  }
+  if (serviceSubtype === 'telco-plan-recommendation') {
+    return {
+      a: '요금제 비교 카드 3개(요금/데이터/혜택 행 정렬) + 절약액 KPI + 데이터 사용량 게이지',
+      b: '"월 XX원 절약" 대형 절약액 히어로 숫자 + "요금제 바꾸기" 단일 CTA + 위약금 계산 행',
+      c: '사용 유형별 카테고리 rail(데이터 중심/가성비/무제한/시니어) + 라이프스타일 이미지 카드',
+    }
+  }
+  if (serviceSubtype === 'plant-care-companion') {
+    return {
+      a: '화분 리스트 아이템(식물 아이콘/이름/물주기 D-Day 배지) × 5개 이상 + 오늘 물주기 요약 chip',
+      b: '3D 식물/화분 오브젝트 히어로(자연 배경) + "지금 물주기 기록" 단일 CTA + 다음 일정 행',
+      c: '식물 사진 2열 그리드 + 카테고리 rail(관엽/다육/허브/꽃) + 성장 일기 에디토리얼 카드',
+    }
+  }
+  if (serviceSubtype === 'membership-reward') {
+    return {
+      a: '포인트/쿠폰/등급 KPI strip + 혜택 리스트 아이템(유효기간 배지 포함) × 5개 이상',
+      b: '포인트 잔액 대형 KPI 히어로 + "QR 적립" 단일 CTA + 가장 가까운 혜택 행',
+      c: '제휴 매장 2열 이미지 그리드 + 카테고리 rail(식품/카페/쇼핑/여가) + 큐레이션 카드',
+    }
+  }
+  if (serviceSubtype === 'b2b-logistics-dashboard') {
+    return {
+      a: '배차 현황 테이블/리스트(차량번호/경로/상태 badge) × 5행 이상 + 처리량 KPI',
+      b: '핵심 처리율/지연 건수 대형 KPI 히어로 + "배차 등록" 단일 CTA + 실시간 상태 행',
+      c: '경로 지도 또는 권역 이미지 카드 + 카테고리 rail(권역별/차량별/상태별) + 실적 스토리',
+    }
+  }
+  if (serviceSubtype === 'ai-productivity') {
+    return {
+      a: '작업 상태 리스트(우선순위/마감/담당자 배지) × 5개 이상 + AI 추천 KPI chip',
+      b: 'AI 추천 강조 히어로(진행률/효과 수치) + "지금 시작" 단일 CTA + 추천 항목 행',
+      c: '추천 콘텐츠/워크플로 이미지 카드 그리드 + 카테고리 rail + AI 큐레이션 에디토리얼',
+    }
+  }
+  if (serviceSubtype === 'health-fitness-tracker') {
+    return {
+      a: '활동 지표 리스트(걸음수/칼로리/운동시간 gauge 배지) × 5개 이상 + 오늘 목표 KPI strip',
+      b: '오늘 목표 달성률 대형 링/게이지 히어로 + "운동 시작" 단일 CTA + 다음 루틴 행',
+      c: '운동 콘텐츠 2열 이미지 그리드 + 카테고리 rail(유산소/근력/요가/수면) + 성취 스토리 카드',
+    }
+  }
+  if (serviceSubtype === 'fintech-investment') {
+    return {
+      a: '보유 자산 리스트(종목/수익률/평가금액 badge) × 5개 이상 + 총 자산/수익률 KPI strip',
+      b: '총 자산/수익률 대형 숫자 히어로 + "투자하기" 단일 CTA + 오늘의 변동 행',
+      c: '투자 테마 이미지 카드 그리드 + 카테고리 rail(국내주식/해외ETF/펀드/안전자산) + 트렌드 에디토리얼',
+    }
+  }
+  if (serviceSubtype === 'travel-booking') {
+    return {
+      a: '여행 일정 리스트(목적지/날짜/상태 badge) × 5개 이상 + 마일리지/혜택 KPI strip',
+      b: '목적지 대형 풍경 히어로(출발일/가격 강조) + "예약하기" 단일 CTA + 다가오는 일정 행',
+      c: '여행지 사진 2열 그리드 + 카테고리 rail(국내/일본/동남아/유럽) + 큐레이션 에디토리얼 카드',
+    }
+  }
+  if (serviceSubtype === 'education-learning') {
+    return {
+      a: '강의 리스트(제목/진행률/마감 badge) × 5개 이상 + 오늘 학습 시간/연속 KPI',
+      b: '학습 진행률 대형 링/숫자 히어로 + "이어 학습하기" 단일 CTA + 오늘 과제 행',
+      c: '추천 강의 2열 이미지 카드 그리드 + 카테고리 rail(개발/디자인/비즈니스/언어) + 에디토리얼 카드',
+    }
+  }
+  if (serviceSubtype === 'social-community') {
+    return {
+      a: '피드 리스트 아이템(작성자/시간/좋아요 badge) × 5개 이상 + 알림/팔로워 KPI strip',
+      b: '인기 게시글 히어로(좋아요 수 강조) + "게시글 작성" 단일 CTA + 추천 팔로우 행',
+      c: '게시글/미디어 2열 그리드 + 카테고리 rail(인기/팔로잉/추천/최신) + 에디토리얼 피처 카드',
+    }
+  }
+  if (serviceSubtype === 'e-commerce-shopping') {
+    return {
+      a: '상품 리스트 아이템(이름/가격/할인율/재고 badge) × 5개 이상 + 장바구니/쿠폰 KPI strip',
+      b: '히어로 상품 이미지(할인율 강조) + "구매하기" 단일 CTA + 쿠폰/무료배송 혜택 행',
+      c: '상품 사진 2열 그리드 + 카테고리 rail(인기/신상/세일/브랜드) + 에디토리얼 큐레이션 카드',
+    }
+  }
+  // domain-level fallback
+  if (domain === 'business') {
+    return {
+      a: 'KPI 테이블/차트 행 × 5개 이상 + 상태 badge + 필터 row',
+      b: '핵심 KPI 대형 숫자 히어로 + 핵심 액션 CTA + 차트/지표 행',
+      c: '팀 활동·하이라이트 이미지 카드 그리드 + 섹션 탐색 nav',
+    }
+  }
+  if (domain === 'food') {
+    return {
+      a: '메뉴/가게 리스트 아이템(이름/가격/별점/시간 배지) × 5개 이상 + 필터 chip row',
+      b: '대표 메뉴 이미지 히어로(가격 강조) + "주문하기" 단일 CTA + 인기 아이템 행',
+      c: '음식 사진 2열 그리드 + 카테고리 rail + 추천 에디토리얼 카드',
+    }
+  }
+  if (domain === 'health') {
+    return {
+      a: '건강 지표 리스트(목표량/달성률 gauge) × 5개 이상 + 오늘 요약 KPI',
+      b: '오늘 목표 달성률 대형 히어로(링/게이지) + "운동 시작" 단일 CTA + 루틴 행',
+      c: '웰니스 이미지 카드 그리드 + 카테고리 rail(운동/식단/수면/명상) + 성취 스토리',
+    }
+  }
+  if (domain === 'commerce') {
+    return {
+      a: '상품 리스트 아이템(이름/가격/할인율/재고 배지) × 5개 이상 + 필터/정렬 row',
+      b: '대표 상품 이미지 히어로(할인율 강조) + "구매하기" 단일 CTA + 혜택 행',
+      c: '상품 사진 2열 그리드 + 카테고리 rail + 큐레이션 에디토리얼',
+    }
+  }
+  return {
+    a: '핵심 지표/상태 리스트 아이템 × 5개 이상 + 퀵 액션 버튼 행',
+    b: '핵심 메시지/수치 히어로 + 단일 CTA + 보조 정보 행',
+    c: '콘텐츠/추천 이미지 카드 2열 그리드 + 카테고리 rail',
+  }
+}
+
 function buildCoreObjects(domain: AppDomain, serviceSubtype: string): string[] {
   if (serviceSubtype === 'pizza-order-membership') {
     return ['추천 메뉴', '가격/할인', '픽업 시간', '쿠폰/스탬프', '멤버십 등급', '주문 CTA']
@@ -220,6 +527,7 @@ function variantBriefsFor(
   contentInventory: NonNullable<AideGenerationPlan['contentInventory']>,
 ): Record<VariantKey, NonNullable<AideGenerationPlan['variantBriefs']>[VariantKey]> {
   const cScreenPattern = domain === 'business' ? 'trust-visual-panel' : 'bold-editorial-hero'
+  const componentHints = getSubtypeComponentHints(serviceSubtype, domain)
   return {
     A: {
       strategy: needsScene3d ? 'Contextual 3D Scene Home' : 'Dense Utility Home',
@@ -227,15 +535,40 @@ function variantBriefsFor(
       heroPolicy: needsScene3d ? 'scene-3d' : 'no-image',
       mustShow: [contentInventory.kpis[0].label, contentInventory.kpis[1].label, contentInventory.quickActions[0], contentInventory.listItems[0].title, contentInventory.activityItems[0].title],
       shouldAvoid: ['old game render', 'generic 3D stock render', 'oversized empty hero', 'same card order as B/C'],
-      layoutRhythm: ['compact header', '14-20px section gap', 'high-density first viewport', 'next section peeking at bottom'],
+      layoutRhythm: [
+        '히어로 없거나 최소(화면 25% 이하). B보다 히어로가 작아야 한다',
+        '첫 뷰포트에 서비스 핵심 정보를 최대한 많이(B/C보다 아이템 수 많게)',
+        '카드/행 gap: 20px, 내부 padding: 16-20px',
+        '섹션별 소제목 + 데이터가 반복되는 리스트 구조 (B의 히어로 집중, C의 이미지 집중과 대비)',
+        '색상·타입·카드는 DESIGN.md 그대로 사용하되, 레이아웃 밀도만 다름',
+        `[이 서비스의 A안 컴포넌트] ${componentHints.a}`,
+      ],
     },
     B: {
       strategy: 'Creon Object 3D Conversion Home',
       screenPattern: serviceSubtype === 'pizza-order-membership' ? 'mascot-companion commerce hero' : 'object-stage recommendation hero',
       heroPolicy: 'creon-object-3d',
-      mustShow: [contentInventory.kpis[0].label, contentInventory.kpis[1].label, contentInventory.kpis[2].label, contentInventory.quickActions[0], contentInventory.quickActions[1], contentInventory.listItems[0].title],
-      shouldAvoid: ['tiny sticker 3D', 'floating object without content', 'hero-only poster', 'same information grouping as A/C'],
-      layoutRhythm: ['large object stage but compact card', 'CTA close to hero', 'KPI strip or decision proof', 'recommendation preview visible'],
+      mustShow: [
+        contentInventory.kpis[0].label,
+        contentInventory.kpis[1].label,
+        contentInventory.kpis[2].label,
+        contentInventory.kpis[3]?.label ?? contentInventory.kpis[0].label,
+        contentInventory.quickActions[0],
+        contentInventory.quickActions[1],
+        contentInventory.listItems[0].title,
+        contentInventory.listItems[1].title,
+        contentInventory.activityItems[0].title,
+      ],
+      shouldAvoid: ['tiny sticker 3D', 'floating object without content', 'hero-only poster', 'sparse content below hero', 'same information grouping as A/C'],
+      layoutRhythm: [
+        '히어로 패널이 화면의 35-45%를 차지. A/C보다 히어로가 커야 하지만 45% 초과 금지 — 콘텐츠 공간 확보 필수',
+        '3D 오브젝트가 히어로의 핵심 비주얼. 작은 스티커처럼 쓰면 실패',
+        'CTA 1개가 히어로 바로 아래에 단독으로 위치. 시선 경쟁 없음',
+        '히어로 아래 콘텐츠 밀도는 A/C와 동일해야 한다 — 3D 히어로가 있어도 데이터 포인트 10개 이상, 콘텐츠 덩어리 4개 이상',
+        '히어로 아래: 결정을 돕는 핵심 수치/혜택 → 추천/비교 리스트(아이템 3개 이상, 각 아이템에 제목+수치+배지) → 퀵 액션 → 최근 활동 순으로 배치',
+        '각 섹션은 제목+설명+실제 아이템/수치를 반드시 포함. 제목만 있는 빈 섹션은 실패',
+        `[이 서비스의 B안 컴포넌트] ${componentHints.b}`,
+      ],
     },
     C: {
       strategy: 'Photo Editorial Service Home',
@@ -243,9 +576,106 @@ function variantBriefsFor(
       heroPolicy: 'real-photo',
       mustShow: [contentInventory.kpis[0].label, 'primary CTA', contentInventory.quickActions[0], contentInventory.listItems[0].title, contentInventory.listItems[1].title, contentInventory.activityItems[0].title],
       shouldAvoid: ['photo everywhere', 'random Unsplash thumbnails', 'same white card stack as A/B', 'B2B over-dramatic hero if service is operational'],
-      layoutRhythm: ['bold visual first impression', 'readable scrim if photo hero', 'content resumes immediately below hero', 'thumbnail usage only when it helps comprehension'],
+      layoutRhythm: [
+        '실사 히어로가 화면 35-45%. A보다 크고 감성적, B처럼 3D는 없음',
+        '카드 면적의 50% 이상이 이미지 영역. A의 텍스트 리스트, B의 오브젝트와 대비됨',
+        '탐색 구조 필수: 가로 스크롤 카테고리 또는 2열 이미지 그리드 중 하나 이상',
+        '카드 gap: 20px, 카드 내부 padding: 16-20px',
+        '수치/상태보다 이미지·무드·스토리가 앞선다. 숫자는 보조 역할',
+        `[이 서비스의 C안 컴포넌트] ${componentHints.c}`,
+      ],
     },
   }
+}
+
+const SUBTYPE_SCREENS: Record<string, Array<{ id: string; label: string; purpose: string }>> = {
+  'fintech-investment': [
+    { id: 'screen-portfolio', label: '포트폴리오', purpose: '보유 종목, 수익률, 자산 현황, 매수/매도 버튼' },
+    { id: 'screen-market', label: '시장', purpose: '종목 검색, 관심 종목, 시세, 시장 동향' },
+    { id: 'screen-history', label: '거래내역', purpose: '매수/매도 이력, 수익 실현 내역, 배당 내역' },
+    { id: 'screen-profile', label: '마이', purpose: '계좌 설정, 투자 성향, 목표 저축, 알림 설정' },
+  ],
+  'travel-booking': [
+    { id: 'screen-explore', label: '탐색', purpose: '여행지 추천, 테마 탐색, 특가 항공, 인기 패키지' },
+    { id: 'screen-plan', label: '내 여행', purpose: '예약 목록, 다가오는 일정, D-day 카운트, 체크리스트' },
+    { id: 'screen-budget', label: '경비', purpose: '예산 대비 지출, 결제 내역, 환율 계산' },
+    { id: 'screen-profile', label: '마이', purpose: '여권 정보, 쿠폰/마일리지, 여행 기록, 알림' },
+  ],
+  'health-fitness-tracker': [
+    { id: 'screen-activity', label: '활동', purpose: '걸음수, 칼로리, 운동 시간, 활동 지도' },
+    { id: 'screen-routine', label: '루틴', purpose: '오늘의 루틴, 운동 영상, 세트/반복 기록' },
+    { id: 'screen-diet', label: '식단', purpose: '식단 기록, 영양소 분석, 식품 검색' },
+    { id: 'screen-profile', label: '마이', purpose: '목표 설정, 성취 뱃지, 주간 통계, 알림 설정' },
+  ],
+  'education-learning': [
+    { id: 'screen-courses', label: '강의', purpose: '수강 중인 강의 목록, 진도율, 이어하기 CTA' },
+    { id: 'screen-explore', label: '탐색', purpose: '카테고리별 강의 탐색, 추천 강의, 신규 강의' },
+    { id: 'screen-quiz', label: '퀴즈', purpose: '오늘의 퀴즈, 챌린지, 복습 문제, 점수 확인' },
+    { id: 'screen-profile', label: '마이', purpose: '학습 통계, 성취 뱃지, 수료증, 알림 설정' },
+  ],
+  'social-community': [
+    { id: 'screen-feed', label: '피드', purpose: '팔로잉 게시글, 인기 게시글, 좋아요/댓글 반응' },
+    { id: 'screen-explore', label: '탐색', purpose: '트렌딩 해시태그, 추천 계정, 카테고리 탐색' },
+    { id: 'screen-messages', label: '메시지', purpose: '1:1 채팅, 그룹 채팅, 읽지 않은 메시지' },
+    { id: 'screen-profile', label: '마이', purpose: '내 게시글, 팔로워/팔로잉, 설정, 알림' },
+  ],
+  'e-commerce-shopping': [
+    { id: 'screen-category', label: '카테고리', purpose: '상품 카테고리 탐색, 필터/정렬, 상품 그리드' },
+    { id: 'screen-wishlist', label: '위시리스트', purpose: '관심 상품 목록, 가격 변동 알림, 빠른 담기' },
+    { id: 'screen-cart', label: '장바구니', purpose: '담긴 상품, 쿠폰 적용, 배송비 계산, 결제' },
+    { id: 'screen-profile', label: '마이', purpose: '주문 내역, 배송 조회, 쿠폰함, 포인트' },
+  ],
+  'pizza-order-membership': [
+    { id: 'screen-menu', label: '메뉴', purpose: '전체 메뉴 탐색, 카테고리 필터, 메뉴 상세, 장바구니 담기' },
+    { id: 'screen-order', label: '주문하기', purpose: '장바구니 확인, 픽업 시간 선택, 쿠폰 적용, 결제' },
+    { id: 'screen-membership', label: '멤버십', purpose: '스탬프 현황, 등급 혜택, 사용 가능 쿠폰, 적립 내역' },
+    { id: 'screen-profile', label: '마이', purpose: '주문 내역, 즐겨찾기 메뉴, 알림 설정, 고객센터' },
+  ],
+  'membership-reward': [
+    { id: 'screen-benefits', label: '혜택', purpose: '사용 가능 쿠폰, 임박 혜택, 제휴 할인 카드' },
+    { id: 'screen-partners', label: '제휴', purpose: '제휴 매장 지도/목록, 카테고리별 탐색, 거리 정렬' },
+    { id: 'screen-history', label: '내역', purpose: '포인트 적립/사용 내역, 쿠폰 사용 이력' },
+    { id: 'screen-profile', label: '마이', purpose: '등급 현황, 미션 목록, 알림 설정' },
+  ],
+  'telco-plan-recommendation': [
+    { id: 'screen-compare', label: '요금제 비교', purpose: '요금제 카드 3개 비교, 데이터/통화/요금 행 정렬' },
+    { id: 'screen-usage', label: '사용량', purpose: '데이터/통화 사용량 분석, 월별 추이 차트' },
+    { id: 'screen-benefits', label: '혜택', purpose: '번호이동 혜택, 제휴 쿠폰, 단말기 지원금' },
+    { id: 'screen-profile', label: '마이', purpose: '현재 약정 현황, 위약금 계산, 상담 예약, 설정' },
+  ],
+  'plant-care-companion': [
+    { id: 'screen-plants', label: '내 식물', purpose: '식물 목록, 물주기 D-Day, 개별 식물 상태' },
+    { id: 'screen-calendar', label: '캘린더', purpose: '물주기/분갈이 일정, 루틴 관리, 알림 설정' },
+    { id: 'screen-diary', label: '성장일기', purpose: '사진 기록, 메모, 성장 타임라인' },
+    { id: 'screen-profile', label: '마이', purpose: '내 식물 통계, 레벨/뱃지, 커뮤니티, 설정' },
+  ],
+  'b2b-logistics-dashboard': [
+    { id: 'screen-dispatch', label: '배차', purpose: '배차 현황 목록, 실시간 위치, 배차 등록 CTA' },
+    { id: 'screen-routes', label: '경로', purpose: '경로 지도, 권역별 현황, 최적 경로 추천' },
+    { id: 'screen-reports', label: '실적', purpose: '일별/주별 처리량, KPI 차트, 지연/완료 통계' },
+    { id: 'screen-settings', label: '설정', purpose: '팀 관리, 알림 설정, 계정 정보' },
+  ],
+  'b2b-dashboard': [
+    { id: 'screen-overview', label: '대시보드', purpose: '핵심 KPI 카드, 팀 활동 현황, 최근 알림' },
+    { id: 'screen-projects', label: '프로젝트', purpose: '진행 중인 프로젝트 목록, 마일스톤, 담당자' },
+    { id: 'screen-reports', label: '리포트', purpose: '데이터 차트, 기간별 분석, 다운로드' },
+    { id: 'screen-settings', label: '설정', purpose: '팀 멤버, 권한, 알림, 계정 설정' },
+  ],
+}
+
+const SUBTYPE_STRATEGY_MAP: Record<string, Record<'A' | 'B' | 'C', string>> = {
+  'fintech-investment':      { A: 'Practical Dashboard', B: 'Minimal Premium',   C: 'Editorial Story' },
+  'health-fitness-tracker':  { A: 'Practical Dashboard', B: 'Gamified Quest',     C: 'Editorial Story' },
+  'travel-booking':          { A: 'Practical Dashboard', B: 'Immersive Hero Scene', C: 'Editorial Story' },
+  'education-learning':      { A: 'Practical Dashboard', B: 'Gamified Quest',     C: 'Mascot Companion' },
+  'social-community':        { A: 'Challenge Social',    B: 'Editorial Story',    C: 'Mascot Companion' },
+  'e-commerce-shopping':     { A: 'Practical Dashboard', B: 'Reward Store First', C: 'Immersive Hero Scene' },
+  'pizza-order-membership':  { A: 'Reward Store First',  B: 'Mascot Companion',   C: 'Editorial Story' },
+  'membership-reward':       { A: 'Practical Dashboard', B: 'Reward Store First', C: 'Editorial Story' },
+  'telco-plan-recommendation': { A: 'Practical Dashboard', B: 'Minimal Premium', C: 'Editorial Story' },
+  'plant-care-companion':    { A: 'Practical Dashboard', B: 'Mascot Companion',   C: 'Editorial Story' },
+  'b2b-logistics-dashboard': { A: 'Practical Dashboard', B: 'Minimal Premium',   C: 'Editorial Story' },
+  'b2b-dashboard':           { A: 'Practical Dashboard', B: 'Minimal Premium',   C: 'Editorial Story' },
 }
 
 export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
@@ -257,17 +687,22 @@ export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
   const patternSelection = selectReferencePatterns(serviceSubtype, input.domain)
   const contentInventory = buildIntelligentContentInventory(input.brief, input.domain, serviceSubtype)
   const sharedVisualSubject = input.heroSubject || input.projectSummary
+  // A 시안에 scene-3d를 허용하는 서브타입: 마스코트/동반자 중심 앱만.
+  // 그 외 서비스에서 A까지 scene-3d가 되면 B(creon-object-3d)와 구분이 없어진다.
+  const SCENE_FIRST_SUBTYPES = new Set(['plant-care-companion', 'pizza-order-membership'])
   const visualPolicies: [VariantVisualPolicy, VariantVisualPolicy, VariantVisualPolicy] = [
-    input.needsScene3d ? 'scene-3d' : 'no-image',
-    'creon-object-3d',
-    'real-photo',
+    (input.needsScene3d && SCENE_FIRST_SUBTYPES.has(serviceSubtype)) ? 'scene-3d' : 'no-image',
+    'creon-object-3d', // B: 항상 Creon 3D 오브젝트
+    'real-photo',     // C: 실사 이미지
   ]
   const variantBriefs = variantBriefsFor(input.needsScene3d, serviceSubtype, input.domain, contentInventory)
+  const componentHints = getSubtypeComponentHints(serviceSubtype, input.domain)
 
   return {
     sharedVisualSubject,
     visualPolicies,
     generationPlan: {
+      referenceSearchKeyword: serviceSubtype.replace(/-/g, ' ') + ' mobile app UI',
       designIntelligence: {
         serviceSubtype,
         selectedPatterns: patternSelection.selected,
@@ -306,13 +741,9 @@ export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
         mode: input.needsScene3d ? '3d' : 'data',
         sharedAsset: false,
         subject: sharedVisualSubject,
-        reason: input.needsScene3d
-          ? 'A=background SCENE_3D B=Creon-style transparent HERO_3D C=real-photo'
-          : 'A=no-image data-first B=Creon-style transparent HERO_3D C=real-photo',
+        reason: 'A=no-image data-first B=Creon-style transparent HERO_3D C=real-photo',
         usageByVariant: {
-          A: input.needsScene3d
-            ? '배경 포함 3D 씬 (%%SCENE_3D%%) — 화면 전체를 과하게 채우지 않고 서비스 맥락과 안전 영역을 만든다'
-            : '이미지 없음 — 데이터·수치·KPI·카드로만 화면을 채운다',
+          A: '이미지 없음 — 데이터·수치·KPI·카드로만 화면을 채운다',
           B: 'Creon식 단일 3D 오브젝트 (%%HERO_3D%%) — 배경 없는 오브젝트를 작지 않은 hero/card visual zone에 배치',
           C: '실사 이미지 (%%IMG_1:keyword%%) — 기본적으로 C안 히어로에서만 과감하게 사용하고 하위 이미지는 분석 결과에 따라 선택',
         },
@@ -320,15 +751,15 @@ export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
       variantDirector: {
         A: {
           strategy: variantBriefs.A.strategy,
-          layoutRole: input.needsScene3d
-            ? '배경 포함 3D 씬이 서비스 맥락을 만들고, 안전 영역에 핵심 상태·CTA·콘텐츠를 배치'
-            : '이미지 없이 수치·진행률·상태·KPI 카드로 완성도 높은 정보 화면',
+          layoutRole: '정보 밀도 최대화 — B/C보다 작은 히어로(또는 없음), 더 많은 아이템을 첫 화면에 노출',
+          componentSpec: componentHints.a,
           firstViewport: variantBriefs.A.mustShow,
           mustDifferBy: variantBriefs.A.layoutRhythm,
         },
         B: {
           strategy: variantBriefs.B.strategy,
-          layoutRole: 'Creon식 배경 없는 단일 3D 오브젝트를 명확한 visual zone에 두고, 같은 첫 화면 안에 KPI·퀵액션·추천/내역 카드를 함께 노출',
+          layoutRole: '전환 집중 — 화면 35-45%를 차지하는 대형 히어로 + 단일 CTA. 히어로 아래는 A/C와 동일한 정보 밀도로 채워야 함',
+          componentSpec: componentHints.b,
           firstViewport: variantBriefs.B.mustShow,
           mustDifferBy: variantBriefs.B.layoutRhythm,
         },
@@ -336,11 +767,14 @@ export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
           strategy: variantBriefs.C.strategy,
           layoutRole: input.domain === 'business'
             ? '신뢰형 실사/visual panel과 업무 정보를 연결'
-            : '큰 실사/감성 히어로로 서비스 분위기를 전달하고 바로 아래에 실제 정보와 CTA를 연결',
+            : '탐색·분위기 우선 — 이미지가 카드 면적 50% 이상, A의 조밀함·B의 단일 집중과 달리 둘러보는 경험',
+          componentSpec: componentHints.c,
           firstViewport: variantBriefs.C.mustShow,
           mustDifferBy: variantBriefs.C.layoutRhythm,
         },
       },
+      expectedSubScreens: SUBTYPE_SCREENS[serviceSubtype],
+      recommendedStrategy: SUBTYPE_STRATEGY_MAP[serviceSubtype],
     },
   }
 }

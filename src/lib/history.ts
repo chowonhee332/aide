@@ -17,6 +17,8 @@ export interface HistoryItem {
     prototypeHtml?: string | null
     prototypeThumbnail?: string | null
     prototypeScreens?: Array<{ id: string; label: string }>
+    bSceneImage?: { base64: string; mimeType: string } | null
+    questionnaire?: unknown | null
   }
 }
 

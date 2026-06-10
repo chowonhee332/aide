@@ -419,6 +419,7 @@ export async function POST(req: NextRequest) {
         ...normalizedParams,
         criticalReview: isDraft ? false : normalizedParams.criticalReview,
         onStep: (label: string) => emit('step', { label }),
+        onHtmlChunk: (partialHtml: string) => emit('html_chunk', { html: partialHtml }),
       }, apiKey)
 
       const puppeteer = await import('puppeteer')
@@ -500,9 +501,11 @@ ${responsiveIssues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
 
       emit('step', { label: '이미지 생성 중...' })
       const has3dPlaceholder = /%%(?:SCENE_3D|HERO_3D|SHARED_HERO_3D_SCENE|SHARED_HERO_3D|HERO_SCENE_3D|MASCOT_3D|REWARD_OBJECT_3D|HERO_3D_IMAGE)/.test(auditedRawHtml)
+      // brief는 절대 이미지 프롬프트 fallback으로 쓰지 않는다.
+      // brief 전체가 넘어가면 수백 글자짜리 기획서가 Gemini 이미지 API에 전달되어 엉뚱한 이미지가 생성된다.
       const heroPrompt = normalizedParams.sharedVisualMode === '3d'
-        ? (normalizedParams.sharedVisualSubject || normalizedParams.heroSubject || normalizedParams.heroImagePrompt || normalizedParams.brief)
-        : (normalizedParams.heroSubject || normalizedParams.heroImagePrompt || (has3dPlaceholder ? normalizedParams.brief : undefined))
+        ? (normalizedParams.sharedVisualSubject || normalizedParams.heroSubject || normalizedParams.heroImagePrompt || undefined)
+        : (normalizedParams.heroSubject || normalizedParams.heroImagePrompt || undefined)
       const imageWarnings: string[] = []
       const finalHtml = await resolveImagePlaceholders(auditedRawHtml, {
         heroImagePrompt: heroPrompt,
@@ -510,8 +513,11 @@ ${responsiveIssues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
         unsplashKey,
         imageWarnings,
         paletteHint: extractDesignPaletteHint(normalizedParams.designMd),
-        sceneImageModel: normalizedParams.visualPolicy === 'scene-3d' ? 'gemini-3.1-flash-image' : undefined,
+        sceneImageModel: (normalizedParams.visualPolicy === 'scene-3d' || normalizedParams.visualPolicy === 'scene-3d-card-cover')
+          ? 'gemini-2.5-flash-image'
+          : undefined,
         heroImageModel: normalizedParams.visualPolicy === 'creon-object-3d' ? 'gemini-2.5-flash-image' : undefined,
+        sceneCardCover: normalizedParams.visualPolicy === 'scene-3d-card-cover',
         onImageEvent: (label: string) => emit('step', { label }),
       })
       if (!isDraft) {
