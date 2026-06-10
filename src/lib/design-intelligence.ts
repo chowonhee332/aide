@@ -1,4 +1,4 @@
-import type { AideGenerationPlan, AppDomain, VariantVisualPolicy } from './gemini'
+import type { AideGenerationPlan, AppDomain, ServiceAnalysis, VariantVisualPolicy } from './gemini'
 
 type VariantKey = 'A' | 'B' | 'C'
 
@@ -11,6 +11,8 @@ export type DesignIntelligenceInput = {
   heroSubject?: string
   heroPrompt?: string
   needsScene3d: boolean
+  /** analyzeAndGenerateQuestions가 추출한 서비스 구조 분석 (Phase 1-A) */
+  serviceAnalysis?: ServiceAnalysis
 }
 
 type PatternSelection = {
@@ -22,7 +24,7 @@ function includesAny(text: string, patterns: RegExp[]): boolean {
   return patterns.some(pattern => pattern.test(text))
 }
 
-export function detectServiceSubtype(brief: string, domain: AppDomain): string {
+export function detectServiceSubtype(brief: string, domain: AppDomain, subtypeHint?: string): string {
   const normalized = brief.toLowerCase()
   if (includesAny(brief, [/피자|pizza|페퍼로니|주문|픽업|스탬프|피자집/])) return 'pizza-order-membership'
   if (includesAny(brief, [/요금제|통신|위약금|번호이동|휴대폰|모바일|데이터|유심|알뜰폰/])) return 'telco-plan-recommendation'
@@ -38,6 +40,9 @@ export function detectServiceSubtype(brief: string, domain: AppDomain): string {
   if (domain === 'food') return 'food-order-commerce'
   if (domain === 'commerce') return 'local-store-commerce'
   if (domain === 'business') return 'b2b-dashboard'
+  // 정규식 매칭 실패 — LLM이 추출한 서비스 성격 힌트가 있으면 그걸 우선 사용 (Phase 1-B)
+  const cleanHint = subtypeHint?.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '')
+  if (cleanHint && cleanHint.length >= 3) return cleanHint
   return normalized.includes('ai') ? 'ai-productivity' : `${domain}-service`
 }
 
@@ -565,7 +570,7 @@ function variantBriefsFor(
         '3D 오브젝트가 히어로의 핵심 비주얼. 작은 스티커처럼 쓰면 실패',
         'CTA 1개가 히어로 바로 아래에 단독으로 위치. 시선 경쟁 없음',
         '히어로 아래 콘텐츠 밀도는 A/C와 동일해야 한다 — 3D 히어로가 있어도 데이터 포인트 10개 이상, 콘텐츠 덩어리 4개 이상',
-        '히어로 아래: 결정을 돕는 핵심 수치/혜택 → 추천/비교 리스트(아이템 3개 이상, 각 아이템에 제목+수치+배지) → 퀵 액션 → 최근 활동 순으로 배치',
+        '히어로 아래 섹션은 이 서비스의 coreObjects/keyDataPoints에서 도출하라 — 결정을 돕는 핵심 수치/혜택, 추천/비교, 관련 액션, 최근 활동 중 서비스에 맞는 것을 골라 배치(고정 순서 강제 아님). 각 아이템엔 제목+수치+배지를 채운다',
         '각 섹션은 제목+설명+실제 아이템/수치를 반드시 포함. 제목만 있는 빈 섹션은 실패',
         `[이 서비스의 B안 컴포넌트] ${componentHints.b}`,
       ],
@@ -678,22 +683,93 @@ const SUBTYPE_STRATEGY_MAP: Record<string, Record<'A' | 'B' | 'C', string>> = {
   'b2b-dashboard':           { A: 'Practical Dashboard', B: 'Minimal Premium',   C: 'Editorial Story' },
 }
 
+// 도메인별 기본 A/B/C 전략 — SUBTYPE_STRATEGY_MAP에 없는 동적 서브타입의 베이스로 사용
+const DOMAIN_DEFAULT_STRATEGY: Record<AppDomain, Record<'A' | 'B' | 'C', string>> = {
+  finance:       { A: 'Practical Dashboard', B: 'Minimal Premium',      C: 'Editorial Story' },
+  commerce:      { A: 'Practical Dashboard', B: 'Reward Store First',    C: 'Immersive Hero Scene' },
+  health:        { A: 'Practical Dashboard', B: 'Gamified Quest',        C: 'Editorial Story' },
+  food:          { A: 'Reward Store First',  B: 'Immersive Hero Scene',  C: 'Editorial Story' },
+  productivity:  { A: 'Practical Dashboard', B: 'Minimal Premium',       C: 'Challenge Social' },
+  social:        { A: 'Challenge Social',    B: 'Editorial Story',        C: 'Mascot Companion' },
+  travel:        { A: 'Practical Dashboard', B: 'Immersive Hero Scene',  C: 'Editorial Story' },
+  education:     { A: 'Practical Dashboard', B: 'Gamified Quest',        C: 'Mascot Companion' },
+  entertainment: { A: 'Practical Dashboard', B: 'Immersive Hero Scene',  C: 'Editorial Story' },
+  business:      { A: 'Practical Dashboard', B: 'Minimal Premium',       C: 'Editorial Story' },
+  other:         { A: 'Practical Dashboard', B: 'Minimal Premium',       C: 'Editorial Story' },
+}
+
+/**
+ * 적응형 A/B/C 전략 결정 (Phase 3-A).
+ * 서브타입 정적 매핑 → 도메인 기본값 순으로 base를 잡고,
+ * variant_strategy / first_screen_focus 답변으로 강화 방향을 미세 조정한다.
+ */
+export function resolveRecommendedStrategy(
+  serviceSubtype: string,
+  domain: AppDomain,
+  answers: Record<string, string | string[]>,
+): Record<'A' | 'B' | 'C', string> {
+  const base = { ...(SUBTYPE_STRATEGY_MAP[serviceSubtype] ?? DOMAIN_DEFAULT_STRATEGY[domain] ?? DOMAIN_DEFAULT_STRATEGY.other) }
+  const variantStrategy = typeof answers['variant_strategy'] === 'string' ? answers['variant_strategy'] : ''
+  const firstScreenFocus = typeof answers['first_screen_focus'] === 'string' ? answers['first_screen_focus'] : ''
+
+  // variant_strategy 답변에 따라 해당 시안의 전략을 강화 방향으로 고정
+  if (variantStrategy.includes('정보형')) base.A = 'Practical Dashboard'
+  else if (variantStrategy.includes('전환형')) base.B = base.B === 'Practical Dashboard' ? 'Minimal Premium' : base.B
+  else if (variantStrategy.includes('탐색형')) base.C = base.C === 'Practical Dashboard' ? 'Editorial Story' : base.C
+
+  // first_screen_focus가 CTA/실행 중심이면 B를 전환형으로, 이미지/카드 중심이면 C를 탐색형으로 보강
+  if (/CTA|빠른|실행|주문|송금|시작/.test(firstScreenFocus) && base.B === 'Practical Dashboard') base.B = 'Minimal Premium'
+  if (/카드|이미지|추천|콘텐츠|탐색/.test(firstScreenFocus) && base.C === 'Practical Dashboard') base.C = 'Editorial Story'
+
+  return base
+}
+
 export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
   generationPlan: AideGenerationPlan
   visualPolicies: [VariantVisualPolicy, VariantVisualPolicy, VariantVisualPolicy]
   sharedVisualSubject: string
 } {
-  const serviceSubtype = detectServiceSubtype(input.brief, input.domain)
+  const serviceSubtype = detectServiceSubtype(input.brief, input.domain, input.serviceAnalysis?.serviceSubtypeHint)
   const patternSelection = selectReferencePatterns(serviceSubtype, input.domain)
-  const contentInventory = buildIntelligentContentInventory(input.brief, input.domain, serviceSubtype)
+  const baseInventory = buildIntelligentContentInventory(input.brief, input.domain, serviceSubtype)
+  // P3: AI가 생성한 서비스별 실제 콘텐츠(contentSeed)를 우선 사용하고, 부족한 길이는 템플릿으로 패딩.
+  // → "telco면 늘 KT 7GB+ 16,900원" 같은 하드코딩 더미 대신 이 브리프에 맞는 콘텐츠가 나온다.
+  const seed = input.serviceAnalysis?.contentSeed
+  const seededInventory = seed
+    ? {
+        // kpis는 variantBriefsFor가 [0..3]을 참조하므로 최소 4개 보장 (seed 우선 + 템플릿 패딩)
+        kpis: [...seed.kpis, ...baseInventory.kpis].slice(0, Math.max(4, seed.kpis.length)),
+        quickActions: [...new Set([...seed.quickActions, ...baseInventory.quickActions])],
+        listItems: [...seed.listItems, ...baseInventory.listItems],
+        activityItems: [...seed.activityItems, ...baseInventory.activityItems],
+        sectionIdeas: baseInventory.sectionIdeas,
+        requiredAboveFoldUnits: baseInventory.requiredAboveFoldUnits,
+      }
+    : baseInventory
+  // serviceAnalysis.keyDataPoints로 requiredAboveFoldUnits 보강 (불변 갱신)
+  const analysisDataPoints = input.serviceAnalysis?.keyDataPoints ?? []
+  const contentInventory = analysisDataPoints.length > 0
+    ? {
+        ...seededInventory,
+        requiredAboveFoldUnits: [...new Set([...analysisDataPoints, ...seededInventory.requiredAboveFoldUnits])].slice(0, 12),
+      }
+    : seededInventory
   const sharedVisualSubject = input.heroSubject || input.projectSummary
   // A 시안에 scene-3d를 허용하는 서브타입: 마스코트/동반자 중심 앱만.
   // 그 외 서비스에서 A까지 scene-3d가 되면 B(creon-object-3d)와 구분이 없어진다.
   const SCENE_FIRST_SUBTYPES = new Set(['plant-care-companion', 'pizza-order-membership'])
+  // 축 3: AI가 판단한 히어로 비주얼 종류로 도메인 적합성 반영.
+  // 'data'(금융·통신요금제·B2B 등)는 무관한 스톡 사진을 강제하지 않는다.
+  const heroVisualType = input.serviceAnalysis?.heroVisualType
+  const hasHeroSubject = Boolean(input.serviceAnalysis?.heroVisualSubject || input.heroSubject)
+  // B: data 서비스이면서 쓸 3D 소재조차 없으면 데이터 중심(no-image)으로, 그 외엔 Creon 3D 오브젝트
+  const bPolicy: VariantVisualPolicy = (heroVisualType === 'data' && !hasHeroSubject) ? 'no-image' : 'creon-object-3d'
+  // C: data 서비스에는 무관한 실사 사진 대신 no-image(에디토리얼·데이터 탐색형), 그 외엔 실사 이미지
+  const cPolicy: VariantVisualPolicy = heroVisualType === 'data' ? 'no-image' : 'real-photo'
   const visualPolicies: [VariantVisualPolicy, VariantVisualPolicy, VariantVisualPolicy] = [
     (input.needsScene3d && SCENE_FIRST_SUBTYPES.has(serviceSubtype)) ? 'scene-3d' : 'no-image',
-    'creon-object-3d', // B: 항상 Creon 3D 오브젝트
-    'real-photo',     // C: 실사 이미지
+    bPolicy,
+    cPolicy,
   ]
   const variantBriefs = variantBriefsFor(input.needsScene3d, serviceSubtype, input.domain, contentInventory)
   const componentHints = getSubtypeComponentHints(serviceSubtype, input.domain)
@@ -731,7 +807,10 @@ export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
         screenPurpose: input.platform === 'web'
           ? '웹 첫 화면에서 정보 구조와 주요 전환을 명확히 제시'
           : '모바일 첫 화면에서 요약, 추천, 주요 행동을 빠르게 완료',
-        coreObjects: buildCoreObjects(input.domain, serviceSubtype),
+        // LLM 분석 coreObjects 우선, 없으면 도메인/서브타입 기본값 (Phase 1-B)
+        coreObjects: (input.serviceAnalysis?.coreObjects && input.serviceAnalysis.coreObjects.length > 0)
+          ? input.serviceAnalysis.coreObjects
+          : buildCoreObjects(input.domain, serviceSubtype),
         keyActions: buildKeyActions(serviceSubtype),
         successCriteria: ['첫 화면에서 서비스 목적이 즉시 이해됨', '주요 CTA가 명확함', '반복 콘텐츠가 실제 서비스처럼 충분함', '선택한 design.md 리듬을 유지함'],
         assumptions: ['입력이 부족한 부분은 서비스 subtype과 도메인 표준 홈 화면으로 보정', 'A/B/C는 같은 소재 강제가 아니라 서로 다른 UX 방향으로 차별화'],
@@ -773,8 +852,13 @@ export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
           mustDifferBy: variantBriefs.C.layoutRhythm,
         },
       },
-      expectedSubScreens: SUBTYPE_SCREENS[serviceSubtype],
-      recommendedStrategy: SUBTYPE_STRATEGY_MAP[serviceSubtype],
+      // 정적 검증 패턴(SUBTYPE_SCREENS) 우선, 없으면 LLM IA 분석 결과 사용 (Phase 1-C/3-B)
+      expectedSubScreens: SUBTYPE_SCREENS[serviceSubtype]
+        ?? (input.serviceAnalysis?.informationArchitecture && input.serviceAnalysis.informationArchitecture.length > 0
+          ? input.serviceAnalysis.informationArchitecture
+          : undefined),
+      // 적응형 전략 (Phase 3-A): 서브타입 매핑 + 도메인 기본 + 답변 기반 조정
+      recommendedStrategy: resolveRecommendedStrategy(serviceSubtype, input.domain, input.answers),
     },
   }
 }

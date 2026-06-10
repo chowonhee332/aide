@@ -115,48 +115,59 @@ function patchHeroToScene(html: string, base64: string, mimeType: string): strin
   const heroCard: HTMLElement | null = stageEl?.parentElement ?? heroImg.parentElement?.parentElement ?? null
   if (!heroCard) return html
 
-  // 4) 히어로 카드를 scene 컨테이너로 변환
+  // 4) 히어로 카드를 scene 컨테이너로 변환 — 카드가 아니라 화면 끝까지 가는 전체 배너로
   heroCard.setAttribute('data-aide-required-visual', 'scene-3d-card-cover')
   heroCard.style.position = 'relative'
   heroCard.style.overflow = 'hidden'
-  if (!heroCard.style.minHeight) heroCard.style.minHeight = '320px'
+  heroCard.style.minHeight = '380px'
+  // 페이지 좌우/상단 여백을 음수 마진으로 깨서 풀블리드(전체 배너)로 만든다
+  heroCard.style.marginLeft = 'calc(-1 * var(--aide-page-padding, 16px))'
+  heroCard.style.marginRight = 'calc(-1 * var(--aide-page-padding, 16px))'
+  heroCard.style.marginTop = 'calc(-1 * var(--aide-section-gap, 16px))'
+  heroCard.style.borderRadius = '0'
+  heroCard.style.border = 'none'
+  heroCard.style.boxShadow = 'none'
+  // 콘텐츠 레이어는 다시 좌우 여백을 확보 (텍스트/CTA가 화면 끝에 붙지 않게)
+  heroCard.style.padding = 'var(--aide-card-padding, 16px) var(--aide-page-padding, 16px)'
 
   // 5) stage 자리에 씬 이미지 삽입 (absolute full-cover)
   const sceneImg = doc.createElement('img')
   sceneImg.className = 'aide-hero-3d aide-hero-scene-img'
   sceneImg.src = dataUrl
   sceneImg.alt = ''
-  sceneImg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;display:block;z-index:0;'
+  sceneImg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 35%;display:block;z-index:0;'
   if (stageEl) {
     heroCard.replaceChild(sceneImg, stageEl)
   } else {
     heroCard.insertBefore(sceneImg, heroCard.firstChild)
   }
 
-  // 6) 그라데이션 오버레이
+  // 6) 그라데이션 오버레이 — Dim을 약하게. 텍스트가 있는 상/하단만 살짝, 가운데(피사체)는 거의 투명
   const overlay = doc.createElement('div')
   overlay.className = 'aide-scene-overlay'
   overlay.setAttribute('aria-hidden', 'true')
-  overlay.style.cssText = 'position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.75) 0%,rgba(0,0,0,0.4) 50%,rgba(0,0,0,0.1) 100%);pointer-events:none;z-index:1;'
+  overlay.style.cssText = 'position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.34) 0%,rgba(0,0,0,0.05) 32%,rgba(0,0,0,0) 55%,rgba(0,0,0,0.42) 100%);pointer-events:none;z-index:1;'
   sceneImg.insertAdjacentElement('afterend', overlay)
 
-  // 7) 나머지 자식(텍스트, CTA)을 씬 위로 올리고 white 계열 색상 적용
+  // 7) 나머지 자식(텍스트, CTA)을 씬 위로 올리고 white + 텍스트 그림자로 가독성 확보 (Dim 약하게 대신)
   Array.from(heroCard.children).forEach(child => {
     const el = child as HTMLElement
     if (el === sceneImg || el === overlay) return
     el.style.position = 'relative'
     el.style.zIndex = '2'
-    // 텍스트가 어두운 씬 위에서 보이도록 색상 조정
+    // 텍스트가 씬 위에서 보이도록 색상 + 그림자 조정
     const isBtn = el.tagName === 'BUTTON' || el.querySelector('button')
     if (!isBtn) {
       const computedColor = el.style.color
       if (!computedColor || computedColor === 'inherit' || computedColor === 'initial') {
         el.style.color = '#ffffff'
       }
+      if (!el.style.textShadow) el.style.textShadow = '0 1px 10px rgba(0,0,0,0.45)'
     }
-    // 내부 텍스트 요소들도 white 적용
+    // 내부 텍스트 요소들도 white + 그림자 적용
     el.querySelectorAll<HTMLElement>('p, span, h1, h2, h3, h4, small, label').forEach(t => {
       if (!t.style.color || t.style.color === 'inherit') t.style.color = '#ffffff'
+      if (!t.style.textShadow) t.style.textShadow = '0 1px 10px rgba(0,0,0,0.45)'
     })
   })
 
@@ -805,13 +816,13 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
   const selectedDesignPreset = DESIGN_PRESETS[designPreset] ?? DESIGN_PRESETS.none
   const visualizedDesignPreset = designPreset === 'none'
-    ? (DESIGN_PRESETS.ktds ?? selectedDesignPreset)
+    ? DESIGN_PRESETS.none
     : selectedDesignPreset
   const designSystemDisplayName = customDesignMdName ?? (designPreset === 'none' ? 'Aide design system' : `${designPreset}.md`)
   const designSystemDescription = customDesignMd
     ? 'custom design.md'
     : designPreset === 'none'
-      ? '기본값으로 kt ds 기반 Aide design system을 사용합니다'
+      ? DESIGN_PRESETS.none.description
       : selectedDesignPreset.description
 
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(DEFAULT_AIDE_LOGO_SRC)
@@ -870,6 +881,34 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const tweakRequestHtmlRef = useRef<string | null>(null)
   const streamingIframeRefs = useRef<[HTMLIFrameElement|null, HTMLIFrameElement|null, HTMLIFrameElement|null]>([null, null, null])
   const streamingDocOpenedRef = useRef<[boolean, boolean, boolean]>([false, false, false])
+  // 스트리밍 시 이미 write한 누적 길이 — accumulated HTML에서 델타만 write해 중복 방지 (B1)
+  const streamingWrittenLenRef = useRef<[number, number, number]>([0, 0, 0])
+  // accumulated HTML을 받아 델타만 iframe에 흘려보내는 공통 헬퍼 — 매끄러운 "그려지는" 연출
+  const writeStreamDelta = useCallback((idx: 0 | 1 | 2, accumulatedHtml: string) => {
+    const iframe = streamingIframeRefs.current[idx]
+    const doc = iframe?.contentDocument
+    if (!doc) return
+    if (!streamingDocOpenedRef.current[idx]) {
+      doc.open()
+      streamingDocOpenedRef.current[idx] = true
+      streamingWrittenLenRef.current[idx] = 0
+      setStreamingHtml(prev => { const next = [...prev] as [string|null, string|null, string|null]; next[idx] = '1'; return next })
+    }
+    const written = streamingWrittenLenRef.current[idx]
+    if (accumulatedHtml.length > written) {
+      doc.write(accumulatedHtml.slice(written))
+      streamingWrittenLenRef.current[idx] = accumulatedHtml.length
+      // 새 콘텐츠가 그려지는 위치로 부드럽게 스크롤 — Stitch식 "그려지는" 느낌
+      try { doc.documentElement.scrollTop = doc.documentElement.scrollHeight } catch { /* noop */ }
+    }
+  }, [])
+  const closeStreamDoc = useCallback((idx: 0 | 1 | 2) => {
+    const doc = streamingIframeRefs.current[idx]?.contentDocument
+    if (doc && streamingDocOpenedRef.current[idx]) doc.close()
+    streamingDocOpenedRef.current[idx] = false
+    streamingWrittenLenRef.current[idx] = 0
+    setStreamingHtml(prev => { const next = [...prev] as [string|null, string|null, string|null]; next[idx] = null; return next })
+  }, [])
 
   // Screen navigation (step 4)
   const [screens, setScreens] = useState<Array<{ id: string; label: string }>>([])
@@ -1526,7 +1565,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
     // hero_3d questionnaire answer takes priority
     const hero3dAnswer = typeof answers['hero_3d'] === 'string' ? answers['hero_3d'] : ''
-    const analyzeHeroSubject = questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || undefined
+    // AI가 분석 단계에서 정한 히어로 소재(serviceAnalysis.heroVisualSubject)를 정규식 매핑보다 우선 사용
+    const aiHeroSubject = questionnaire.serviceAnalysis?.heroVisualSubject || undefined
+    const analyzeHeroSubject = questionnaire.heroImageDecision?.heroSubject || aiHeroSubject || questionnaire.heroImageDecision?.prompt || undefined
     let heroSubject: string | undefined
     if (hero3dAnswer.startsWith('직접 입력: ')) {
       heroSubject = hero3dAnswer.replace('직접 입력: ', '').trim() || undefined
@@ -1535,7 +1576,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     }
     // "3D 생성 안 함" → heroSubject remains undefined, needsScene3d = false
     const wants3D = hero3dAnswer !== '3D 생성 안 함'
-    const heroPrompt = heroSubject || (wants3D && questionnaire.heroImageDecision?.generate ? brief : undefined)
+    // brief(한국어 전체)로 폴백하면 정규식이 깎아내므로, AI subject를 먼저 쓴다
+    const heroPrompt = heroSubject || aiHeroSubject || (wants3D && questionnaire.heroImageDecision?.generate ? brief : undefined)
     const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
     const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
     const needsScene3d = wants3D && Boolean(heroSubject || questionnaire.heroImageDecision?.generate || questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt)
@@ -1548,6 +1590,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       heroSubject,
       heroPrompt,
       needsScene3d,
+      serviceAnalysis: questionnaire.serviceAnalysis,
     })
     return { heroSubject, heroPrompt, effectiveDomain, sharedVisualSubject, generationPlan, visualPolicies }
   }, [answers, brief, platform, questionnaire])
@@ -1703,23 +1746,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
         prdDoc, iaImageBase64: iaImage, iaText,
       }
       const res = await fetch('/api/generate', { method: 'POST', headers: apiHeaders(), body: JSON.stringify(params) })
-      const json = await readGenerateStream(res, undefined, (partialHtml) => {
-        const iframe = streamingIframeRefs.current[idx]
-        if (iframe?.contentDocument) {
-          if (!streamingDocOpenedRef.current[idx]) {
-            iframe.contentDocument.open()
-            streamingDocOpenedRef.current[idx] = true
-            setStreamingHtml(prev => { const next = [...prev] as typeof prev; next[idx] = '1'; return next })
-          }
-          iframe.contentDocument.write(partialHtml)
-        }
-      })
-      const singleIframe = streamingIframeRefs.current[idx]
-      if (singleIframe?.contentDocument && streamingDocOpenedRef.current[idx]) {
-        singleIframe.contentDocument.close()
-        streamingDocOpenedRef.current[idx] = false
-      }
-      setStreamingHtml(prev => { const next = [...prev] as typeof prev; next[idx] = null; return next })
+      const json = await readGenerateStream(res, undefined, (partialHtml) => writeStreamDelta(idx, partialHtml))
+      closeStreamDoc(idx)
       if (generationIdRef.current === genId) {
         const nextVariants = [...mainVariants] as [GenerateResult | null, GenerateResult | null, GenerateResult | null]
         nextVariants[idx] = json
@@ -1860,22 +1888,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 variant: variantLetter,
               })
             },
-            (partialHtml) => {
-              const iframe = streamingIframeRefs.current[idx]
-              if (iframe?.contentDocument) {
-                if (!streamingDocOpenedRef.current[idx]) {
-                  iframe.contentDocument.open()
-                  streamingDocOpenedRef.current[idx] = true
-                  // 첫 청크 시 state 업데이트 (오버레이 표시 트리거)
-                  setStreamingHtml(prev => {
-                    const next = [...prev] as [string|null, string|null, string|null]
-                    next[idx] = '1'
-                    return next
-                  })
-                }
-                iframe.contentDocument.write(partialHtml)
-              }
-            },
+            (partialHtml) => writeStreamDelta(idx, partialHtml),
           )
           appendGenerationEvent({
             kind: 'artifact',
@@ -1936,16 +1949,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           return next
         })
         // 스트리밍 document 닫기
-        const iframe = streamingIframeRefs.current[idx]
-        if (iframe?.contentDocument && streamingDocOpenedRef.current[idx]) {
-          iframe.contentDocument.close()
-          streamingDocOpenedRef.current[idx] = false
-        }
-        setStreamingHtml(prev => {
-          const next = [...prev] as [string|null, string|null, string|null]
-          next[idx] = null
-          return next
-        })
+        closeStreamDoc(idx)
         // B 완료 직후 씬 이미지만 백그라운드 생성
         if (idx === 1) {
           const sceneSubject = heroPrompt || sharedVisualSubject || brief
@@ -2011,6 +2015,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       const asIsAnalysis = readAsIsAnalysis()
       const heroSubjectExpand = questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || undefined
       const heroPromptExpand = heroSubjectExpand || (questionnaire.heroImageDecision?.generate ? brief : undefined)
+      // expand 단계에도 generationPlan을 전달해야 expectedSubScreens(서비스 IA 기반 서브화면)가 작동한다 (Phase 3-B)
+      const generationContext = buildGenerationContext()
       const res = await fetch('/api/expand', {
         method: 'POST',
         headers: apiHeaders(),
@@ -2024,6 +2030,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           brandColors: brandColors.length > 0 ? brandColors : undefined,
           asIsAnalysis,
           platform,
+          domain: generationContext?.effectiveDomain,
+          generationPlan: generationContext?.generationPlan,
           modelId: sessionStorage.getItem('aide_model') ?? undefined,
           heroImagePrompt: heroPromptExpand,
           heroSubject: heroSubjectExpand,
@@ -3150,7 +3158,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           })()}
 
           {/* 3 variant artboard cards — only visible after generation starts */}
-          {variantGenerationStarted && <div className="flex items-center gap-6 overflow-x-auto">
+          {variantGenerationStarted && <div className="flex items-start gap-6 overflow-x-auto">
             {(['A', 'B', 'C'] as const).map((letter, idx) => {
               const variant = mainVariants[idx]
               const isLoadingThis = idx === 0 ? isGenerating : idx === 1 ? isGeneratingB : isGeneratingC
@@ -3164,7 +3172,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               const cardH = contentNativeH ? Math.round(contentNativeH * previewScale) : fallbackCardH
               return (
                 <div key={letter} className="flex flex-col gap-3 shrink-0" style={{ width: cardW }}>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2" style={{ minHeight: 26 }}>
                     <span className="text-[13px] font-semibold" style={{ color: '#222222' }}>시안 {letter}</span>
                     {isLoadingThis && (
                       <div className="flex items-center gap-1.5 text-[13px]" style={{ color: '#888888' }}>
@@ -3282,13 +3290,15 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                           }}
                         />
                         {streamingHtml[idx] ? (
-                          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 60%, rgba(255,255,255,0.9) 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 16, gap: 6 }}>
-                            <div className="flex items-center gap-1.5" style={{ color: '#555' }}>
-                              <svg className="animate-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" strokeOpacity="0.3" />
-                                <path d="M21 12a9 9 0 00-9-9" />
-                              </svg>
-                              <span style={{ fontSize: 11, fontWeight: 500 }}>생성 중...</span>
+                          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 72%, rgba(247,247,248,0.78) 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 14, pointerEvents: 'none' }}>
+                            {/* Stitch 스타일 "그리는 중" 버블 — AI가 화면을 실시간으로 그리는 느낌 */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 9999, background: '#0066FF', boxShadow: '0 4px 12px rgba(0,102,255,0.35)' }}>
+                              <span style={{ display: 'inline-flex', gap: 3 }}>
+                                {[0, 1, 2].map(d => (
+                                  <span key={d} className="animate-bounce" style={{ width: 4, height: 4, borderRadius: '50%', background: '#fff', animationDelay: `${d * 0.15}s`, animationDuration: '0.9s' }} />
+                                ))}
+                              </span>
+                              <span style={{ fontSize: 10.5, fontWeight: 600, color: '#fff', letterSpacing: '-0.2px' }}>AI가 그리는 중</span>
                             </div>
                           </div>
                         ) : (

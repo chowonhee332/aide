@@ -402,12 +402,43 @@ export interface PlatformRecommendation {
   reason: string;
 }
 
+export interface ServiceSubScreen {
+  id: string;
+  label: string;
+  purpose: string;
+}
+
+export interface ServiceAnalysis {
+  /** 서비스의 핵심 도메인 객체 (예: 계좌, 거래, 포트폴리오) */
+  coreObjects: string[];
+  /** 첫 화면에 실제로 보여야 할 데이터 항목 (예: 총 자산, 수익률, 거래내역) */
+  keyDataPoints: string[];
+  /** 탭/메뉴 기반 정보 구조 — 각 화면의 id/label/목적 */
+  informationArchitecture: ServiceSubScreen[];
+  /** AI가 추론한 핵심 사용 흐름 (상태 → 행동 → 결과) */
+  primaryJourney: string;
+  /** 정규식 서브타입 매칭 실패 시 사용할 서비스 성격 힌트 (kebab-case 권장) */
+  serviceSubtypeHint: string;
+  /** 히어로 비주얼 소재 — AI가 서비스를 보고 정한 영어 명사구 (정규식 매핑 대신 사용) */
+  heroVisualSubject: string;
+  /** 이 서비스에 어울리는 히어로 비주얼 종류: '3d-object'|'photo'|'data' */
+  heroVisualType: '3d-object' | 'photo' | 'data';
+  /** 이 서비스에 맞는 실제 콘텐츠 시드 — AI 생성 (정규식 더미 템플릿 대신 사용) */
+  contentSeed?: {
+    kpis: Array<{ label: string; value: string; meta: string }>;
+    quickActions: string[];
+    listItems: Array<{ title: string; meta: string; value: string; badge?: string }>;
+    activityItems: Array<{ title: string; meta: string; value: string }>;
+  };
+}
+
 export interface QuestionnaireResponse {
   questions: Question[];
   projectSummary: string;
   heroImageDecision?: HeroImageDecision;
   domain?: AppDomain;
   recommendedPlatform?: PlatformRecommendation;
+  serviceAnalysis?: ServiceAnalysis;
 }
 
 export type PlatformType = 'mobile' | 'web';
@@ -422,21 +453,13 @@ function loadPlatformGuide(platform: PlatformType): string {
 }
 
 function loadDefaultDesignMd(): string {
-  const buildAideDefaultMd = (sourceMd: string): string => sourceMd
-    .replace(/^name:\s*["']?KTDS Design System["']?\s*$/m, 'name: Aide Design System')
-    .replace(/^description:\s*"KT DS 엔터프라이즈 UI 시스템/m, 'description: "Aide 기본 UI 시스템')
-    .replace(
-      /---\n/,
-      `---\n# Aide default preset: this virtual DESIGN.md reuses ktds.md tokens and component rules, but its design-system name is Aide. When no preset is selected, refer to the selected system as Aide, not KTDS or kt ds.\n`,
-    )
   const candidates = [
-    path.join(process.cwd(), 'src', 'lib', 'design-systems', 'ktds.md'),
+    path.join(process.cwd(), 'src', 'lib', 'design-systems', 'aide.md'),
     path.join(process.cwd(), 'src', 'lib', 'default-design.md'),
   ]
   for (const filePath of candidates) {
     try {
-      const md = fs.readFileSync(filePath, 'utf-8')
-      return filePath.endsWith('ktds.md') ? buildAideDefaultMd(md) : md
+      return fs.readFileSync(filePath, 'utf-8')
     } catch { /* try next */ }
   }
   return ''
@@ -732,6 +755,30 @@ ${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는
 - business: B2B SaaS, 대시보드, 관리자 툴, 분석
 - other: 위 분류에 해당 없음
 
+## 서비스 구조 분석 (CRITICAL — 이후 화면 생성의 핵심 입력)
+
+기획서를 깊이 읽고, 실제 화면을 만들 수 있는 수준으로 서비스 구조를 분석하세요. 추상적 표현 금지, 이 서비스에만 맞는 구체적 내용으로 작성하세요.
+
+1. **coreObjects** — 이 서비스가 다루는 핵심 도메인 객체 3~6개 (명사). 예: 금융앱이면 ["계좌", "거래", "포트폴리오", "예산"], 배달앱이면 ["가게", "메뉴", "주문", "쿠폰"]
+2. **keyDataPoints** — 첫 화면에 실제로 보여야 할 구체적 데이터 항목 6~12개. 예: ["총 자산 금액", "오늘 수익률 %", "최근 거래 3건", "이번 달 지출", "저축 목표 달성률"]. "정보", "데이터" 같은 추상어 금지.
+3. **informationArchitecture** — 이 서비스의 하단 탭/메뉴 구조 3~5개. 각 화면은 실제 기능 목적지여야 함. 유저 타입(신규/헤비 유저)이나 설정 하위메뉴를 탭으로 만들지 말 것.
+   - 각 항목: { "id": "screen-xxx" (영문 kebab), "label": "탭 한글명 (2~5자)", "purpose": "이 화면에서 보여줄 콘텐츠와 기능을 구체적으로" }
+4. **primaryJourney** — 사용자가 이 앱에서 반복하는 핵심 흐름을 "상태 확인 → 행동 → 결과" 형태 한 문장으로. 예: "자산 현황 확인 → 포트폴리오 조정 → 수익률 추적"
+5. **serviceSubtypeHint** — 이 서비스의 성격을 2~4단어 kebab-case로. 예: "stock-trading-app", "grocery-delivery", "habit-tracker"
+6. **heroVisualType** — 이 서비스 첫 화면 히어로에 가장 어울리는 비주얼 종류를 하나만 고르세요:
+   - "3d-object": 캐릭터·마스코트·상징 오브젝트가 어울리는 B2C 감성 서비스 (펫·게임·리워드·음식·헬스 등)
+   - "photo": 실사 사진이 설득력 있는 라이프스타일·여행·커머스·음식 탐색 서비스
+   - "data": 사진/3D보다 KPI·수치·차트가 핵심인 금융·통신요금제·B2B·대시보드·관리툴 (억지 이미지 금지)
+7. **heroVisualSubject** — 히어로 비주얼 소재를 **영어 명사구**로 직접 지정하세요. 정규식이 아니라 당신이 서비스를 보고 정합니다.
+   - 3d-object면: "a glossy 3D smartphone with signal waves", "a cute dog mascot holding a leash" 처럼 단일 오브젝트
+   - photo면: "modern travel destination", "fresh healthy food bowl" 처럼 Unsplash 검색용 명사구
+   - data면: 빈 문자열("") — 이미지를 쓰지 않음
+8. **contentSeed** — 이 서비스 첫 화면에 들어갈 **실제 콘텐츠**를 구체적으로 생성하세요. 일반 더미("항목 1", "상품 A")나 다른 서비스 값 복붙 금지. 이 브리프에만 맞는 한국어 텍스트·수치·상태로 작성:
+   - kpis: 핵심 지표 3~4개. 각 { label, value(실제 수치/상태), meta(보조 설명) }. 예: { "label": "이번 주 모은 용돈", "value": "12,400원", "meta": "목표 20,000원의 62%" }
+   - quickActions: 첫 화면 빠른 액션 4~6개 (이 서비스의 실제 행동)
+   - listItems: 추천/리스트 항목 3개 이상. 각 { title, meta, value, badge(선택) }
+   - activityItems: 최근 활동/상태 2~3개. 각 { title, meta, value }
+
 반드시 아래 JSON 형식으로만 응답하세요 (마크다운 없이):
 {
   "projectSummary": "프로젝트 한 줄 요약",
@@ -745,16 +792,75 @@ ${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는
     "reason": "판단 근거 한 줄",
     "prompt": "",
     "heroSubject": ""
+  },
+  "serviceAnalysis": {
+    "coreObjects": ["...", "...", "..."],
+    "keyDataPoints": ["...", "...", "...", "...", "...", "..."],
+    "informationArchitecture": [
+      { "id": "screen-home", "label": "홈", "purpose": "..." },
+      { "id": "screen-xxx", "label": "...", "purpose": "..." }
+    ],
+    "primaryJourney": "...",
+    "serviceSubtypeHint": "...",
+    "heroVisualType": "3d-object | photo | data",
+    "heroVisualSubject": "...",
+    "contentSeed": {
+      "kpis": [{ "label": "...", "value": "...", "meta": "..." }],
+      "quickActions": ["...", "..."],
+      "listItems": [{ "title": "...", "meta": "...", "value": "...", "badge": "..." }],
+      "activityItems": [{ "title": "...", "meta": "...", "value": "..." }]
+    }
   }
 }
 `;
 
-  const text = await generatePro(prompt, apiKey, 'gemini-3.1-flash-lite');
+  const text = await generatePro(prompt, apiKey, 'gemini-3.5-flash');
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Failed to parse questionnaire JSON');
 
-  const parsed = JSON.parse(jsonMatch[0]) as { projectSummary: string; domain: AppDomain; heroImageDecision?: HeroImageDecision; recommendedPlatform?: PlatformRecommendation };
+  const parsed = JSON.parse(jsonMatch[0]) as { projectSummary: string; domain: AppDomain; heroImageDecision?: HeroImageDecision; recommendedPlatform?: PlatformRecommendation; serviceAnalysis?: ServiceAnalysis };
+
+  // serviceAnalysis 정규화 — 모델이 일부 필드를 누락해도 안전하게 동작하도록 보정
+  const rawAnalysis = parsed.serviceAnalysis
+  const serviceAnalysis: ServiceAnalysis | undefined = rawAnalysis ? {
+    coreObjects: Array.isArray(rawAnalysis.coreObjects) ? rawAnalysis.coreObjects.filter(s => typeof s === 'string' && s.trim()).slice(0, 8) : [],
+    keyDataPoints: Array.isArray(rawAnalysis.keyDataPoints) ? rawAnalysis.keyDataPoints.filter(s => typeof s === 'string' && s.trim()).slice(0, 14) : [],
+    informationArchitecture: Array.isArray(rawAnalysis.informationArchitecture)
+      ? rawAnalysis.informationArchitecture
+          .filter(s => s && typeof s.label === 'string' && s.label.trim())
+          .map((s, i) => ({
+            id: typeof s.id === 'string' && /^screen-[a-z0-9-]+$/.test(s.id) ? s.id : `screen-${i === 0 ? 'home' : i}`,
+            label: s.label.trim().slice(0, 12),
+            purpose: typeof s.purpose === 'string' ? s.purpose.trim() : '',
+          }))
+          .slice(0, 5)
+      : [],
+    primaryJourney: typeof rawAnalysis.primaryJourney === 'string' ? rawAnalysis.primaryJourney.trim() : '',
+    serviceSubtypeHint: typeof rawAnalysis.serviceSubtypeHint === 'string' ? rawAnalysis.serviceSubtypeHint.trim() : '',
+    heroVisualSubject: typeof rawAnalysis.heroVisualSubject === 'string' ? rawAnalysis.heroVisualSubject.trim() : '',
+    heroVisualType: (rawAnalysis.heroVisualType === '3d-object' || rawAnalysis.heroVisualType === 'photo' || rawAnalysis.heroVisualType === 'data')
+      ? rawAnalysis.heroVisualType
+      : 'data',
+    contentSeed: (() => {
+      const cs = rawAnalysis.contentSeed
+      if (!cs || typeof cs !== 'object') return undefined
+      const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
+      const kpis = Array.isArray(cs.kpis)
+        ? cs.kpis.filter(k => k && str(k.label)).map(k => ({ label: str(k.label), value: str(k.value), meta: str(k.meta) })).slice(0, 5)
+        : []
+      const quickActions = Array.isArray(cs.quickActions) ? cs.quickActions.filter((s: unknown) => typeof s === 'string' && s.trim()).map((s: string) => s.trim()).slice(0, 8) : []
+      const listItems = Array.isArray(cs.listItems)
+        ? cs.listItems.filter(l => l && str(l.title)).map(l => ({ title: str(l.title), meta: str(l.meta), value: str(l.value), ...(str(l.badge) ? { badge: str(l.badge) } : {}) })).slice(0, 6)
+        : []
+      const activityItems = Array.isArray(cs.activityItems)
+        ? cs.activityItems.filter(a => a && str(a.title)).map(a => ({ title: str(a.title), meta: str(a.meta), value: str(a.value) })).slice(0, 4)
+        : []
+      // 최소한 kpis 또는 listItems가 있어야 유효한 시드로 인정
+      if (kpis.length === 0 && listItems.length === 0) return undefined
+      return { kpis, quickActions, listItems, activityItems }
+    })(),
+  } : undefined
 
   const inferredDomainLabel = parsed.domain ? (DOMAIN_KEY_TO_LABEL[parsed.domain] ?? '기타') : '기타'
 
@@ -821,9 +927,15 @@ ${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는
     {
       id: 'primary_journey',
       question: '핵심 사용 흐름',
-      description: '첫 화면 안에서 사용자의 상태 확인 → 행동 → 결과를 연결하는 핵심 흐름입니다. 레이아웃 우선순위 결정에 사용됩니다.',
+      description: serviceAnalysis?.primaryJourney
+        ? `AI가 "${serviceAnalysis.primaryJourney}"로 분석했습니다. 첫 화면의 상태 → 행동 → 결과 흐름을 결정합니다.`
+        : '첫 화면 안에서 사용자의 상태 확인 → 행동 → 결과를 연결하는 핵심 흐름입니다. 레이아웃 우선순위 결정에 사용됩니다.',
       type: 'single',
-      options: DOMAIN_PRIMARY_JOURNEY_OPTIONS[parsed.domain ?? 'other'] ?? DOMAIN_PRIMARY_JOURNEY_OPTIONS['other'],
+      // AI 추론 흐름이 있으면 맨 앞 옵션으로 노출, 이어서 도메인 표준 흐름
+      options: [
+        ...(serviceAnalysis?.primaryJourney ? [serviceAnalysis.primaryJourney] : []),
+        ...(DOMAIN_PRIMARY_JOURNEY_OPTIONS[parsed.domain ?? 'other'] ?? DOMAIN_PRIMARY_JOURNEY_OPTIONS['other']),
+      ].filter((v, i, arr) => arr.indexOf(v) === i),
     },
     {
       id: 'first_screen_focus',
@@ -846,6 +958,7 @@ ${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는
     domain: parsed.domain,
     recommendedPlatform: parsed.recommendedPlatform,
     heroImageDecision: parsed.heroImageDecision,
+    serviceAnalysis,
     questions: fixedQuestions,
   }
 }
@@ -1825,21 +1938,27 @@ function injectMaterialSymbolsFont(html: string): string {
 }
 
 function injectLayoutEssentialsGuard(html: string, blueprint?: LayoutBlueprint): string {
-  if (!blueprint) return html
-  const hasTopNav = blueprint.navType === 'gnb' || blueprint.sections.some(section => section.role === 'nav')
-  const hasBottomTab = blueprint.navType === 'bottom-tab' || blueprint.sections.some(section => section.role === 'tabbar')
-  const hasLnb = blueprint.navType === 'lnb'
+  // aide.md 셸 클래스를 쓰면 blueprint가 없어도 셸 강제를 적용한다 (draft 포함).
+  // 랜딩/문서형처럼 셸이 없는 HTML은 body 스크롤을 방해하지 않도록 강제를 건너뛴다.
+  const usesAppShell = /class=["'][^"']*\b(?:app-shell|scroll-body|aide-page|mobile-shell|page-shell|home-screen)\b/.test(html)
+  if (!blueprint && !usesAppShell) return html
+  // blueprint가 없을 땐 aide.md 기본 모바일 셸(상단 고정 + 하단 탭)을 가정한다.
+  const hasTopNav = blueprint ? (blueprint.navType === 'gnb' || blueprint.sections.some(section => section.role === 'nav')) : true
+  const hasBottomTab = blueprint ? (blueprint.navType === 'bottom-tab' || blueprint.sections.some(section => section.role === 'tabbar')) : true
+  const hasLnb = blueprint ? blueprint.navType === 'lnb' : false
   const css = `<style data-aide-layout-essentials="1">
 html, body { min-height:100%; }
 body { overflow:hidden !important; }
 .app-shell,[data-layout-variant],.app,.screen,.phone-screen,.mobile-shell,.page-shell,.home-screen { min-height:100dvh; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
-.content-scroll,.page-scroll,.aide-page,main[data-blueprint-scroll="content"],main,.main-content,.content,.scroll-content {
+.content-scroll,.page-scroll,.aide-page,.scroll-body,main[data-blueprint-scroll="content"],main,.main-content,.content,.scroll-content {
   flex:1 1 auto;
   min-height:0;
   overflow-y:auto !important;
   overflow-x:hidden !important;
   -webkit-overflow-scrolling:touch;
 }
+.top-navigation { position:sticky !important; top:0 !important; z-index:80 !important; flex:0 0 auto !important; }
+.bottom-navigation { position:fixed !important; left:0 !important; right:0 !important; bottom:0 !important; z-index:80 !important; }
 .aide-hero-3d,.aide-3d-asset {
   filter:none !important;
   mix-blend-mode:normal !important;
@@ -2253,6 +2372,37 @@ ABSOLUTE SHADOW BAN: no baked-in ground shadow, no cast shadow, no contact shado
 The subject must float on a perfectly clean white studio background with no ground plane. The UI layer will add any needed grounding separately.`
 }
 
+// 투명 배경 3D 객체의 빈 여백을 잘라내 객체가 bounding box를 꽉 채우게 만든다.
+// 모델이 객체를 다소 작게 그려도 trim 후 CSS 사이징이 정확히 먹어, 카드 안에서
+// 작은 스티커처럼 떠 보이는 문제(빈 히어로)를 근본적으로 제거한다.
+async function trimTransparentPadding(
+  base64: string,
+  mimeType = 'image/png',
+): Promise<{ base64: string; mimeType: string }> {
+  try {
+    const input = Buffer.from(base64, 'base64')
+    // 완전 투명(alpha=0) 가장자리를 잘라낸다.
+    const trimmed = await sharp(input)
+      .ensureAlpha()
+      .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 10 })
+      .toBuffer()
+    const meta = await sharp(trimmed).metadata()
+    const w = meta.width ?? 0
+    const h = meta.height ?? 0
+    if (!w || !h) return { base64, mimeType }
+    // 객체가 카드 가장자리에 닿지 않도록 소량의 균일 여백(~6%)만 다시 더한다.
+    const pad = Math.round(Math.max(w, h) * 0.06)
+    const padded = await sharp(trimmed)
+      .extend({ top: pad, bottom: pad, left: pad, right: pad, background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .png()
+      .toBuffer()
+    return { base64: padded.toString('base64'), mimeType: 'image/png' }
+  } catch (err) {
+    console.warn('[gemini] trimTransparentPadding failed, using original:', err instanceof Error ? err.message : String(err))
+    return { base64, mimeType }
+  }
+}
+
 async function removeHeroImageBackground(
   base64: string,
   mimeType = 'image/png',
@@ -2414,9 +2564,9 @@ function loadCreonStyleBase(): Record<string, unknown> {
 
 const CREON_STYLE_FALLBACK: Record<string, unknown> = {
   style: "cute isometric 3D icon, glossy plastic, soft studio lighting, clean rounded geometry, Creon-quality premium app icon",
-  camera: "isometric 30-degree bird's-eye view, subject centered, zoomed out leaving 30% padding on all sides",
+  camera: "isometric 30-degree bird's-eye view, subject centered, ZOOMED IN so the subject fills 80-88% of the frame with tight even padding (~8%)",
   background: "pure white #ffffff studio background, no floor plane, no environment",
-  composition: "single standalone object, no text, no labels, no UI elements, no scene environment",
+  composition: "single standalone object as the dominant hero, no text, no labels, no UI elements, no scene environment",
   output: "1:1 square composition, transparent background preferred, high quality premium render",
 }
 
@@ -2428,8 +2578,14 @@ function buildCreon3DPrompt(subject: string, paletteHint?: string): string {
   const prompt = {
     ...base,
     subject: subject || 'a friendly robot',
-    // Keep original creon-style.md composition framing (ZOOMED OUT, 30% padding)
-    // CSS in the HTML handles scaling up — do NOT force the model to fill the frame
+    // 피사체가 프레임을 꽉 채우도록 ZOOM IN을 명시 강제 (base의 framing을 덮어씀).
+    // 작게 그린 뒤 CSS로 키우는 방식은 여백째 커져서 실패했었음 → 생성 단계에서 크게 그리고,
+    // 추가로 trimTransparentPadding()이 투명 여백을 잘라 객체가 카드 visual zone을 채우게 한다.
+    composition: {
+      ...((base.composition as Record<string, unknown>) ?? {}),
+      framing: "ZOOM IN. The subject fills 80-88% of the frame, centered, tight even padding (~8%). Never render the subject as a small element in a large empty canvas.",
+      density: "subject-dominant, balanced negative space",
+    },
     lighting: {
       ...(base.lighting as Record<string, unknown> ?? {}),
       shadows: "no ground shadow, no cast shadow, no contact shadow, no drop shadow, no soft oval under feet, no floor reflection, no ambient occlusion blob",
@@ -2562,8 +2718,10 @@ export async function generateHeroImage(
             part.inlineData.data,
             part.inlineData.mimeType || 'image/png',
           )
-          console.log('[gemini] 3D hero object generated with transparent background')
-          return transparent
+          // 투명 여백을 잘라 객체가 카드 visual zone을 꽉 채우게 한다 (빈 히어로 방지)
+          const tightened = await trimTransparentPadding(transparent.base64, transparent.mimeType)
+          console.log('[gemini] 3D hero object generated with transparent background (trimmed)')
+          return tightened
         } catch (removeErr) {
           const message = removeErr instanceof Error ? removeErr.message : String(removeErr)
           console.error('[gemini] background removal failed, using original:', message)
@@ -4337,9 +4495,8 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
   const hasDesignSystem = !!effectiveDesignMd;
   const isAdaptive = hasDesignSystem && /adaptive:\s*true/.test(effectiveDesignMd);
   const isKtds = hasDesignSystem && /name:\s*["']?KTDS/i.test(effectiveDesignMd);
-  const isAideDefault = hasDesignSystem && /name:\s*["']?Aide Design System/i.test(effectiveDesignMd) && /Aide default preset/i.test(effectiveDesignMd);
-  const usesKtdsCompatibleRules = isKtds || isAideDefault;
-  const ktdsCompatibleLabel = isKtds ? 'KTDS' : 'Aide';
+  const usesKtdsCompatibleRules = isKtds;
+  const ktdsCompatibleLabel = 'KTDS';
   const isMd3Base = hasDesignSystem && /md3Base:\s*true/.test(effectiveDesignMd) && !usesKtdsCompatibleRules;
   const isMd3 = hasDesignSystem && /(?:^|\n)md3:\s*true/.test(effectiveDesignMd) && !isMd3Base && !usesKtdsCompatibleRules;
 
@@ -4427,7 +4584,7 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
 - **패턴 E Hero Card Cover**를 사용합니다:
   * section에 class="hero-card-cover aide-visual-stage" style="position:relative;overflow:hidden;border-radius:var(--aide-card-radius,16px);min-height:320px;background:#111;"
   * img: position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;display:block;
-  * 그라데이션 오버레이(aria-hidden div): background:linear-gradient(to top,rgba(0,0,0,0.78) 0%,rgba(0,0,0,0.42) 48%,transparent 100%)
+  * 그라데이션 오버레이(aria-hidden div): background:linear-gradient(to bottom,rgba(0,0,0,0.32) 0%,rgba(0,0,0,0.04) 32%,rgba(0,0,0,0) 55%,rgba(0,0,0,0.44) 100%) — Dim은 약하게(피사체가 잘 보이도록), 텍스트는 text-shadow:0 1px 10px rgba(0,0,0,0.45)로 가독성 확보
   * 콘텐츠 레이어: position:relative;z-index:2; — 배지·헤드라인·상태·CTA를 하단 정렬로 배치
   * 모든 텍스트: color:#ffffff 또는 rgba(255,255,255,...) (WCAG AA 필수)
 - %%HERO_3D%%, 실사 %%IMG_1%% 등 다른 히어로 이미지 타입은 금지입니다.
@@ -4470,7 +4627,7 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
     loading="eager"
   />
   <!-- 2) 스크림: 하단 그라데이션, aria-hidden -->
-  <div aria-hidden="true" style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.72) 0%,rgba(0,0,0,0.28) 55%,transparent 100%);pointer-events:none;"></div>
+  <div aria-hidden="true" style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.30) 0%,rgba(0,0,0,0.04) 34%,rgba(0,0,0,0) 56%,rgba(0,0,0,0.46) 100%);pointer-events:none;"></div>
   <!-- 3) 콘텐츠: z-index:2, padding은 CSS 변수 사용 -->
   <div style="position:relative;z-index:2;display:flex;flex-direction:column;justify-content:flex-end;min-height:clamp(240px,55vw,340px);padding:var(--aide-card-padding,16px);gap:var(--aide-item-gap,8px);">
     <!-- 배지 (선택) -->
@@ -5407,6 +5564,19 @@ export async function expandToPrototype(mainHtml: string, params: GenerateParams
     ? `\n## ★ 서비스 핵심 화면 목록 (CRITICAL — 이 목록 기준으로 서브 화면 구성)\n아래는 이 서비스의 실제 핵심 화면 정의입니다. 탭바 탭 이름만 보고 임의로 화면을 만들지 말고, 반드시 아래 id/label/purpose를 기준으로 서브 화면을 구성하세요.\n${params.generationPlan.expectedSubScreens.map(s => `- id: \`${s.id}\`, 탭 레이블: "${s.label}", 콘텐츠 목적: ${s.purpose}`).join('\n')}\n`
     : ''
 
+  // 서브 화면이 빈 와이어프레임이 되지 않도록 실제 콘텐츠 재료(데이터 항목) 주입 (Phase 3-B)
+  const contentInventoryGuide = (() => {
+    const inv = params.generationPlan?.contentInventory
+    if (!inv) return ''
+    const parts: string[] = []
+    if (inv.requiredAboveFoldUnits?.length) parts.push(`- 핵심 데이터 항목: ${inv.requiredAboveFoldUnits.join(', ')}`)
+    if (inv.kpis?.length) parts.push(`- KPI 예시: ${inv.kpis.slice(0, 6).map(k => `${k.label} ${k.value}`).join(' / ')}`)
+    if (inv.listItems?.length) parts.push(`- 리스트 항목 예시: ${inv.listItems.slice(0, 5).map(l => `${l.title}(${l.value})`).join(', ')}`)
+    if (inv.quickActions?.length) parts.push(`- 빠른 액션: ${inv.quickActions.slice(0, 6).join(', ')}`)
+    if (parts.length === 0) return ''
+    return `\n## ★ 서브 화면 콘텐츠 재료 (와이어프레임 방지 — 실제 데이터로 채우기)\n각 서브 화면은 아래 재료를 활용해 실제 서비스처럼 구체적인 한글 텍스트·수치·상태로 채우세요. "항목 1", "제목", "내용" 같은 placeholder 금지.\n${parts.join('\n')}\n`
+  })()
+
   const navExtractionGuide = isWeb
     ? `- 상단 GNB/nav 전체 (<nav>, <header> 또는 최상단 고정 영역)
 - 사이드바 (<aside>, .sidebar, .side-nav 등 — 있는 경우만)`
@@ -5443,7 +5613,7 @@ ${answersText || '없음'}
 메인 화면 HTML에서 다음 요소의 HTML을 정확히 파악하세요:
 ${navExtractionGuide}
 
-${expectedSubScreensGuide}
+${expectedSubScreensGuide}${contentInventoryGuide}
 **Step 2 — 서브 화면 구성 (3~4개):**
 ⚠️ 서브 화면 기준 (CRITICAL):
 - 모바일 앱: 하단 탭바의 각 탭 목적지를 서브 화면으로 만드세요 (예: 레시피 탭 → screen-recipe, 냉장고 탭 → screen-fridge, 장보기 탭 → screen-cart, 마이 탭 → screen-profile)

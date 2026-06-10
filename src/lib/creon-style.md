@@ -94,8 +94,8 @@ description: "Aide 히어로 이미지 생성용 3D 아이콘 스타일 가이�
   },
   "composition": {
     "elements": "single hero subject floating; only props essential to subject",
-    "density": "minimal, generous negative space",
-    "framing": "ZOOMED OUT. Subject must be small relative to canvas. 30% wide empty padding on all sides.",
+    "density": "subject-dominant, balanced negative space",
+    "framing": "ZOOM IN. The subject is the clear hero and fills 80-88% of the frame, centered, with tight even padding (~8%) on every side. Do NOT shrink the subject into a small element surrounded by empty canvas.",
     "depth": "3-layer depth stack with gentle parallax"
   },
   "background": {

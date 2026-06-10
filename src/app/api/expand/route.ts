@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { Browser, Page } from 'puppeteer'
-import { expandToPrototype, resolveImagePlaceholders, type GenerateParams } from '@/lib/gemini'
+import { expandToPrototype, resolveImagePlaceholders, refineUI, type GenerateParams } from '@/lib/gemini'
+import { auditResponsiveHtml, buildResponsiveRepairMessage } from '@/lib/responsive-audit'
 import fs from 'fs'
 import path from 'path'
 
@@ -52,11 +53,6 @@ export async function POST(req: NextRequest) {
     }
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
     const unsplashKey = req.headers.get('x-unsplash-key') ?? undefined
-    console.log('[expand] step1: params parsed, starting expandToPrototype')
-    let html = await expandToPrototype(mainHtml, normalizedParams, apiKey)
-    console.log('[expand] step2: html generated, length=', html.length)
-    const imageWarnings: string[] = []
-    html = await resolveImagePlaceholders(html, { heroImagePrompt: normalizedParams.heroSubject || normalizedParams.heroImagePrompt, apiKey, unsplashKey, imageWarnings })
 
     const puppeteer = await import('puppeteer')
     browser = await puppeteer.default.launch({
@@ -68,6 +64,29 @@ export async function POST(req: NextRequest) {
         '--font-render-hinting=none',
       ],
     })
+
+    // 2단계 품질 게이트 (Phase 2-A): 사용자가 선택한 시안(draft)을 확장 전에 풀퀄로 보정한다.
+    // draft 모드에서 스킵됐던 반응형 검수 + refineUI 보정 루프를 여기서 적용한다.
+    let polishedMainHtml = mainHtml
+    try {
+      const auditOptions = { requireLogo: Boolean(normalizedParams.logoDataUrl) }
+      let issues = await auditResponsiveHtml(browser, polishedMainHtml, auditOptions)
+      for (let attempt = 1; attempt <= 2 && issues.length > 0; attempt += 1) {
+        console.log(`[expand] polish attempt ${attempt}: ${issues.length} issue(s)`)
+        const repairMessage = buildResponsiveRepairMessage(issues, attempt)
+        polishedMainHtml = await refineUI(polishedMainHtml, repairMessage, normalizedParams.brief, normalizedParams.designMd, apiKey, normalizedParams.logoDataUrl, normalizedParams.domain)
+        issues = await auditResponsiveHtml(browser, polishedMainHtml, auditOptions)
+      }
+    } catch (err) {
+      console.warn('[expand] quality polish skipped:', err instanceof Error ? err.message : String(err))
+      polishedMainHtml = mainHtml
+    }
+
+    console.log('[expand] step1: main html polished, starting expandToPrototype')
+    let html = await expandToPrototype(polishedMainHtml, normalizedParams, apiKey)
+    console.log('[expand] step2: html generated, length=', html.length)
+    const imageWarnings: string[] = []
+    html = await resolveImagePlaceholders(html, { heroImagePrompt: normalizedParams.heroSubject || normalizedParams.heroImagePrompt, apiKey, unsplashKey, imageWarnings })
 
     const page = await browser.newPage()
 

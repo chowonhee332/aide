@@ -40,7 +40,7 @@ async function fetchDribbble(keyword: string): Promise<RefImage[]> {
     }
   }
   // Reset lastIndex before alt extraction on entire html
-  let altHtml = html
+  const altHtml = html
   while ((altMatch = altPattern.exec(altHtml)) !== null && alts.length < urls.length + 5) {
     const alt = altMatch[1].trim()
     if (alt && alt.length > 2 && !alt.includes('Dribbble') && !alt.includes('logo')) {

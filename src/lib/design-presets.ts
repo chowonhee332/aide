@@ -64,19 +64,46 @@ function deriveLabel(md: string, id: string): string {
   return id.charAt(0).toUpperCase() + id.slice(1)
 }
 
-function buildAideDefaultMd(sourceMd: string): string {
-  if (!sourceMd.trim()) return ''
-  return sourceMd
-    .replace(/^name:\s*["']?KTDS Design System["']?\s*$/m, 'name: Aide Design System')
-    .replace(/^description:\s*"KT DS 엔터프라이즈 UI 시스템/m, 'description: "Aide 기본 UI 시스템')
-    .replace(
-      /---\n/,
-      `---\n# Aide default preset: this virtual DESIGN.md reuses ktds.md tokens and component rules, but its design-system name is Aide. When no preset is selected, refer to the selected system as Aide, not KTDS or kt ds.\n`,
-    )
-}
-
 // Rich metadata for known presets — palette, fonts, traits, scale, etc.
 const RICH_META: Record<string, Omit<DesignPresetMeta, 'md'>> = {
+  aide: {
+    label: 'Aide',
+    color: '#0066ff',
+    description: 'Aide 기본 디자인 시스템 — Montage 기반 토큰, Material Symbols, 모바일 앱 구조',
+    palette: [
+      { name: 'Primary', hex: '#0066ff' },
+      { name: 'Surface', hex: '#ffffff' },
+      { name: 'Page', hex: '#f7f7f8' },
+      { name: 'Text', hex: '#171719' },
+    ],
+    fonts: { headline: 'Pretendard', body: 'Pretendard' },
+    traits: ['mobile app rhythm', 'fixed navigation', 'material symbols', 'content dense'],
+    typographyScale: [
+      { name: 'Display 1', size: '56px', weight: 700 },
+      { name: 'Title 1', size: '32px', weight: 700 },
+      { name: 'Heading 1', size: '22px', weight: 700 },
+      { name: 'Headline 1', size: '18px', weight: 700 },
+      { name: 'Body 1', size: '16px', weight: 400 },
+      { name: 'Body 2', size: '15px', weight: 400 },
+      { name: 'Label 1', size: '14px', weight: 600 },
+      { name: 'Caption 1', size: '12px', weight: 400 },
+    ],
+    statusColors: [
+      { name: 'Positive', hex: '#00bf40' },
+      { name: 'Info', hex: '#0066ff' },
+      { name: 'Caution', hex: '#ff9200' },
+      { name: 'Negative', hex: '#ff4242' },
+    ],
+    radiusTokens: [
+      { name: 'xs', value: '4px' },
+      { name: 'sm', value: '8px' },
+      { name: 'md', value: '10px' },
+      { name: 'lg', value: '12px' },
+      { name: 'xl', value: '16px' },
+      { name: '2xl', value: '20px' },
+      { name: 'full', value: '9999px' },
+    ],
+  },
   ktds: {
     label: 'kt ds',
     color: '#1a75ff',
@@ -218,9 +245,15 @@ const HIDDEN_PRESETS = new Set(['aide'])
 export const DESIGN_PRESETS: Record<string, DesignPresetMeta> = {
   none: {
     label: '기본',
-    md: buildAideDefaultMd(MD_FILES.ktds ?? ''),
-    color: '#1a75ff',
-    description: 'kt ds 기반 규칙을 Aide 기본 디자인 시스템 명칭으로 사용합니다',
+    md: MD_FILES.aide ?? MD_FILES.ktds ?? '',
+    color: '#0066ff',
+    description: 'Aide 기본 디자인 시스템을 사용합니다',
+    palette: RICH_META.aide.palette,
+    fonts: RICH_META.aide.fonts,
+    traits: RICH_META.aide.traits,
+    typographyScale: RICH_META.aide.typographyScale,
+    statusColors: RICH_META.aide.statusColors,
+    radiusTokens: RICH_META.aide.radiusTokens,
   },
 }
 
