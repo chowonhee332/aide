@@ -118,24 +118,48 @@ function buildCuratedUnsplashUrl(keyword: string, width: number, height: number)
   return `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${width}&h=${height}&q=82`
 }
 
+// Pexels 폴백 — Unsplash 키가 없거나 관련 결과가 없을 때 사용 (PEXELS_API_KEY 있을 때만)
+async function fetchPexelsUrl(keyword: string, width: number, height: number): Promise<string | null> {
+  const key = process.env.PEXELS_API_KEY
+  if (!key) return null
+  try {
+    const res = await fetch(
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(keyword)}&orientation=landscape&per_page=1`,
+      { headers: { Authorization: key }, signal: AbortSignal.timeout(5000) }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const original = data?.photos?.[0]?.src?.original
+    if (!original) return null
+    return `${original}?auto=compress&cs=tinysrgb&fit=crop&w=${width}&h=${height}`
+  } catch {
+    return null
+  }
+}
+
 async function fetchUnsplashUrl(keyword: string, width: number, height: number, accessKeyOverride?: string): Promise<string | null> {
   const accessKey = accessKeyOverride || process.env.UNSPLASH_ACCESS_KEY
   const searchKeyword = normalizeUnsplashKeyword(keyword)
   const fallbackUrl = buildCuratedUnsplashUrl(searchKeyword, width, height)
-  if (!accessKey) return fallbackUrl
-  try {
-    const res = await fetch(
-      `https://api.unsplash.com/photos/random?query=${encodeURIComponent(searchKeyword)}&orientation=landscape&client_id=${accessKey}`,
-      { signal: AbortSignal.timeout(5000) }
-    )
-    if (!res.ok) return fallbackUrl
-    const data = await res.json()
-    const base = data?.urls?.regular ?? data?.urls?.small
-    if (!base) return fallbackUrl
-    return `${base}&w=${width}&h=${height}&fit=crop&auto=format`
-  } catch {
-    return fallbackUrl
+  // 1) Unsplash search(관련도순) — random보다 키워드 관련성이 높다
+  if (accessKey) {
+    try {
+      const res = await fetch(
+        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchKeyword)}&orientation=landscape&per_page=1&order_by=relevant&client_id=${accessKey}`,
+        { signal: AbortSignal.timeout(5000) }
+      )
+      if (res.ok) {
+        const data = await res.json()
+        const base = data?.results?.[0]?.urls?.regular ?? data?.results?.[0]?.urls?.small
+        if (base) return `${base}&w=${width}&h=${height}&fit=crop&auto=format`
+      }
+    } catch { /* fall through to Pexels/curated */ }
   }
+  // 2) Pexels 폴백
+  const pexels = await fetchPexelsUrl(searchKeyword, width, height)
+  if (pexels) return pexels
+  // 3) 커레이티드 폴백
+  return fallbackUrl
 }
 
 async function generatePro(prompt: string, apiKey?: string, model = 'gemini-3.5-flash', onChunk?: (accumulated: string) => void): Promise<string> {
@@ -423,6 +447,8 @@ export interface ServiceAnalysis {
   heroVisualSubject: string;
   /** 이 서비스에 어울리는 히어로 비주얼 종류: '3d-object'|'photo'|'data' */
   heroVisualType: '3d-object' | 'photo' | 'data';
+  /** 브리프에서 추론한 주요 타겟 — target_audience 질문 옵션 중 하나 (도메인 하드코딩 대신) */
+  targetAudience: string;
   /** 이 서비스에 맞는 실제 콘텐츠 시드 — AI 생성 (정규식 더미 템플릿 대신 사용) */
   contentSeed?: {
     kpis: Array<{ label: string; value: string; meta: string }>;
@@ -773,7 +799,9 @@ ${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는
    - 3d-object면: "a glossy 3D smartphone with signal waves", "a cute dog mascot holding a leash" 처럼 단일 오브젝트
    - photo면: "modern travel destination", "fresh healthy food bowl" 처럼 Unsplash 검색용 명사구
    - data면: 빈 문자열("") — 이미지를 쓰지 않음
-8. **contentSeed** — 이 서비스 첫 화면에 들어갈 **실제 콘텐츠**를 구체적으로 생성하세요. 일반 더미("항목 1", "상품 A")나 다른 서비스 값 복붙 금지. 이 브리프에만 맞는 한국어 텍스트·수치·상태로 작성:
+8. **targetAudience** — 브리프에 명시되거나 추론되는 주요 타겟을 아래 중 **정확히 하나**로 고르세요. 브리프에 나이/타겟(예: "20대", "청년", "시니어", "직장인")이 있으면 반드시 그것을 반영하세요(도메인으로 임의 추정 금지):
+   - "20-30대 일반 소비자" | "30-40대 직장인" | "10-20대 MZ세대" | "전문가/파워유저" | "시니어 (50대+)" | "AI가 결정"
+9. **contentSeed** — 이 서비스 첫 화면에 들어갈 **실제 콘텐츠**를 구체적으로 생성하세요. 일반 더미("항목 1", "상품 A")나 다른 서비스 값 복붙 금지. 이 브리프에만 맞는 한국어 텍스트·수치·상태로 작성:
    - kpis: 핵심 지표 3~4개. 각 { label, value(실제 수치/상태), meta(보조 설명) }. 예: { "label": "이번 주 모은 용돈", "value": "12,400원", "meta": "목표 20,000원의 62%" }
    - quickActions: 첫 화면 빠른 액션 4~6개 (이 서비스의 실제 행동)
    - listItems: 추천/리스트 항목 3개 이상. 각 { title, meta, value, badge(선택) }
@@ -804,6 +832,7 @@ ${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는
     "serviceSubtypeHint": "...",
     "heroVisualType": "3d-object | photo | data",
     "heroVisualSubject": "...",
+    "targetAudience": "...",
     "contentSeed": {
       "kpis": [{ "label": "...", "value": "...", "meta": "..." }],
       "quickActions": ["...", "..."],
@@ -842,6 +871,11 @@ ${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는
     heroVisualType: (rawAnalysis.heroVisualType === '3d-object' || rawAnalysis.heroVisualType === 'photo' || rawAnalysis.heroVisualType === 'data')
       ? rawAnalysis.heroVisualType
       : 'data',
+    targetAudience: (() => {
+      const opts = ['20-30대 일반 소비자', '30-40대 직장인', '10-20대 MZ세대', '전문가/파워유저', '시니어 (50대+)', 'AI가 결정']
+      const v = typeof rawAnalysis.targetAudience === 'string' ? rawAnalysis.targetAudience.trim() : ''
+      return opts.includes(v) ? v : ''
+    })(),
     contentSeed: (() => {
       const cs = rawAnalysis.contentSeed
       if (!cs || typeof cs !== 'object') return undefined
@@ -2714,13 +2748,16 @@ export async function generateHeroImage(
           return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType || 'image/png' }
         }
         try {
-          const transparent = await removeHeroImageBackground(
+          // 1) BiRefNet(로컬 self-host) 우선 — 머리/털/경계 품질↑. 실패 시 @imgly 폴백.
+          const { removeBackgroundBiRefNet } = await import('./birefnet')
+          const birefnet = await removeBackgroundBiRefNet(part.inlineData.data)
+          const transparent = birefnet ?? await removeHeroImageBackground(
             part.inlineData.data,
             part.inlineData.mimeType || 'image/png',
           )
           // 투명 여백을 잘라 객체가 카드 visual zone을 꽉 채우게 한다 (빈 히어로 방지)
           const tightened = await trimTransparentPadding(transparent.base64, transparent.mimeType)
-          console.log('[gemini] 3D hero object generated with transparent background (trimmed)')
+          console.log('[gemini] 3D hero object transparent bg via', birefnet ? 'BiRefNet' : '@imgly', '(trimmed)')
           return tightened
         } catch (removeErr) {
           const message = removeErr instanceof Error ? removeErr.message : String(removeErr)

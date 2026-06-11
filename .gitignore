@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# AI model cache (BiRefNet ONNX, downloaded at runtime)
+/.model-cache
+*.onnx

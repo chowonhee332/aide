@@ -274,11 +274,12 @@ function defaultAnswersFromAnalysis(data: QuestionnaireResponse): Record<string,
     : 'AI가 결정'
   const firstScreenFocus = domain === 'business' ? '핵심 지표' : domain === 'commerce' || domain === 'food' ? '대표 CTA' : 'AI가 결정'
 
-  // 새 질문들 기본값 — 도메인 기반 추론
-  const targetAudience = domain === 'business' ? '30-40대 직장인'
+  // 새 질문들 기본값 — AI가 브리프에서 추론한 타겟 우선, 없으면 도메인 폴백
+  const targetAudience = data.serviceAnalysis?.targetAudience
+    || (domain === 'business' ? '30-40대 직장인'
     : domain === 'entertainment' || domain === 'social' ? '10-20대 MZ세대'
     : domain === 'finance' || domain === 'health' ? '30-40대 직장인'
-    : 'AI가 결정'
+    : 'AI가 결정')
   const visualDirection = domain === 'business' || domain === 'finance'
     ? '신뢰감 있는 전문적 (금융·의료 스타일)'
     : domain === 'entertainment' || domain === 'social'
@@ -1935,12 +1936,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       const boardVariants: [GenerateResult | null, GenerateResult | null, GenerateResult | null] = [null, null, null]
       const completed: Array<{ letter: typeof variantLetters[number]; result: GenerateResult }> = []
 
-      for (const [variantStyle, idx] of sequence) {
-        if (generationIdRef.current !== genId || abort.signal.aborted) break
+      const runVariant = async (variantStyle: string, idx: 0 | 1 | 2) => {
+        if (generationIdRef.current !== genId || abort.signal.aborted) return
         setVariantLoading(idx, true)
         const json = await fetchVariant(variantStyle, idx)
         setVariantLoading(idx, false)
-        if (!json || generationIdRef.current !== genId || abort.signal.aborted) continue
+        if (!json || generationIdRef.current !== genId || abort.signal.aborted) return
         boardVariants[idx] = json
         completed.push({ letter: variantLetters[idx], result: json })
         setMainVariants(prev => {
@@ -1975,6 +1976,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             .finally(() => setIsGeneratingBScene(false))
         }
       }
+
+      // 3개 시안을 병렬로 생성 — 각자 자기 iframe에 동시에 스트리밍 (Gemini 세마포어가 동시성 3으로 제한)
+      await Promise.all(sequence.map(([variantStyle, idx]) => runVariant(variantStyle, idx)))
 
       if (generationIdRef.current === genId && !abort.signal.aborted && completed.length > 0) {
         persistBoardHistory({ mainVariantsOverride: boardVariants }).catch(() => {})
