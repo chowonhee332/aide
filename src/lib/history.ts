@@ -11,7 +11,6 @@ export interface HistoryItem {
   board?: {
     designSystemName?: string | null
     designMd?: string | null
-    layoutBlueprints?: unknown[]
     mainVariants?: Array<{ html: string; image?: string; variantDescription?: unknown; imageWarnings?: string[] } | null>
     pickedVariantIdx?: 0 | 1 | 2 | null
     prototypeHtml?: string | null

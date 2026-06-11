@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server'
 import type { Browser, Page } from 'puppeteer'
-import { generateUI, resolveImagePlaceholders, extractDesignPaletteHint, refineUI } from '@/lib/gemini'
-import { auditResponsiveHtml, buildResponsiveRepairMessage } from '@/lib/responsive-audit'
+import { generateUI, resolveImagePlaceholders, extractDesignPaletteHint } from '@/lib/gemini'
 import fs from 'fs'
 import path from 'path'
 
@@ -78,7 +77,7 @@ export async function POST(req: NextRequest) {
 
       const { html: rawHtml, variantDescription } = await generateUI({
         ...normalizedParams,
-        criticalReview: isDraft ? false : normalizedParams.criticalReview,
+        criticalReview: false,
         onStep: (label: string) => emit('step', { label }),
         onHtmlChunk: (partialHtml: string) => emit('html_chunk', { html: partialHtml }),
       }, apiKey)
@@ -94,35 +93,17 @@ export async function POST(req: NextRequest) {
         ],
       })
 
-      let auditedRawHtml = rawHtml
-      const auditOptions = { requireLogo: Boolean(normalizedParams.logoDataUrl) }
-      if (!isDraft) {
-        emit('step', { label: '반응형 레이아웃 검수 중...' })
-        let responsiveIssues = await auditResponsiveHtml(browser, auditedRawHtml, auditOptions)
-        for (let repairAttempt = 1; repairAttempt <= 2 && responsiveIssues.length > 0; repairAttempt += 1) {
-          emit('step', { label: repairAttempt === 1 ? '반응형 레이아웃 수정 중...' : '반응형 레이아웃 재수정 중...' })
-          const repairMessage = buildResponsiveRepairMessage(responsiveIssues, repairAttempt)
-          try {
-            auditedRawHtml = await refineUI(auditedRawHtml, repairMessage, normalizedParams.brief, normalizedParams.designMd, apiKey, normalizedParams.logoDataUrl, normalizedParams.domain)
-            responsiveIssues = await auditResponsiveHtml(browser, auditedRawHtml, auditOptions)
-          } catch (err) {
-            console.warn('[generate] responsive repair skipped:', err instanceof Error ? err.message : String(err))
-            break
-          }
-        }
-      } else {
-        emit('step', { label: '빠른 초안 모드로 검수 단계를 줄이는 중...' })
-      }
+      emit('step', { label: '구조 보정 후 바로 이미지 처리 중...' })
 
       emit('step', { label: '이미지 생성 중...' })
-      const has3dPlaceholder = /%%(?:SCENE_3D|HERO_3D|SHARED_HERO_3D_SCENE|SHARED_HERO_3D|HERO_SCENE_3D|MASCOT_3D|REWARD_OBJECT_3D|HERO_3D_IMAGE)/.test(auditedRawHtml)
+      const has3dPlaceholder = /%%(?:SCENE_3D|HERO_3D|SHARED_HERO_3D_SCENE|SHARED_HERO_3D|HERO_SCENE_3D|MASCOT_3D|REWARD_OBJECT_3D|HERO_3D_IMAGE)/.test(rawHtml)
       // brief는 절대 이미지 프롬프트 fallback으로 쓰지 않는다.
       // brief 전체가 넘어가면 수백 글자짜리 기획서가 Gemini 이미지 API에 전달되어 엉뚱한 이미지가 생성된다.
       const heroPrompt = normalizedParams.sharedVisualMode === '3d'
         ? (normalizedParams.sharedVisualSubject || normalizedParams.heroSubject || normalizedParams.heroImagePrompt || undefined)
         : (normalizedParams.heroSubject || normalizedParams.heroImagePrompt || undefined)
       const imageWarnings: string[] = []
-      const finalHtml = await resolveImagePlaceholders(auditedRawHtml, {
+      const finalHtml = await resolveImagePlaceholders(rawHtml, {
         heroImagePrompt: heroPrompt,
         apiKey,
         unsplashKey,
@@ -135,13 +116,6 @@ export async function POST(req: NextRequest) {
         sceneCardCover: normalizedParams.visualPolicy === 'scene-3d-card-cover',
         onImageEvent: (label: string) => emit('step', { label }),
       })
-      if (!isDraft) {
-        const finalResponsiveIssues = await auditResponsiveHtml(browser, finalHtml, auditOptions)
-        if (finalResponsiveIssues.length > 0) {
-          console.warn('[generate] final responsive audit issues:', finalResponsiveIssues)
-          imageWarnings.push(`최종 이미지 치환 후 반응형 검수 경고: ${finalResponsiveIssues.slice(0, 3).join(' / ')}`)
-        }
-      }
       console.log('[generate] step2: html generated, length=', finalHtml.length)
 
       emit('step', { label: '스크린샷 캡처 중...' })

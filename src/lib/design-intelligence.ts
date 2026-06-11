@@ -1,4 +1,5 @@
 import type { AideGenerationPlan, AppDomain, ServiceAnalysis, VariantVisualPolicy } from './gemini'
+import { assignVariantArchetypes, buildVariantStructures } from './layout-archetypes'
 
 type VariantKey = 'A' | 'B' | 'C'
 
@@ -773,6 +774,15 @@ export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
   ]
   const variantBriefs = variantBriefsFor(input.needsScene3d, serviceSubtype, input.domain, contentInventory)
   const componentHints = getSubtypeComponentHints(serviceSubtype, input.domain)
+  const variantArchetypes = assignVariantArchetypes(input.brief, input.domain)
+  const variantStructures = buildVariantStructures({
+    archetypes: variantArchetypes,
+    visualPolicies,
+    platform: input.platform,
+    domain: input.domain,
+    serviceSubtype,
+    contentInventory,
+  })
 
   return {
     sharedVisualSubject,
@@ -859,6 +869,10 @@ export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
           : undefined),
       // 적응형 전략 (Phase 3-A): 서브타입 매핑 + 도메인 기본 + 답변 기반 조정
       recommendedStrategy: resolveRecommendedStrategy(serviceSubtype, input.domain, input.answers),
+      // 레이아웃 아키타입 배정 — A/B/C가 서로 다른 골격 + 서비스마다 다른 조합 (다양성)
+      variantArchetypes,
+      // HTML 생성 전 구조 IR — chrome/scroll/section/visual/CTA 위치를 먼저 고정한다.
+      variantStructures,
     },
   }
 }

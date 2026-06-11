@@ -4,6 +4,8 @@ import path from 'path';
 import sharp from 'sharp';
 import { type AppDomain, DOMAIN_KEY_TO_LABEL, DOMAIN_HOME_EMPHASIS_OPTIONS, DOMAIN_PRIMARY_JOURNEY_OPTIONS, DOMAIN_FIRST_SCREEN_FOCUS_OPTIONS } from './domain-constants';
 import { getDomainGuidance } from './variant-refs';
+import { archetypeToPrompt } from './layout-archetypes';
+import { sanitizeMaterialSymbols, lintStructure, buildStructureRepairMessage, logStructureRecord } from './structure-lint';
 export type { AppDomain } from './domain-constants';
 export { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY, DOMAIN_HOME_EMPHASIS_OPTIONS, DOMAIN_PRIMARY_JOURNEY_OPTIONS, DOMAIN_FIRST_SCREEN_FOCUS_OPTIONS } from './domain-constants';
 
@@ -519,7 +521,6 @@ export interface GenerateParams {
   sharedVisualSubject?: string;
   visualPolicy?: VariantVisualPolicy;
   generationPlan?: AideGenerationPlan;
-  layoutBlueprint?: LayoutBlueprint;
   domain?: AppDomain;
   criticalReview?: boolean;
   qualityMode?: 'draft' | 'full';
@@ -596,45 +597,10 @@ export interface AideGenerationPlan {
     purpose: string;
   }>;
   recommendedStrategy?: Record<'A' | 'B' | 'C', string>;
-}
-
-export interface LayoutBlueprintSection {
-  id: string;
-  label: string;
-  role: 'nav' | 'hero' | 'kpi' | 'actions' | 'content' | 'list' | 'media' | 'form' | 'tabbar'
-      | 'collection' | 'chart' | 'banner' | 'cta-block';
-  y: number;
-  height: number;
-  columns?: number;
-  density: 'sparse' | 'balanced' | 'dense';
-  children: string[];
-  notes?: string;
-  imageStrategy?: {
-    position: 'top' | 'left' | 'background' | 'right';
-    aspectRatio: '16:9' | '1:1' | '3:4' | '4:3';
-    style: 'photo' | '3d' | 'illustration' | 'icon';
-  };
-}
-
-export interface LayoutBlueprint {
-  variant: 'A' | 'B' | 'C';
-  strategy: string;
-  viewport: { width: number; height: number };
-  navType: 'gnb' | 'lnb' | 'bottom-tab' | 'none';
-  heroType: 'none' | 'image-hero' | '3d-hero' | 'stat-dashboard' | 'search-bar' | 'action-cta';
-  firstViewport: string[];
-  rhythm: {
-    pagePadding: number;
-    sectionGap: number;
-    cardGap: number;
-    cardPadding: number;
-    headerHeight: number;
-    tabbarHeight: number;
-    buttonHeight: number;
-    inputHeight: number;
-  };
-  sections: LayoutBlueprintSection[];
-  auditChecklist: string[];
+  /** 변형별 레이아웃 아키타입 — 구성 다양성의 원천 (A/B/C가 서로 다른 골격) */
+  variantArchetypes?: Record<'A' | 'B' | 'C', import('./layout-archetypes').LayoutArchetype>;
+  /** 변형별 UI 구조 IR — HTML 생성 전 chrome/scroll/section/visual/CTA 위치를 고정 */
+  variantStructures?: Record<'A' | 'B' | 'C', import('./layout-archetypes').UIStructureIR>;
 }
 
 export interface GenerateUIResult {
@@ -1622,163 +1588,6 @@ function extractStyleText(html: string): string {
     .join('\n')
 }
 
-function collectStaticDesignContractIssues(html: string): string[] {
-  const css = extractStyleText(html)
-  if (!css.trim()) return ['CSS <style> block is missing.']
-
-  const issues: string[] = []
-  // frame/bezel/notch 같은 단어를 서비스 UI 클래스명으로 쓸 수도 있으므로
-  // 실제 디바이스 껍데기 구조(배경 #000 + 대형 border-radius 조합)만 감지
-  const deviceShellPatterns = [
-    /\b(?:class|id)=["'][^"']*(?:phone-frame|iphone-frame|device-frame|device-mockup|phone-mockup|bezel-frame)[^"']*["']/i,
-    /(?:phone-frame|iphone-frame|device-frame|device-mockup|phone-mockup|bezel-frame)[\w-]*\s*\{/i,
-    /border-radius\s*:\s*(?:3[6-9]|[4-9]\d)px[^}]{0,180}(?:background|border)\s*:\s*(?:#000|#111|#1c1c1c|black)/i,
-  ]
-  if (deviceShellPatterns.some(pattern => pattern.test(html))) {
-    issues.push('Device mockup shell detected. Generated HTML must be the app/web screen itself, without phone frames, bezels, notches, status bars, home indicators, or hardware wrappers.')
-  }
-
-  const mediaMinWidthCount = (css.match(/@media\s*[^{]*min-width/gi) ?? []).length
-  const hasDesktopBreakpoint = /@media\s*[^{]*min-width\s*:\s*(?:768|900|960|1024|1200|1280)px/i.test(css)
-  const hasMobileOnlyNav = /\.(?:mobile-(?:nav|tabbar|tab-bar)|bottom-(?:nav|tabbar)|tabbar|tab-bar)\b|class\*=["'](?:bottom-nav|tabbar|tab-bar)/i.test(css)
-  const hidesMobileNavOnWideViewport = /@media\s*[^{]*min-width[\s\S]{0,1800}(?:mobile-(?:nav|tabbar|tab-bar)|bottom-(?:nav|tabbar)|tabbar|tab-bar)[\s\S]{0,420}display\s*:\s*none/i.test(css)
-  const narrowRootShell = /(?:\.|#)?(?:app|page|shell|wrapper|container|screen|root)[^{]{0,80}\{[^}]{0,500}(?:width|max-width)\s*:\s*(?:3[2-9]\d|4\d\d|5[0-2]\d)px/i.test(css)
-  const hasWideViewportExpansion = /@media\s*[^{]*min-width[\s\S]{0,1800}(?:grid-template-columns|display\s*:\s*grid|\.desktop-|desktop-nav|margin-left|aside|sidebar|max-width\s*:\s*(?:none|100%|12\d\dpx|14\d\dpx)|width\s*:\s*100%)/i.test(css)
-
-  if (mediaMinWidthCount < 2 || !hasDesktopBreakpoint || (hasMobileOnlyNav && !hidesMobileNavOnWideViewport) || (narrowRootShell && !hasWideViewportExpansion)) {
-    const details = [
-      mediaMinWidthCount < 2 ? `only ${mediaMinWidthCount} min-width @media rule(s)` : null,
-      !hasDesktopBreakpoint ? 'no tablet/desktop breakpoint at 768px+ detected' : null,
-      hasMobileOnlyNav && !hidesMobileNavOnWideViewport ? 'mobile/bottom tab navigation is not hidden or replaced on wide viewport' : null,
-      narrowRootShell && !hasWideViewportExpansion ? 'root shell appears fixed to mobile width without desktop expansion' : null,
-    ].filter(Boolean).join('; ')
-    issues.push(`Responsive layout contract failed: ${details}. HTML must visibly switch between mobile, tablet, and desktop layouts in the iframe.`)
-  }
-
-  const requiredVars = [
-    '--aide-page-padding',
-    '--aide-section-gap',
-    '--aide-card-padding',
-    '--aide-card-gap',
-    '--aide-card-radius',
-    '--aide-item-gap',
-  ]
-  const missingVars = requiredVars.filter(name => !css.includes(name))
-  if (missingVars.length > 0) {
-    issues.push(`Missing semantic rhythm variables in :root: ${missingVars.join(', ')}. These must be declared and used throughout all padding/gap/border-radius properties.`)
-  }
-
-  // Detect hardcoded spacing values that should use contract variables
-  // calc()/clamp()/min()/max() 내부의 px는 의도된 수식이므로 제외
-  const cssWithoutFunctions = css.replace(/(?:calc|clamp|min|max)\([^)]+\)/g, '__fn__')
-  const arbitraryMatches = [...cssWithoutFunctions.matchAll(/(^|[;\n]\s*)(padding|margin|gap|row-gap|column-gap)\s*:\s*([^;{}]+);/g)]
-  const arbitraryValues = arbitraryMatches
-    .map(match => ({ prop: match[2], value: match[3].trim() }))
-    .filter(({ value }) =>
-      !value.includes('var(--aide-') &&
-      !value.includes('var(--spacing-') &&
-      !value.includes('var(--rounded-') &&
-      !/^(0|0px|auto|100%|none|inherit|unset|fit-content|initial)$/.test(value) &&
-      /\d+px/.test(value)
-    )
-
-  if (arbitraryValues.length > 5) {
-    const samples = arbitraryValues
-      .slice(0, 6)
-      .map(item => `${item.prop}: ${item.value}`)
-      .join('; ')
-    issues.push(`Too many hardcoded px values in padding/margin/gap instead of contract variables (${arbitraryValues.length}). Use var(--aide-card-padding), var(--aide-section-gap), var(--aide-item-gap) etc. Samples: ${samples}.`)
-  }
-
-  const cardRadiusValues = [...css.matchAll(/(?:\.|-)card[^{]*\{[^}]*border-radius\s*:\s*([^;{}]+);/gi)]
-    .map(match => match[1].trim())
-    .filter(Boolean)
-  const uniqueCardRadius = new Set(cardRadiusValues)
-  if (uniqueCardRadius.size > 2) {
-    issues.push(`Card radius is inconsistent across card-like selectors: ${[...uniqueCardRadius].slice(0, 5).join(', ')}.`)
-  }
-
-  // Detect overuse of large spacing tokens in margin/padding (section-level spacing should use parent flex gap)
-  const largeSpacingTokens = ['var(--spacing-3xl)', 'var(--spacing-4xl)', 'var(--spacing-5xl)', 'var(--spacing-6xl)', 'var(--spacing-section)']
-  const largeSpacingMatches = [...css.matchAll(/(^|[;\n]\s*)(margin|padding)(-top|-bottom|-left|-right)?\s*:\s*([^;{}]+);/gi)]
-    .filter(m => largeSpacingTokens.some(tok => m[4]?.includes(tok)))
-    .map(m => `${m[2]}${m[3] ?? ''}: ${m[4]?.trim()}`)
-  if (largeSpacingMatches.length > 0) {
-    issues.push(`Large spacing tokens used directly in margin/padding instead of parent flex gap (${largeSpacingMatches.length} instance${largeSpacingMatches.length > 1 ? 's' : ''}). Use .aide-page flex gap instead. Examples: ${largeSpacingMatches.slice(0, 3).join('; ')}.`)
-  }
-
-  // Detect sections/aide-section with direct margin-top/bottom that override parent flex gap
-  const sectionMarginMatches = [...css.matchAll(/(?:section|\.aide-section)[^{]*\{([^}]*)\}/gi)]
-    .flatMap(m => {
-      const body = m[1]
-      return [...body.matchAll(/(margin-top|margin-bottom|padding-top|padding-bottom)\s*:\s*([^;]+);/gi)]
-        .filter(p => !/^(0|0px|auto|inherit|unset|initial)$/.test(p[2].trim()))
-        .map(p => `${p[1]}: ${p[2].trim()}`)
-    })
-  if (sectionMarginMatches.length > 0) {
-    issues.push(`Section elements have direct margin/padding-top/bottom values that fight parent flex gap. Remove them and rely on aide-page gap only. Found: ${sectionMarginMatches.slice(0, 3).join('; ')}.`)
-  }
-
-  // HERO_3D 이미지가 object-fit:cover로 생성되면 투명 배경이 배경색으로 채워짐
-  if (html.includes('%%HERO_3D:') || html.includes('HERO_3D')) {
-    const heroImgBlocks = [...html.matchAll(/<img[^>]*%%HERO_3D[^>]*>/gi)]
-    const hasWrongFit = heroImgBlocks.some(m => /object-fit\s*:\s*cover/i.test(m[0]))
-    if (hasWrongFit) {
-      issues.push('HERO_3D image has object-fit:cover which clips the transparent background object. Use object-fit:contain instead.')
-    }
-  }
-
-  return issues
-}
-
-async function enforceStaticDesignContract(
-  html: string,
-  params: {
-    brief: string
-    designMd: string
-    apiKey?: string
-    logoDataUrl?: string | null
-    domain?: AppDomain
-    hasBrandColors?: boolean
-  },
-): Promise<{ html: string; refined: boolean; issues: string[] }> {
-  let nextHtml = injectDesignContractStyle(html, params.designMd, params.hasBrandColors)
-  const issues = collectStaticDesignContractIssues(nextHtml)
-  const shouldRefine = issues.length > 0 && issues.some(issue =>
-    issue.includes('Too many hardcoded') ||
-    issue.includes('Card radius') ||
-    issue.includes('Missing semantic') ||
-    issue.includes('Device mockup shell') ||
-    issue.includes('Responsive layout contract') ||
-    issue.includes('Section elements have direct margin')
-  )
-
-  if (!shouldRefine) return { html: nextHtml, refined: false, issues }
-
-  const message = `생성된 HTML/CSS가 선택된 DESIGN.md의 rhythm contract에서 벗어났습니다. 아래 정적 검사 이슈를 고치세요:
-${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
-
-수정 기준:
-- :root의 --aide-page-padding / --aide-section-gap / --aide-card-padding / --aide-card-gap / --aide-card-radius / --aide-button-height / --aide-input-height 변수를 유지하고 실제 섹션·카드·버튼·인풋에 재사용하세요.
-- 동일 컴포넌트 타입은 같은 padding, gap, radius, border/shadow 정책을 사용하세요.
-- DESIGN.md에 없는 새로운 spacing scale, radius scale, shadow, hex color를 만들지 마세요.
-- 폰/태블릿 목업, 베젤, 노치, 상태바, 홈 인디케이터, 하드웨어 wrapper를 전부 제거하세요. HTML은 기기 안에 들어가는 화면이 아니라 화면 그 자체여야 합니다.
-- 모바일/태블릿/데스크탑 반응형을 실제 CSS로 구현하세요. 최소 2개 이상의 min-width @media를 작성하고, 768px 이상에서는 모바일 하단 탭바를 숨기거나 상단/좌측 내비로 대체하며, 1024px 이상에서는 2~4컬럼 또는 사이드바/넓은 콘텐츠 영역으로 확장하세요.
-- 최상위 shell/container를 390~520px 폭으로만 고정하지 마세요. 모바일에서는 100%, 태블릿/데스크탑에서는 grid/flex/minmax/clamp로 확장해야 합니다.
-- 이미지 src, 3D placeholder, Unsplash placeholder, 데이터 URL, 텍스트 콘텐츠, 화면 구조는 유지하세요.
-- 시각 완성도는 유지하되 간격/정렬/카드 리듬만 계약에 맞게 정리하세요.`
-
-  try {
-    nextHtml = await refineUI(nextHtml, message, params.brief, params.designMd, params.apiKey, params.logoDataUrl, params.domain)
-    nextHtml = injectDesignContractStyle(nextHtml, params.designMd, params.hasBrandColors)
-    return { html: nextHtml, refined: true, issues }
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error)
-    console.warn('[gemini] static design contract refine skipped:', msg)
-    return { html: nextHtml, refined: false, issues }
-  }
-}
-
 function buildReverseTokenMap(tokens: DesignTokenMap, prefix: string): Map<string, string> {
   const result = new Map<string, string>()
   const seen = new Map<string, string>()
@@ -1971,20 +1780,16 @@ function injectMaterialSymbolsFont(html: string): string {
   return MATERIAL_SYMBOLS_CSS + '\n' + html
 }
 
-function injectLayoutEssentialsGuard(html: string, blueprint?: LayoutBlueprint): string {
+function injectLayoutEssentialsGuard(html: string): string {
   // aide.md 셸 클래스를 쓰면 blueprint가 없어도 셸 강제를 적용한다 (draft 포함).
   // 랜딩/문서형처럼 셸이 없는 HTML은 body 스크롤을 방해하지 않도록 강제를 건너뛴다.
   const usesAppShell = /class=["'][^"']*\b(?:app-shell|scroll-body|aide-page|mobile-shell|page-shell|home-screen)\b/.test(html)
-  if (!blueprint && !usesAppShell) return html
-  // blueprint가 없을 땐 aide.md 기본 모바일 셸(상단 고정 + 하단 탭)을 가정한다.
-  const hasTopNav = blueprint ? (blueprint.navType === 'gnb' || blueprint.sections.some(section => section.role === 'nav')) : true
-  const hasBottomTab = blueprint ? (blueprint.navType === 'bottom-tab' || blueprint.sections.some(section => section.role === 'tabbar')) : true
-  const hasLnb = blueprint ? blueprint.navType === 'lnb' : false
+  if (!usesAppShell) return html
   const css = `<style data-aide-layout-essentials="1">
 html, body { min-height:100%; }
 body { overflow:hidden !important; }
 .app-shell,[data-layout-variant],.app,.screen,.phone-screen,.mobile-shell,.page-shell,.home-screen { min-height:100dvh; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
-.content-scroll,.page-scroll,.aide-page,.scroll-body,main[data-blueprint-scroll="content"],main,.main-content,.content,.scroll-content {
+.content-scroll,.page-scroll,.aide-page,.scroll-body,main,.main-content,.content,.scroll-content {
   flex:1 1 auto;
   min-height:0;
   overflow-y:auto !important;
@@ -2000,48 +1805,32 @@ body { overflow:hidden !important; }
 .aide-visual-stage,.hero-visual,.scene-visual,.mascot-stage,.reward-stage {
   isolation:isolate;
 }
-${hasTopNav && !hasLnb ? `
-.app-header,.global-nav[data-blueprint-role="nav"],header[data-blueprint-role="nav"],[data-blueprint-section][data-blueprint-role="nav"] {
+.app-header,.global-nav,.top-navigation,header {
   position:sticky !important;
   top:0 !important;
   z-index:80 !important;
   flex:0 0 auto !important;
-}` : ''}
-${hasLnb ? `
-.app-lnb,.global-nav[data-blueprint-role="nav"],aside[data-blueprint-role="nav"] {
-  position:fixed !important;
-  left:0 !important;
-  top:0 !important;
-  bottom:0 !important;
-  z-index:80 !important;
 }
-.app-shell,[data-layout-variant] { padding-left:240px; }` : ''}
-${hasBottomTab ? `
-.mobile-tabbar,[data-blueprint-role="tabbar"] {
+.mobile-tabbar,.bottom-tabbar,.bottom-navigation {
   position:fixed !important;
   left:0 !important;
   right:0 !important;
   bottom:0 !important;
   z-index:80 !important;
 }
-.content-scroll,.page-scroll,.aide-page,main[data-blueprint-scroll="content"],main,.main-content,.content,.scroll-content {
+.content-scroll,.page-scroll,.aide-page,main,.main-content,.content,.scroll-content {
   padding-bottom:calc(var(--aide-tabbar-height,72px) + env(safe-area-inset-bottom) + var(--aide-section-gap,20px)) !important;
-}` : ''}
+}
 </style>`
   const cleaned = html.replace(/<style\b[^>]*data-aide-layout-essentials=["'][^"']*["'][^>]*>[\s\S]*?<\/style>/gi, '')
   if (/<\/head>/i.test(cleaned)) return cleaned.replace(/<\/head>/i, `${css}\n</head>`)
   return css + cleaned
 }
 
-function escapeRegexLiteral(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 function ensureRequiredVariantVisuals(html: string, options: {
   variantStyle?: string
   sharedVisualSubject?: string
   heroImagePrompt?: string
-  layoutBlueprint?: LayoutBlueprint
   visualPolicy?: VariantVisualPolicy
 }): string {
   const variant = getVariantLabel(options.variantStyle)
@@ -2079,14 +1868,6 @@ function ensureRequiredVariantVisuals(html: string, options: {
     : `<div class="aide-visual-stage aide-generated-3d-stage" data-aide-required-visual="creon-object-3d" style="position:relative;overflow:hidden;min-height:200px;">
   <img class="aide-hero-3d aide-3d-asset" src="${requiredPlaceholder}" alt="" style="position:absolute;right:-6%;bottom:-10%;width:clamp(200px,56%,320px);height:130%;object-fit:contain;display:block;" />
 </div>`
-
-  const heroSectionId = options.layoutBlueprint?.sections.find(section => section.role === 'hero')?.id
-  if (heroSectionId) {
-    const heroSectionPattern = new RegExp(`(<section\\b(?=[^>]*data-blueprint-section=(["'])${escapeRegexLiteral(heroSectionId)}\\2)[^>]*>)`, 'i')
-    if (heroSectionPattern.test(html)) {
-      return html.replace(heroSectionPattern, `$1\n${visualHtml}`)
-    }
-  }
 
   const heroClassPattern = /(<(?:section|div)\b(?=[^>]*class=(["'])[^"']*(?:hero|visual|main-card|top-card)[^"']*\2)[^>]*>)/i
   if (heroClassPattern.test(html)) return html.replace(heroClassPattern, `$1\n${visualHtml}`)
@@ -2774,109 +2555,6 @@ export async function generateHeroImage(
   }
 }
 
-export async function critiqueUI(
-  html: string,
-  brief: string,
-  domain?: AppDomain,
-  apiKey?: string,
-  variantStyle?: string
-): Promise<string> {
-  const TINY_GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
-  const safeHtml = html.replace(/data:[^;]+;base64,[A-Za-z0-9+/]+=*/g, TINY_GIF)
-  const domainHint = domain
-    ? `\n도메인 벤치마크: ${getDomainGuidance(domain).split('\n')[0]}`
-    : ''
-
-  const variantLabel = variantStyle?.includes('시안 A') ? 'A (정밀 정보형)'
-    : variantStyle?.includes('시안 B') ? 'B (임팩트 히어로형)'
-    : variantStyle?.includes('시안 C') ? 'C (감성 브랜드형)'
-    : null
-
-  const variantCriteria = variantLabel?.includes('A') ? `
-## 시안 A 전용 추가 기준
-- A1. 데이터, 목록, 상태, 비교 정보가 중심을 이루는가?
-- A2. 정보가 정렬/필터/그룹핑되어 빠르게 스캔되는가?
-- A3. 스타일 장식보다 업무적 명료성이 우선되는가?
-- A4. 차트가 있다면 디자인 시스템 토큰으로 정돈되어 있는가?` : variantLabel?.includes('B') ? `
-## 시안 B 전용 추가 기준
-- B1. 대표 메시지와 주요 CTA가 첫 화면에서 가장 명확한가?
-- B2. 전환에 필요한 가격/혜택/상태/다음 행동이 빠짐없이 보이는가?
-- B3. 3D/이미지를 쓰는 경우 DESIGN.md의 카드/서피스 규칙 안에서 배치했는가?
-- B4. A/C와 달리 행동 유도가 가장 강한 구조인가?` : variantLabel?.includes('C') ? `
-## 시안 C 전용 추가 기준
-- C1. 추천, 카테고리, 이미지, 스토리 등 탐색 요소가 풍부한가?
-- C2. 서비스의 분위기와 맥락이 텍스트와 콘텐츠 구성으로 드러나는가?
-- C3. 카드/이미지/섹션 스타일이 DESIGN.md 규칙을 유지하는가?
-- C4. A/B와 달리 브랜드 탐색 경험이 가장 강한 구조인가?` : ''
-
-  const prompt = `당신은 디자인 시스템 준수 여부를 검수하는 시니어 프로덕트 디자이너입니다.
-아래 UI HTML이 선택된 디자인 시스템의 토큰과 컴포넌트 규칙을 일관되게 쓰는지, 그리고 서비스 화면으로 충분히 완성되어 있는지 평가하세요.${variantLabel ? `\n\n이 시안은 **${variantLabel}** 방향입니다.` : ''}
-
-## 기획서 요약
-${brief.slice(0, 800)}
-${domainHint}
-
-## 평가 대상 HTML
-\`\`\`html
-${safeHtml.slice(0, 18000)}
-\`\`\`
-
-## 공통 평가 기준 (각 항목 통과/실패 판정)
-1. **디자인 시스템 준수**: 색상, 타이포그래피, spacing, radius, shadow, border가 CSS 변수와 DESIGN.md 토큰 중심으로 적용되었는가?
-2. **컴포넌트 일관성**: 버튼, 카드, 입력, 리스트, 내비게이션이 같은 디자인 시스템의 컴포넌트처럼 보이는가?
-3. **서비스 완성도**: 실제 서비스 화면처럼 핵심 정보, 메타 정보, 상태, CTA가 충분히 들어갔는가?
-4. **시안 차별성**: 이 시안의 방향(A 정보형 / B 전환형 / C 탐색형)이 레이아웃과 정보 구조로 드러나는가?
-5. **반응형 안정성**: 모바일/웹 플랫폼에 맞는 내비게이션과 레이아웃이 적용되었는가?
-6. **금지 사항**: 디자인 시스템에 없는 임의 hex, 임의 shadow, 임의 radius, 과한 그라데이션이 스타일을 덮어쓰지 않았는가?
-7. **CTA 명확도**: 주요 CTA가 디자인 시스템의 action 스타일로 명확히 보이는가?
-8. **아트 디렉션**: 첫 화면에 하나의 focal point가 있고, 핵심 요약/주요 행동/보조 탐색의 3영역이 명확한가?
-9. **시각 리듬**: 같은 성격의 카드/행/섹션이 같은 크기·간격·정렬·정보 순서를 유지하는가?
-10. **콘텐츠 구체성**: 모든 섹션이 실제 서비스 데이터처럼 구체적 텍스트, 수치, 상태, 가격/시간/평점/담당자/진행률 등을 담고 있는가?
-
-## 즉시 실패 처리할 레이아웃 결함
-- 첫 화면에 focal point가 없고 비슷한 카드/칩만 나열된 경우
-- 핵심 요약, 주요 행동, 보조 탐색 중 2개 이상이 빠진 경우
-- A/B/C 시안이 같은 레이아웃 순서를 반복하고 차이가 색상/문구 수준에 그친 경우
-- 한글이 세로로 한 글자씩 떨어져 보이거나 writing-mode/좁은 column 때문에 문장이 깨진 경우
-- 첫 화면의 절반 이상이 빈 흰 영역 또는 빈 카드로 남아 있는 경우
-- 음식/배달/커머스 화면인데 메뉴 이미지 대신 산, 바다, 노트북 같은 무관한 이미지가 들어간 경우
-- 3D 히어로 이미지가 메인 히어로 외 카드/리스트/썸네일 영역에 반복 사용된 경우
-- 3D 히어로 이미지를 투명 PNG가 아닌 배경 있는 이미지처럼 다루어 카드보드 컷아웃처럼 보이는 경우
-- 3D 이미지 배경을 CSS filter, mix-blend-mode, canvas chroma key 등으로 제거하려는 코드가 포함된 경우
-- "star", "home" 같은 영어 placeholder 텍스트가 사용자에게 그대로 노출된 경우
-- emoji로 아이콘을 대신하거나, 같은 아이콘/이미지가 의미 없이 반복되는 경우
-- 하단 내비게이션이나 CTA가 콘텐츠를 가리거나 화면 밖으로 밀린 경우
-
-위 결함 중 하나라도 있으면 score는 최대 60점, verdict는 반드시 "needs_refinement"로 판정한다.
-${variantCriteria}
-
-## 출력 형식 (반드시 JSON)
-\`\`\`json
-{
-  "score": 0~100,
-  "verdict": "pass" | "needs_refinement",
-  "topIssues": [
-    "구체적 문제 1 (어떤 부분이 어떻게 부족한지)",
-    "구체적 문제 2",
-    "구체적 문제 3"
-  ],
-  "improvements": [
-    "구체적 개선 지시 1 (어떤 요소를 어떻게 바꿔야 하는지, CSS 값 포함)",
-    "구체적 개선 지시 2",
-    "구체적 개선 지시 3"
-  ]
-}
-\`\`\`
-
-- 78점 미만 = needs_refinement
-- topIssues와 improvements는 가장 임팩트 큰 3가지만
-- 추상적 표현 금지 (예: "더 예쁘게" X → "DESIGN.md의 headline 토큰으로 핵심 메시지 계층을 강화" O)
-- 응답은 JSON 코드블록만, 다른 설명 없이.`
-
-  const text = await generatePro(prompt, apiKey, 'gemini-3.5-flash')
-  return text.trim()
-}
-
 function buildQualityRules(heroImagePrompt?: string, domain?: AppDomain): string {
   const domainBlock = domain
     ? `\n## 🎯 도메인 패턴 (이 도메인에 반드시 적용)\n${getDomainGuidance(domain)}\n`
@@ -2889,7 +2567,7 @@ ${domainBlock}
    - 색상, 타이포그래피, 간격, 라운드, 카드, 입력, 버튼, 그림자, 내비게이션은 반드시 [디자인 시스템]에 정의된 토큰과 규칙을 따른다.
    - DESIGN.md에 없는 임의의 hex, px, shadow, radius를 새로 만들지 않는다. 필요한 경우 가장 가까운 토큰을 선택한다.
    - 시각적 완성도는 높이되, 선택한 디자인 시스템의 정체성을 바꾸는 장식(과한 그라데이션, 임의 shadow, 임의 pill, 임의 컬러)을 추가하지 않는다.
-   - 동일한 기획서라도 ktds.md를 선택하면 KTDS처럼, notion.md를 선택하면 Notion처럼, shopify.md를 선택하면 Shopify처럼 보여야 한다.
+   - 동일한 기획서라도 선택한 DESIGN.md에 따라 해당 디자인 시스템처럼 보여야 한다. 기본값이면 Aide처럼, ktds.md를 선택하면 KTDS처럼, 다른 md를 선택하면 그 md의 토큰과 컴포넌트 규칙처럼 보여야 한다.
 
    **시각 계층 체크리스트:**
    - [ ] 선택한 DESIGN.md의 색상/타입/간격/컴포넌트 규칙이 화면 전체에 일관되게 적용되는가?
@@ -2908,7 +2586,7 @@ ${domainBlock}
 
 4. **Composition Quality Layer — 허접한 시안 방지 (CRITICAL)**
    - 디자인 시스템은 절대 변경하지 말고, 그 안에서 화면의 완성도를 높인다.
-   - UI를 만들기 전에 확정된 productBrief, firstViewportContract, layoutSkeleton을 반드시 구현한다. 이 계약을 무시하고 예쁜 카드 몇 개만 만들면 실패다.
+   - UI를 만들기 전에 확정된 productBrief, firstViewportContract, variantArchetype을 반드시 구현한다. 이 계약을 무시하고 예쁜 카드 몇 개만 만들면 실패다.
    - 첫 화면에는 명확한 focal point를 하나 만든다. 사용자가 처음 보는 순간 무엇을 해야 하는지 보여야 한다.
    - 주요 CTA는 한 화면에서 가장 빠르게 발견되어야 한다.
    - 카드들은 같은 크기, 같은 간격, 같은 정렬 리듬을 가진다. 같은 성격의 카드가 제각각 흔들리면 실패다.
@@ -3818,578 +3496,8 @@ JSON 코드블록만 출력하세요.`
   }
 }
 
-async function generateLayoutSkeleton(args: {
-  brief: string
-  designContract: DesignRhythmContract | null
-  platform: string
-  apiKey?: string
-}): Promise<string> {
-  if (!args.designContract) return ''
-  const { colors, spacing, rounded } = args.designContract
-  const rootLines = [
-    ':root {',
-    ...Object.entries(colors).map(([k, v]) => `  --color-${k}: ${v};`),
-    ...Object.entries(spacing).map(([k, v]) => `  --spacing-${k}: ${v};`),
-    ...Object.entries(rounded).map(([k, v]) => `  --rounded-${k}: ${v};`),
-    '}',
-  ]
-  const rootBlock = rootLines.join('\n')
-  const prompt = `당신은 시니어 프로덕트 디자이너입니다. 아래 기획서를 보고 레이아웃 뼈대를 결정하세요.
-
-## 기준 플랫폼: ${args.platform}
-## 기획서 요약: ${args.brief.slice(0, 800)}
-
-아래 형식을 \`\`\`skeleton 코드블록으로 출력하세요.
-SECTIONS 순서, NAV_TYPE/HERO_TYPE, 첫 화면 구성, 미디어 통합 방식을 결정하고, :root 블록은 수정 없이 그대로 포함하세요.
-
-\`\`\`skeleton
-SECTIONS: nav-header, hero, [섹션명], [섹션명], ..., [bottom-nav|없음]
-NAV_TYPE: gnb | lnb | bottom-tab | none
-HERO_TYPE: image-hero | stat-dashboard | action-cta | search-bar | none
-FIRST_VIEWPORT: [첫 화면에서 서비스 목적 판단에 반드시 필요한 콘텐츠와 행동]
-CONTENT_DENSITY: sparse-premium | balanced | dense-dashboard
-MEDIA_INTEGRATION: no-media | contained-object | anchored-mascot | cropped-hero-scene | content-thumbnail-grid
-CARD_RHYTHM: outer padding, section gap, card padding, item gap은 :root의 aide/design token 변수만 사용
-${rootBlock}
-\`\`\`
-
-형식 그대로만 출력하세요.`
-  try {
-    const raw = await generatePro(prompt, args.apiKey, 'gemini-3.5-flash')
-    const match = raw.match(/```skeleton\n?([\s\S]*?)```/)
-    if (match) return match[1].trim()
-    const rootMatch = raw.match(/:root\s*\{[\s\S]*?\}/)
-    return rootMatch ? `SECTIONS: (auto)\nNAV_TYPE: auto\nHERO_TYPE: auto\n${rootMatch[0]}` : ''
-  } catch {
-    return ''
-  }
-}
-
-const BLUEPRINT_VARIANTS = ['A', 'B', 'C'] as const
-
-function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
-  const n = typeof value === 'number' && Number.isFinite(value) ? value : Number(value)
-  if (!Number.isFinite(n)) return fallback
-  return Math.max(min, Math.min(max, Math.round(n)))
-}
-
-function normalizeLayoutBlueprint(raw: Partial<LayoutBlueprint>, variant: LayoutBlueprint['variant'], platform: PlatformType): LayoutBlueprint {
-  const isWeb = platform === 'web'
-  const viewport = { width: isWeb ? 1440 : 390, height: isWeb ? 900 : 844 }
-  const fallbackSections: LayoutBlueprintSection[] = [
-    { id: 'nav', label: isWeb ? '상단 내비게이션' : '앱 헤더', role: 'nav', y: 0, height: isWeb ? 72 : 56, density: 'balanced', children: ['brand', 'primary action'] },
-    { id: 'hero', label: variant === 'A' ? '핵심 요약' : variant === 'B' ? '3D 히어로' : '실사 히어로', role: 'hero', y: isWeb ? 96 : 72, height: variant === 'A' ? 156 : 196, density: 'balanced', children: ['headline', 'summary', 'cta'] },
-    { id: 'quick-actions', label: '빠른 실행', role: 'actions', y: isWeb ? 276 : 292, height: 88, columns: 4, density: 'dense', children: ['action 1', 'action 2', 'action 3', 'action 4'] },
-    { id: 'content-list', label: '주요 콘텐츠', role: 'list', y: isWeb ? 388 : 404, height: 260, density: 'balanced', children: ['item title', 'metadata', 'secondary action'] },
-  ]
-  const sections = Array.isArray(raw.sections) && raw.sections.length
-    ? raw.sections.slice(0, 8).map((section, index) => {
-      const fallback = fallbackSections[index] ?? fallbackSections[fallbackSections.length - 1]
-      const role = ['nav', 'hero', 'kpi', 'actions', 'content', 'list', 'media', 'form', 'tabbar',
-        'collection', 'chart', 'banner', 'cta-block'].includes(String(section.role))
-        ? section.role as LayoutBlueprintSection['role']
-        : fallback.role
-      const density = ['sparse', 'balanced', 'dense'].includes(String(section.density))
-        ? section.density as LayoutBlueprintSection['density']
-        : fallback.density
-      return {
-        id: String(section.id || fallback.id || `section-${index + 1}`).replace(/\s+/g, '-').toLowerCase(),
-        label: String(section.label || fallback.label || `섹션 ${index + 1}`),
-        role,
-        y: clampNumber(section.y, 0, viewport.height + 400, fallback.y),
-        height: clampNumber(section.height, 40, isWeb ? 520 : 360, fallback.height),
-        columns: section.columns ? clampNumber(section.columns, 1, 6, fallback.columns ?? 1) : fallback.columns,
-        density,
-        children: Array.isArray(section.children) && section.children.length
-          ? section.children.slice(0, 8).map(child => String(child))
-          : fallback.children,
-        notes: section.notes ? String(section.notes).slice(0, 160) : undefined,
-        imageStrategy: section.imageStrategy && typeof section.imageStrategy === 'object' ? {
-          position: (['top', 'left', 'background', 'right'] as const).includes((section.imageStrategy as LayoutBlueprintSection['imageStrategy'])?.position as never)
-            ? (section.imageStrategy as LayoutBlueprintSection['imageStrategy'])!.position : 'top',
-          aspectRatio: (['16:9', '1:1', '3:4', '4:3'] as const).includes((section.imageStrategy as LayoutBlueprintSection['imageStrategy'])?.aspectRatio as never)
-            ? (section.imageStrategy as LayoutBlueprintSection['imageStrategy'])!.aspectRatio : '16:9',
-          style: (['photo', '3d', 'illustration', 'icon'] as const).includes((section.imageStrategy as LayoutBlueprintSection['imageStrategy'])?.style as never)
-            ? (section.imageStrategy as LayoutBlueprintSection['imageStrategy'])!.style : 'photo',
-        } : undefined,
-      }
-    })
-    : fallbackSections
-  const rhythm = {
-    pagePadding: clampNumber(raw.rhythm?.pagePadding, 12, 64, isWeb ? 40 : 16),
-    sectionGap: clampNumber(raw.rhythm?.sectionGap, 12, 48, 20),
-    cardGap: clampNumber(raw.rhythm?.cardGap, 8, 32, 12),
-    cardPadding: clampNumber(raw.rhythm?.cardPadding, 12, 32, 20),
-    // These are populated from design.md in generateLayoutBlueprints — defaults until then
-    headerHeight: (raw.rhythm as LayoutBlueprint['rhythm'])?.headerHeight ?? 56,
-    tabbarHeight: (raw.rhythm as LayoutBlueprint['rhythm'])?.tabbarHeight ?? 72,
-    buttonHeight: (raw.rhythm as LayoutBlueprint['rhythm'])?.buttonHeight ?? 48,
-    inputHeight: (raw.rhythm as LayoutBlueprint['rhythm'])?.inputHeight ?? 52,
-  }
-  let cursorY = 0
-  const compactSections = [...sections].sort((a, b) => a.y - b.y).map((section, index) => {
-    const maxGap = isWeb ? 56 : 28
-    const minGap = index === 0 ? 0 : Math.min(rhythm.sectionGap, isWeb ? 32 : 20)
-    const proposedGap = Math.max(0, section.y - cursorY)
-    const y = index === 0
-      ? Math.max(0, Math.min(section.y, rhythm.pagePadding))
-      : cursorY + Math.max(minGap, Math.min(maxGap, proposedGap || minGap))
-    const maxHeight = section.role === 'hero' || section.role === 'media'
-      ? (isWeb ? 360 : 240)
-      : (isWeb ? 260 : 180)
-    const height = clampNumber(section.height, 44, maxHeight, section.height)
-    cursorY = y + height
-    return { ...section, y, height }
-  })
-
-  return {
-    variant,
-    strategy: String(raw.strategy || (variant === 'A' ? '정보 밀도형' : variant === 'B' ? '3D 전환형' : '실사 탐색형')),
-    viewport, // always use platform-derived viewport, never trust AI's value
-    navType: ['gnb', 'lnb', 'bottom-tab', 'none'].includes(String(raw.navType))
-      ? raw.navType as LayoutBlueprint['navType']
-      : isWeb ? 'gnb' : 'bottom-tab',
-    heroType: ['none', 'image-hero', '3d-hero', 'stat-dashboard', 'search-bar', 'action-cta'].includes(String(raw.heroType))
-      ? raw.heroType as LayoutBlueprint['heroType']
-      : variant === 'A' ? 'stat-dashboard' : variant === 'B' ? '3d-hero' : 'image-hero',
-    firstViewport: Array.isArray(raw.firstViewport) && raw.firstViewport.length
-      ? raw.firstViewport.slice(0, 8).map(item => String(item))
-      : ['브랜드/현재 상태', '핵심 요약', 'primary CTA', '빠른 실행', '주요 콘텐츠 힌트'],
-    rhythm,
-    sections: compactSections,
-    auditChecklist: Array.isArray(raw.auditChecklist) && raw.auditChecklist.length
-      ? raw.auditChecklist.slice(0, 8).map(item => String(item))
-      : ['모바일 첫 화면 정보량 충분', '짧은 UI 라벨 한 줄 유지', '내비가 콘텐츠를 가리지 않음', '선택한 디자인 시스템 spacing rhythm 유지'],
-  }
-}
-
-export async function generateLayoutBlueprints(args: {
-  designMd: string
-  brief: string
-  answers: Record<string, string | string[]>
-  projectSummary: string
-  platform?: PlatformType
-  domain?: AppDomain
-  generationPlan?: AideGenerationPlan
-  apiKey?: string
-}): Promise<LayoutBlueprint[]> {
-  const platform = args.platform ?? 'mobile'
-  const isWeb = platform === 'web'
-  const designContract = buildDesignSystemContract(args.designMd, false).slice(0, 5000)
-  const answerLines = Object.entries(args.answers ?? {})
-    .map(([key, value]) => `- ${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
-    .join('\n')
-  // Explicitly extract B2C/B2B to control blueprint style
-  const serviceTypeAnswer = String(args.answers?.['service_type'] ?? '')
-  const isB2C = serviceTypeAnswer.includes('B2C') || (!serviceTypeAnswer.includes('B2B') && args.domain !== 'business' && args.domain !== 'productivity')
-  const isB2B = !isB2C
-
-  // Extract actual design token values BEFORE building the prompt so the LLM
-  // can use them directly when calculating section y/height.
-  const rhythmContract = buildDesignRhythmContract(args.designMd, false)
-  const designRhythm = rhythmContract ? {
-    pagePadding: parseNumericPx(rhythmContract.layoutRhythm.pagePadding) ?? 16,
-    sectionGap: parseNumericPx(rhythmContract.layoutRhythm.sectionGap) ?? 20,
-    cardGap: parseNumericPx(rhythmContract.layoutRhythm.cardGap) ?? 12,
-    cardPadding: parseNumericPx(rhythmContract.layoutRhythm.cardPadding) ?? 20,
-    headerHeight: parseNumericPx(rhythmContract.layoutRhythm.headerHeight) ?? 56,
-    tabbarHeight: parseNumericPx(rhythmContract.layoutRhythm.tabbarHeight) ?? 72,
-    buttonHeight: parseNumericPx(rhythmContract.layoutRhythm.buttonHeight) ?? 48,
-    inputHeight: parseNumericPx(rhythmContract.layoutRhythm.inputHeight) ?? 52,
-  } : { pagePadding: 16, sectionGap: 20, cardGap: 12, cardPadding: 20, headerHeight: 56, tabbarHeight: 72, buttonHeight: 48, inputHeight: 52 }
-
-  const { pagePadding, sectionGap, cardGap, cardPadding, headerHeight, tabbarHeight, buttonHeight, inputHeight } = designRhythm
-
-  const prompt = `당신은 제품 UX 설계자입니다. 최종 HTML을 만들기 전에, 사람이 확인할 수 있는 A/B/C Layout Blueprint JSON을 작성하세요.
-
-목표:
-- 실제 디자인/색상/이미지는 만들지 말고, 회색 와이어프레임으로 렌더링 가능한 화면 청사진만 만든다.
-- 섹션 순서, 높이, 첫 viewport 정보량, 여백 리듬을 안정적으로 정한다.
-- 이 blueprint는 이후 최종 HTML 생성에서 강제 계약으로 쓰인다.
-
-## 프로젝트
-${args.projectSummary}
-
-## 브리프
-${args.brief.slice(0, 1200)}
-
-## 답변
-${answerLines || '(없음)'}
-
-## 플랫폼
-${platform}
-
-## 도메인
-${args.domain ?? 'other'}
-
-## 생성 계획
-\`\`\`json
-${args.generationPlan ? JSON.stringify(args.generationPlan, null, 2).slice(0, 5000) : '{}'}
-\`\`\`
-
-## 콘텐츠 인벤토리 적용 규칙
-생성 계획의 contentInventory가 있으면 blueprint children에 해당 콘텐츠를 구체적으로 넣어라.
-- contentInventory를 그대로 나열하지 말고, 사용자가 첫 화면에서 판단해야 하는 핵심 정보와 행동을 선택한다.
-- 비교 서비스는 비교/추천/절약액, 루틴 서비스는 상태/미션/진행률, 커머스는 검색/카테고리/상품, 대시보드는 KPI/필터/작업 큐를 우선 검토한다.
-- 멤버십/통신 요금제 서비스는 요금제 비교, 예상 절약액, 위약금/약정 상태, 추천 요금제, 멤버십 혜택, 전환 CTA를 서비스 맥락에 맞게 선택한다.
-- A/B/C 모두 충분한 정보량을 가져야 하지만, 같은 콘텐츠 덩어리 세트나 같은 section order를 반복하지 않는다.
-- 특히 B안은 hero만 있는 포스터로 끝나면 실패다. 전환에 필요한 계산 결과, 혜택, 추천, 신뢰 근거 중 해당 서비스에 맞는 정보를 연결한다.
-
-## 디자인 시스템 계약 요약
-\`\`\`
-${designContract}
-\`\`\`
-
-## 실제 디자인 토큰 — section y/height 계산에 반드시 이 값을 사용하라
-- pagePadding: ${pagePadding}px  (좌우 여백, y/height 계산 무관)
-- sectionGap: ${sectionGap}px   ← 섹션 간 y 간격은 정확히 이 값
-- cardPadding: ${cardPadding}px (카드 상하 내부 패딩)
-- cardGap: ${cardGap}px         (카드 내 요소 간 간격)
-- headerHeight: ${headerHeight}px ← nav 섹션 height는 정확히 이 값
-- tabbarHeight: ${tabbarHeight}px ← tabbar 섹션 height는 정확히 이 값
-- buttonHeight: ${buttonHeight}px
-- inputHeight: ${inputHeight}px
-
-## 섹션 role 종류 (확장됨)
-기존: nav, hero, kpi, actions, content, list, media, form, tabbar
-신규:
-- banner: 프로모션/이벤트 배너 (이미지+텍스트 오버레이, 단일 CTA)
-- collection: 가로 스크롤 카드 캐러셀 (탐색 중심)
-- chart: 데이터 시각화 (라인/바/파이 차트 + 범례)
-- cta-block: CTA 전용 섹션 (큰 버튼 + 짧은 카피, 배경 강조)
-
-## 섹션 height 계산 공식 — children 콘텐츠 기반으로 계산하라
-각 섹션의 height = 내부 요소들의 실제 높이 합산 + 여백. 임의로 줄이거나 늘리지 말 것.
-
-| 섹션 role | height 계산 방법 |
-|-----------|----------------|
-| nav | headerHeight (${headerHeight}px) 고정 |
-| tabbar | tabbarHeight (${tabbarHeight}px) 고정 |
-| hero (image-hero/3d-hero) | 이미지 영역(viewport 높이의 28~35%) + 텍스트(28+22px) + CTA(buttonHeight) + cardPadding×2 |
-| hero (stat-dashboard) | cardPadding + KPI 2행(80×2px) + sectionGap + buttonHeight + cardPadding |
-| hero (search-bar) | cardPadding + 타이틀(28px) + 검색창(inputHeight) + 빠른실행(48px) + cardPadding |
-| hero (action-cta) | cardPadding + 타이틀(36px) + 부제목(22px) + buttonHeight + cardPadding |
-| kpi | cardPadding + 행수 × 80px + (행수-1) × cardGap + cardPadding |
-| actions | cardPadding + 72px + cardPadding = ${cardPadding + 72 + cardPadding}px |
-| list (sparse) | 2 × (cardPadding×2 + 이미지높이 + 텍스트) + cardGap |
-| list (balanced) | 3 × (cardPadding×2 + 이미지높이 + 텍스트) + cardGap×2 |
-| list (dense) | 5 × (cardPadding + 텍스트22px + cardPadding) + cardGap×4 |
-| banner | 이미지높이(viewport 높이의 18~22%) + 텍스트(28+16px) + cardPadding×2 |
-| collection | cardPadding + 카드높이(썸네일100px + 텍스트36px) + cardPadding |
-| chart | cardPadding + 차트영역(160px) + 범례(24px) + cardPadding |
-| cta-block | cardPadding×2 + 타이틀(28px) + 부제목(20px) + buttonHeight + cardPadding×2 |
-| content | 실제 줄수 × 22px + 제목 28px + cardPadding×2 |
-| form | n × inputHeight + (n-1) × cardGap + cardPadding×2 |
-| media (sparse) | 행수=1, 이미지높이=160px: cardPadding×2 + 160 + cardGap |
-| media (balanced) | 행수=2, cols×2: cardPadding×2 + 2×(80px + cardGap) |
-| media (dense) | 행수=3, cols×3: cardPadding×2 + 3×(60px + cardGap) |
-
-## imageStrategy 필드 — 이미지/미디어 섹션에 반드시 포함
-이미지를 사용하는 role(hero/banner/collection/media/list)에는 imageStrategy를 명시:
-\`\`\`json
-"imageStrategy": {
-  "position": "top",         // top | left | background | right
-  "aspectRatio": "16:9",     // 16:9 | 1:1 | 3:4 | 4:3
-  "style": "photo"           // photo | 3d | illustration | icon
-}
-\`\`\`
-
-## density 필드 — 반드시 실제 콘텐츠 양에 맞게 설정
-- sparse: 아이템 1~2개, 여백 강조, 큰 이미지/텍스트
-- balanced: 아이템 3~4개, 표준 간격
-- dense: 아이템 5~6개, 압축 간격, 정보 중심
-
-## y 좌표 계산 규칙
-- y[0] = 0 (첫 섹션은 항상 y=0)
-- y[n] = y[n-1] + height[n-1] + sectionGap (${sectionGap}px)
-- tabbar는 화면 하단 고정: y = viewport.height - tabbarHeight
-- 섹션이 겹치면 안 된다. 빈 공간이 생기면 안 된다.
-
-## 서비스 성격에 따른 디자인 방향
-${isB2C ? `### 이 서비스는 B2C 소비자용입니다
-- heroType A는 "action-cta" 또는 "image-hero"를 사용하라. "stat-dashboard"(B2B 대시보드)는 절대 금지.
-- heroType B는 "3d-hero" 또는 "image-hero"로 비주얼을 강조하라.
-- heroType C는 "image-hero"로 라이프스타일·감성 이미지를 사용하라.
-- navType: 모바일은 "bottom-tab", 웹은 "gnb". "lnb"(사이드바)는 B2B 전용이므로 절대 사용 금지.
-- 정보보다 감성·행동·탐색을 우선하라. Toss·카카오·네이버 수준의 직관적 소비자 앱 톤.
-- "banner", "collection", "cta-block" role을 적극 활용하라.` : `### 이 서비스는 B2B 업무/기업용입니다
-- heroType A는 "stat-dashboard"로 핵심 지표를 우선 노출하라.
-- 웹 플랫폼이면 navType: "lnb" 사용 (A 시안). lnb 시 sections에 nav 제외.
-- 정보 밀도를 높이고 "kpi", "chart", "list" role을 중심으로 구성하라.`}
-
-반드시 JSON만 출력하세요. 마크다운 금지.
-스키마 (각 섹션에 imageStrategy 포함 예시):
-{
-  "blueprints": [
-    {
-      "variant": "A",
-      "strategy": "${isB2C ? '탐색·행동 중심형' : '정보 밀도형'}",
-      "viewport": { "width": ${isWeb ? 1440 : 390}, "height": ${isWeb ? 900 : 844} },
-      "navType": "${isB2B && isWeb ? 'lnb' : isWeb ? 'gnb' : 'bottom-tab'}",
-      "heroType": "${isB2C ? 'action-cta' : 'stat-dashboard'}",
-      "firstViewport": ["히어로/요약", "핵심 KPI", "primary CTA", "빠른 실행", "콘텐츠 리스트", "최근 활동/인사이트"],
-      "rhythm": { "pagePadding": ${pagePadding}, "sectionGap": ${sectionGap}, "cardGap": ${cardGap}, "cardPadding": ${cardPadding} },
-      "sections": [
-        { "id": "header", "label": "앱 헤더", "role": "nav", "y": 0, "height": ${headerHeight}, "density": "balanced", "children": ["brand", "notification"] },
-        { "id": "hero", "label": "핵심 요약", "role": "hero", "y": ${headerHeight + sectionGap}, "height": ${cardPadding * 2 + 160 + sectionGap + buttonHeight}, "density": "dense", "children": ["headline", "kpi", "cta"], "imageStrategy": { "position": "top", "aspectRatio": "16:9", "style": "photo" } },
-        { "id": "banner", "label": "프로모 배너", "role": "banner", "y": ${headerHeight + sectionGap + cardPadding * 2 + 160 + sectionGap + buttonHeight + sectionGap}, "height": ${cardPadding * 2 + 120 + 44}, "density": "sparse", "children": ["event-title", "cta"], "imageStrategy": { "position": "background", "aspectRatio": "16:9", "style": "photo" } }
-      ],
-      "auditChecklist": ["모바일 첫 viewport에 서비스 판단 정보 충분"]
-    }
-  ]
-}
-
-규칙:
-- A는 이미지 없는 데이터/정보형 (웹이면 lnb), B는 3D/비주얼 히어로형, C는 실사 이미지/탐색형.
-- 모바일 viewport는 390x844, 웹 viewport는 1440x900을 기본으로 한다.
-- hero가 첫 화면의 35%를 넘지 않게 한다.
-- 각 blueprint는 서비스 목적에 맞는 충분한 section을 가진다. 모바일 A/B/C 모두 첫 viewport에 실제 판단 정보와 다음 행동이 보여야 한다.
-- children은 실제 HTML에 들어갈 UI 단위 이름이어야 한다.
-- rhythm 값은 위 실제 디자인 토큰 값으로 고정한다. 임의로 바꾸지 말 것.
-- 이미지 사용 섹션에는 반드시 imageStrategy를 포함하라.`
-
-  const raw = await generatePro(prompt, args.apiKey, 'gemini-3.5-flash')
-  const jsonMatch = raw.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) throw new Error('Layout blueprint JSON을 파싱하지 못했습니다')
-  const parsed = JSON.parse(jsonMatch[0]) as { blueprints?: Partial<LayoutBlueprint>[] }
-
-  return BLUEPRINT_VARIANTS.map(variant => {
-    const rawBlueprint = parsed.blueprints?.find(bp => bp.variant === variant) ?? parsed.blueprints?.[BLUEPRINT_VARIANTS.indexOf(variant)] ?? {}
-    const blueprint = normalizeLayoutBlueprint(rawBlueprint, variant, platform)
-    // Always enforce actual design.md rhythm values regardless of what LLM generated
-    blueprint.rhythm = {
-      pagePadding, sectionGap, cardGap, cardPadding,
-      headerHeight: designRhythm.headerHeight,
-      tabbarHeight: designRhythm.tabbarHeight,
-      buttonHeight: designRhythm.buttonHeight,
-      inputHeight: designRhythm.inputHeight,
-    }
-    return blueprint
-  })
-}
-
-function escapeHtmlAttr(value: string): string {
-  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-function buildSectionScaffold(section: LayoutBlueprintSection): string {
-  const id = escapeHtmlAttr(section.id)
-  const label = escapeHtmlAttr(section.label)
-  const role = escapeHtmlAttr(section.role)
-  const density = escapeHtmlAttr(section.density)
-  const columns = section.columns ?? 1
-  const children = section.children.length
-    ? section.children
-    : section.role === 'hero'
-      ? ['headline', 'supporting-copy', 'visual', 'primary-cta']
-      : ['content']
-  const zoneLines = children.map(child => {
-    const zone = escapeHtmlAttr(child.replace(/\s+/g, '-').toLowerCase())
-    return `        <div class="scaffold-zone scaffold-zone-${zone}" data-blueprint-zone="${zone}"></div>`
-  }).join('\n')
-  const imageStrategy = section.imageStrategy
-    ? ` data-image-position="${escapeHtmlAttr(section.imageStrategy.position)}" data-image-style="${escapeHtmlAttr(section.imageStrategy.style)}"`
-    : ''
-
-  return `      <section class="aide-section scaffold-section scaffold-role-${role} scaffold-density-${density}" data-blueprint-section="${id}" data-blueprint-role="${role}" data-blueprint-label="${label}" data-blueprint-height="${section.height}" data-blueprint-columns="${columns}"${imageStrategy}>
-        <div class="section-header">
-          <h2>${label}</h2>
-          ${section.role === 'hero' ? '<span class="section-meta">hero</span>' : '<button class="section-link" type="button">전체보기</button>'}
-        </div>
-${zoneLines}
-      </section>`
-}
-
-function buildLayoutScaffoldContract(blueprint: LayoutBlueprint, platform: PlatformType): string {
-  const isWeb = platform === 'web'
-  const navSections = blueprint.sections.filter(s => s.role === 'nav')
-  const tabbarSections = blueprint.sections.filter(s => s.role === 'tabbar')
-  const contentSections = blueprint.sections.filter(s => s.role !== 'nav' && s.role !== 'tabbar')
-  const headerSection = navSections[0]
-  const tabbarSection = tabbarSections[0]
-  const hasLnb = blueprint.navType === 'lnb'
-  const hasTopHeader = blueprint.navType === 'gnb' || (!hasLnb && !!headerSection)
-  const hasBottomTabbar = blueprint.navType === 'bottom-tab' || !!tabbarSection
-  const sectionIds = blueprint.sections.map(s => s.id).join(' → ')
-  const rhythm = blueprint.rhythm
-  const contentHtml = contentSections.map(section => buildSectionScaffold(section)).join('\n')
-  const headerHtml = headerSection
-    ? hasLnb
-      ? `  <aside class="app-lnb global-nav" data-blueprint-section="${escapeHtmlAttr(headerSection.id)}" data-blueprint-role="nav">
-    <div class="brand-slot"></div>
-    <nav class="lnb-items"></nav>
-  </aside>`
-      : `  <header class="app-header global-nav" data-blueprint-section="${escapeHtmlAttr(headerSection.id)}" data-blueprint-role="nav">
-    <div class="brand-slot"></div>
-    <nav class="gnb-items"></nav>
-    <div class="header-actions"></div>
-  </header>`
-    : ''
-  const tabbarHtml = tabbarSection
-    ? `  <nav class="mobile-tabbar global-nav" data-blueprint-section="${escapeHtmlAttr(tabbarSection.id)}" data-blueprint-role="tabbar"></nav>`
-    : ''
-
-  return `## Layout Scaffold Contract (MANDATORY — 이 골조를 최종 HTML의 구조로 사용)
-아래 scaffold는 사용자가 확인한 Layout Blueprint를 실제 HTML 구조로 바꾼 것입니다. 최종 HTML은 이 scaffold의 구조를 삭제/병합/순서변경하지 말고, 내부 zone에 실제 콘텐츠와 디자인 시스템 스타일을 채우세요.
-
-### Scaffold Invariants
-- section 순서: ${sectionIds}
-- 모든 \`data-blueprint-section\` 값은 최종 HTML에 정확히 1회씩 존재해야 합니다.
-- \`data-blueprint-section\`이 있는 section/header/nav/aside를 삭제, 병합, 이름 변경하지 마세요.
-- \`data-blueprint-zone\`은 zone 의미에 맞는 실제 콘텐츠로 채우되, zone 자체를 무의미한 빈 div로 남기지 마세요.
-- global navigation(header/GNB/LNB/tabbar)은 scroll content 밖에 둡니다.
-- 본문은 \`.content-scroll\`에서만 세로 스크롤됩니다.
-- CTA는 \`.action-zone\`, \`data-blueprint-zone*="cta"\`, 또는 hero 하단 safe action zone에 배치하세요.
-
-### Scaffold HTML
-\`\`\`html
-<div class="app-shell scaffold-${blueprint.variant}" data-layout-variant="${blueprint.variant}" data-nav-type="${blueprint.navType}" data-hero-type="${blueprint.heroType}">
-${headerHtml}
-  <main class="content-scroll" data-blueprint-scroll="content">
-${contentHtml}
-  </main>
-${tabbarHtml}
-</div>
-\`\`\`
-
-### Required Scaffold CSS Baseline
-\`\`\`css
-:root {
-  --aide-page-padding: ${rhythm.pagePadding}px;
-  --aide-section-gap: ${rhythm.sectionGap}px;
-  --aide-card-gap: ${rhythm.cardGap}px;
-  --aide-card-padding: ${rhythm.cardPadding}px;
-  --aide-header-height: ${rhythm.headerHeight}px;
-  --aide-tabbar-height: ${rhythm.tabbarHeight}px;
-  --aide-button-height: ${rhythm.buttonHeight}px;
-  --aide-input-height: ${rhythm.inputHeight}px;
-}
-html, body { margin:0; width:100%; min-height:100%; }
-body { overflow:hidden; }
-.app-shell {
-  min-height:100dvh;
-  height:100dvh;
-  display:flex;
-  flex-direction:column;
-  background:var(--color-primary-fill-neutral, var(--color-background, #f2f5f9));
-}
-.global-nav { flex:0 0 auto; z-index:50; }
-.app-header {
-  position:sticky;
-  top:0;
-  min-height:var(--aide-header-height);
-  display:flex;
-  align-items:center;
-}
-.app-lnb {
-  position:fixed;
-  left:0;
-  top:0;
-  bottom:0;
-  width:240px;
-}
-.content-scroll {
-  flex:1 1 auto;
-  min-height:0;
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
-  padding:var(--aide-section-gap) var(--aide-page-padding);
-  display:flex;
-  flex-direction:column;
-  gap:var(--aide-section-gap);
-}
-.mobile-tabbar {
-  position:fixed;
-  left:0;
-  right:0;
-  bottom:0;
-  min-height:calc(var(--aide-tabbar-height) + env(safe-area-inset-bottom));
-  z-index:50;
-}
-.scaffold-section {
-  flex:0 0 auto;
-  min-height:var(--section-min-height, auto);
-}
-.scaffold-section > .section-header:first-child {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:var(--aide-card-gap);
-  margin:0 0 8px;
-}
-/* Full-bleed hero/banner 섹션: content-scroll padding을 음수 마진으로 탈출했더라도 내부 콘텐츠에 좌우 패딩 강제 적용 */
-.hero-section > .hero-content,
-.hero-section > .hero-inner,
-.hero-section > .hero-body,
-.hero-section > .hero-text,
-.hero-section > .hero-info,
-.hero-section > .hero-description,
-.hero-section > .hero-copy,
-.hero-section > .hero-wrap,
-.hero-section > .hero-caption,
-.hero-banner > .hero-body,
-.hero-banner > .hero-inner,
-.hero-banner > .hero-text,
-.hero-banner > .hero-info,
-.hero-banner > .hero-wrap,
-.hero-banner > .hero-content,
-[data-blueprint-section] > .hero-body,
-[data-blueprint-section] > .hero-inner,
-[data-blueprint-section] > .hero-content,
-[data-blueprint-section] > .hero-text,
-[data-blueprint-section] > .hero-info,
-[data-blueprint-section] > .hero-description,
-[data-blueprint-section] > .hero-copy,
-[data-blueprint-section] > .hero-wrap,
-[data-blueprint-section] > .hero-caption {
-  padding-left:var(--aide-page-padding);
-  padding-right:var(--aide-page-padding);
-}
-${hasBottomTabbar ? '.content-scroll { padding-bottom:calc(var(--aide-tabbar-height) + env(safe-area-inset-bottom) + var(--aide-section-gap)); }' : ''}
-${hasLnb ? '.app-shell { padding-left:240px; } .content-scroll { height:100dvh; }' : ''}
-${hasTopHeader && !hasLnb ? '.content-scroll { min-height:0; }' : ''}
-${isWeb ? '@media (min-width:1024px) { .content-scroll { padding:var(--aide-section-gap) var(--aide-page-padding); } }' : ''}
-\`\`\`
-
-### Scaffold Fill Rules
-- \`scaffold-zone-headline/title/copy\`: 실제 한국어 헤드라인, 설명, 상태값을 채우세요.
-- \`scaffold-zone-visual/image/media\`: 필요한 경우 \`%%HERO_3D%%\`, \`%%SCENE_3D%%\`, \`%%IMG_n:keyword%%\`, \`%%THUMB:keyword:width:height%%\` 중 하나를 img src에 넣으세요.
-- 빈 visual placeholder, 빈 회색 박스, blur skeleton, border만 있는 이미지 영역은 최종 HTML에 남기지 마세요.
-- 이미지 없는 데이터형 시안(A)에서 hero visual 영역이 생기면 이미지 박스 대신 KPI, 차트, 사용량 그래프, 추천 요금 카드 등 실제 데이터 UI로 채우세요.
-- 이미지형 시안(B/C)에서 hero/media 영역이 있으면 반드시 \`<img src="%%...%%">\` 형태의 이미지 placeholder를 포함하세요.
-- \`scaffold-zone-cta/action/button\`: 버튼은 해당 section의 하단 action row 또는 visual safe area 하단에 배치하세요.
-- 리스트/컬렉션/차트 section은 실제 아이템 3개 이상 또는 실제 데이터 수치를 채우세요.
-`
-}
-
-function auditLayoutBlueprintHtml(html: string, blueprint?: LayoutBlueprint): string[] {
-  if (!blueprint) return []
-  const issues: string[] = []
-  const found = [...html.matchAll(/data-blueprint-section=(["'])(.*?)\1/g)].map(match => match[2])
-  const expected = blueprint.sections.map(section => section.id)
-  const missing = expected.filter(id => !found.includes(id))
-  const duplicate = found.filter((id, index) => found.indexOf(id) !== index)
-  if (missing.length) issues.push(`missing blueprint sections: ${missing.join(', ')}`)
-  if (duplicate.length) issues.push(`duplicate blueprint sections: ${Array.from(new Set(duplicate)).join(', ')}`)
-  const orderedFound = found.filter(id => expected.includes(id))
-  const expectedOrder = expected.filter(id => orderedFound.includes(id))
-  if (orderedFound.join('>') !== expectedOrder.join('>')) {
-    issues.push(`blueprint section order changed: expected ${expectedOrder.join(' > ')}, got ${orderedFound.join(' > ')}`)
-  }
-  if (!/class=(["'])[^"']*(?:content-scroll|page-scroll)[^"']*\1/i.test(html) && !/<main\b[^>]*overflow-y\s*:/i.test(html)) {
-    issues.push('missing content scroll container')
-  }
-  if ((blueprint.navType === 'gnb' || blueprint.sections.some(section => section.role === 'nav')) && !/(position\s*:\s*(?:sticky|fixed)[^;}]*;[^}]*top\s*:\s*0|top\s*:\s*0[^;}]*;[^}]*position\s*:\s*(?:sticky|fixed))/i.test(html)) {
-    issues.push('global header/nav is not sticky or fixed')
-  }
-  if ((blueprint.navType === 'bottom-tab' || blueprint.sections.some(section => section.role === 'tabbar')) && !/(position\s*:\s*fixed[^}]*bottom\s*:\s*0|bottom\s*:\s*0[^}]*position\s*:\s*fixed)/i.test(html)) {
-    issues.push('bottom tabbar is not fixed to bottom')
-  }
-  return issues
-}
-
 export async function generateUI(params: GenerateParams, apiKey?: string): Promise<GenerateUIResult> {
-  const { designMd, brief, answers, projectSummary, logoDataUrl, brandColors, mainOnly = false, variantStyle, referenceImageBase64, referenceImageKind = 'reference', asIsAnalysis, platform, modelId = 'gemini-3.1-pro-preview', heroImagePrompt, heroSubject, sharedVisualMode, sharedVisualSubject, visualPolicy, generationPlan, layoutBlueprint, domain, onStep, prdDoc, iaImageBase64, iaText } = params;
+  const { designMd, brief, answers, projectSummary, logoDataUrl, brandColors, mainOnly = false, variantStyle, referenceImageBase64, referenceImageKind = 'reference', asIsAnalysis, platform, modelId = 'gemini-3.1-pro-preview', heroImagePrompt, heroSubject, sharedVisualMode, sharedVisualSubject, visualPolicy, generationPlan, domain, onStep, prdDoc, iaImageBase64, iaText } = params;
   const effectiveHeroImagePrompt = heroSubject || heroImagePrompt
   const effectiveVisualPolicy = visualPolicy ?? (() => {
     if (getVariantLabel(variantStyle) !== 'B') return undefined
@@ -4528,6 +3636,41 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
     visualDirectionRule,
   ].filter(Boolean).join('\n')
 
+  // 이 시안의 레이아웃 아키타입 — 골격(다양성)을 정함. 정확성은 DESIGN.md 결정론 규칙이 담당.
+  const variantArchetype = generationPlan?.variantArchetypes?.[getVariantLabel(variantStyle) as 'A' | 'B' | 'C']
+  const archetypeGuide = variantArchetype
+    ? `\n## ★ 레이아웃 아키타입 — 이 시안의 골격 (CRITICAL)\n${archetypeToPrompt(variantArchetype)}\n`
+    : ''
+  const variantStructure = generationPlan?.variantStructures?.[getVariantLabel(variantStyle) as 'A' | 'B' | 'C']
+  const structureGuide = variantStructure
+    ? `\n## ★ UI Structure IR — 최종 HTML 구조 설계도 (MANDATORY)
+아래 JSON은 이 시안의 chrome, scroll 영역, 섹션 순서, visual slot, CTA 위치를 먼저 고정한 구조 설계도입니다.
+최종 HTML은 이 구조를 렌더링해야 하며, 섹션을 삭제하거나 순서를 바꾸거나 CTA/visual 위치를 임의로 옮기지 마세요.
+
+구현 규칙:
+- chrome.topNav / bottomNav / sideNav는 본문 scroll container 밖에 둡니다.
+- chrome.scrollArea는 오직 main 본문입니다. main에는 overflow-y:auto와 min-height:0을 적용합니다.
+- sections 배열 순서대로 <section class="aide-section ...">를 만듭니다.
+- section.id는 data-ui-section="<id>" 속성으로 남깁니다.
+- section.layout은 실제 HTML class에 반영합니다. 예: class="aide-section layout-card-grid".
+- section.repeatPattern이 grid/list/rail/table/timeline이면 해당 반복 구조를 실제 DOM으로 구현합니다.
+- section.viewportPriority가 above-fold인 섹션은 첫 화면 안에 보이게 배치합니다. near-fold 섹션은 첫 화면 하단에 일부 힌트가 보여야 합니다.
+- firstViewport.visibleSectionIds는 모바일 390x844 기준 첫 화면 또는 바로 아래 힌트 영역에 등장해야 합니다.
+- firstViewport.minimumDataPoints 이상의 실제 수치/상태/가격/시간/등급/배지/날짜 정보를 화면에 넣습니다.
+- section.visual이 HERO_3D면 해당 섹션에 <img class="aide-hero-3d" src="%%HERO_3D:...%%">를 1회 둡니다.
+- section.visual이 SCENE_3D면 해당 섹션에 <img class="aide-hero-3d aide-hero-scene-img" src="%%SCENE_3D:...%%">를 1회 둡니다.
+- section.visual이 REAL_PHOTO면 해당 섹션에 <img src="%%IMG_1:...%%">를 1회 둡니다.
+- ctaRules.primaryPlacement를 따릅니다. center-floating button은 금지입니다.
+- required=true인 섹션은 첫 viewport 또는 스크롤 직후에 반드시 실내용 콘텐츠로 보여야 합니다.
+- antiSamenessRules는 절대 규칙입니다. A/B/C가 같은 section order, 같은 heroPattern+contentPattern, 같은 카드 묶음 순서로 나오면 실패입니다.
+- structureSignature는 구현 결과를 구분하기 위한 계약입니다. 같은 배치에 이름만 바꾸지 마세요.
+
+\`\`\`json
+${JSON.stringify(variantStructure, null, 2)}
+\`\`\`
+`
+    : ''
+
   const effectiveDesignMd = designMd || loadDefaultDesignMd();
   const hasDesignSystem = !!effectiveDesignMd;
   const isAdaptive = hasDesignSystem && /adaptive:\s*true/.test(effectiveDesignMd);
@@ -4563,43 +3706,29 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
     ? buildDesignRhythmContract(effectiveDesignMd, hasBrandColors)
     : null
   const componentSnippets = designContract ? buildComponentReferenceSnippets(designContract) : ''
-  const layoutScaffoldContract = layoutBlueprint
-    ? buildLayoutScaffoldContract(layoutBlueprint, effectivePlatform)
-    : ''
-
   onStep?.('디자인 인텐트 · 레이아웃 분석 중...')
-  const [designIntentPlan, layoutSkeleton] = await Promise.all([
-    params.precomputedDesignIntentPlan
-      ? Promise.resolve(params.precomputedDesignIntentPlan)
-      : isDraftMode
-        ? Promise.resolve(buildFallbackDesignIntentPlan({
-            variantStyle,
-            platform: effectivePlatform,
-            heroImagePrompt: visual3dPrompt,
-            domain,
-            visualPolicy: effectiveVisualPolicy,
-          }))
-        : generateDesignIntentAndHeroVisualPlan({
-          brief,
-          answersText,
-          designMd: effectiveDesignMd,
-          generationPlan,
+  const designIntentPlan = params.precomputedDesignIntentPlan
+    ? params.precomputedDesignIntentPlan
+    : isDraftMode
+      ? buildFallbackDesignIntentPlan({
           variantStyle,
           platform: effectivePlatform,
-          domain,
           heroImagePrompt: visual3dPrompt,
-          structuredAnswerRules,
-          apiKey,
-        }),
-    layoutBlueprint || isDraftMode
-      ? Promise.resolve('')
-      : generateLayoutSkeleton({
-          brief,
-          designContract,
-          platform: effectivePlatform,
-          apiKey,
-        }),
-  ])
+          domain,
+          visualPolicy: effectiveVisualPolicy,
+        })
+      : await generateDesignIntentAndHeroVisualPlan({
+        brief,
+        answersText,
+        designMd: effectiveDesignMd,
+        generationPlan,
+        variantStyle,
+        platform: effectivePlatform,
+        domain,
+        heroImagePrompt: visual3dPrompt,
+        structuredAnswerRules,
+        apiKey,
+      })
 
   const visualPolicyContract = effectiveVisualPolicy === 'scene-3d'
     ? `이번 시안 비주얼 정책: A안/scene-3d — Integrated 3D Scene Layer
@@ -4713,7 +3842,7 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
   const prompt = `
 당신은 선택된 DESIGN.md를 실제 제품 화면으로 옮기는 시니어 프로덕트 디자이너이자 프론트엔드 개발자입니다.
 가장 중요한 목표는 "어떤 서비스를 만들든 선택한 디자인 시스템처럼 보이게 만드는 것"입니다.
-ktds.md를 선택하면 KTDS 스타일, notion.md를 선택하면 Notion 스타일, shopify.md를 선택하면 Shopify 스타일이 전체 화면에 일관되게 적용되어야 합니다.
+선택된 DESIGN.md의 스타일이 전체 화면에 일관되게 적용되어야 합니다. 기본값이면 Aide 스타일, ktds.md를 선택하면 KTDS 스타일, 다른 md를 선택하면 그 md의 토큰과 컴포넌트 규칙을 따릅니다.
 
 ## 🎨 시각적 완성도 기준
 
@@ -5048,7 +4177,8 @@ ${brief}
 ## 사용자 선택 옵션
 ${answersText || '(선택 없음 — AI가 최적의 방향으로 결정)'}
 ${structuredAnswerRules ? `\n## 답변 기반 디자인 지침 (반드시 적용)\n${structuredAnswerRules}` : ''}
-
+${archetypeGuide}
+${structureGuide}
 ## AI 자율 디자인 결정 원칙
 사용자 답변에 없는 모든 디자인 결정은 아래 우선순위로 AI가 자율 판단합니다:
 1. 선택된 DESIGN.md에서 컴파일된 Design System Contract (최우선)
@@ -5245,36 +4375,6 @@ ${designIntentPlan}
 - 버튼이 이미지/카드의 중앙 높이에 애매하게 떠 있거나 핵심 피사체/텍스트를 가리면 실패입니다. 상단/중앙 floating CTA는 금지입니다.
 - 3D가 부자연스러운 시안에서는 heroVisualPlan에 따라 실사/콘텐츠 썸네일로 전환하세요.
 
-${layoutSkeleton ? `## 레이아웃 스켈레톤 (MANDATORY — 아래 섹션 구조와 :root 변수값을 그대로 사용)
-이 스켈레톤은 위 Design Intent를 바탕으로 사전 확정된 레이아웃 구조입니다.
-- SECTIONS 순서대로 HTML 섹션을 배치하세요
-- NAV_TYPE과 HERO_TYPE을 그대로 따르세요
-- FIRST_VIEWPORT의 정보/CTA/콘텐츠 단위가 실제 첫 화면에 보이게 하세요
-- MEDIA_INTEGRATION에 따라 이미지/3D를 layout의 일부로 통합하세요
-- 시안 선택용 draft라도 콘텐츠 양을 줄이지 마세요. draft에서 생략 가능한 것은 무거운 검수뿐이며, 실제 UI 정보량은 full 품질과 동일해야 합니다.
-- 모바일 390x844 첫 화면 기준 실제 한국어 문구 320자 이상, 인터랙션 진입점 5개 이상을 목표로 하되, 콘텐츠 종류와 순서는 서비스 목적에 맞게 선택하세요.
-- CARD_RHYTHM에 따라 반복 컴포넌트의 spacing/radius/border/shadow를 통일하세요
-- :root 블록의 CSS 변수값을 수정 없이 그대로 선언하세요 (직접 px/hex 사용 금지)
-
-\`\`\`
-${layoutSkeleton}
-\`\`\`
-` : ''}
-${layoutBlueprint ? `## 확정 Layout Blueprint (USER APPROVED — 최상위 레이아웃 계약)
-아래 JSON은 사용자가 최종 HTML 생성 전에 확인한 화면 청사진입니다.
-- sections 배열의 개수, 순서, id, role, height, density를 반드시 반영하세요.
-- 각 section은 HTML에 \`data-blueprint-section="{section.id}"\` 속성을 가진 실제 섹션으로 구현하세요. 섹션을 합치거나 삭제하지 마세요.
-- firstViewport 항목은 실제 첫 화면에 보이게 하세요.
-- rhythm 값은 :root의 --aide-page-padding, --aide-section-gap, --aide-card-gap, --aide-card-padding으로 선언하고 재사용하세요.
-- heroType/navType을 임의로 바꾸지 마세요.
-- A/B/C 시안의 차이는 이 blueprint의 strategy와 sections를 기준으로 구현하세요.
-- CSS flow/grid/flex를 사용하더라도 section 순서, 개수, 상대적 높이, 밀도, rhythm gap은 유지하세요.
-
-\`\`\`json
-${JSON.stringify(layoutBlueprint, null, 2)}
-\`\`\`
-` : ''}
-${layoutScaffoldContract}
 ${buildArtDirectionLayer(effectivePlatform)}
 
 ${buildBrandAndChromeLayer(effectivePlatform, Boolean(logoDataUrl))}
@@ -5461,89 +4561,57 @@ ${effectivePlatform === 'web' ? `
   }
 
   html = sanitizeGeneratedBranding(html, brief, effectiveDesignMd, logoDataUrl)
-  html = ensureRequiredVariantVisuals(html, { variantStyle, sharedVisualSubject: effectiveSharedVisualSubject, heroImagePrompt: visual3dPrompt, layoutBlueprint, visualPolicy: effectiveVisualPolicy })
+  html = ensureRequiredVariantVisuals(html, { variantStyle, sharedVisualSubject: effectiveSharedVisualSubject, heroImagePrompt: visual3dPrompt, visualPolicy: effectiveVisualPolicy })
   html = applyLogoDataUrlOnce(html, logoDataUrl)
   html = injectMaterialSymbolsFont(html)
-  html = injectLayoutEssentialsGuard(html, layoutBlueprint)
+  html = injectLayoutEssentialsGuard(html)
 
-  if (!isDraftMode) {
-    const blueprintIssues = auditLayoutBlueprintHtml(html, layoutBlueprint)
-    if (blueprintIssues.length > 0 && layoutBlueprint) {
-      onStep?.('레이아웃 스캐폴드 보정 중...')
-      const repairMessage = `생성된 HTML이 사용자가 확정한 Layout Scaffold 계약을 지키지 못했습니다.
-
-발견된 문제:
-${blueprintIssues.map((issue, idx) => `${idx + 1}. ${issue}`).join('\n')}
-
-수정 지침:
-- 아래 Layout Blueprint의 모든 sections를 정확히 1회씩 구현하세요.
-- 각 section/header/nav/aside에는 반드시 data-blueprint-section 값을 유지하세요.
-- section 순서, role, navType, heroType을 바꾸지 마세요.
-- global navigation은 scroll container 밖에 두고 sticky/fixed로 유지하세요.
-- 본문 콘텐츠는 .content-scroll 또는 .page-scroll 안에서 overflow-y:auto로 스크롤되게 하세요.
-- 콘텐츠/카피/스타일은 유지하되, 빠진 scaffold section과 scroll 구조만 고치세요.
-
-Layout Blueprint:
-${JSON.stringify(layoutBlueprint, null, 2)}`
-      html = await refineUI(html, repairMessage, brief, effectiveDesignMd, apiKey, logoDataUrl, domain)
-      html = sanitizeGeneratedBranding(html, brief, effectiveDesignMd, logoDataUrl)
-      html = ensureRequiredVariantVisuals(html, { variantStyle, sharedVisualSubject: effectiveSharedVisualSubject, heroImagePrompt: visual3dPrompt, layoutBlueprint, visualPolicy: effectiveVisualPolicy })
-      html = applyLogoDataUrlOnce(html, logoDataUrl)
-      html = injectMaterialSymbolsFont(html)
-      html = injectLayoutEssentialsGuard(html, layoutBlueprint)
-    }
-  }
-
-  let staticContractResult: { html: string; refined: boolean }
-  if (isDraftMode) {
-    staticContractResult = { html, refined: false }
-  } else {
-    onStep?.('디자인 계약 검수 중...')
-    staticContractResult = await enforceStaticDesignContract(html, {
-      brief,
-      designMd: effectiveDesignMd,
-      apiKey,
-      logoDataUrl,
-      domain,
-      hasBrandColors,
-    })
-  }
-  html = staticContractResult.html
-  html = ensureRequiredVariantVisuals(html, { variantStyle, sharedVisualSubject: effectiveSharedVisualSubject, heroImagePrompt: visual3dPrompt, layoutBlueprint, visualPolicy: effectiveVisualPolicy })
+  html = ensureRequiredVariantVisuals(html, { variantStyle, sharedVisualSubject: effectiveSharedVisualSubject, heroImagePrompt: visual3dPrompt, visualPolicy: effectiveVisualPolicy })
   html = auditSpacingTokens(html, designContract)
   html = applyLogoDataUrlOnce(html, logoDataUrl)
-  html = injectLayoutEssentialsGuard(html, layoutBlueprint)
+  html = injectLayoutEssentialsGuard(html)
 
-  if (params.criticalReview !== false && !staticContractResult.refined) {
-    try {
-      const critiqueRaw = await critiqueUI(html, brief, domain, apiKey, variantStyle)
-      const jsonMatch = critiqueRaw.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        const critique = JSON.parse(jsonMatch[0]) as {
-          score?: number
-          verdict?: string
-          topIssues?: string[]
-          improvements?: string[]
+  // ── 3층 안전망: 아이콘 자동 교정 → IR 계약 대조 → 로그 적재 → severe만 핀포인트 수정 1회 ──
+  // 반복 잡히는 위반은 로그로 확인해 1·2층(결정론/계약)으로 승격하고 여기서 제거한다.
+  const iconResult = sanitizeMaterialSymbols(html)
+  html = iconResult.html
+  if (variantStructure) {
+    let lintViolations = lintStructure(html, variantStructure)
+    const severeViolations = lintViolations.filter(v => v.severity === 'severe')
+    let repaired = false
+    let repairFixed = false
+    if (severeViolations.length > 0) {
+      try {
+        onStep?.('구조 계약 위반 수정 중...')
+        const repairMessage = buildStructureRepairMessage(severeViolations, variantStructure)
+        const fixedRaw = await refineUI(html, repairMessage, brief, effectiveDesignMd, apiKey, logoDataUrl, domain)
+        repaired = true
+        const fixedIcons = sanitizeMaterialSymbols(fixedRaw)
+        const fixedHtml = injectLayoutEssentialsGuard(fixedIcons.html)
+        const reViolations = lintStructure(fixedHtml, variantStructure)
+        const reSevere = reViolations.filter(v => v.severity === 'severe')
+        // 수정본이 더 나을 때만 채택 (악화 방지)
+        if (reSevere.length < severeViolations.length) {
+          html = fixedHtml
+          lintViolations = reViolations
+          repairFixed = reSevere.length === 0
         }
-        const needsRefine = critique.verdict === 'needs_refinement' || (typeof critique.score === 'number' && critique.score < 70)
-        if (needsRefine && Array.isArray(critique.improvements) && critique.improvements.length > 0) {
-          onStep?.('UI 품질 개선 중...')
-          const refineMessage = `디자인 시스템 검수자가 지적한 개선 사항을 적용하세요 (점수: ${critique.score ?? '?'}/100):
-
-지적된 문제:
-${(critique.topIssues || []).map((s, i) => `${i + 1}. ${s}`).join('\n')}
-
-반영할 개선:
-${critique.improvements.map((s, i) => `${i + 1}. ${s}`).join('\n')}
-
-위 개선 사항을 모두 반영하되, 기존 디자인 시스템 토큰·구조는 유지하세요.`
-          html = await refineUI(html, refineMessage, brief, designMd, apiKey, logoDataUrl, domain)
-        }
+      } catch (err) {
+        console.warn('[gemini] structure repair skipped:', err instanceof Error ? err.message : String(err))
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      console.warn('[gemini] critiqueUI skipped:', msg)
     }
+    logStructureRecord({
+      ts: new Date().toISOString(),
+      domain,
+      subtype: generationPlan?.designIntelligence?.serviceSubtype,
+      variant: getVariantLabel(variantStyle),
+      archetypeId: variantStructure.archetypeId,
+      draft: isDraftMode,
+      violations: lintViolations,
+      iconCorrections: iconResult.corrections,
+      repaired,
+      repairFixed,
+    })
   }
 
   let variantDescription: VariantDescription | undefined
@@ -5560,6 +4628,83 @@ ${critique.improvements.map((s, i) => `${i + 1}. ${s}`).join('\n')}
   } catch { /* intentionally ignored */ }
 
   return { html, variantDescription }
+}
+
+// body를 [prefix(앱셸+앱바+main열기)] + [content(스크롤 영역 내용)] + [suffix(main닫기+탭바+앱셸닫기)]로 분리.
+// <main>을 찾지 못하면 null → 호출부가 폴백.
+function splitShellContent(bodyInner: string): { prefix: string; content: string; suffix: string } | null {
+  const open = bodyInner.match(/<main\b[^>]*>/i)
+  if (!open || open.index === undefined) return null
+  const contentStart = open.index + open[0].length
+  let depth = 1
+  const re = /<main\b[^>]*>|<\/main>/gi
+  re.lastIndex = contentStart
+  let m: RegExpExecArray | null
+  while ((m = re.exec(bodyInner)) !== null) {
+    if (m[0].toLowerCase().startsWith('</main')) {
+      depth--
+      if (depth === 0) {
+        return {
+          prefix: bodyInner.slice(0, contentStart),
+          content: bodyInner.slice(contentStart, m.index),
+          suffix: bodyInner.slice(m.index),
+        }
+      }
+    } else {
+      depth++
+    }
+  }
+  return null
+}
+
+// HTML에서 screen-* 서브 화면 div들을 balanced 스캔으로 추출 (screen-home 제외).
+function extractSubScreenDivs(html: string): Array<{ id: string; label: string; inner: string }> {
+  const result: Array<{ id: string; label: string; inner: string }> = []
+  const openRe = /<div\b([^>]*?)\bid=["'](screen-[a-z0-9-]+)["']([^>]*)>/gi
+  let open: RegExpExecArray | null
+  while ((open = openRe.exec(html)) !== null) {
+    const id = open[2]
+    const attrs = `${open[1]} ${open[3]}`
+    if (id === 'screen-home') continue
+    const label = attrs.match(/data-label=["']([^"']*)["']/i)?.[1] ?? id
+    let depth = 1
+    const re = /<div\b[^>]*>|<\/div>/gi
+    re.lastIndex = openRe.lastIndex
+    let m: RegExpExecArray | null
+    let end = -1
+    while ((m = re.exec(html)) !== null) {
+      if (m[0].toLowerCase().startsWith('</div')) {
+        depth--
+        if (depth === 0) { end = m.index; break }
+      } else {
+        depth++
+      }
+    }
+    if (end === -1) continue
+    result.push({ id, label, inner: html.slice(openRe.lastIndex, end) })
+    openRe.lastIndex = end
+  }
+  return result
+}
+
+// LLM 출력에서 screen-home div를 통째로 제거 (balanced <div> 스캔). 보존된 홈으로 대체하기 위함.
+function stripScreenHomeDiv(html: string): string {
+  const open = html.match(/<div\b[^>]*id=["']screen-home["'][^>]*>/i)
+  if (!open || open.index === undefined) return html
+  const start = open.index
+  let depth = 1
+  const re = /<div\b[^>]*>|<\/div>/gi
+  re.lastIndex = start + open[0].length
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html)) !== null) {
+    if (m[0].toLowerCase().startsWith('</div')) {
+      depth--
+      if (depth === 0) return (html.slice(0, start) + html.slice(m.index + m[0].length))
+    } else {
+      depth++
+    }
+  }
+  return html
 }
 
 export async function expandToPrototype(mainHtml: string, params: GenerateParams, apiKey?: string): Promise<string> {
@@ -5704,22 +4849,58 @@ ${buildQualityRules(heroSubject || heroImagePrompt, domain)}
 완전한 단일 HTML 파일로 응답 (모든 CSS를 <style> 안에). 응답은 반드시 \`\`\`html 코드블록으로 감싸기. 설명 없이 코드만 출력.`;
 
   const text = await generatePro(prompt, apiKey, modelId);
-  let html: string
+  let llmHtml: string
   const htmlMatch = text.match(/```html\n?([\s\S]*?)```/);
   if (htmlMatch) {
-    html = htmlMatch[1]
+    llmHtml = htmlMatch[1]
   } else {
     const htmlTagMatch = text.match(/<!DOCTYPE[\s\S]*<\/html>/i);
-    html = htmlTagMatch ? htmlTagMatch[0] : text
+    llmHtml = htmlTagMatch ? htmlTagMatch[0] : text
   }
 
-  html = sanitizeGeneratedBranding(html, brief, designMd, expandLogoUrl)
-  html = applyLogoDataUrlOnce(html, expandLogoUrl)
-  html = injectMaterialSymbolsFont(html)
+  // ── 결정론적 디자인 보존 + 공통 UI 주입 ────────────────────────────────
+  // 1) 고른 메인 화면(mainHtml)을 그대로 screen-home으로 보존
+  // 2) 모든 서브 화면에 홈과 동일한 앱셸/앱바/탭바(chrome)를 코드가 주입하고
+  //    LLM이 만든 콘텐츠 영역만 그 안에 끼운다 → 모든 화면이 한 서비스처럼 보임.
+  const llmBodyRaw = llmHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] ?? llmHtml
+  let llmSubArea = stripScreenHomeDiv(llmBodyRaw)
+    .replace(/<!DOCTYPE[^>]*>/gi, '')
+    .replace(/<\/?(?:html|head|body)[^>]*>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')           // 라우터는 우리가 다시 넣음
+    .replace(/<style[\s\S]*?<\/style>/gi, '')             // :root/.aide-screen 중복 방지
+  // 이미지 토큰 복원 + 로고/브랜딩 (홈은 건드리지 않음 → 픽셀 단위 보존)
   preservedDataUrls.forEach((src, i) => {
-    html = html.split(`__PRESERVED_IMAGE_${i}__`).join(src)
+    llmSubArea = llmSubArea.split(`__PRESERVED_IMAGE_${i}__`).join(src)
   })
+  llmSubArea = sanitizeGeneratedBranding(llmSubArea, brief, designMd, expandLogoUrl)
+  llmSubArea = applyLogoDataUrlOnce(llmSubArea, expandLogoUrl)
 
+  // 보존된 홈: 고른 메인 화면의 head(스타일)와 body를 그대로 사용
+  const headInner = (mainHtml.match(/<head[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? '').trim()
+  const homeBodyInner = (mainHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] ?? mainHtml).trim()
+
+  // 홈의 chrome(앱셸+앱바+탭바)과 콘텐츠 영역 분리
+  const homeShell = splitShellContent(homeBodyInner)
+  const subDivs = extractSubScreenDivs(llmSubArea)
+  const subScreensHtml = subDivs.map(s => {
+    if (homeShell) {
+      // 서브 화면의 콘텐츠만 추출해 홈 chrome 안에 끼움 → chrome이 홈과 동일
+      const subContent = splitShellContent(s.inner)?.content
+      if (subContent !== undefined) {
+        return `<div id="${s.id}" class="aide-screen" data-label="${s.label}">${homeShell.prefix}${subContent}${homeShell.suffix}</div>`
+      }
+    }
+    // 폴백: 콘텐츠 분리 실패 시 LLM 서브 화면을 그대로 사용 (자체 chrome 포함)
+    return `<div id="${s.id}" class="aide-screen" data-label="${s.label}">${s.inner}</div>`
+  }).join('\n')
+
+  const screenCss = `<style data-aide-screen-router="1">html,body{height:100dvh;margin:0}body{position:relative;overflow:hidden}.aide-screen{display:none;width:100%;height:100%;position:absolute;top:0;left:0;overflow:hidden auto}.aide-screen.active{display:block}</style>`
+  const routerScript = `<script>(function(){function nav(id){document.querySelectorAll('.aide-screen').forEach(function(s){s.classList.remove('active');});var t=document.getElementById(id);if(t){t.classList.add('active');}window.parent&&window.parent.postMessage({type:'aide:screen',id:id},'*');}document.addEventListener('click',function(e){var el=e.target.closest('[data-screen]');if(el){e.preventDefault();nav(el.dataset.screen);}});window.addEventListener('message',function(e){if(e.data&&e.data.type==='aide:navigate'){nav(e.data.id);}});var sc=[];document.querySelectorAll('.aide-screen').forEach(function(s){sc.push({id:s.id,label:s.dataset.label||s.id});});window.parent&&window.parent.postMessage({type:'aide:screens',screens:sc},'*');})();</script>`
+
+  let html = `<!DOCTYPE html>\n<html lang="ko">\n<head>\n${headInner}\n${screenCss}\n</head>\n<body>\n<div id="screen-home" class="aide-screen active" data-label="홈">\n${homeBodyInner}\n</div>\n${subScreensHtml}\n${routerScript}\n</body>\n</html>`
+
+  // 폰트/컨트랙트는 누락 시에만 보강 (idempotent). 홈 콘텐츠는 변형하지 않음.
+  html = injectMaterialSymbolsFont(html)
   html = injectDesignContractStyle(html, designMd || '', !!(expandBrandColors && expandBrandColors.length > 0))
 
   return html

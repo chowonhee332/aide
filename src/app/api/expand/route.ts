@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { Browser, Page } from 'puppeteer'
-import { expandToPrototype, resolveImagePlaceholders, refineUI, type GenerateParams } from '@/lib/gemini'
-import { auditResponsiveHtml, buildResponsiveRepairMessage } from '@/lib/responsive-audit'
+import { expandToPrototype, resolveImagePlaceholders, type GenerateParams } from '@/lib/gemini'
 import fs from 'fs'
 import path from 'path'
 
@@ -65,25 +64,11 @@ export async function POST(req: NextRequest) {
       ],
     })
 
-    // 2단계 품질 게이트 (Phase 2-A): 사용자가 선택한 시안(draft)을 확장 전에 풀퀄로 보정한다.
-    // draft 모드에서 스킵됐던 반응형 검수 + refineUI 보정 루프를 여기서 적용한다.
-    let polishedMainHtml = mainHtml
-    try {
-      const auditOptions = { requireLogo: Boolean(normalizedParams.logoDataUrl) }
-      let issues = await auditResponsiveHtml(browser, polishedMainHtml, auditOptions)
-      for (let attempt = 1; attempt <= 2 && issues.length > 0; attempt += 1) {
-        console.log(`[expand] polish attempt ${attempt}: ${issues.length} issue(s)`)
-        const repairMessage = buildResponsiveRepairMessage(issues, attempt)
-        polishedMainHtml = await refineUI(polishedMainHtml, repairMessage, normalizedParams.brief, normalizedParams.designMd, apiKey, normalizedParams.logoDataUrl, normalizedParams.domain)
-        issues = await auditResponsiveHtml(browser, polishedMainHtml, auditOptions)
-      }
-    } catch (err) {
-      console.warn('[expand] quality polish skipped:', err instanceof Error ? err.message : String(err))
-      polishedMainHtml = mainHtml
-    }
-
-    console.log('[expand] step1: main html polished, starting expandToPrototype')
-    let html = await expandToPrototype(polishedMainHtml, normalizedParams, apiKey)
+    // 디자인 보존: 사용자가 고른 시안을 수정 없이 그대로 확장한다 (확장 전 refineUI 폴리시 제거).
+    // draft에도 셸 강제(injectLayoutEssentialsGuard)가 적용돼 구조가 이미 안정적이고,
+    // expandToPrototype이 이 HTML을 그대로 screen-home으로 보존 + 공통 UI를 서브 화면에 주입한다.
+    console.log('[expand] step1: starting expandToPrototype (design preserved)')
+    let html = await expandToPrototype(mainHtml, normalizedParams, apiKey)
     console.log('[expand] step2: html generated, length=', html.length)
     const imageWarnings: string[] = []
     html = await resolveImagePlaceholders(html, { heroImagePrompt: normalizedParams.heroSubject || normalizedParams.heroImagePrompt, apiKey, unsplashKey, imageWarnings })

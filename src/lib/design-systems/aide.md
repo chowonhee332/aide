@@ -1,14 +1,14 @@
 ---
 version: alpha
 name: Aide Design System
-description: "Aide default DESIGN.md. Based on Wanted Montage tokens, optimized for AI-generated HTML screens. Use Aide brand identity, Google Material Symbols, compact mobile-app rhythm, fixed top navigation, scrollable content, bottom navigation or bottom action area, content-dense sections, and strict skeleton-to-design layout fidelity."
+description: "Aide default DESIGN.md. Based on Wanted Montage tokens, optimized for AI-generated HTML screens. Use Aide brand identity, Google Material Symbols, compact mobile-app rhythm, fixed top navigation, scrollable content, bottom navigation or bottom action area, content-dense sections, and stable variant archetype fidelity."
 
 principles:
   - "App-native, not landing-page-first: build the usable product screen immediately."
   - "Compact and content-dense: every screen must feel like a real service with enough data, states, and actions."
   - "Fixed chrome, scrollable body: top navigation stays visible; content scrolls; bottom nav/action never covers content."
   - "Blue-led hierarchy: primary blue is for CTA, active state, KPI, and selection only."
-  - "Skeleton fidelity: final HTML must preserve skeleton order, block size, spacing rhythm, and CTA location."
+  - "Archetype fidelity: final HTML must preserve the selected variant strategy, section rhythm, visual role, and CTA location."
 
 brand:
   name: Aide
@@ -90,7 +90,7 @@ The output must look like Aide, not Wanted/Montage. Use the Montage visual gramm
 4. Use a sticky/fixed top navigation on mobile.
 5. Make the content body scrollable.
 6. Add bottom padding when bottom nav or action area exists.
-7. Preserve the skeleton layout exactly: order, spacing, large visual blocks, CTA positions.
+7. Preserve the selected variant layout strategy: order, spacing, large visual roles, CTA positions.
 8. Add enough content: minimum 4 sections and 9 meaningful UI units per mobile screen.
 9. Use real Korean product copy, metrics, states, recommendations, histories, alerts, or comparisons.
 10. Include responsive CSS with mobile, tablet, and desktop behavior.
@@ -158,7 +158,7 @@ Core CSS contract:
 
 - First section.
 - Must include at least 4 of: badge, title, supporting copy, KPI, visual, CTA, status.
-- If skeleton has a visual block, final design must keep a visual block in the same location.
+- If the variant strategy has a visual block, final design must keep a visual block in the same role and location.
 - 3D image placement:
 
 ```html
@@ -283,20 +283,20 @@ Required units: summary, tabs, metrics, timeline, recommendations.
 - B: visual hero, assistant/simulator, 3D or generated visual.
 - C: story/photo-led, brand-emotional, image and cards.
 - Each variant must use a different hero composition, section order, and primary interaction.
-- If a layout scaffold is provided, each variant still preserves its own scaffold exactly.
+- Each variant preserves its own strategy, section rhythm, visual role, and primary interaction.
 
-## Skeleton Contract
+## Layout Contract
 
-The layout scaffold is not a suggestion. It is the source of truth for structure.
+The selected variant archetype is the source of truth for structure.
 
 - Preserve section order.
-- Preserve large block sizes.
-- Preserve visual block location.
+- Preserve meaningful section proportion.
+- Preserve visual role and placement.
 - Preserve CTA location.
 - Preserve approximate section/card spacing.
-- Add detail by filling blocks, not by rearranging them.
-- If the scaffold has a bottom tab, final screen has bottom tab.
-- If the scaffold has a bottom action button, final screen has fixed action area.
+- Add detail by enriching each section, not by drifting into an unrelated layout pattern.
+- If the variant strategy requires a bottom tab, final screen has bottom tab.
+- If the variant strategy requires a bottom action button, final screen has fixed action area.
 
 ## Content Density
 
@@ -331,8 +331,8 @@ Before final answer, the generated HTML must pass:
 - Top navigation remains visible on scroll.
 - Main content scrolls.
 - Bottom nav/action does not cover content.
-- Skeleton structure is preserved.
-- Hero image/3D appears when scaffold or strategy requires it.
+- Variant layout strategy is preserved.
+- Hero image/3D appears when the strategy requires it.
 - CTA is bottom-aligned within its section/card/action area.
 - Minimum 4 sections and 9 UI units.
 - Responsive CSS exists.
@@ -344,5 +344,5 @@ Before final answer, the generated HTML must pass:
 - Do not create a landing page unless explicitly requested.
 - Do not let content be clipped behind fixed bottom chrome.
 - Do not center-float buttons in the middle of image/content blocks.
-- Do not make all variants the same skeleton or same layout.
+- Do not make all variants the same layout.
 - Do not create empty, decorative, low-content screens.

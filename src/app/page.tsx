@@ -18,14 +18,14 @@ const CircularGallery = dynamic(() => import('@/components/CircularGallery'), { 
 
 const F = {
   canvas:       '#ffffff',
-  surface1:     '#f7f7f7',
-  surface2:     '#f2f2f2',
-  ink:          '#111111',
-  inkMuted:     '#666666',
-  primary:      '#5227FF', // Electric Blue
+  surface1:     '#F7F7F8',
+  surface2:     'rgba(112,115,124,0.08)',
+  ink:          '#171719',
+  inkMuted:     'rgba(55,56,60,0.61)',
+  primary:      '#0066FF', // Electric Blue
   primaryActive:'#3d1bd9',
-  hairline:     '#dddddd',
-  hairlineSoft: '#eeeeee',
+  hairline:     'rgba(112,115,124,0.16)',
+  hairlineSoft: 'rgba(112,115,124,0.16)',
 }
 
 type ApiKeyTab = 'gemini' | 'unsplash' | 'figma'
@@ -1061,7 +1061,7 @@ export default function Home() {
         <div className="fixed inset-0 pointer-events-none">
           <Grainient
             color1="#95c7cd"
-            color2="#5227FF"
+            color2="#0066FF"
             color3="#B497CF"
             timeSpeed={1}
             colorBalance={0}
@@ -1159,7 +1159,7 @@ export default function Home() {
                   }
                 }}
                 style={{
-                  backgroundColor: scrolled ? '#fff' : 'rgba(255,255,255,0.9)', color: '#111',
+                  backgroundColor: scrolled ? '#fff' : 'rgba(255,255,255,0.9)', color: '#171719',
                   fontSize: '14px', fontWeight: 600, padding: '10px 20px', borderRadius: '12px',
                   border: 'none', cursor: 'pointer', transition: 'all 0.15s',
                   letterSpacing: '-0.14px',
@@ -1185,7 +1185,7 @@ export default function Home() {
             backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)',
             marginBottom: '24px', letterSpacing: '-0.13px',
           }}>
-            <span style={{ backgroundColor: '#fff', color: '#111', padding: '1px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 800, marginRight: '4px' }}>NEW</span>
+            <span style={{ backgroundColor: '#fff', color: '#171719', padding: '1px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 800, marginRight: '4px' }}>NEW</span>
             Just shipped v2.0
           </div>
 
@@ -1327,7 +1327,7 @@ export default function Home() {
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         width: '22px', height: '22px', borderRadius: '50%',
-                        border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#555555',
+                        border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: 'rgba(55,56,60,0.61)',
                       }}
                     >
                       <X size={12} />
@@ -1359,7 +1359,7 @@ export default function Home() {
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         width: '22px', height: '22px', borderRadius: '50%',
-                        border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#555555',
+                        border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: 'rgba(55,56,60,0.61)',
                       }}
                     >
                       <X size={12} />
@@ -1398,7 +1398,7 @@ export default function Home() {
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         width: '22px', height: '22px', borderRadius: '50%',
-                        border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#555555',
+                        border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: 'rgba(55,56,60,0.61)',
                       }}
                     >
                       <X size={12} />
@@ -1427,7 +1427,7 @@ export default function Home() {
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         width: '22px', height: '22px', borderRadius: '50%',
-                        border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#555555',
+                        border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: 'rgba(55,56,60,0.61)',
                       }}
                     >
                       <X size={12} />
@@ -2279,7 +2279,7 @@ export default function Home() {
                 .filter(i => i.thumbnail)
                 .map(i => ({ id: i.id, image: i.thumbnail, text: i.brief, platform: i.platform ?? 'web' }))}
               bend={4}
-              textColor="#111111"
+              textColor="#171719"
               borderRadius={0.025}
               scrollSpeed={2}
               scrollEase={0.05}
@@ -2350,7 +2350,7 @@ export default function Home() {
               disabled={apiKeyValidating}
               style={{
                 width: '100%', boxSizing: 'border-box', borderRadius: '10px',
-                border: `1.5px solid ${apiKeyStatus === 'valid' ? '#22c55e' : apiKeyStatus === 'invalid' ? '#ef4444' : F.hairline}`,
+                border: `1.5px solid ${apiKeyStatus === 'valid' ? '#00BF40' : apiKeyStatus === 'invalid' ? '#FF4242' : F.hairline}`,
                 padding: '10px 14px', fontSize: '14px', color: F.ink, outline: 'none',
                 fontFamily: 'monospace', marginBottom: apiKeyError ? '8px' : '16px',
                 background: apiKeyValidating ? F.surface1 : F.canvas,
@@ -2359,10 +2359,10 @@ export default function Home() {
               onBlur={e => { if (apiKeyStatus === 'idle') e.currentTarget.style.borderColor = F.hairline }}
             />
             {apiKeyError && (
-              <p style={{ fontSize: '12px', color: '#ef4444', margin: '0 0 16px', lineHeight: 1.5 }}>{apiKeyError}</p>
+              <p style={{ fontSize: '12px', color: '#FF4242', margin: '0 0 16px', lineHeight: 1.5 }}>{apiKeyError}</p>
             )}
             {apiKeyStatus === 'valid' && (
-              <p style={{ fontSize: '12px', color: '#22c55e', margin: '0 0 16px', lineHeight: 1.5 }}>✓ 저장되었습니다.</p>
+              <p style={{ fontSize: '12px', color: '#00BF40', margin: '0 0 16px', lineHeight: 1.5 }}>✓ 저장되었습니다.</p>
             )}
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button
@@ -2559,7 +2559,7 @@ export default function Home() {
                               {tags.map(({ label, accent, muted }) => (
                                 <span key={label} style={{
                                   fontSize: '10px', fontWeight: 600, borderRadius: '100px', padding: '2px 7px', letterSpacing: '-0.1px',
-                                  color: accent ? '#0055ff' : muted ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.72)',
+                                  color: accent ? '#0066FF' : muted ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.72)',
                                   backgroundColor: accent ? 'rgba(0,85,255,0.08)' : 'rgba(0,0,0,0.045)',
                                 }}>
                                   {label}

@@ -43,3 +43,6 @@ next-env.d.ts
 # AI model cache (BiRefNet ONNX, downloaded at runtime)
 /.model-cache
 *.onnx
+
+# local structure-lint violation logs (graduation-cycle data)
+/.aide-logs

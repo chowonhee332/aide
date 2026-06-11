@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import DotField from '@/components/DotField'
-import type { Question, QuestionnaireResponse, TweakSpec, TweakEvent, TweakVariable, AppDomain, LayoutBlueprint, LayoutBlueprintSection } from '@/lib/gemini'
+import type { Question, QuestionnaireResponse, TweakSpec, TweakVariable, AppDomain } from '@/lib/gemini'
 import { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY, DOMAIN_HOME_EMPHASIS_OPTIONS } from '@/lib/domain-constants'
 import { getVariantStyles, getVariantInfo } from '@/lib/variant-refs'
 import { buildDesignIntelligencePlan } from '@/lib/design-intelligence'
@@ -37,22 +37,23 @@ async function fetchAutoReferenceImage(keyword: string): Promise<string | undefi
 }
 
 // ─── KTDS 디자인 토큰 ────────────────────────────────────────────────────────
+// 앱 자체 UI 토큰 — src/lib/design-systems/aide.md와 동기 (dogfooding)
 const F = {
   // 서피스
-  canvas:          '#F2F5F9',   // 페이지 배경 (primary-fill-neutral)
-  surface:         '#ffffff',   // 카드/패널 배경
-  surface1:        '#ffffff',   // 하위 호환
+  canvas:          '#F7F7F8',                 // aide page
+  surface:         '#FFFFFF',                 // aide surface
+  surface1:        '#FFFFFF',                 // 하위 호환
   // 텍스트
-  ink:             '#171719',
-  inkMuted:        '#474a4f',   // 하위 호환
-  inkAlternative:  '#9a9ba0',
-  inkSubtle:       '#9a9ba0',   // 하위 호환
+  ink:             '#171719',                 // aide text
+  inkMuted:        'rgba(55,56,60,0.61)',     // aide text-muted
+  inkAlternative:  'rgba(55,56,60,0.28)',     // aide text-assistive
+  inkSubtle:       'rgba(55,56,60,0.28)',     // 하위 호환
   // Primary
-  primary:         '#1a75ff',
-  primaryActive:   '#186ae8',
+  primary:         '#0066FF',                 // aide primary
+  primaryActive:   '#005EEB',                 // aide primary-strong
   // 보더
-  hairline:        '#c5c6c9',
-  hairlineSoft:    '#dcdde0',
+  hairline:        'rgba(112,115,124,0.16)',  // aide border
+  hairlineSoft:    'rgba(112,115,124,0.08)',  // aide border-alt
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -384,7 +385,7 @@ const INSPECTOR_SCRIPT = `<script data-aide-inject="1">
   var sel=null;
   var sb=document.createElement('div');
   sb.setAttribute('data-aide-inject','1');
-  sb.style.cssText='position:fixed;pointer-events:none;z-index:2147483647;outline:2px solid #0055ff;outline-offset:0;box-sizing:border-box;border-radius:2px;transition:all 80ms ease;display:none';
+  sb.style.cssText='position:fixed;pointer-events:none;z-index:2147483647;outline:2px solid #0066FF;outline-offset:0;box-sizing:border-box;border-radius:2px;transition:all 80ms ease;display:none';
   var hb=document.createElement('div');
   hb.setAttribute('data-aide-inject','1');
   hb.style.cssText='position:fixed;pointer-events:none;z-index:2147483646;background:rgba(0,85,255,0.07);box-sizing:border-box;transition:all 50ms ease';
@@ -432,7 +433,7 @@ const INSPECTOR_SCRIPT = `<script data-aide-inject="1">
       if(d.on&&sel){
         sel.style.transition='outline 0.4s ease, outline-offset 0.4s ease';
         var count=0;var iv=setInterval(function(){
-          sel.style.outline=count%2===0?'3px solid #0055ff':'3px solid rgba(0,85,255,0.3)';
+          sel.style.outline=count%2===0?'3px solid #0066FF':'3px solid rgba(0,85,255,0.3)';
           sel.style.outlineOffset=count%2===0?'0px':'4px';
           count++;if(count>6)clearInterval(iv);
         },400);
@@ -664,80 +665,80 @@ function ExpandingOverlay({ image, platform, variantLabel }: { image?: string; p
               borderRadius: isMob ? 10 : 6,
               overflow: 'hidden',
               boxShadow: '0 6px 24px rgba(0,0,0,0.18)',
-              border: '2.5px solid #111111',
+              border: '2.5px solid #171719',
               flexShrink: 0,
             }}>
               {image
                 ? <img src={image} alt={`${variantLabel ?? '선택된 시안'} 미리보기`} style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'top center', display: 'block', background: '#ffffff' }} />
-                : <div style={{ width: '100%', height: '100%', background: '#e4e4e4' }} />}
+                : <div style={{ width: '100%', height: '100%', background: 'rgba(112,115,124,0.16)' }} />}
             </div>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#111111', letterSpacing: '-0.01em' }}>{variantLabel ?? '선택된 시안'}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#171719', letterSpacing: '-0.01em' }}>{variantLabel ?? '선택된 시안'}</span>
           </div>
 
           {/* Arrow 1 */}
-          <div className="ep-arr ep-arr1" style={{ color: '#bbbbbb', fontSize: 20, lineHeight: '1' }}>→</div>
+          <div className="ep-arr ep-arr1" style={{ color: 'rgba(55,56,60,0.28)', fontSize: 20, lineHeight: '1' }}>→</div>
 
           {/* Screen 2: wireframe drawing */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             {isMob ? (
               <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
-                <rect className="ep-fr2" x="2" y="2" width={W-4} height={H-4} rx="9" stroke="#222" strokeWidth="2"/>
-                <line className="ep-h2" x1="10" y1="20" x2={W-10} y2="20" stroke="#bbb" strokeWidth="1.2"/>
-                <rect className="ep-b2" x="8" y="28" width={W-16} height={Math.round(H*0.3)} rx="4" stroke="#999" strokeWidth="1.4"/>
-                <line className="ep-c2" x1="8" y1={H*0.68} x2={W*0.7} y2={H*0.68} stroke="#ccc" strokeWidth="1.2"/>
-                <rect className="ep-c2" x="8" y={H*0.73} width={W-16} height={Math.round(H*0.16)} rx="3" stroke="#ddd" strokeWidth="1.2"/>
+                <rect className="ep-fr2" x="2" y="2" width={W-4} height={H-4} rx="9" stroke="#171719" strokeWidth="2"/>
+                <line className="ep-h2" x1="10" y1="20" x2={W-10} y2="20" stroke="rgba(55,56,60,0.28)" strokeWidth="1.2"/>
+                <rect className="ep-b2" x="8" y="28" width={W-16} height={Math.round(H*0.3)} rx="4" stroke="rgba(55,56,60,0.61)" strokeWidth="1.4"/>
+                <line className="ep-c2" x1="8" y1={H*0.68} x2={W*0.7} y2={H*0.68} stroke="rgba(55,56,60,0.16)" strokeWidth="1.2"/>
+                <rect className="ep-c2" x="8" y={H*0.73} width={W-16} height={Math.round(H*0.16)} rx="3" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2"/>
               </svg>
             ) : (
               <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
-                <rect className="ep-fr2" x="2" y="2" width={W-4} height={H-4} rx="5" stroke="#222" strokeWidth="2"/>
-                <line className="ep-h2" x1="2" y1="17" x2={W-2} y2="17" stroke="#ccc" strokeWidth="1.2"/>
-                <rect className="ep-b2" x="8" y="23" width={W-16} height={Math.round(H*0.32)} rx="3" stroke="#999" strokeWidth="1.4"/>
-                <rect className="ep-c2" x="8" y={H*0.65} width={(W-20)/2} height={Math.round(H*0.25)} rx="3" stroke="#ccc" strokeWidth="1.2"/>
-                <rect className="ep-c2" x={8+(W-20)/2+4} y={H*0.65} width={(W-20)/2} height={Math.round(H*0.25)} rx="3" stroke="#ccc" strokeWidth="1.2"/>
+                <rect className="ep-fr2" x="2" y="2" width={W-4} height={H-4} rx="5" stroke="#171719" strokeWidth="2"/>
+                <line className="ep-h2" x1="2" y1="17" x2={W-2} y2="17" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2"/>
+                <rect className="ep-b2" x="8" y="23" width={W-16} height={Math.round(H*0.32)} rx="3" stroke="rgba(55,56,60,0.61)" strokeWidth="1.4"/>
+                <rect className="ep-c2" x="8" y={H*0.65} width={(W-20)/2} height={Math.round(H*0.25)} rx="3" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2"/>
+                <rect className="ep-c2" x={8+(W-20)/2+4} y={H*0.65} width={(W-20)/2} height={Math.round(H*0.25)} rx="3" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2"/>
               </svg>
             )}
-            <span style={{ fontSize: 11, color: '#999', fontWeight: 500 }}>서브 화면</span>
+            <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.61)', fontWeight: 500 }}>서브 화면</span>
           </div>
 
           {/* Arrow 2 */}
-          <div className="ep-arr ep-arr2" style={{ color: '#bbbbbb', fontSize: 20, lineHeight: '1' }}>→</div>
+          <div className="ep-arr ep-arr2" style={{ color: 'rgba(55,56,60,0.28)', fontSize: 20, lineHeight: '1' }}>→</div>
 
           {/* Screen 3: wireframe drawing */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             {isMob ? (
               <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
-                <rect className="ep-fr3" x="2" y="2" width={W-4} height={H-4} rx="9" stroke="#222" strokeWidth="2"/>
-                <line className="ep-h3" x1="10" y1="20" x2={W-10} y2="20" stroke="#bbb" strokeWidth="1.2"/>
-                <rect className="ep-b3" x="8" y="28" width={W-16} height={Math.round(H*0.38)} rx="4" stroke="#999" strokeWidth="1.4"/>
-                <rect className="ep-c3" x="8" y={H*0.72} width={W-16} height={Math.round(H*0.18)} rx="3" stroke="#ddd" strokeWidth="1.2"/>
-                <line className="ep-c3" x1="8" y1={H*0.94} x2={W*0.5} y2={H*0.94} stroke="#eee" strokeWidth="1"/>
+                <rect className="ep-fr3" x="2" y="2" width={W-4} height={H-4} rx="9" stroke="#171719" strokeWidth="2"/>
+                <line className="ep-h3" x1="10" y1="20" x2={W-10} y2="20" stroke="rgba(55,56,60,0.28)" strokeWidth="1.2"/>
+                <rect className="ep-b3" x="8" y="28" width={W-16} height={Math.round(H*0.38)} rx="4" stroke="rgba(55,56,60,0.61)" strokeWidth="1.4"/>
+                <rect className="ep-c3" x="8" y={H*0.72} width={W-16} height={Math.round(H*0.18)} rx="3" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2"/>
+                <line className="ep-c3" x1="8" y1={H*0.94} x2={W*0.5} y2={H*0.94} stroke="rgba(112,115,124,0.16)" strokeWidth="1"/>
               </svg>
             ) : (
               <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
-                <rect className="ep-fr3" x="2" y="2" width={W-4} height={H-4} rx="5" stroke="#222" strokeWidth="2"/>
-                <line className="ep-h3" x1="2" y1="17" x2={W-2} y2="17" stroke="#ccc" strokeWidth="1.2"/>
-                <rect className="ep-b3" x="8" y="23" width={Math.round((W-20)*0.42)} height={H-30} rx="3" stroke="#999" strokeWidth="1.4"/>
-                <rect className="ep-c3" x={8+Math.round((W-20)*0.42)+4} y="23" width={Math.round((W-20)*0.54)} height={Math.round((H-30)/2-2)} rx="3" stroke="#ccc" strokeWidth="1.2"/>
-                <rect className="ep-c3" x={8+Math.round((W-20)*0.42)+4} y={23+Math.round((H-30)/2)+2} width={Math.round((W-20)*0.54)} height={Math.round((H-30)/2-2)} rx="3" stroke="#ccc" strokeWidth="1.2"/>
+                <rect className="ep-fr3" x="2" y="2" width={W-4} height={H-4} rx="5" stroke="#171719" strokeWidth="2"/>
+                <line className="ep-h3" x1="2" y1="17" x2={W-2} y2="17" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2"/>
+                <rect className="ep-b3" x="8" y="23" width={Math.round((W-20)*0.42)} height={H-30} rx="3" stroke="rgba(55,56,60,0.61)" strokeWidth="1.4"/>
+                <rect className="ep-c3" x={8+Math.round((W-20)*0.42)+4} y="23" width={Math.round((W-20)*0.54)} height={Math.round((H-30)/2-2)} rx="3" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2"/>
+                <rect className="ep-c3" x={8+Math.round((W-20)*0.42)+4} y={23+Math.round((H-30)/2)+2} width={Math.round((W-20)*0.54)} height={Math.round((H-30)/2-2)} rx="3" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2"/>
               </svg>
             )}
-            <span style={{ fontSize: 11, color: '#999', fontWeight: 500 }}>내비게이션</span>
+            <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.61)', fontWeight: 500 }}>내비게이션</span>
           </div>
         </div>
 
         {/* ── Text ── */}
         <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111111', letterSpacing: '-0.03em', margin: 0 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#171719', letterSpacing: '-0.03em', margin: 0 }}>
             선택한 시안으로 프로토타입을 완성하고 있습니다
           </h2>
-          <p key={stageIdx} className="ep-stage" style={{ fontSize: 13, color: '#888888', margin: 0 }}>
+          <p key={stageIdx} className="ep-stage" style={{ fontSize: 13, color: 'rgba(55,56,60,0.61)', margin: 0 }}>
             {EXPAND_STAGES[stageIdx]}
           </p>
         </div>
 
         {/* ── Progress bar ── */}
-        <div style={{ width: 220, height: 3, backgroundColor: '#e8e8e8', borderRadius: 2, overflow: 'hidden' }}>
-          <div style={{ height: '100%', backgroundColor: '#111111', borderRadius: 2, animation: 'ep-bar 1.8s ease-in-out infinite' }} />
+        <div style={{ width: 220, height: 3, backgroundColor: 'rgba(112,115,124,0.16)', borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{ height: '100%', backgroundColor: '#171719', borderRadius: 2, animation: 'ep-bar 1.8s ease-in-out infinite' }} />
         </div>
       </div>
     </div>
@@ -765,7 +766,7 @@ function parseCustomDesignMdMeta(md: string): {
   }
 
   const primaryEntry = colorEntries.find(e => e.name === 'primary')
-  const color = primaryEntry?.hex ?? '#6366f1'
+  const color = primaryEntry?.hex ?? '#0066FF'
 
   const paletteNames = ['primary', 'secondary', 'surface', 'background', 'error', 'accent', 'tertiary']
   const palette: { name: string; hex: string }[] = []
@@ -868,9 +869,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const [bHeroStyle, setBHeroStyle] = useState<'object' | 'scene'>('object')
   const [variantContentHeights, setVariantContentHeights] = useState<[number | null, number | null, number | null]>([null, null, null])
   const variantIframeRefs = useRef<[HTMLIFrameElement | null, HTMLIFrameElement | null, HTMLIFrameElement | null]>([null, null, null])
-  const [blueprintLoadingIdx, setBlueprintLoadingIdx] = useState<number | null>(null)
   const [variantGenerationStarted, setVariantGenerationStarted] = useState(false)
-  const [layoutBlueprints, setLayoutBlueprints] = useState<LayoutBlueprint[]>([])
   const [isExpandingPrototype, setIsExpandingPrototype] = useState(false)
   const [mainVariants, setMainVariants] = useState<[GenerateResult|null, GenerateResult|null, GenerateResult|null]>([null, null, null])
   const [streamingHtml, setStreamingHtml] = useState<[string|null, string|null, string|null]>([null, null, null])
@@ -998,9 +997,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
   const canvasPanRef = useRef({ x: 0, y: 0 })
   const canvasAreaRef = useRef<HTMLDivElement>(null)
   const canvasTransformRef = useRef<HTMLDivElement>(null)
-  const studioTransformRef = useRef<HTMLDivElement>(null)
-  const studioScaleRef = useRef(1)
-  const studioPanRef = useRef({ x: 0, y: 0 })
   const spaceDownRef = useRef(false)
   const isPanningRef = useRef(false)
   const panStartRef = useRef({ mouseX: 0, mouseY: 0, panX: 0, panY: 0 })
@@ -1384,7 +1380,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       const prototypeHtml = item.board.prototypeHtml ?? item.html
       const prototypeImage = item.board.prototypeThumbnail ?? item.thumbnail
       const loadedPrototype: GenerateResult = { html: prototypeHtml, image: prototypeImage }
-      setLayoutBlueprints((item.board.layoutBlueprints ?? []) as LayoutBlueprint[])
       setMainVariants(boardVariants)
       setPickedVariantIdx(item.board.pickedVariantIdx ?? null)
       setVariants([loadedPrototype, null])
@@ -1393,7 +1388,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       setHistoryB([]); setHistoryIndexB(-1)
       setScreens(item.board.prototypeScreens ?? [])
       setActiveScreenId(item.board.prototypeScreens?.[0]?.id ?? '')
-      const extractedColor = prototypeHtml.match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? '#0055ff'
+      const extractedColor = prototypeHtml.match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? '#0066FF'
       setBrandColor(extractedColor); setDebouncedBrandColor(extractedColor)
       setCurrentHistoryId(item.id)
       setCurrentBoardHistoryId(item.id)
@@ -1413,7 +1408,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     setActiveVariant(0)
     setHistoryA([item.html]); setHistoryIndexA(0)
     setHistoryB([]); setHistoryIndexB(-1)
-    const extractedColor = item.html.match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? '#0055ff'
+    const extractedColor = item.html.match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? '#0066FF'
     setBrandColor(extractedColor); setDebouncedBrandColor(extractedColor)
     setCurrentHistoryId(item.id)
     setCurrentBoardHistoryId(null)
@@ -1473,7 +1468,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
     setIsAnalyzing(true)
     setAnalyzeError('')
-    clearBlueprints()
+    clearGeneratedBoard()
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
@@ -1508,7 +1503,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
   }, [questionnaire])
 
   const handleAnswer = useCallback((questionId: string, value: string, type: 'single' | 'multi' | 'text') => {
-    setLayoutBlueprints([])
     setAnswers(prev => {
       if (type === 'single') {
         return { ...prev, [questionId]: value }
@@ -1619,7 +1613,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     const boardPayload: NonNullable<HistoryItem['board']> = {
       designSystemName: designSystemDisplayName,
       designMd: customDesignMd ?? DESIGN_PRESETS[designPreset].md,
-      layoutBlueprints,
       mainVariants: variantsSnapshot.map(variant => variant ? {
         html: variant.html,
         image: variant.image,
@@ -1656,129 +1649,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       refreshBoardHistoryTabs()
     }
     return newId
-  }, [brief, currentBoardHistoryId, customDesignMd, designPreset, designSystemDisplayName, layoutBlueprints, mainVariants, pickedVariantIdx, platform, refreshBoardHistoryTabs, screens])
+  }, [brief, currentBoardHistoryId, customDesignMd, designPreset, designSystemDisplayName, mainVariants, pickedVariantIdx, platform, questionnaire, refreshBoardHistoryTabs, screens])
 
-  const clearBlueprints = useCallback(() => {
-    setLayoutBlueprints([])
+  const clearGeneratedBoard = useCallback(() => {
     setVariantGenerationStarted(false)
     setCurrentBoardHistoryId(null)
   }, [])
-
-  const handleRegenerateSingleBlueprint = async (idx: number) => {
-    if (!questionnaire) return
-    const generationContext = buildGenerationContext()
-    if (!generationContext) return
-    const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
-    setBlueprintLoadingIdx(idx)
-    setGenerateError('')
-    try {
-      const res = await fetch('/api/layout-blueprint', {
-        method: 'POST',
-        headers: apiHeaders(),
-        body: JSON.stringify({
-          designMd: effectiveDesignMd,
-          brief,
-          answers,
-          projectSummary: questionnaire.projectSummary,
-          platform,
-          domain: generationContext.effectiveDomain,
-          generationPlan: generationContext.generationPlan,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? '스켈레톤 재생성에 실패했습니다')
-      const blueprints: LayoutBlueprint[] = Array.isArray(data.blueprints) ? data.blueprints : []
-      if (blueprints[idx]) {
-        setLayoutBlueprints(prev => {
-          const next = [...prev]
-          next[idx] = blueprints[idx]
-          return next
-        })
-      }
-    } catch (err) {
-      setGenerateError(err instanceof Error ? err.message : '스켈레톤 재생성 중 오류가 발생했습니다')
-    } finally {
-      setBlueprintLoadingIdx(null)
-    }
-  }
-
-  const handleGenerateSingleVariant = async (idx: 0 | 1 | 2) => {
-    if (!questionnaire) return
-    const generationContext = buildGenerationContext()
-    if (!generationContext) return
-    const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
-    const { heroSubject, heroPrompt, effectiveDomain, sharedVisualSubject, generationPlan, visualPolicies } = generationContext
-    const visualPolicy = visualPolicies[idx]
-    const sharedVisualMode = visualPolicy === 'scene-3d' || visualPolicy === 'creon-object-3d'
-      ? '3d' as const
-      : visualPolicy === 'real-photo'
-        ? 'photo' as const
-        : 'none' as const
-    const variantHeroPrompt = heroPrompt || sharedVisualSubject || brief
-    let referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
-    const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
-    if (!referenceImageBase64 && generationPlan?.referenceSearchKeyword) {
-      referenceImageBase64 = await fetchAutoReferenceImage(generationPlan.referenceSearchKeyword)
-    }
-    const asIsAnalysis = readAsIsAnalysis()
-    const modelId = 'gemini-3.1-pro-preview'
-    const prdDoc = sessionStorage.getItem('prdDoc') ?? undefined
-    const iaImage = sessionStorage.getItem('iaImage') ?? undefined
-    const iaText = sessionStorage.getItem('iaText') ?? undefined
-    const variantStyles = getVariantStyles(effectiveDomain)
-    const setLoading = idx === 0 ? setIsGenerating : idx === 1 ? setIsGeneratingB : setIsGeneratingC
-    setLoading(true)
-    setVariantGenerationStarted(true)
-    if (idx === 1) { setBSceneImage(null); setBHeroStyle('object') }
-    setMainVariants(prev => { const next = [...prev] as typeof prev; next[idx] = null; return next })
-    const genId = ++generationIdRef.current
-    try {
-      const params = {
-        designMd: effectiveDesignMd, brief, answers,
-        projectSummary: questionnaire.projectSummary,
-        logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined,
-        mainOnly: true, referenceImageBase64, referenceImageKind, asIsAnalysis,
-        platform, modelId, heroImagePrompt: variantHeroPrompt, heroSubject,
-        sharedVisualMode, sharedVisualSubject, visualPolicy, generationPlan,
-        domain: effectiveDomain, variantStyle: variantStyles[idx],
-        layoutBlueprint: layoutBlueprints[idx],
-        qualityMode: 'draft' as const,
-        criticalReview: false,
-        prdDoc, iaImageBase64: iaImage, iaText,
-      }
-      const res = await fetch('/api/generate', { method: 'POST', headers: apiHeaders(), body: JSON.stringify(params) })
-      const json = await readGenerateStream(res, undefined, (partialHtml) => writeStreamDelta(idx, partialHtml))
-      closeStreamDoc(idx)
-      if (generationIdRef.current === genId) {
-        const nextVariants = [...mainVariants] as [GenerateResult | null, GenerateResult | null, GenerateResult | null]
-        nextVariants[idx] = json
-        setMainVariants(nextVariants)
-        persistBoardHistory({ mainVariantsOverride: nextVariants }).catch(() => {})
-        // B 재생성 시 씬 이미지만 병렬 생성
-        if (idx === 1) {
-          const sceneSubject = variantHeroPrompt || sharedVisualSubject || brief
-          setIsGeneratingBScene(true)
-          fetch('/api/generate-hero-image', {
-            method: 'POST',
-            headers: apiHeaders(),
-            body: JSON.stringify({ subject: sceneSubject, designMd: effectiveDesignMd }),
-          })
-            .then(async r => {
-              const json = await r.json() as { base64?: string; mimeType?: string; error?: string }
-              if (json.error) { console.warn('[B scene image]', json.error); return }
-              if (json.base64 && json.mimeType && generationIdRef.current === genId) {
-                setBSceneImage({ base64: json.base64, mimeType: json.mimeType })
-              }
-            })
-            .catch(err => console.warn('[B scene image fetch]', err))
-            .finally(() => setIsGeneratingBScene(false))
-        }
-      }
-    } catch (err) {
-      setGenerateError(err instanceof Error ? err.message : '시안 생성 중 오류가 발생했습니다')
-    }
-    finally { setLoading(false) }
-  }
 
   const handleGenerate = async () => {
     if (!questionnaire) return
@@ -2116,7 +1992,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     setGenerationEvents([])
     setIsGeneratingB(false); setIsGeneratingC(false); setIsExpandingPrototype(false)
     setScreens([]); setActiveScreenId('')
-    clearBlueprints()
+    clearGeneratedBoard()
     bgFetchAbortRef.current?.abort()
     bgFetchAbortRef.current = null
     ++generationIdRef.current
@@ -2157,7 +2033,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       heroSubject: heroSubjectRetry,
       domain: effectiveDomain,
       variantStyle: variantStyles[idx],
-      layoutBlueprint: layoutBlueprints[idx],
       prdDoc: prdDocFromStorage,
       iaImageBase64: iaImageFromStorage,
       iaText: iaTextFromStorage,
@@ -2380,18 +2255,18 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
     return (
       <div
-        className="h-screen overflow-hidden flex flex-col text-[#111111] relative"
+        className="h-screen overflow-hidden flex flex-col text-[#171719] relative"
         style={{
           fontFamily: "var(--font-pretendard)",
-          backgroundColor: '#f4f4f6',
+          backgroundColor: '#F4F4F5',
         }}
       >
         {/* Header */}
         <div className="border-b border-[rgba(0,0,0,0.09)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
-          <button onClick={onBack} aria-label="Aide 홈으로 이동" className="flex items-center px-4 border-r border-[rgba(0,0,0,0.09)] hover:bg-[#ebebeb] transition-colors shrink-0">
+          <button onClick={onBack} aria-label="Aide 홈으로 이동" className="flex items-center px-4 border-r border-[rgba(0,0,0,0.09)] hover:bg-[rgba(112,115,124,0.16)] transition-colors shrink-0">
             <img src="/logo_aide.png" alt="Aide" className="h-14 w-auto object-contain" />
           </button>
-          <div className="px-5 text-[13px] flex items-center gap-2 text-[#666666]">
+          <div className="px-5 text-[13px] flex items-center gap-2 text-[rgba(55,56,60,0.61)]">
             {isAnyGenerating ? (
               <>
                 <svg className="animate-spin shrink-0" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -2410,7 +2285,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 onClick={handleGenerate}
                 disabled={isAnyGenerating}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-semibold text-white transition-colors disabled:opacity-50"
-                style={{ borderRadius: 8, backgroundColor: '#1a75ff' }}
+                style={{ borderRadius: 8, backgroundColor: '#0066FF' }}
               >
                 <Sparkles size={13} /> 시안 A/B/C 생성
               </button>
@@ -2419,12 +2294,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               <button
                 onClick={() => handleGenerate()}
                 disabled={isAnyGenerating}
-                className="flex items-center gap-1.5 text-[13px] text-[#666666] hover:text-[#111111] transition-colors disabled:opacity-40"
+                className="flex items-center gap-1.5 text-[13px] text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors disabled:opacity-40"
               >
                 <RefreshCw size={13} /> 다시 생성
               </button>
             )}
-            <button onClick={() => { clearBlueprints(); setStep(2) }} disabled={isAnyGenerating} className="flex items-center gap-1.5 text-[13px] text-[#666666] hover:text-[#111111] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            <button onClick={() => { clearGeneratedBoard(); setStep(2) }} disabled={isAnyGenerating} className="flex items-center gap-1.5 text-[13px] text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               <ArrowLeft size={14} /> 설문
             </button>
           </div>
@@ -2458,27 +2333,27 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         {sidebarColor ? (
                           <div style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: sidebarColor, flexShrink: 0 }} />
                         ) : (
-                          <div style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: '#f4f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                          <div style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: '#F4F4F5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(55,56,60,0.61)" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                           </div>
                         )}
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#111111', letterSpacing: '-0.3px', lineHeight: 1.2 }}>{sidebarLabel}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#171719', letterSpacing: '-0.3px', lineHeight: 1.2 }}>{sidebarLabel}</span>
                       </div>
-                      <p style={{ fontSize: 12, color: '#888888', lineHeight: 1.55, letterSpacing: '-0.1px' }}>{customDesignMd ? 'custom design.md' : preset.description}</p>
+                      <p style={{ fontSize: 12, color: 'rgba(55,56,60,0.61)', lineHeight: 1.55, letterSpacing: '-0.1px' }}>{customDesignMd ? 'custom design.md' : preset.description}</p>
                     </div>
 
                     <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
                       {/* Color palette */}
                       {sidebarPalette && sidebarPalette.length > 0 && (
                         <div>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>컬러 팔레트</p>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>컬러 팔레트</p>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                             {sidebarPalette.map(swatch => (
                               <div key={swatch.hex} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <div style={{ width: 22, height: 22, borderRadius: 6, backgroundColor: swatch.hex, border: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }} />
                                 <div>
-                                  <p style={{ fontSize: 11.5, fontWeight: 600, color: '#333333', margin: 0, lineHeight: 1.2 }}>{swatch.name}</p>
-                                  <p style={{ fontSize: 10, color: '#aaaaaa', margin: 0, fontFamily: 'monospace', letterSpacing: '0.03em' }}>{swatch.hex}</p>
+                                  <p style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(46,47,51,0.88)', margin: 0, lineHeight: 1.2 }}>{swatch.name}</p>
+                                  <p style={{ fontSize: 10, color: 'rgba(55,56,60,0.28)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.03em' }}>{swatch.hex}</p>
                                 </div>
                               </div>
                             ))}
@@ -2489,15 +2364,15 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Fonts */}
                       {sidebarFonts && (
                         <div>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>타이포그래피</p>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>타이포그래피</p>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: 11, color: '#aaaaaa' }}>Headline</span>
-                              <span style={{ fontSize: 11.5, fontWeight: 600, color: '#333333' }}>{sidebarFonts.headline}</span>
+                              <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.28)' }}>Headline</span>
+                              <span style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(46,47,51,0.88)' }}>{sidebarFonts.headline}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: 11, color: '#aaaaaa' }}>Body</span>
-                              <span style={{ fontSize: 11.5, fontWeight: 600, color: '#333333' }}>{sidebarFonts.body}</span>
+                              <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.28)' }}>Body</span>
+                              <span style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(46,47,51,0.88)' }}>{sidebarFonts.body}</span>
                             </div>
                           </div>
                         </div>
@@ -2506,10 +2381,10 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Traits */}
                       {preset.traits && preset.traits.length > 0 && (
                         <div>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>디자인 특성</p>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>디자인 특성</p>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                             {preset.traits.map(trait => (
-                              <span key={trait} style={{ fontSize: 11, fontWeight: 500, color: '#555555', backgroundColor: '#f4f4f6', borderRadius: 6, padding: '4px 8px', lineHeight: 1.2 }}>{trait}</span>
+                              <span key={trait} style={{ fontSize: 11, fontWeight: 500, color: 'rgba(55,56,60,0.61)', backgroundColor: '#F4F4F5', borderRadius: 6, padding: '4px 8px', lineHeight: 1.2 }}>{trait}</span>
                             ))}
                           </div>
                         </div>
@@ -2518,16 +2393,16 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Typography Scale */}
                       {preset.typographyScale && preset.typographyScale.length > 0 && (
                         <div>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>타이포그래피 스케일</p>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>타이포그래피 스케일</p>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                             {preset.typographyScale.map(step => (
                               <div key={step.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <div style={{ width: 36, flexShrink: 0, textAlign: 'right' }}>
-                                  <span style={{ fontSize: 10, fontWeight: 700, color: '#aaaaaa', fontFamily: 'monospace' }}>{step.size}</span>
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', fontFamily: 'monospace' }}>{step.size}</span>
                                 </div>
-                                <div style={{ width: 1, height: 14, backgroundColor: '#e8e8ea', flexShrink: 0 }} />
-                                <span style={{ fontSize: parseInt(step.size) > 20 ? 14 : 12, fontWeight: step.weight >= 600 ? 600 : step.weight >= 500 ? 500 : 400, color: '#222222', lineHeight: 1, letterSpacing: '-0.1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>{step.name}</span>
-                                <span style={{ marginLeft: 'auto', fontSize: 10, color: '#cccccc', fontFamily: 'monospace' }}>{step.weight}</span>
+                                <div style={{ width: 1, height: 14, backgroundColor: 'rgba(112,115,124,0.16)', flexShrink: 0 }} />
+                                <span style={{ fontSize: parseInt(step.size) > 20 ? 14 : 12, fontWeight: step.weight >= 600 ? 600 : step.weight >= 500 ? 500 : 400, color: '#171719', lineHeight: 1, letterSpacing: '-0.1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>{step.name}</span>
+                                <span style={{ marginLeft: 'auto', fontSize: 10, color: 'rgba(55,56,60,0.16)', fontFamily: 'monospace' }}>{step.weight}</span>
                               </div>
                             ))}
                           </div>
@@ -2537,14 +2412,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Status Colors */}
                       {preset.statusColors && preset.statusColors.length > 0 && (
                         <div>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>상태 색상</p>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>상태 색상</p>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 10px' }}>
                             {preset.statusColors.map(s => (
                               <div key={s.hex} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                                 <div style={{ width: 16, height: 16, borderRadius: 4, backgroundColor: s.hex, flexShrink: 0 }} />
                                 <div>
-                                  <p style={{ fontSize: 11, fontWeight: 600, color: '#333333', margin: 0, lineHeight: 1.2 }}>{s.name}</p>
-                                  <p style={{ fontSize: 9.5, color: '#aaaaaa', margin: 0, fontFamily: 'monospace' }}>{s.hex}</p>
+                                  <p style={{ fontSize: 11, fontWeight: 600, color: 'rgba(46,47,51,0.88)', margin: 0, lineHeight: 1.2 }}>{s.name}</p>
+                                  <p style={{ fontSize: 9.5, color: 'rgba(55,56,60,0.28)', margin: 0, fontFamily: 'monospace' }}>{s.hex}</p>
                                 </div>
                               </div>
                             ))}
@@ -2555,16 +2430,16 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Radius Tokens */}
                       {preset.radiusTokens && preset.radiusTokens.length > 0 && (
                         <div>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>Border Radius</p>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>Border Radius</p>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 8px', alignItems: 'flex-end' }}>
                             {preset.radiusTokens.map(r => {
                               const px = parseInt(r.value)
                               const sz = Math.min(Math.max(px === 9999 || px >= 100 ? 20 : px * 1.2, 6), 20)
                               return (
                                 <div key={r.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                                  <div style={{ width: sz + 4, height: sz + 4, border: '1.5px solid #c8c8cc', borderRadius: px >= 999 ? 9999 : Math.min(px, (sz + 4) / 2), backgroundColor: '#f4f4f6' }} />
-                                  <span style={{ fontSize: 9.5, color: '#aaaaaa', fontFamily: 'monospace', lineHeight: 1 }}>{r.name}</span>
-                                  <span style={{ fontSize: 9, color: '#cccccc', fontFamily: 'monospace', lineHeight: 1 }}>{r.value}</span>
+                                  <div style={{ width: sz + 4, height: sz + 4, border: '1.5px solid #c8c8cc', borderRadius: px >= 999 ? 9999 : Math.min(px, (sz + 4) / 2), backgroundColor: '#F4F4F5' }} />
+                                  <span style={{ fontSize: 9.5, color: 'rgba(55,56,60,0.28)', fontFamily: 'monospace', lineHeight: 1 }}>{r.name}</span>
+                                  <span style={{ fontSize: 9, color: 'rgba(55,56,60,0.16)', fontFamily: 'monospace', lineHeight: 1 }}>{r.value}</span>
                                 </div>
                               )
                             })}
@@ -2576,9 +2451,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 )
               })() : !selectedVariant ? (() => {
                 const iconForEvent = (event: GenerationEvent) => {
-                  const stroke = event.status === 'error' ? '#ef4444' : event.status === 'done' ? '#2f8f57' : '#8a8d93'
+                  const stroke = event.status === 'error' ? '#FF4242' : event.status === 'done' ? '#2f8f57' : '#8a8d93'
                   if (event.status === 'active') {
-                    return <div className="animate-spin" style={{ width: 14, height: 14, borderRadius: '50%', border: '1.5px solid rgba(0,0,0,0.12)', borderTopColor: '#111111' }} />
+                    return <div className="animate-spin" style={{ width: 14, height: 14, borderRadius: '50%', border: '1.5px solid rgba(0,0,0,0.12)', borderTopColor: '#171719' }} />
                   }
                   if (event.kind === 'summary') {
                     return <Sparkles size={14} color={stroke} strokeWidth={2} />
@@ -2612,14 +2487,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ paddingBottom: 16, borderBottom: '1px solid rgba(0,0,0,0.07)', marginBottom: 14 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <div style={{ width: 24, height: 24, borderRadius: 7, backgroundColor: '#111111', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 24, height: 24, borderRadius: 7, backgroundColor: '#171719', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Sparkles size={13} />
                         </div>
-                        <span style={{ fontSize: 13, fontWeight: 750, color: '#111111', letterSpacing: '-0.25px' }}>생성 진행</span>
+                        <span style={{ fontSize: 13, fontWeight: 750, color: '#171719', letterSpacing: '-0.25px' }}>생성 진행</span>
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 650, color: '#1a75ff', backgroundColor: 'rgba(26,117,255,0.09)', borderRadius: 999, padding: '4px 8px', lineHeight: 1 }}>{designSystemDisplayName}</span>
-                        <span style={{ fontSize: 10.5, fontWeight: 650, color: '#555555', backgroundColor: '#f4f4f6', borderRadius: 999, padding: '4px 8px', lineHeight: 1 }}>{platformLabel(platform)}</span>
+                        <span style={{ fontSize: 10.5, fontWeight: 650, color: '#0066FF', backgroundColor: 'rgba(26,117,255,0.09)', borderRadius: 999, padding: '4px 8px', lineHeight: 1 }}>{designSystemDisplayName}</span>
+                        <span style={{ fontSize: 10.5, fontWeight: 650, color: 'rgba(55,56,60,0.61)', backgroundColor: '#F4F4F5', borderRadius: 999, padding: '4px 8px', lineHeight: 1 }}>{platformLabel(platform)}</span>
                       </div>
                     </div>
 
@@ -2631,18 +2506,18 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                           return (
                             <div key={event.id} style={{ display: 'grid', gridTemplateColumns: '22px 1fr', columnGap: 10 }}>
                               <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
-                                {!isLast && <div style={{ position: 'absolute', top: 19, bottom: -2, width: 1, backgroundColor: '#e7e7ea' }} />}
-                                <div style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: event.status === 'active' ? '#ffffff' : '#f7f7f8', border: '1px solid #e3e3e6', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+                                {!isLast && <div style={{ position: 'absolute', top: 19, bottom: -2, width: 1, backgroundColor: 'rgba(112,115,124,0.16)' }} />}
+                                <div style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: event.status === 'active' ? '#ffffff' : '#f7f7f8', border: '1px solid rgba(112,115,124,0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
                                   {iconForEvent(event)}
                                 </div>
                               </div>
                               <div style={{ paddingBottom: isSummary ? 16 : 14 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
-                                  <p style={{ fontSize: isSummary ? 13 : 12.2, fontWeight: isSummary ? 750 : 600, color: event.status === 'error' ? '#ef4444' : '#333333', letterSpacing: '-0.18px', lineHeight: 1.35, margin: 0 }}>{event.title}</p>
-                                  {event.variant && <span style={{ fontSize: 9.5, color: '#999999', backgroundColor: '#f4f4f6', borderRadius: 4, padding: '1px 4px', lineHeight: 1.2 }}>{event.variant}</span>}
+                                  <p style={{ fontSize: isSummary ? 13 : 12.2, fontWeight: isSummary ? 750 : 600, color: event.status === 'error' ? '#FF4242' : 'rgba(46,47,51,0.88)', letterSpacing: '-0.18px', lineHeight: 1.35, margin: 0 }}>{event.title}</p>
+                                  {event.variant && <span style={{ fontSize: 9.5, color: 'rgba(55,56,60,0.61)', backgroundColor: '#F4F4F5', borderRadius: 4, padding: '1px 4px', lineHeight: 1.2 }}>{event.variant}</span>}
                                 </div>
                                 {event.detail && (
-                                  <p style={{ whiteSpace: 'pre-line', fontSize: isSummary ? 12.2 : 11.4, color: isSummary ? '#333333' : '#888888', lineHeight: isSummary ? 1.72 : 1.55, letterSpacing: '-0.08px', margin: '5px 0 0' }}>{event.detail}</p>
+                                  <p style={{ whiteSpace: 'pre-line', fontSize: isSummary ? 12.2 : 11.4, color: isSummary ? 'rgba(46,47,51,0.88)' : 'rgba(55,56,60,0.61)', lineHeight: isSummary ? 1.72 : 1.55, letterSpacing: '-0.08px', margin: '5px 0 0' }}>{event.detail}</p>
                                 )}
                               </div>
                             </div>
@@ -2658,7 +2533,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     </div>
 
                     <div style={{ paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.07)', marginTop: 12 }}>
-                      <p style={{ fontSize: 11.2, color: '#999999', lineHeight: 1.55, letterSpacing: '-0.06px', margin: 0 }}>
+                      <p style={{ fontSize: 11.2, color: 'rgba(55,56,60,0.61)', lineHeight: 1.55, letterSpacing: '-0.06px', margin: 0 }}>
                         생성이 끝난 뒤 시안 카드를 클릭하면 각 방향의 UX 전략과 설계 포인트를 볼 수 있습니다.
                       </p>
                     </div>
@@ -2671,38 +2546,38 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     {/* Header */}
                     <div style={{ paddingBottom: 16, borderBottom: '1px solid rgba(0,0,0,0.07)', marginBottom: 16 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
-                        <div style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: '#111111', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <div style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: '#171719', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <span style={{ fontSize: 12, fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{selectedVariant}</span>
                         </div>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#111111', letterSpacing: '-0.3px', lineHeight: 1.2 }}>{info.name}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#171719', letterSpacing: '-0.3px', lineHeight: 1.2 }}>{info.name}</span>
                       </div>
                       {/* Strategy badge */}
-                      <span style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, color: '#1a75ff', backgroundColor: 'rgba(26,117,255,0.09)', borderRadius: 5, padding: '3px 7px', letterSpacing: '0.02em', marginBottom: 8 }}>{info.strategy}</span>
-                      <p style={{ fontSize: 11.5, color: '#555555', lineHeight: 1.6, letterSpacing: '-0.1px', margin: 0 }}>{info.tagline}</p>
+                      <span style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, color: '#0066FF', backgroundColor: 'rgba(26,117,255,0.09)', borderRadius: 5, padding: '3px 7px', letterSpacing: '0.02em', marginBottom: 8 }}>{info.strategy}</span>
+                      <p style={{ fontSize: 11.5, color: 'rgba(55,56,60,0.61)', lineHeight: 1.6, letterSpacing: '-0.1px', margin: 0 }}>{info.tagline}</p>
                     </div>
 
                     {/* Analysis */}
                     <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
                       {/* Rationale */}
-                      <div style={{ backgroundColor: '#f8f8fa', borderRadius: 8, padding: '10px 11px' }}>
-                        <p style={{ fontSize: 10, fontWeight: 700, color: '#aaaaaa', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>UX 전략 근거</p>
-                        <p style={{ fontSize: 11.5, color: '#444444', lineHeight: 1.65, letterSpacing: '-0.1px', margin: 0 }}>{info.rationale}</p>
+                      <div style={{ backgroundColor: '#F7F7F8', borderRadius: 8, padding: '10px 11px' }}>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>UX 전략 근거</p>
+                        <p style={{ fontSize: 11.5, color: 'rgba(46,47,51,0.88)', lineHeight: 1.65, letterSpacing: '-0.1px', margin: 0 }}>{info.rationale}</p>
                       </div>
 
                       {/* Key Points */}
                       <div>
-                        <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>설계 포인트</p>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>설계 포인트</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                           {info.points.map((point, i) => {
                             const [before, after] = point.split(' → ')
                             return (
                               <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
-                                <div style={{ width: 17, height: 17, borderRadius: '50%', backgroundColor: '#111111', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1.5 }}>
+                                <div style={{ width: 17, height: 17, borderRadius: '50%', backgroundColor: '#171719', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1.5 }}>
                                   <span style={{ fontSize: 8.5, fontWeight: 800, color: '#ffffff' }}>{i + 1}</span>
                                 </div>
-                                <p style={{ fontSize: 11.5, color: '#444444', lineHeight: 1.6, letterSpacing: '-0.1px', margin: 0 }}>
+                                <p style={{ fontSize: 11.5, color: 'rgba(46,47,51,0.88)', lineHeight: 1.6, letterSpacing: '-0.1px', margin: 0 }}>
                                   {after ? (
-                                    <>{before} <span style={{ color: '#aaaaaa', fontWeight: 400 }}>→</span> <span style={{ color: '#1a75ff', fontWeight: 500 }}>{after}</span></>
+                                    <>{before} <span style={{ color: 'rgba(55,56,60,0.28)', fontWeight: 400 }}>→</span> <span style={{ color: '#0066FF', fontWeight: 500 }}>{after}</span></>
                                   ) : point}
                                 </p>
                               </div>
@@ -2713,14 +2588,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
                       {/* Best for */}
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, paddingTop: 2 }}>
-                        <svg style={{ marginTop: 1, flexShrink: 0 }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#aaaaaa" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-                        <span style={{ fontSize: 11, color: '#888888', letterSpacing: '-0.05px', lineHeight: 1.55 }}><span style={{ fontWeight: 600, color: '#555555' }}>적합한 컨텍스트</span>  {info.bestFor}</span>
+                        <svg style={{ marginTop: 1, flexShrink: 0 }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(55,56,60,0.28)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                        <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.61)', letterSpacing: '-0.05px', lineHeight: 1.55 }}><span style={{ fontWeight: 600, color: 'rgba(55,56,60,0.61)' }}>적합한 컨텍스트</span>  {info.bestFor}</span>
                       </div>
 
                       {/* Expected effect */}
                       <div style={{ backgroundColor: 'rgba(26,117,255,0.05)', borderRadius: 8, padding: '9px 11px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                        <svg style={{ marginTop: 1.5, flexShrink: 0 }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1a75ff" strokeWidth="2.2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-                        <span style={{ fontSize: 11, color: '#444444', letterSpacing: '-0.05px', lineHeight: 1.6 }}><span style={{ fontWeight: 700, color: '#1a75ff' }}>기대 효과</span>  {info.expectedEffect}</span>
+                        <svg style={{ marginTop: 1.5, flexShrink: 0 }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0066FF" strokeWidth="2.2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                        <span style={{ fontSize: 11, color: 'rgba(46,47,51,0.88)', letterSpacing: '-0.05px', lineHeight: 1.6 }}><span style={{ fontWeight: 700, color: '#0066FF' }}>기대 효과</span>  {info.expectedEffect}</span>
                       </div>
                     </div>
 
@@ -2728,15 +2603,15 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     {variant && (
                       <button
                         onClick={() => handlePickVariant(variantIdx as 0|1|2)}
-                        style={{ marginTop: 16, width: '100%', padding: '11px 0', borderRadius: '8px', backgroundColor: '#111111', color: '#ffffff', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', letterSpacing: '-0.2px', transition: 'background 0.15s' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#333333' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#111111' }}
+                        style={{ marginTop: 16, width: '100%', padding: '11px 0', borderRadius: '8px', backgroundColor: '#171719', color: '#ffffff', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', letterSpacing: '-0.2px', transition: 'background 0.15s' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(46,47,51,0.88)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#171719' }}
                       >
                         이 시안으로 진행
                       </button>
                     )}
                     {!variant && (
-                      <div style={{ marginTop: 16, width: '100%', padding: '11px 0', borderRadius: '8px', backgroundColor: '#f4f4f6', color: '#cccccc', fontSize: 13, fontWeight: 600, textAlign: 'center', letterSpacing: '-0.2px' }}>
+                      <div style={{ marginTop: 16, width: '100%', padding: '11px 0', borderRadius: '8px', backgroundColor: '#F4F4F5', color: 'rgba(55,56,60,0.16)', fontSize: 13, fontWeight: 600, textAlign: 'center', letterSpacing: '-0.2px' }}>
                         생성 중...
                       </div>
                     )}
@@ -2765,7 +2640,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             function parseMdInline(text: string): React.ReactNode[] {
               return text.split(/(\*\*[^*]+\*\*|`[^`\n]+`)/).map((s, j) => {
                 if (s.startsWith('**') && s.endsWith('**'))
-                  return <strong key={j} style={{ fontWeight: 700, color: '#111111' }}>{s.slice(2, -2)}</strong>
+                  return <strong key={j} style={{ fontWeight: 700, color: '#171719' }}>{s.slice(2, -2)}</strong>
                 if (s.startsWith('`') && s.endsWith('`'))
                   return <code key={j} style={{ fontFamily: 'monospace', fontSize: '0.85em', backgroundColor: 'rgba(0,0,0,0.06)', padding: '0 3px', borderRadius: 3, color: '#c7254e' }}>{s.slice(1, -1)}</code>
                 return s
@@ -2811,24 +2686,24 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             }
 
             return (
-              <div key="design-md" className="shrink-0 flex flex-col overflow-hidden" onClick={e => { e.stopPropagation(); setSelectedCard('design-md') }} style={{ width: 300, height: 560, borderRadius: 16, backgroundColor: '#ffffff', border: selectedCard === 'design-md' ? '2px solid #1a75ff' : '1px solid rgba(0,0,0,0.08)', cursor: 'default', outline: selectedCard === 'design-md' ? '3px solid rgba(26,117,255,0.18)' : 'none', outlineOffset: '2px' }}>
+              <div key="design-md" className="shrink-0 flex flex-col overflow-hidden" onClick={e => { e.stopPropagation(); setSelectedCard('design-md') }} style={{ width: 300, height: 560, borderRadius: 16, backgroundColor: '#ffffff', border: selectedCard === 'design-md' ? '2px solid #0066FF' : '1px solid rgba(0,0,0,0.08)', cursor: 'default', outline: selectedCard === 'design-md' ? '3px solid rgba(26,117,255,0.18)' : 'none', outlineOffset: '2px' }}>
                 <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888888" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#111111' }}>DESIGN.md</span>
-                  <span style={{ fontSize: 11, color: '#aaaaaa', marginLeft: 2 }}>{designSystemDisplayName}</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(55,56,60,0.61)" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#171719' }}>DESIGN.md</span>
+                  <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.28)', marginLeft: 2 }}>{designSystemDisplayName}</span>
                 </div>
                 <div data-card-scroll="design-md" style={{ overflowY: 'auto', padding: '14px 14px 18px', flex: 1 }}>
                   {segs.map(seg => {
                     const k = seg.i
                     if (seg.t === 'blank') return <div key={k} style={{ height: 5 }} />
-                    if (seg.t === 'hr')    return <div key={k} style={{ height: 1, backgroundColor: '#eeeeee', margin: '8px 0' }} />
-                    if (seg.t === 'h1')    return <p key={k} style={{ fontSize: 14, fontWeight: 700, color: '#111111', margin: '14px 0 4px', lineHeight: 1.3 }}>{parseMdInline(seg.text)}</p>
-                    if (seg.t === 'h2')    return <p key={k} style={{ fontSize: 12, fontWeight: 700, color: '#111111', margin: '10px 0 3px', lineHeight: 1.3 }}>{parseMdInline(seg.text)}</p>
-                    if (seg.t === 'h3')    return <p key={k} style={{ fontSize: 11, fontWeight: 600, color: '#333333', margin: '8px 0 2px' }}>{parseMdInline(seg.text)}</p>
-                    if (seg.t === 'h4')    return <p key={k} style={{ fontSize: 10, fontWeight: 600, color: '#555555', margin: '6px 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{parseMdInline(seg.text)}</p>
-                    if (seg.t === 'bullet') return <p key={k} style={{ fontSize: 11, color: '#444444', margin: '1px 0 1px 8px', lineHeight: 1.5 }}>{'• '}{parseMdInline(seg.text)}</p>
+                    if (seg.t === 'hr')    return <div key={k} style={{ height: 1, backgroundColor: 'rgba(112,115,124,0.16)', margin: '8px 0' }} />
+                    if (seg.t === 'h1')    return <p key={k} style={{ fontSize: 14, fontWeight: 700, color: '#171719', margin: '14px 0 4px', lineHeight: 1.3 }}>{parseMdInline(seg.text)}</p>
+                    if (seg.t === 'h2')    return <p key={k} style={{ fontSize: 12, fontWeight: 700, color: '#171719', margin: '10px 0 3px', lineHeight: 1.3 }}>{parseMdInline(seg.text)}</p>
+                    if (seg.t === 'h3')    return <p key={k} style={{ fontSize: 11, fontWeight: 600, color: 'rgba(46,47,51,0.88)', margin: '8px 0 2px' }}>{parseMdInline(seg.text)}</p>
+                    if (seg.t === 'h4')    return <p key={k} style={{ fontSize: 10, fontWeight: 600, color: 'rgba(55,56,60,0.61)', margin: '6px 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{parseMdInline(seg.text)}</p>
+                    if (seg.t === 'bullet') return <p key={k} style={{ fontSize: 11, color: 'rgba(46,47,51,0.88)', margin: '1px 0 1px 8px', lineHeight: 1.5 }}>{'• '}{parseMdInline(seg.text)}</p>
                     if (seg.t === 'code')  return (
-                      <pre key={k} style={{ fontSize: 10, fontFamily: 'monospace', backgroundColor: '#f5f5f5', borderRadius: 6, padding: '8px 10px', margin: '4px 0', overflowX: 'auto', color: '#333333', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                      <pre key={k} style={{ fontSize: 10, fontFamily: 'monospace', backgroundColor: '#F4F4F5', borderRadius: 6, padding: '8px 10px', margin: '4px 0', overflowX: 'auto', color: 'rgba(46,47,51,0.88)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                         {seg.lines.join('\n')}
                       </pre>
                     )
@@ -2837,9 +2712,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         <table style={{ fontSize: 10, borderCollapse: 'collapse', width: '100%' }}>
                           <tbody>
                             {seg.rows.map((row, ri) => (
-                              <tr key={ri} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                              <tr key={ri} style={{ borderBottom: '1px solid rgba(112,115,124,0.08)' }}>
                                 {row.map((cell, ci) => (
-                                  <td key={ci} style={{ padding: '3px 6px', color: ri === 0 ? '#111111' : '#555555', fontWeight: ri === 0 ? 600 : 400, whiteSpace: 'nowrap' }}>
+                                  <td key={ci} style={{ padding: '3px 6px', color: ri === 0 ? '#171719' : 'rgba(55,56,60,0.61)', fontWeight: ri === 0 ? 600 : 400, whiteSpace: 'nowrap' }}>
                                     {parseMdInline(cell)}
                                   </td>
                                 ))}
@@ -2849,7 +2724,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         </table>
                       </div>
                     )
-                    return <p key={k} style={{ fontSize: 11, color: '#555555', margin: '1px 0', lineHeight: 1.6 }}>{parseMdInline((seg as { text: string }).text)}</p>
+                    return <p key={k} style={{ fontSize: 11, color: 'rgba(55,56,60,0.61)', margin: '1px 0', lineHeight: 1.6 }}>{parseMdInline((seg as { text: string }).text)}</p>
                   })}
                 </div>
               </div>
@@ -2859,15 +2734,15 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           {/* Design system card — grid visualization */}
           {hasDesign ? (() => {
             const customMeta = customDesignMd ? parseCustomDesignMdMeta(customDesignMd) : null
-            const effectivePalette = (customMeta?.palette ?? preset.palette) ?? [{ name: 'Primary', hex: '#6366f1' }]
+            const effectivePalette = (customMeta?.palette ?? preset.palette) ?? [{ name: 'Primary', hex: '#0066FF' }]
             const effectiveFonts = (customMeta?.fonts ?? preset.fonts) ?? { headline: 'sans-serif', body: 'sans-serif' }
-            const effectiveColor = (customMeta?.color ?? preset.color) ?? '#6366f1'
+            const effectiveColor = (customMeta?.color ?? preset.color) ?? '#0066FF'
             const isDark = customMeta?.isDark ?? false
-            const outerBg = isDark ? '#111111' : '#e8e8eb'
+            const outerBg = isDark ? '#171719' : 'rgba(112,115,124,0.16)'
             const cellBg = isDark ? '#1a1a1a' : '#ffffff'
             const gridLine = isDark ? '#272727' : '#e0e0e3'
-            const ink = isDark ? '#ffffff' : '#111111'
-            const muted = isDark ? '#666666' : '#999999'
+            const ink = isDark ? '#ffffff' : '#171719'
+            const muted = isDark ? 'rgba(55,56,60,0.61)' : 'rgba(55,56,60,0.61)'
             const subtle = isDark ? '#252525' : '#f4f4f5'
             const border = isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.07)'
 
@@ -2926,7 +2801,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             const stylePlanLabel = designSystemDisplayName
 
             return (
-              <div className="shrink-0 flex flex-col overflow-hidden" onClick={e => { e.stopPropagation(); setSelectedCard('style-plan') }} style={{ width: 680, height: 560, borderRadius: 16, backgroundColor: outerBg, border: selectedCard === 'style-plan' ? '2px solid #1a75ff' : (isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.06)'), cursor: 'default', outline: selectedCard === 'style-plan' ? '3px solid rgba(26,117,255,0.18)' : 'none', outlineOffset: '2px' }}>
+              <div className="shrink-0 flex flex-col overflow-hidden" onClick={e => { e.stopPropagation(); setSelectedCard('style-plan') }} style={{ width: 680, height: 560, borderRadius: 16, backgroundColor: outerBg, border: selectedCard === 'style-plan' ? '2px solid #0066FF' : (isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.06)'), cursor: 'default', outline: selectedCard === 'style-plan' ? '3px solid rgba(26,117,255,0.18)' : 'none', outlineOffset: '2px' }}>
 
                 {/* Header */}
                 <div style={{ padding: '10px 14px', borderBottom: border, display: 'flex', alignItems: 'center', gap: 8, backgroundColor: cellBg }}>
@@ -2936,7 +2811,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     {(['A', 'B', 'C'] as const).map((l, i) => {
                       const v = mainVariants[i]
                       const loading = i === 0 ? isGenerating : i === 1 ? isGeneratingB : isGeneratingC
-                      return <div key={l} style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: v ? '#22c55e' : loading ? effectiveColor : isDark ? '#2a2a2a' : '#e0e0e0', transition: 'background-color 0.3s' }} />
+                      return <div key={l} style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: v ? '#00BF40' : loading ? effectiveColor : isDark ? '#2a2a2a' : 'rgba(112,115,124,0.16)', transition: 'background-color 0.3s' }} />
                     })}
                   </div>
                 </div>
@@ -2948,7 +2823,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {effectivePalette.map(swatch => {
                       const tints = genTints(swatch.hex)
-                      const onSwatch = isLightHex(swatch.hex) ? '#111111' : '#ffffff'
+                      const onSwatch = isLightHex(swatch.hex) ? '#171719' : '#ffffff'
                       return (
                         <div key={swatch.name} style={{ backgroundColor: cellBg, display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
                           <div style={{ backgroundColor: swatch.hex, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
@@ -2969,10 +2844,10 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       <div key={i} style={{ backgroundColor: cellBg, padding: '8px 12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 2, overflow: 'hidden' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
                           <span style={{ fontSize: 8, fontWeight: 600, color: muted, textTransform: 'uppercase', letterSpacing: '0.07em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 70 }}>{label}</span>
-                          <span style={{ fontSize: 7.5, color: isDark ? '#444' : '#bbb', flexShrink: 0 }}>{font.split(',')[0].trim()}</span>
+                          <span style={{ fontSize: 7.5, color: isDark ? 'rgba(46,47,51,0.88)' : 'rgba(55,56,60,0.28)', flexShrink: 0 }}>{font.split(',')[0].trim()}</span>
                         </div>
                         {actualSize && (
-                          <span style={{ fontSize: 7.5, color: isDark ? '#444' : '#ccc', fontFamily: 'monospace', lineHeight: 1 }}>{actualSize} · {weight}</span>
+                          <span style={{ fontSize: 7.5, color: isDark ? 'rgba(46,47,51,0.88)' : 'rgba(55,56,60,0.16)', fontFamily: 'monospace', lineHeight: 1 }}>{actualSize} · {weight}</span>
                         )}
                         <div style={{ fontSize: size, fontWeight: weight, color: ink, lineHeight: 1, fontFamily: font, letterSpacing: '-0.02em', overflow: 'hidden', marginTop: 'auto' }}>Aa</div>
                       </div>
@@ -2996,8 +2871,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     <div style={{ backgroundColor: cellBg, padding: '10px 10px', display: 'flex', alignItems: 'center', flex: 1 }}>
                       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <div style={{ height: 1.5, borderRadius: 2, backgroundColor: effectiveColor, width: '100%' }} />
-                        <div style={{ height: 1.5, borderRadius: 2, backgroundColor: isDark ? '#2a2a2a' : '#e4e4e4', width: '75%' }} />
-                        <div style={{ height: 1.5, borderRadius: 2, backgroundColor: isDark ? '#2a2a2a' : '#e4e4e4', width: '50%' }} />
+                        <div style={{ height: 1.5, borderRadius: 2, backgroundColor: isDark ? '#2a2a2a' : 'rgba(112,115,124,0.16)', width: '75%' }} />
+                        <div style={{ height: 1.5, borderRadius: 2, backgroundColor: isDark ? '#2a2a2a' : 'rgba(112,115,124,0.16)', width: '50%' }} />
                       </div>
                     </div>
 
@@ -3040,8 +2915,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 0', borderBottom: i < 2 ? (isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)') : 'none' }}>
                           <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: i === 0 ? effectiveColor : subtle, flexShrink: 0 }} />
                           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                            <div style={{ height: 6, borderRadius: 3, backgroundColor: isDark ? '#2a2a2a' : '#e8e8e8', width: `${w}%` }} />
-                            <div style={{ height: 4, borderRadius: 3, backgroundColor: isDark ? '#222' : '#f0f0f0', width: `${Math.round(w * 0.6)}%` }} />
+                            <div style={{ height: 6, borderRadius: 3, backgroundColor: isDark ? '#2a2a2a' : 'rgba(112,115,124,0.16)', width: `${w}%` }} />
+                            <div style={{ height: 4, borderRadius: 3, backgroundColor: isDark ? '#171719' : 'rgba(112,115,124,0.08)', width: `${Math.round(w * 0.6)}%` }} />
                           </div>
                         </div>
                       ))}
@@ -3070,19 +2945,19 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           })() : (
             /* No design system: simple spinner card */
             <div className="shrink-0 flex flex-col items-center justify-center gap-4" style={{ width: 280, padding: '32px 24px', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.97)', border: `1px solid ${F.hairlineSoft}`, boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}>
-              <div className="size-10 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#0055ff' }} />
-              <p style={{ fontSize: 13, color: '#888888', textAlign: 'center', lineHeight: 1.6 }}>AI가 최적의 디자인을<br />설계하고 있습니다</p>
+              <div className="size-10 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#0066FF' }} />
+              <p style={{ fontSize: 13, color: 'rgba(55,56,60,0.61)', textAlign: 'center', lineHeight: 1.6 }}>AI가 최적의 디자인을<br />설계하고 있습니다</p>
               <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {(['A', 'B', 'C'] as const).map((letter, idx) => {
                   const variant = mainVariants[idx]
                   const isLoadingThis = idx === 0 ? isGenerating : idx === 1 ? isGeneratingB : isGeneratingC
                   return (
                     <div key={letter} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div className={isLoadingThis ? 'animate-spin' : ''} style={{ width: 15, height: 15, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', ...(variant ? { backgroundColor: '#111111' } : isLoadingThis ? { border: '2px solid rgba(0,0,0,0.10)', borderTopColor: '#111111' } : { backgroundColor: '#ebebeb' }) }}>
+                      <div className={isLoadingThis ? 'animate-spin' : ''} style={{ width: 15, height: 15, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', ...(variant ? { backgroundColor: '#171719' } : isLoadingThis ? { border: '2px solid rgba(0,0,0,0.10)', borderTopColor: '#171719' } : { backgroundColor: 'rgba(112,115,124,0.16)' }) }}>
                         {variant && <Check size={7} color="#ffffff" />}
                       </div>
-                      <span style={{ fontSize: 12, color: '#666666' }}>시안 {letter}</span>
-                      <span style={{ fontSize: 11, marginLeft: 'auto', color: variant ? '#22c55e' : isLoadingThis ? '#999999' : '#cccccc' }}>
+                      <span style={{ fontSize: 12, color: 'rgba(55,56,60,0.61)' }}>시안 {letter}</span>
+                      <span style={{ fontSize: 11, marginLeft: 'auto', color: variant ? '#00BF40' : isLoadingThis ? 'rgba(55,56,60,0.61)' : 'rgba(55,56,60,0.16)' }}>
                         {variant ? '완료' : isLoadingThis ? '생성 중...' : '대기 중'}
                       </span>
                     </div>
@@ -3092,74 +2967,19 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             </div>
           )}
 
-          {/* Skeleton cards — A/B/C side by side */}
-          {(() => {
-            const skeletonW = isMobile ? 160 : isTablet ? 200 : 240
-            return (
-              <div className="flex items-start gap-4 shrink-0">
-                {layoutBlueprints.length > 0 ? (
-                  <div className="flex items-start gap-4">
-                    {layoutBlueprints.map((blueprint, bpIdx) => {
-                      const variantIdx = bpIdx as 0 | 1 | 2
-                      const isThisLoading = blueprintLoadingIdx === bpIdx
-                      const isVariantLoading = variantIdx === 0 ? isGenerating : variantIdx === 1 ? isGeneratingB : isGeneratingC
-                      const hasVariant = !!mainVariants[variantIdx]
-                      return (
-                        <div key={blueprint.variant} className="flex flex-col gap-2 shrink-0" style={{ width: skeletonW }}>
-                          {isThisLoading ? (
-                            <div className="flex items-center justify-center bg-white" style={{ borderRadius: 6, border: '1px solid rgba(0,0,0,0.1)', minHeight: 280 }}>
-                              <div className="size-5 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#111' }} />
-                            </div>
-                          ) : (
-                            <BlueprintPreview blueprint={blueprint} />
-                          )}
-                          {/* Per-card action buttons */}
-                          <div className="flex gap-1.5">
-                            <button
-                              onClick={() => handleRegenerateSingleBlueprint(bpIdx)}
-                              disabled={isThisLoading || blueprintLoadingIdx !== null}
-                              className="flex-1 flex items-center justify-center gap-1 text-[11px] font-medium transition-colors"
-                              style={{ padding: '5px 0', borderRadius: 5, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: '#555', cursor: isThisLoading || blueprintLoadingIdx !== null ? 'not-allowed' : 'pointer', opacity: isThisLoading || blueprintLoadingIdx !== null ? 0.5 : 1 }}
-                            >
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" />
-                                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" />
-                              </svg>
-                              재생성
-                            </button>
-                            <button
-                              onClick={() => handleGenerateSingleVariant(variantIdx)}
-                              disabled={isVariantLoading}
-                              className="flex-1 flex items-center justify-center gap-1 text-[11px] font-semibold transition-colors"
-                              style={{ padding: '5px 0', borderRadius: 5, border: 'none', background: hasVariant ? '#f0f0f0' : '#111', color: hasVariant ? '#555' : '#fff', cursor: isVariantLoading ? 'not-allowed' : 'pointer', opacity: isVariantLoading ? 0.6 : 1 }}
-                            >
-                              {isVariantLoading ? (
-                                <><div className="size-3 rounded-full animate-spin" style={{ border: '1.5px solid rgba(255,255,255,0.3)', borderTopColor: hasVariant ? '#555' : '#fff' }} /> 생성 중</>
-                              ) : (
-                                <>{hasVariant ? '재생성' : '시안 생성'}</>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div
-                    className="flex flex-col items-center justify-center cursor-pointer hover:bg-white transition-colors"
-                    style={{ borderRadius: 14, border: '2px dashed rgba(0,0,0,0.13)', minHeight: 280, width: skeletonW * 3 + 32, padding: 32 }}
-                    onClick={handleGenerate}
-                  >
-                    <div className="mb-3 size-11 flex items-center justify-center bg-[#f5f5f5]" style={{ borderRadius: 12 }}>
-                      <Shapes size={20} color="#888" />
-                    </div>
-                    <p className="text-[13px] font-semibold text-[#333] mb-1">시안 생성</p>
-                    <p className="text-[12px] text-[#999] text-center">A/B/C를 순차적으로 생성합니다</p>
-                  </div>
-                )}
+          {mainVariants.every(v => !v) && !isAnyGenerating && (
+            <div
+              className="flex flex-col items-center justify-center cursor-pointer hover:bg-white transition-colors shrink-0"
+              style={{ borderRadius: 14, border: '2px dashed rgba(0,0,0,0.13)', minHeight: 280, width: isMobile ? 340 : isTablet ? 520 : 760, padding: 32 }}
+              onClick={handleGenerate}
+            >
+              <div className="mb-3 size-11 flex items-center justify-center bg-[#F4F4F5]" style={{ borderRadius: 12 }}>
+                <Shapes size={20} color="rgba(55,56,60,0.61)" />
               </div>
-            )
-          })()}
+              <p className="text-[13px] font-semibold text-[rgba(46,47,51,0.88)] mb-1">시안 생성</p>
+              <p className="text-[12px] text-[rgba(55,56,60,0.61)] text-center">A/B/C 디자인 시안을 바로 생성합니다</p>
+            </div>
+          )}
 
           {/* 3 variant artboard cards — only visible after generation starts */}
           {variantGenerationStarted && <div className="flex items-start gap-6 overflow-x-auto">
@@ -3177,9 +2997,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               return (
                 <div key={letter} className="flex flex-col gap-3 shrink-0" style={{ width: cardW }}>
                   <div className="flex items-center gap-2" style={{ minHeight: 26 }}>
-                    <span className="text-[13px] font-semibold" style={{ color: '#222222' }}>시안 {letter}</span>
+                    <span className="text-[13px] font-semibold" style={{ color: '#171719' }}>시안 {letter}</span>
                     {isLoadingThis && (
-                      <div className="flex items-center gap-1.5 text-[13px]" style={{ color: '#888888' }}>
+                      <div className="flex items-center gap-1.5 text-[13px]" style={{ color: 'rgba(55,56,60,0.61)' }}>
                         <svg className="animate-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" strokeOpacity="0.3" />
                           <path d="M21 12a9 9 0 00-9-9" />
@@ -3188,21 +3008,21 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       </div>
                     )}
                     {variant && !isLoadingThis && (
-                      <span className="text-[12px]" style={{ color: '#888888' }}>완료</span>
+                      <span className="text-[12px]" style={{ color: 'rgba(55,56,60,0.61)' }}>완료</span>
                     )}
                     {/* B 시안 히어로 스타일 토글 */}
                     {letter === 'B' && variant && (
                       <div className="ml-auto flex items-center" style={{ gap: 2, padding: '2px', borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.06)' }}>
                         <button
                           onClick={e => { e.stopPropagation(); setBHeroStyle('object') }}
-                          style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500, border: 'none', cursor: 'pointer', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'object' ? '#fff' : 'transparent', color: bHeroStyle === 'object' ? '#111' : '#888', boxShadow: bHeroStyle === 'object' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}
+                          style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500, border: 'none', cursor: 'pointer', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'object' ? '#fff' : 'transparent', color: bHeroStyle === 'object' ? '#171719' : 'rgba(55,56,60,0.61)', boxShadow: bHeroStyle === 'object' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}
                         >
                           오브젝트
                         </button>
                         <button
                           onClick={e => { e.stopPropagation(); if (bSceneImage) setBHeroStyle('scene') }}
                           disabled={!bSceneImage && !isGeneratingBScene}
-                          style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500, border: 'none', cursor: bSceneImage ? 'pointer' : 'not-allowed', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'scene' ? '#fff' : 'transparent', color: bHeroStyle === 'scene' ? '#111' : bSceneImage ? '#888' : '#ccc', boxShadow: bHeroStyle === 'scene' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+                          style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500, border: 'none', cursor: bSceneImage ? 'pointer' : 'not-allowed', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'scene' ? '#fff' : 'transparent', color: bHeroStyle === 'scene' ? '#171719' : bSceneImage ? 'rgba(55,56,60,0.61)' : 'rgba(55,56,60,0.16)', boxShadow: bHeroStyle === 'scene' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none', display: 'flex', alignItems: 'center', gap: 4 }}
                         >
                           {isGeneratingBScene && bHeroStyle !== 'scene' && (
                             <svg className="animate-spin" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -3231,7 +3051,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       borderRadius: '12px',
                       height: cardH,
                       overflow: 'hidden',
-                      border: (isExpandingPrototype && pickedVariantIdx === idx) ? '2px solid #1a75ff' : selectedCard === `variant-${letter}` ? '2px solid #1a75ff' : '2px solid rgba(255,255,255,0.7)',
+                      border: (isExpandingPrototype && pickedVariantIdx === idx) ? '2px solid #0066FF' : selectedCard === `variant-${letter}` ? '2px solid #0066FF' : '2px solid rgba(255,255,255,0.7)',
                       outline: (isExpandingPrototype && pickedVariantIdx === idx) ? '3px solid rgba(26,117,255,0.28)' : selectedCard === `variant-${letter}` ? '3px solid rgba(26,117,255,0.18)' : 'none',
                       outlineOffset: '2px',
                       cursor: 'default',
@@ -3240,8 +3060,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     {/* 프로토타입 생성 중 오버레이 */}
                     {isExpandingPrototype && pickedVariantIdx === idx && (
                       <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid rgba(26,117,255,0.2)', borderTopColor: '#1a75ff', animation: 'spin 0.85s linear infinite' }} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#1a75ff', letterSpacing: '-0.1px' }}>프로토타입 생성 중...</span>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid rgba(26,117,255,0.2)', borderTopColor: '#0066FF', animation: 'spin 0.85s linear infinite' }} />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#0066FF', letterSpacing: '-0.1px' }}>프로토타입 생성 중...</span>
                       </div>
                     )}
                     {variant ? (
@@ -3307,14 +3127,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                           </div>
                         ) : (
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="size-8 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#0055ff' }} />
+                            <div className="size-8 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#0066FF' }} />
                           </div>
                         )}
                       </>
                     ) : isFailed ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                        <span className="text-[13px] text-[#999999]">생성 실패</span>
-                        <button onClick={() => handleRetryVariant(idx as 1 | 2)} className="flex items-center gap-1 text-[13px] text-[#666666] hover:text-[#111111] transition-colors">
+                        <span className="text-[13px] text-[rgba(55,56,60,0.61)]">생성 실패</span>
+                        <button onClick={() => handleRetryVariant(idx as 1 | 2)} className="flex items-center gap-1 text-[13px] text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors">
                           <RefreshCw size={11} /> 다시 시도
                         </button>
                       </div>
@@ -3328,9 +3148,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     <button
                       onClick={() => handlePickVariant(idx as 0|1|2)}
                       className="w-full py-2.5 text-[13px] font-medium text-white transition-colors"
-                      style={{ borderRadius: '8px', backgroundColor: '#111111' }}
-                      onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#333333' }}
-                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#111111' }}
+                      style={{ borderRadius: '8px', backgroundColor: '#171719' }}
+                      onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(46,47,51,0.88)' }}
+                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#171719' }}
                     >
                       이 시안으로 진행
                     </button>
@@ -3351,7 +3171,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             return (
               <div className="flex items-start gap-6 shrink-0">
                 {/* 구분 화살표 */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', gap: 4, paddingTop: 24, color: '#cccccc' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', gap: 4, paddingTop: 24, color: 'rgba(55,56,60,0.16)' }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12h14M13 6l6 6-6 6"/>
                   </svg>
@@ -3360,9 +3180,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 <div className="flex flex-col gap-3 shrink-0" style={{ width: cardW }}>
                   {/* 헤더 */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-semibold" style={{ color: '#222222' }}>프로토타입 {pickedLabel}</span>
+                    <span className="text-[13px] font-semibold" style={{ color: '#171719' }}>프로토타입 {pickedLabel}</span>
                     {isExpandingPrototype && (
-                      <div className="flex items-center gap-1.5 text-[13px]" style={{ color: '#1a75ff' }}>
+                      <div className="flex items-center gap-1.5 text-[13px]" style={{ color: '#0066FF' }}>
                         <svg className="animate-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" strokeOpacity="0.3" />
                           <path d="M21 12a9 9 0 00-9-9" />
@@ -3372,11 +3192,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     )}
                     {!isExpandingPrototype && result && (
                       <>
-                        <span className="text-[12px]" style={{ color: '#22c55e' }}>완료</span>
+                        <span className="text-[12px]" style={{ color: '#00BF40' }}>완료</span>
                         <button
                           onClick={() => setStep(4)}
                           className="ml-auto flex items-center gap-1 text-[12px] font-semibold transition-colors"
-                          style={{ color: '#1a75ff' }}
+                          style={{ color: '#0066FF' }}
                         >
                           편집 →
                         </button>
@@ -3396,8 +3216,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                           }}
                           style={{
                             padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 500, border: 'none', cursor: 'pointer', transition: 'all 0.12s',
-                            backgroundColor: activeScreenId === s.id ? '#111111' : 'rgba(0,0,0,0.06)',
-                            color: activeScreenId === s.id ? '#fff' : '#555',
+                            backgroundColor: activeScreenId === s.id ? '#171719' : 'rgba(0,0,0,0.06)',
+                            color: activeScreenId === s.id ? '#fff' : 'rgba(55,56,60,0.61)',
                           }}
                         >
                           {s.label}
@@ -3407,11 +3227,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   )}
 
                   {/* 프레임 */}
-                  <div className="relative overflow-hidden bg-white" style={{ borderRadius: 12, height: cardH, border: '2px solid #1a75ff', outline: '3px solid rgba(26,117,255,0.18)', outlineOffset: 2 }}>
+                  <div className="relative overflow-hidden bg-white" style={{ borderRadius: 12, height: cardH, border: '2px solid #0066FF', outline: '3px solid rgba(26,117,255,0.18)', outlineOffset: 2 }}>
                     {isExpandingPrototype ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid rgba(26,117,255,0.15)', borderTopColor: '#1a75ff', animation: 'spin 0.85s linear infinite' }} />
-                        <span style={{ fontSize: 11, color: '#888', letterSpacing: '-0.1px' }}>멀티스크린 확장 중</span>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid rgba(26,117,255,0.15)', borderTopColor: '#0066FF', animation: 'spin 0.85s linear infinite' }} />
+                        <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.61)', letterSpacing: '-0.1px' }}>멀티스크린 확장 중</span>
                       </div>
                     ) : result ? (
                       <iframe
@@ -3434,7 +3254,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
         </div>{/* ← closes content-area flex wrapper */}
 
         {generateError && (
-          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-3 text-sm text-[#ff6b6b]" style={{ borderRadius: '8px', backgroundColor: 'rgba(30,30,30,0.9)', border: '1px solid rgba(255,107,107,0.3)', backdropFilter: 'blur(8px)' }}>
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-3 text-sm text-[#FF4242]" style={{ borderRadius: '8px', backgroundColor: 'rgba(30,30,30,0.9)', border: '1px solid rgba(255,107,107,0.3)', backdropFilter: 'blur(8px)' }}>
             {generateError}
           </div>
         )}
@@ -3446,11 +3266,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
   // ─── Step 4: Figma-style full-screen editor ──────────────────────────────
   if (step === 4 && result) {
     return (
-      <div className="h-screen overflow-hidden flex flex-col text-[#111111] relative" style={{ fontFamily: "var(--font-pretendard)", backgroundColor: '#f4f4f6' }}>
+      <div className="h-screen overflow-hidden flex flex-col text-[#171719] relative" style={{ fontFamily: "var(--font-pretendard)", backgroundColor: '#F4F4F5' }}>
 
         {/* Tab bar */}
         <div className="border-b border-[rgba(0,0,0,0.09)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
-          <button onClick={onBack} aria-label="Aide 홈으로 이동" className="flex items-center px-3 border-r border-[rgba(0,0,0,0.09)] hover:bg-[#ebebeb] transition-colors shrink-0">
+          <button onClick={onBack} aria-label="Aide 홈으로 이동" className="flex items-center px-3 border-r border-[rgba(0,0,0,0.09)] hover:bg-[rgba(112,115,124,0.16)] transition-colors shrink-0">
             <img src="/logo_aide.png" alt="Aide" className="h-14 w-auto object-contain" />
           </button>
           {/* Scrollable history tabs */}
@@ -3518,15 +3338,15 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       border: 'none',
                       backgroundColor: 'transparent',
                       cursor: 'pointer',
-                      color: '#999999',
+                      color: 'rgba(55,56,60,0.61)',
                       fontSize: 11,
                       opacity: 0,
                       transition: 'opacity 0.1s, background-color 0.1s',
                       padding: 0,
                     }}
                     className="group-hover:!opacity-100"
-                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.08)'; e.currentTarget.style.color = '#333333' }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#999999' }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.08)'; e.currentTarget.style.color = 'rgba(46,47,51,0.88)' }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'rgba(55,56,60,0.61)' }}
                     title="탭 닫기"
                   >
                     ✕
@@ -3539,41 +3359,41 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             <div className="relative" ref={shareRef}>
               <button
                 onClick={() => setShareOpen(o => !o)}
-                className="text-[13px] font-medium text-[#111111] px-4 py-1.5 transition-colors shrink-0 flex items-center gap-1.5"
+                className="text-[13px] font-medium text-[#171719] px-4 py-1.5 transition-colors shrink-0 flex items-center gap-1.5"
                 style={{ borderRadius: '8px', backgroundColor: '#ffffff' }}
-                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#e0e0e0' }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(112,115,124,0.16)' }}
                 onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#ffffff' }}
               >
                 공유 <ChevronDown size={11} />
               </button>
               {shareOpen && (
                 <div className="absolute right-0 top-full mt-1.5 w-52 bg-white overflow-hidden z-50" style={{ borderRadius: '8px', boxShadow: '0 8px 40px rgba(0,0,0,0.18)', border: `1px solid ${F.hairlineSoft}` }}>
-                  <button onClick={handleCopyLink} className="w-full flex items-start gap-2.5 px-4 py-2.5 hover:bg-[#f0f0f0] transition-colors text-left">
+                  <button onClick={handleCopyLink} className="w-full flex items-start gap-2.5 px-4 py-2.5 hover:bg-[rgba(112,115,124,0.08)] transition-colors text-left">
                     {copyLinkDone
-                      ? <><span className="text-[#22c55e] mt-0.5">✓</span><span className="text-[13px] text-[#22c55e]">복사됨!</span></>
+                      ? <><span className="text-[#00BF40] mt-0.5">✓</span><span className="text-[13px] text-[#00BF40]">복사됨!</span></>
                       : <><span className="text-[16px] mt-0.5 shrink-0">🔗</span>
                           <span>
-                            <span className="block text-[13px] text-[#111111]">링크 복사</span>
-                            <span className="block text-[13px] text-[#666666] leading-tight">결과물을 저장하지 않으므로<br />HTML을 먼저 다운로드 하세요</span>
+                            <span className="block text-[13px] text-[#171719]">링크 복사</span>
+                            <span className="block text-[13px] text-[rgba(55,56,60,0.61)] leading-tight">결과물을 저장하지 않으므로<br />HTML을 먼저 다운로드 하세요</span>
                           </span>
                         </>
                     }
                   </button>
                   <div className="h-px bg-[rgba(0,0,0,0.06)] mx-3" />
-                  <button onClick={downloadHtml} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#111111] hover:bg-[#f0f0f0] transition-colors text-left">
+                  <button onClick={downloadHtml} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#171719] hover:bg-[rgba(112,115,124,0.08)] transition-colors text-left">
                     <span className="text-[16px]">📄</span> HTML 다운로드
                   </button>
-                  <button onClick={downloadPng} disabled={!result?.image} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-[#f0f0f0] transition-colors text-left disabled:opacity-40" style={{ color: '#111111' }}>
+                  <button onClick={downloadPng} disabled={!result?.image} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-[rgba(112,115,124,0.08)] transition-colors text-left disabled:opacity-40" style={{ color: '#171719' }}>
                     <span className="text-[16px]">🖼️</span> PNG 내보내기
                   </button>
                   <div className="h-px bg-[rgba(0,0,0,0.06)] mx-3" />
-                  <button onClick={exportToFigma} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#111111] hover:bg-[#f0f0f0] transition-colors text-left">
+                  <button onClick={exportToFigma} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#171719] hover:bg-[rgba(112,115,124,0.08)] transition-colors text-left">
                     <span className="text-[16px]">🎨</span> Figma로 내보내기
                   </button>
                 </div>
               )}
             </div>
-            <div className="size-7 flex items-center justify-center text-[13px] font-bold text-white shrink-0" style={{ borderRadius: '9999px', backgroundColor: '#111111' }}>
+            <div className="size-7 flex items-center justify-center text-[13px] font-bold text-white shrink-0" style={{ borderRadius: '9999px', backgroundColor: '#171719' }}>
               W
             </div>
           </div>
@@ -3585,8 +3405,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             <button
               onClick={handleUndo}
               disabled={!canUndo}
-              className="flex items-center justify-center size-7 rounded hover:bg-[#ebebeb] transition-colors disabled:opacity-30"
-              style={{ color: '#666666' }}
+              className="flex items-center justify-center size-7 rounded hover:bg-[rgba(112,115,124,0.16)] transition-colors disabled:opacity-30"
+              style={{ color: 'rgba(55,56,60,0.61)' }}
               title="실행 취소 (⌘Z)"
             >
               <CornerUpLeft size={14} />
@@ -3594,8 +3414,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             <button
               onClick={handleRedo}
               disabled={!canRedo}
-              className="flex items-center justify-center size-7 rounded hover:bg-[#ebebeb] transition-colors disabled:opacity-30"
-              style={{ color: '#666666' }}
+              className="flex items-center justify-center size-7 rounded hover:bg-[rgba(112,115,124,0.16)] transition-colors disabled:opacity-30"
+              style={{ color: 'rgba(55,56,60,0.61)' }}
               title="다시 실행 (⌘⇧Z)"
             >
               <CornerUpRight size={14} />
@@ -3607,16 +3427,16 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               <button
                 onClick={() => { setPlatform('mobile'); setPreviewWidth(390); setZoom(100) }}
                 className="px-3 py-1 text-[12px] font-medium transition-colors"
-                style={platform === 'mobile' ? { background: '#111111', color: '#ffffff' } : { color: '#666666', background: 'transparent' }}
+                style={platform === 'mobile' ? { background: '#171719', color: '#ffffff' } : { color: 'rgba(55,56,60,0.61)', background: 'transparent' }}
               >앱</button>
               <button
                 onClick={() => { setPlatform('web'); setPreviewWidth(1440); setZoom(60) }}
                 className="px-3 py-1 text-[12px] font-medium transition-colors border-l border-[rgba(0,0,0,0.09)]"
-                style={platform === 'web' ? { background: '#111111', color: '#ffffff' } : { color: '#666666', background: 'transparent' }}
+                style={platform === 'web' ? { background: '#171719', color: '#ffffff' } : { color: 'rgba(55,56,60,0.61)', background: 'transparent' }}
               >웹</button>
             </div>
             <div className="w-px h-4 bg-[rgba(0,0,0,0.09)]" />
-            <div className="flex items-center gap-2 text-[13px] text-[#666666]">
+            <div className="flex items-center gap-2 text-[13px] text-[rgba(55,56,60,0.61)]">
               <SlidersHorizontal size={12} />
               <span>Tweaks</span>
               <Toggle on={tweaksOpen} onChange={setTweaksOpen} />
@@ -3625,22 +3445,22 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             <button
               onClick={() => { if (editMode) commitIframeHtml(); setEditMode(e => !e); setSelectedStyles(null); setSelectedSharedClasses([]); setSyncAllScreens(false) }}
               className="flex items-center gap-1.5 text-[13px] px-2.5 py-1 border transition-colors"
-              style={{ borderRadius: '6px', ...(editMode ? { backgroundColor: '#111111', color: '#ffffff', borderColor: '#111111' } : { color: '#666666', borderColor: 'rgba(0,0,0,0.09)' }) }}
+              style={{ borderRadius: '6px', ...(editMode ? { backgroundColor: '#171719', color: '#ffffff', borderColor: '#171719' } : { color: 'rgba(55,56,60,0.61)', borderColor: 'rgba(0,0,0,0.09)' }) }}
             >
               <Pencil size={12} /> Edit
             </button>
             <button
               onClick={() => setCreonOpen(o => !o)}
               className="flex items-center gap-1.5 text-[13px] px-2.5 py-1 border transition-colors"
-              style={{ borderRadius: '6px', ...(creonOpen ? { backgroundColor: '#111111', color: '#ffffff', borderColor: '#111111' } : { color: '#666666', borderColor: 'rgba(0,0,0,0.09)' }) }}
+              style={{ borderRadius: '6px', ...(creonOpen ? { backgroundColor: '#171719', color: '#ffffff', borderColor: '#171719' } : { color: 'rgba(55,56,60,0.61)', borderColor: 'rgba(0,0,0,0.09)' }) }}
               title="Creon 에셋 패널"
             >
               <ImageIcon size={12} /> Creon
             </button>
             <button
               onClick={() => { const next = !darkMode; setDarkMode(next); sendToIframe({ type: 'aide:dark', on: next }) }}
-              className="flex items-center justify-center size-7 rounded hover:bg-[#ebebeb] transition-colors"
-              style={{ color: '#666666' }}
+              className="flex items-center justify-center size-7 rounded hover:bg-[rgba(112,115,124,0.16)] transition-colors"
+              style={{ color: 'rgba(55,56,60,0.61)' }}
               title={darkMode ? '라이트 모드' : '다크 모드'}
             >
               {darkMode ? <Sun size={14} /> : <Moon size={14} />}
@@ -3649,7 +3469,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             <div className="relative" ref={zoomRef}>
               <button
                 onClick={() => setZoomOpen(o => !o)}
-                className="flex items-center gap-1 text-[13px] text-[#666666] hover:text-[#111111] transition-colors"
+                className="flex items-center gap-1 text-[13px] text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors"
               >
                 <span>{zoom}%</span>
                 <ChevronDown size={11} />
@@ -3660,8 +3480,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     <button
                       key={z}
                       onClick={() => { setZoom(z); setZoomOpen(false) }}
-                      className="w-full px-3 py-2 text-[13px] text-left hover:bg-[#f0f0f0] transition-colors flex items-center justify-between"
-                      style={{ color: zoom === z ? '#111111' : '#666666' }}
+                      className="w-full px-3 py-2 text-[13px] text-left hover:bg-[rgba(112,115,124,0.08)] transition-colors flex items-center justify-between"
+                      style={{ color: zoom === z ? '#171719' : 'rgba(55,56,60,0.61)' }}
                     >
                       <span>{z}%</span>
                       {zoom === z && <Check size={10} />}
@@ -3671,10 +3491,10 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               )}
             </div>
             <div className="w-px h-4 bg-[rgba(0,0,0,0.09)]" />
-            <button onClick={downloadHtml} className="flex items-center gap-1 text-[13px] text-[#666666] hover:text-[#111111] transition-colors">
+            <button onClick={downloadHtml} className="flex items-center gap-1 text-[13px] text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors">
               <Download size={12} />HTML
             </button>
-            <button onClick={handleReset} className="flex items-center gap-1 text-[13px] text-[#666666] hover:text-[#111111] transition-colors ml-1">
+            <button onClick={handleReset} className="flex items-center gap-1 text-[13px] text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors ml-1">
               <RefreshCw size={11} />새로 만들기
             </button>
           </div>
@@ -3688,7 +3508,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 key={s.id}
                 onClick={() => { setActiveScreenId(s.id); sendToIframe({ type: 'aide:navigate', id: s.id }) }}
                 className="px-3 py-1 text-[13px] shrink-0 transition-colors"
-                style={{ borderRadius: '8px', ...(activeScreenId === s.id ? { backgroundColor: '#111111', color: '#ffffff' } : { color: '#666666' }) }}
+                style={{ borderRadius: '8px', ...(activeScreenId === s.id ? { backgroundColor: '#171719', color: '#ffffff' } : { color: 'rgba(55,56,60,0.61)' }) }}
               >
                 {s.label}
               </button>
@@ -3702,18 +3522,18 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           {/* Left panel: description + chat */}
           <div className="w-64 shrink-0 border-r border-[rgba(0,0,0,0.09)] bg-white flex flex-col overflow-hidden">
             <div className="px-4 py-3 border-b border-[rgba(0,0,0,0.07)] shrink-0">
-              <p className="text-[13px] font-semibold text-[#111111] mb-1 leading-[1.4]">
+              <p className="text-[13px] font-semibold text-[#171719] mb-1 leading-[1.4]">
                 {questionnaire?.projectSummary?.split('.')[0] || '서비스 요약'}
               </p>
               {questionnaire?.projectSummary && (
-                <p className="text-[13px] text-[#666666] leading-[1.6] mt-1">{questionnaire.projectSummary}</p>
+                <p className="text-[13px] text-[rgba(55,56,60,0.61)] leading-[1.6] mt-1">{questionnaire.projectSummary}</p>
               )}
             </div>
             <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
               {chatMessages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center gap-2 py-8">
-                  <Sparkles size={16} className="text-[#999999]" />
-                  <p className="text-[13px] text-[#666666] leading-[1.6]">대화로 디자인을<br />수정할 수 있습니다</p>
+                  <Sparkles size={16} className="text-[rgba(55,56,60,0.61)]" />
+                  <p className="text-[13px] text-[rgba(55,56,60,0.61)] leading-[1.6]">대화로 디자인을<br />수정할 수 있습니다</p>
                 </div>
               ) : (
                 chatMessages.map((msg, i) => (
@@ -3723,8 +3543,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       style={{
                         borderRadius: '10px',
                         ...(msg.role === 'user'
-                          ? { backgroundColor: '#111111', color: '#ffffff' }
-                          : { backgroundColor: '#f0f0f0', color: '#444444' }),
+                          ? { backgroundColor: '#171719', color: '#ffffff' }
+                          : { backgroundColor: 'rgba(112,115,124,0.08)', color: 'rgba(46,47,51,0.88)' }),
                       }}
                     >
                       {msg.content}
@@ -3734,7 +3554,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               )}
               {isRefining && (
                 <div className="flex justify-start">
-                  <div className="bg-[#f0f0f0] px-3 py-2 flex items-center gap-2 text-[13px] text-[#666666]" style={{ borderRadius: '10px' }}>
+                  <div className="bg-[rgba(112,115,124,0.08)] px-3 py-2 flex items-center gap-2 text-[13px] text-[rgba(55,56,60,0.61)]" style={{ borderRadius: '10px' }}>
                     <div className="size-3 rounded-full animate-spin" style={{ border: '1.5px solid rgba(0,0,0,0.15)', borderTopColor: 'rgba(0,0,0,0.6)' }} />
                     수정 중...
                   </div>
@@ -3743,7 +3563,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               <div ref={chatEndRef} />
             </div>
             <div className="p-3 border-t border-[rgba(0,0,0,0.07)] shrink-0">
-              <div className="flex items-end gap-2 bg-[#f0f0f0] px-3 py-2" style={{ borderRadius: '10px' }}>
+              <div className="flex items-end gap-2 bg-[rgba(112,115,124,0.08)] px-3 py-2" style={{ borderRadius: '10px' }}>
                 <textarea
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
@@ -3751,7 +3571,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleRefine() }
                   }}
                   placeholder="수정 요청을 입력하세요..."
-                  className="flex-1 bg-transparent text-[13px] text-[#111111] placeholder:text-[#999999] resize-none outline-none leading-[1.5]"
+                  className="flex-1 bg-transparent text-[13px] text-[#171719] placeholder:text-[rgba(55,56,60,0.61)] resize-none outline-none leading-[1.5]"
                   style={{ maxHeight: '96px', minHeight: '20px' }}
                   rows={1}
                   disabled={isRefining}
@@ -3760,12 +3580,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   onClick={handleRefine}
                   disabled={!chatInput.trim() || isRefining}
                   className="shrink-0 size-7 flex items-center justify-center rounded-full transition-colors"
-                  style={{ backgroundColor: chatInput.trim() && !isRefining ? '#111111' : '#dddddd' }}
+                  style={{ backgroundColor: chatInput.trim() && !isRefining ? '#171719' : 'rgba(112,115,124,0.16)' }}
                 >
-                  <Send size={12} style={{ color: chatInput.trim() && !isRefining ? '#ffffff' : '#999999', marginLeft: '1px' }} />
+                  <Send size={12} style={{ color: chatInput.trim() && !isRefining ? '#ffffff' : 'rgba(55,56,60,0.61)', marginLeft: '1px' }} />
                 </button>
               </div>
-              <p className="text-[13px] text-[#999999] mt-1.5 pl-1">Enter 전송 · Shift+Enter 줄바꿈</p>
+              <p className="text-[13px] text-[rgba(55,56,60,0.61)] mt-1.5 pl-1">Enter 전송 · Shift+Enter 줄바꿈</p>
             </div>
           </div>
 
@@ -3782,13 +3602,13 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 const p4HasDesign = !!p4Preset.palette || !!customDesignMd
                 if (!p4HasDesign) return null
                 const p4Meta = customDesignMd ? parseCustomDesignMdMeta(customDesignMd) : null
-                const p4Palette = (p4Meta?.palette ?? p4Preset.palette) ?? [{ name: 'Primary', hex: '#6366f1' }]
+                const p4Palette = (p4Meta?.palette ?? p4Preset.palette) ?? [{ name: 'Primary', hex: '#0066FF' }]
                 const p4Fonts = (p4Meta?.fonts ?? p4Preset.fonts) ?? { headline: 'sans-serif', body: 'sans-serif' }
-                const p4Color = (p4Meta?.color ?? p4Preset.color) ?? '#6366f1'
+                const p4Color = (p4Meta?.color ?? p4Preset.color) ?? '#0066FF'
                 const p4Dark = p4Meta?.isDark ?? false
-                const p4Bg = p4Dark ? '#111111' : '#ffffff'
-                const p4Ink = p4Dark ? '#ffffff' : '#111111'
-                const p4Muted = p4Dark ? '#888888' : '#999999'
+                const p4Bg = p4Dark ? '#171719' : '#ffffff'
+                const p4Ink = p4Dark ? '#ffffff' : '#171719'
+                const p4Muted = p4Dark ? 'rgba(55,56,60,0.61)' : 'rgba(55,56,60,0.61)'
                 const p4Border = p4Dark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)'
                 return (
                   <div
@@ -3845,12 +3665,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     return (
                       <div key={letter} style={{ display: 'flex', flexDirection: 'column', gap: 8, width: thumbW }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: isPicked ? '#1a75ff' : '#555555', letterSpacing: '-0.1px' }}>시안 {letter}</span>
-                          {isPicked && <span style={{ fontSize: 10, color: '#1a75ff', fontWeight: 700, background: 'rgba(26,117,255,0.1)', padding: '1px 6px', borderRadius: 4 }}>선택됨</span>}
+                          <span style={{ fontSize: 12, fontWeight: 600, color: isPicked ? '#0066FF' : 'rgba(55,56,60,0.61)', letterSpacing: '-0.1px' }}>시안 {letter}</span>
+                          {isPicked && <span style={{ fontSize: 10, color: '#0066FF', fontWeight: 700, background: 'rgba(26,117,255,0.1)', padding: '1px 6px', borderRadius: 4 }}>선택됨</span>}
                         </div>
                         <div style={{
                           height: thumbH, borderRadius: 10, overflow: 'hidden', position: 'relative',
-                          border: isPicked ? '2px solid #1a75ff' : '1.5px solid rgba(0,0,0,0.1)',
+                          border: isPicked ? '2px solid #0066FF' : '1.5px solid rgba(0,0,0,0.1)',
                           outline: isPicked ? '3px solid rgba(26,117,255,0.18)' : 'none',
                           outlineOffset: 2,
                           background: '#fff',
@@ -3865,7 +3685,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                             />
                           ) : (
                             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#aaaaaa', animation: 'spin 1s linear infinite' }} />
+                              <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(0,0,0,0.08)', borderTopColor: 'rgba(55,56,60,0.28)', animation: 'spin 1s linear infinite' }} />
                             </div>
                           )}
                         </div>
@@ -3877,11 +3697,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
               {/* ── 구분선 화살표 ── */}
               {mainVariants.some(v => !!v) && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', gap: 4, paddingTop: 24, color: '#cccccc' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', gap: 4, paddingTop: 24, color: 'rgba(55,56,60,0.16)' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M5 12h14M13 6l6 6-6 6"/>
                   </svg>
-                  <span style={{ fontSize: 10, color: '#cccccc', letterSpacing: '-0.1px', whiteSpace: 'nowrap' }}>프로토타입</span>
+                  <span style={{ fontSize: 10, color: 'rgba(55,56,60,0.16)', letterSpacing: '-0.1px', whiteSpace: 'nowrap' }}>프로토타입</span>
                 </div>
               )}
 
@@ -3895,10 +3715,10 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}
                       onClick={e => { e.stopPropagation(); setFocusedScreenId(screen.id); setActiveScreenId(screen.id) }}
                     >
-                      <span style={{ fontSize: 12, fontWeight: 600, color: isFocused ? '#111111' : '#888888', letterSpacing: '-0.1px', userSelect: 'none' }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: isFocused ? '#171719' : 'rgba(55,56,60,0.61)', letterSpacing: '-0.1px', userSelect: 'none' }}>
                         {screen.label}
                       </span>
-                      <div style={{ outline: isFocused ? '2px solid #1a75ff' : '2px solid transparent', outlineOffset: 4, borderRadius: platform === 'mobile' ? 12 : 8, transition: 'outline-color 0.15s' }}>
+                      <div style={{ outline: isFocused ? '2px solid #0066FF' : '2px solid transparent', outlineOffset: 4, borderRadius: platform === 'mobile' ? 12 : 8, transition: 'outline-color 0.15s' }}>
                         <ResponsiveFrame previewWidth={previewWidth} onWidthChange={setPreviewWidth} zoom={zoom} platform={platform}>
                           <iframe
                             ref={el => {
@@ -3923,7 +3743,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 })
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#111111', letterSpacing: '-0.1px', userSelect: 'none' }}>프로토타입</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#171719', letterSpacing: '-0.1px', userSelect: 'none' }}>프로토타입</span>
                   <ResponsiveFrame previewWidth={previewWidth} onWidthChange={setPreviewWidth} zoom={zoom} platform={platform}>
                     <iframe
                       ref={iframeRef}
@@ -3983,25 +3803,25 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           {creonOpen && (
             <div style={{ width: 520, borderLeft: '1px solid rgba(0,0,0,0.09)', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
               <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(0,0,0,0.09)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#111111' }}>Creon Assets</span>
-                <button onClick={() => { sendToIframe({ type: 'aide:pulse', on: false }); setCreonOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 6, border: 'none', background: 'none', cursor: 'pointer', color: '#666666' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#171719' }}>Creon Assets</span>
+                <button onClick={() => { sendToIframe({ type: 'aide:pulse', on: false }); setCreonOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 6, border: 'none', background: 'none', cursor: 'pointer', color: 'rgba(55,56,60,0.61)' }}>
                   <X size={14} />
                 </button>
               </div>
               {creonAsset && (
-                <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(0,0,0,0.09)', backgroundColor: '#f7f7f7', flexShrink: 0 }}>
-                  <p style={{ fontSize: 11, color: '#666666', marginBottom: 6 }}>선택된 에셋{selectedStyles ? ' — 아래 버튼으로 적용' : ' — Edit 모드에서 요소를 클릭 후 적용'}</p>
+                <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(0,0,0,0.09)', backgroundColor: '#F7F7F8', flexShrink: 0 }}>
+                  <p style={{ fontSize: 11, color: 'rgba(55,56,60,0.61)', marginBottom: 6 }}>선택된 에셋{selectedStyles ? ' — 아래 버튼으로 적용' : ' — Edit 모드에서 요소를 클릭 후 적용'}</p>
                   {/\.(mp4|webm|mov)(\?|$)/i.test(creonAsset) ? (
                     <video src={creonAsset} autoPlay muted loop playsInline style={{ width: '100%', height: 72, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
                   ) : (
-                    <img src={creonAsset} alt="selected asset" style={{ width: '100%', height: 72, objectFit: 'contain', borderRadius: 6, display: 'block', background: '#eee' }} />
+                    <img src={creonAsset} alt="selected asset" style={{ width: '100%', height: 72, objectFit: 'contain', borderRadius: 6, display: 'block', background: 'rgba(112,115,124,0.16)' }} />
                   )}
                   {/* 이미지 크기 조절 슬라이더 */}
                   {!/\.(mp4|webm|mov)(\?|$)/i.test(creonAsset) && (
                     <div style={{ marginTop: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 11, color: '#666' }}>이미지 크기</span>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: '#111', fontVariantNumeric: 'tabular-nums' }}>{creonImageWidth}%</span>
+                        <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.61)' }}>이미지 크기</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: '#171719', fontVariantNumeric: 'tabular-nums' }}>{creonImageWidth}%</span>
                       </div>
                       <input
                         type="range"
@@ -4009,12 +3829,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         max={200}
                         value={creonImageWidth}
                         onChange={e => setCreonImageWidth(Number(e.target.value))}
-                        style={{ width: '100%', accentColor: '#111' }}
+                        style={{ width: '100%', accentColor: '#171719' }}
                       />
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-                        <span style={{ fontSize: 10, color: '#aaa' }}>20%</span>
-                        <button onClick={() => setCreonImageWidth(100)} style={{ fontSize: 10, color: '#888', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>초기화</button>
-                        <span style={{ fontSize: 10, color: '#aaa' }}>200%</span>
+                        <span style={{ fontSize: 10, color: 'rgba(55,56,60,0.28)' }}>20%</span>
+                        <button onClick={() => setCreonImageWidth(100)} style={{ fontSize: 10, color: 'rgba(55,56,60,0.61)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>초기화</button>
+                        <span style={{ fontSize: 10, color: 'rgba(55,56,60,0.28)' }}>200%</span>
                       </div>
                     </div>
                   )}
@@ -4041,7 +3861,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                               }
                               sendToIframe({ type: 'aide:pulse', on: false })
                             }}
-                            style={{ width: '100%', padding: '5px 0', fontSize: 12, fontWeight: 600, color: '#ffffff', backgroundColor: '#111111', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                            style={{ width: '100%', padding: '5px 0', fontSize: 12, fontWeight: 600, color: '#ffffff', backgroundColor: '#171719', border: 'none', borderRadius: 6, cursor: 'pointer' }}
                           >
                             선택된 요소에 적용
                           </button>
@@ -4057,7 +3877,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                               }
                               sendToIframe({ type: 'aide:pulse', on: false })
                             }}
-                            style={{ width: '100%', padding: '5px 0', fontSize: 12, fontWeight: 600, color: '#ffffff', backgroundColor: '#111111', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                            style={{ width: '100%', padding: '5px 0', fontSize: 12, fontWeight: 600, color: '#ffffff', backgroundColor: '#171719', border: 'none', borderRadius: 6, cursor: 'pointer' }}
                           >
                             Aide에 적용하기
                           </button>
@@ -4103,13 +3923,13 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     <span className="text-2xl">⚠️</span>
                   </div>
                   <div className="text-center">
-                    <p className="text-[15px] font-semibold text-[#111111] mb-1">내보내기 실패</p>
-                    <p className="text-[13px] text-[#666666] leading-relaxed">{figmaExportError}</p>
+                    <p className="text-[15px] font-semibold text-[#171719] mb-1">내보내기 실패</p>
+                    <p className="text-[13px] text-[rgba(55,56,60,0.61)] leading-relaxed">{figmaExportError}</p>
                   </div>
                   <button
                     onClick={() => setFigmaExportOpen(false)}
                     className="w-full py-2.5 text-[13px] font-semibold rounded-xl transition-colors"
-                    style={{ backgroundColor: '#111111', color: '#ffffff' }}
+                    style={{ backgroundColor: '#171719', color: '#ffffff' }}
                   >
                     닫기
                   </button>
@@ -4120,10 +3940,10 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     <span className="text-2xl">🎨</span>
                   </div>
                   <div className="text-center">
-                    <p className="text-[15px] font-semibold text-[#111111] mb-1">Figma 데이터 생성 중...</p>
-                    <p className="text-[13px] text-[#666666]">code.to.design으로 변환하고 있습니다</p>
+                    <p className="text-[15px] font-semibold text-[#171719] mb-1">Figma 데이터 생성 중...</p>
+                    <p className="text-[13px] text-[rgba(55,56,60,0.61)]">code.to.design으로 변환하고 있습니다</p>
                   </div>
-                  <div className="w-full h-1 bg-[#f0f0f0] rounded-full overflow-hidden">
+                  <div className="w-full h-1 bg-[rgba(112,115,124,0.08)] rounded-full overflow-hidden">
                     <div className="h-full bg-[#0066ff] rounded-full" style={{ width: '60%', animation: 'figma-bar 1.6s ease-in-out infinite' }} />
                   </div>
                   <style>{`@keyframes figma-bar{0%{transform:translateX(-150%)}100%{transform:translateX(300%)}}`}</style>
@@ -4131,14 +3951,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               ) : (
                 <div className="flex flex-col gap-0">
                   <div className="flex flex-col items-center gap-4 px-8 pt-8 pb-6">
-                    <div className="size-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#22c55e10', border: '1.5px solid #22c55e40' }}>
+                    <div className="size-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#00BF4010', border: '1.5px solid #00BF4040' }}>
                       <span className="text-2xl">✅</span>
                     </div>
                     <div className="text-center">
-                      <p className="text-[15px] font-semibold text-[#111111] mb-1">
+                      <p className="text-[15px] font-semibold text-[#171719] mb-1">
                         {figmaClipboardCopied ? 'Figma 붙여넣기 준비 완료!' : 'Figma 데이터 생성 완료'}
                       </p>
-                      <p className="text-[13px] text-[#666666] leading-relaxed">
+                      <p className="text-[13px] text-[rgba(55,56,60,0.61)] leading-relaxed">
                         {figmaClipboardCopied
                           ? '이제 Figma 캔버스에서 Cmd+V로 붙여넣으세요'
                           : '아래 버튼으로 클립보드에 복사한 뒤 Figma에 붙여넣으세요'}
@@ -4153,14 +3973,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       { step: '3', text: '붙여넣어진 editable layer 확인' },
                     ].map(item => (
                       <div key={item.step} className="flex items-start gap-3">
-                        <div className="size-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: '#111111' }}>
+                        <div className="size-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: '#171719' }}>
                           <span className="text-[11px] font-bold text-white">{item.step}</span>
                         </div>
-                        <p className="text-[13px] text-[#444444] leading-snug pt-0.5">{item.text}</p>
+                        <p className="text-[13px] text-[rgba(46,47,51,0.88)] leading-snug pt-0.5">{item.text}</p>
                       </div>
                     ))}
 
-                    <div className="mt-1 p-3 rounded-xl text-[12px] text-[#555555] leading-relaxed" style={{ backgroundColor: '#f7f7f7', border: '1px solid #eeeeee' }}>
+                    <div className="mt-1 p-3 rounded-xl text-[12px] text-[rgba(55,56,60,0.61)] leading-relaxed" style={{ backgroundColor: '#F7F7F8', border: '1px solid rgba(112,115,124,0.16)' }}>
                       code.to.design API가 HTML/CSS를 Figma paste 데이터로 변환했습니다. 별도 플러그인 설치 없이 Figma 캔버스에 붙여넣으면 됩니다.
                     </div>
                   </div>
@@ -4178,7 +3998,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     <button
                       onClick={() => setFigmaExportOpen(false)}
                       className="w-full py-2.5 text-[13px] font-semibold rounded-xl transition-colors"
-                      style={{ backgroundColor: '#111111', color: '#ffffff' }}
+                      style={{ backgroundColor: '#171719', color: '#ffffff' }}
                     >
                       닫기
                     </button>
@@ -4242,90 +4062,90 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 {platform === 'web' ? (
                   <svg width="260" height="180" viewBox="0 0 260 180" fill="none" xmlns="http://www.w3.org/2000/svg">
                     {/* Browser shell */}
-                    <rect className="wf-phone" x="4" y="4" width="252" height="172" rx="10" stroke="#222222" strokeWidth="2.5" />
+                    <rect className="wf-phone" x="4" y="4" width="252" height="172" rx="10" stroke="#171719" strokeWidth="2.5" />
                     {/* Browser top bar */}
-                    <line className="wf-web-hdr" x1="4" y1="28" x2="256" y2="28" stroke="#dddddd" strokeWidth="1.2" />
+                    <line className="wf-web-hdr" x1="4" y1="28" x2="256" y2="28" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
                     {/* Traffic lights */}
-                    <circle className="wf-web-hdr" cx="18" cy="16" r="4" stroke="#dddddd" strokeWidth="1.2" />
-                    <circle className="wf-web-hdr" cx="30" cy="16" r="4" stroke="#dddddd" strokeWidth="1.2" />
-                    <circle className="wf-web-hdr" cx="42" cy="16" r="4" stroke="#dddddd" strokeWidth="1.2" />
+                    <circle className="wf-web-hdr" cx="18" cy="16" r="4" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
+                    <circle className="wf-web-hdr" cx="30" cy="16" r="4" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
+                    <circle className="wf-web-hdr" cx="42" cy="16" r="4" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
                     {/* URL bar */}
-                    <rect className="wf-web-hdr" x="70" y="10" width="120" height="12" rx="6" stroke="#eeeeee" strokeWidth="1.2" />
+                    <rect className="wf-web-hdr" x="70" y="10" width="120" height="12" rx="6" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
                     {/* Nav bar */}
-                    <rect className="wf-web-hero" x="12" y="34" width="236" height="22" rx="4" stroke="#cccccc" strokeWidth="1.4" />
-                    <rect className="wf-web-hero" x="18" y="39" width="40" height="12" rx="2" stroke="#aaaaaa" strokeWidth="1.2" />
-                    <line className="wf-web-hero" x1="160" y1="39" x2="190" y2="39" stroke="#dddddd" strokeWidth="1.2" />
-                    <line className="wf-web-hero" x1="196" y1="39" x2="218" y2="39" stroke="#dddddd" strokeWidth="1.2" />
-                    <rect className="wf-web-hero" x="224" y="38" width="18" height="14" rx="3" stroke="#aaaaaa" strokeWidth="1.2" />
+                    <rect className="wf-web-hero" x="12" y="34" width="236" height="22" rx="4" stroke="rgba(55,56,60,0.16)" strokeWidth="1.4" />
+                    <rect className="wf-web-hero" x="18" y="39" width="40" height="12" rx="2" stroke="rgba(55,56,60,0.28)" strokeWidth="1.2" />
+                    <line className="wf-web-hero" x1="160" y1="39" x2="190" y2="39" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
+                    <line className="wf-web-hero" x1="196" y1="39" x2="218" y2="39" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
+                    <rect className="wf-web-hero" x="224" y="38" width="18" height="14" rx="3" stroke="rgba(55,56,60,0.28)" strokeWidth="1.2" />
                     {/* Hero banner */}
-                    <rect className="wf-web-c1" x="12" y="62" width="236" height="46" rx="6" stroke="#aaaaaa" strokeWidth="1.6" />
-                    <line className="wf-web-c1" x1="22" y1="76" x2="100" y2="76" stroke="#cccccc" strokeWidth="1.3" />
-                    <line className="wf-web-c1" x1="22" y1="86" x2="76" y2="86" stroke="#dddddd" strokeWidth="1.2" />
-                    <rect className="wf-web-c1" x="192" y="72" width="48" height="20" rx="4" stroke="#bbbbbb" strokeWidth="1.3" />
+                    <rect className="wf-web-c1" x="12" y="62" width="236" height="46" rx="6" stroke="rgba(55,56,60,0.28)" strokeWidth="1.6" />
+                    <line className="wf-web-c1" x1="22" y1="76" x2="100" y2="76" stroke="rgba(55,56,60,0.16)" strokeWidth="1.3" />
+                    <line className="wf-web-c1" x1="22" y1="86" x2="76" y2="86" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
+                    <rect className="wf-web-c1" x="192" y="72" width="48" height="20" rx="4" stroke="rgba(55,56,60,0.28)" strokeWidth="1.3" />
                     {/* Three content cards */}
-                    <rect className="wf-web-c2" x="12" y="116" width="72" height="48" rx="5" stroke="#bbbbbb" strokeWidth="1.4" />
-                    <line className="wf-web-c2" x1="18" y1="130" x2="66" y2="130" stroke="#cccccc" strokeWidth="1.2" />
-                    <line className="wf-web-c2" x1="18" y1="140" x2="50" y2="140" stroke="#dddddd" strokeWidth="1.1" />
-                    <rect className="wf-web-c2" x="94" y="116" width="72" height="48" rx="5" stroke="#bbbbbb" strokeWidth="1.4" />
-                    <line className="wf-web-c2" x1="100" y1="130" x2="148" y2="130" stroke="#cccccc" strokeWidth="1.2" />
-                    <line className="wf-web-c2" x1="100" y1="140" x2="132" y2="140" stroke="#dddddd" strokeWidth="1.1" />
-                    <rect className="wf-web-l1" x="176" y="116" width="72" height="48" rx="5" stroke="#bbbbbb" strokeWidth="1.4" />
-                    <line className="wf-web-l1" x1="182" y1="130" x2="230" y2="130" stroke="#cccccc" strokeWidth="1.2" />
-                    <line className="wf-web-l1" x1="182" y1="140" x2="214" y2="140" stroke="#dddddd" strokeWidth="1.1" />
+                    <rect className="wf-web-c2" x="12" y="116" width="72" height="48" rx="5" stroke="rgba(55,56,60,0.28)" strokeWidth="1.4" />
+                    <line className="wf-web-c2" x1="18" y1="130" x2="66" y2="130" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2" />
+                    <line className="wf-web-c2" x1="18" y1="140" x2="50" y2="140" stroke="rgba(112,115,124,0.16)" strokeWidth="1.1" />
+                    <rect className="wf-web-c2" x="94" y="116" width="72" height="48" rx="5" stroke="rgba(55,56,60,0.28)" strokeWidth="1.4" />
+                    <line className="wf-web-c2" x1="100" y1="130" x2="148" y2="130" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2" />
+                    <line className="wf-web-c2" x1="100" y1="140" x2="132" y2="140" stroke="rgba(112,115,124,0.16)" strokeWidth="1.1" />
+                    <rect className="wf-web-l1" x="176" y="116" width="72" height="48" rx="5" stroke="rgba(55,56,60,0.28)" strokeWidth="1.4" />
+                    <line className="wf-web-l1" x1="182" y1="130" x2="230" y2="130" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2" />
+                    <line className="wf-web-l1" x1="182" y1="140" x2="214" y2="140" stroke="rgba(112,115,124,0.16)" strokeWidth="1.1" />
                     {/* Footer */}
-                    <line className="wf-web-l2" x1="4" y1="166" x2="256" y2="166" stroke="#eeeeee" strokeWidth="1" />
-                    <line className="wf-web-bar" x1="90" y1="171" x2="170" y2="171" stroke="#dddddd" strokeWidth="1.2" />
+                    <line className="wf-web-l2" x1="4" y1="166" x2="256" y2="166" stroke="rgba(112,115,124,0.16)" strokeWidth="1" />
+                    <line className="wf-web-bar" x1="90" y1="171" x2="170" y2="171" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
                   </svg>
                 ) : (
                   <svg width="148" height="268" viewBox="0 0 148 268" fill="none" xmlns="http://www.w3.org/2000/svg">
                     {/* Phone shell */}
-                    <rect className="wf-phone" x="4" y="4" width="140" height="260" rx="20" stroke="#222222" strokeWidth="2.5" />
+                    <rect className="wf-phone" x="4" y="4" width="140" height="260" rx="20" stroke="#171719" strokeWidth="2.5" />
                     {/* Notch */}
-                    <rect className="wf-hdr" x="50" y="4" width="48" height="10" rx="5" stroke="#cccccc" strokeWidth="1.5" />
+                    <rect className="wf-hdr" x="50" y="4" width="48" height="10" rx="5" stroke="rgba(55,56,60,0.16)" strokeWidth="1.5" />
                     {/* Status bar dots */}
-                    <rect className="wf-hdr" x="16" y="22" width="32" height="4" rx="2" stroke="#dddddd" strokeWidth="1.2" />
-                    <rect className="wf-hdr" x="100" y="22" width="28" height="4" rx="2" stroke="#dddddd" strokeWidth="1.2" />
+                    <rect className="wf-hdr" x="16" y="22" width="32" height="4" rx="2" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
+                    <rect className="wf-hdr" x="100" y="22" width="28" height="4" rx="2" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
                     {/* Hero card */}
-                    <rect className="wf-hero" x="16" y="38" width="116" height="68" rx="10" stroke="#aaaaaa" strokeWidth="1.8" />
-                    <line className="wf-hero" x1="28" y1="56" x2="90" y2="56" stroke="#cccccc" strokeWidth="1.4" />
-                    <line className="wf-hero" x1="28" y1="68" x2="72" y2="68" stroke="#dddddd" strokeWidth="1.2" />
-                    <rect className="wf-hero" x="28" y="80" width="48" height="14" rx="4" stroke="#bbbbbb" strokeWidth="1.4" />
+                    <rect className="wf-hero" x="16" y="38" width="116" height="68" rx="10" stroke="rgba(55,56,60,0.28)" strokeWidth="1.8" />
+                    <line className="wf-hero" x1="28" y1="56" x2="90" y2="56" stroke="rgba(55,56,60,0.16)" strokeWidth="1.4" />
+                    <line className="wf-hero" x1="28" y1="68" x2="72" y2="68" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
+                    <rect className="wf-hero" x="28" y="80" width="48" height="14" rx="4" stroke="rgba(55,56,60,0.28)" strokeWidth="1.4" />
                     {/* Two stat cards */}
-                    <rect className="wf-c1" x="16" y="118" width="52" height="52" rx="8" stroke="#bbbbbb" strokeWidth="1.6" />
-                    <line className="wf-c1" x1="26" y1="134" x2="58" y2="134" stroke="#cccccc" strokeWidth="1.2" />
-                    <line className="wf-c1" x1="26" y1="144" x2="46" y2="144" stroke="#dddddd" strokeWidth="1.2" />
-                    <rect className="wf-c2" x="80" y="118" width="52" height="52" rx="8" stroke="#bbbbbb" strokeWidth="1.6" />
-                    <line className="wf-c2" x1="90" y1="134" x2="122" y2="134" stroke="#cccccc" strokeWidth="1.2" />
-                    <line className="wf-c2" x1="90" y1="144" x2="110" y2="144" stroke="#dddddd" strokeWidth="1.2" />
+                    <rect className="wf-c1" x="16" y="118" width="52" height="52" rx="8" stroke="rgba(55,56,60,0.28)" strokeWidth="1.6" />
+                    <line className="wf-c1" x1="26" y1="134" x2="58" y2="134" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2" />
+                    <line className="wf-c1" x1="26" y1="144" x2="46" y2="144" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
+                    <rect className="wf-c2" x="80" y="118" width="52" height="52" rx="8" stroke="rgba(55,56,60,0.28)" strokeWidth="1.6" />
+                    <line className="wf-c2" x1="90" y1="134" x2="122" y2="134" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2" />
+                    <line className="wf-c2" x1="90" y1="144" x2="110" y2="144" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
                     {/* List item lines */}
-                    <line className="wf-l1" x1="16" y1="184" x2="132" y2="184" stroke="#dddddd" strokeWidth="1.3" />
-                    <line className="wf-l2" x1="16" y1="198" x2="100" y2="198" stroke="#eeeeee" strokeWidth="1.2" />
+                    <line className="wf-l1" x1="16" y1="184" x2="132" y2="184" stroke="rgba(112,115,124,0.16)" strokeWidth="1.3" />
+                    <line className="wf-l2" x1="16" y1="198" x2="100" y2="198" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
                     {/* Progress bar */}
-                    <rect className="wf-bar" x="16" y="214" width="116" height="7" rx="3.5" fill="#eeeeee" />
-                    <rect className="wf-bar" x="16" y="214" width="70" height="7" rx="3.5" fill="#222222" />
+                    <rect className="wf-bar" x="16" y="214" width="116" height="7" rx="3.5" fill="rgba(112,115,124,0.16)" />
+                    <rect className="wf-bar" x="16" y="214" width="70" height="7" rx="3.5" fill="#171719" />
                     {/* Tab divider */}
-                    <line className="wf-tab" x1="4" y1="234" x2="144" y2="234" stroke="#eeeeee" strokeWidth="1" />
+                    <line className="wf-tab" x1="4" y1="234" x2="144" y2="234" stroke="rgba(112,115,124,0.16)" strokeWidth="1" />
                     {/* Tab icons */}
-                    <rect className="wf-tab" x="22" y="242" width="20" height="18" rx="3" fill="#eeeeee" />
-                    <rect className="wf-tab" x="64" y="242" width="20" height="18" rx="3" fill="#222222" />
-                    <rect className="wf-tab" x="106" y="242" width="20" height="18" rx="3" fill="#eeeeee" />
+                    <rect className="wf-tab" x="22" y="242" width="20" height="18" rx="3" fill="rgba(112,115,124,0.16)" />
+                    <rect className="wf-tab" x="64" y="242" width="20" height="18" rx="3" fill="#171719" />
+                    <rect className="wf-tab" x="106" y="242" width="20" height="18" rx="3" fill="rgba(112,115,124,0.16)" />
                   </svg>
                 )}
                 {/* Animated dots */}
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <div className="wf-dot1" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#cccccc' }} />
-                  <div className="wf-dot2" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#cccccc' }} />
-                  <div className="wf-dot3" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#cccccc' }} />
+                  <div className="wf-dot1" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'rgba(55,56,60,0.16)' }} />
+                  <div className="wf-dot2" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'rgba(55,56,60,0.16)' }} />
+                  <div className="wf-dot3" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'rgba(55,56,60,0.16)' }} />
                 </div>
               </div>
 
               {/* Right: info + steps */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 22 }}>
                 <div>
-                  <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.04em', color: '#111111', marginBottom: 6 }}>
+                  <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.04em', color: '#171719', marginBottom: 6 }}>
                     {analyzeError ? '질문지 생성에 실패했습니다' : '정확한 시안을 위해 분석 중입니다'}
                   </h2>
-                  <p style={{ fontSize: 14, color: '#888888', lineHeight: 1.55 }}>
+                  <p style={{ fontSize: 14, color: 'rgba(55,56,60,0.61)', lineHeight: 1.55 }}>
                     {analyzeError ? '입력 내용은 유지되어 있어요. 다시 시도하거나 세부 내용을 수정할 수 있습니다.' : '선택하신 내용을 바탕으로 맞춤형 질문지를 만들고 있어요'}
                   </p>
                 </div>
@@ -4334,18 +4154,18 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 {(logoDataUrl || !!effectiveDesignMd) && (
                   <div style={{ display: 'flex', gap: 10 }}>
                     {logoDataUrl && (
-                      <div style={{ padding: '10px 14px', borderRadius: 12, backgroundColor: '#f7f7f7', border: '1px solid #eeeeee', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 80 }}>
-                        <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em' }}>Logo</p>
+                      <div style={{ padding: '10px 14px', borderRadius: 12, backgroundColor: '#F7F7F8', border: '1px solid rgba(112,115,124,0.16)', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 80 }}>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>Logo</p>
                         <img src={logoDataUrl} alt="logo" style={{ height: 28, maxWidth: 72, objectFit: 'contain', borderRadius: 4 }} />
                       </div>
                     )}
                     {!!effectiveDesignMd && (
-                      <div style={{ flex: 1, padding: '10px 14px', borderRadius: 12, backgroundColor: '#f7f7f7', border: '1px solid #eeeeee' }}>
-                        <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>Design System</p>
+                      <div style={{ flex: 1, padding: '10px 14px', borderRadius: 12, backgroundColor: '#F7F7F8', border: '1px solid rgba(112,115,124,0.16)' }}>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>Design System</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <div style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: customDesignMd ? '#6366f1' : (visualizedDesignPreset.color ?? '#888'), flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#111111' }}>{designSystemDisplayName}</span>
-                          <span style={{ fontSize: 12, color: '#888888' }}>{designSystemDescription}</span>
+                          <div style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: customDesignMd ? '#0066FF' : (visualizedDesignPreset.color ?? 'rgba(55,56,60,0.61)'), flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#171719' }}>{designSystemDisplayName}</span>
+                          <span style={{ fontSize: 12, color: 'rgba(55,56,60,0.61)' }}>{designSystemDescription}</span>
                         </div>
                       </div>
                     )}
@@ -4353,9 +4173,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 )}
 
                 {/* Brief preview */}
-                <div style={{ padding: '14px 18px', borderRadius: 12, backgroundColor: '#f7f7f7', border: '1px solid #eeeeee' }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: '#bbbbbb', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>기획서</p>
-                  <p style={{ fontSize: 13, color: '#444444', lineHeight: 1.65, maxHeight: 72, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const }}>{brief}</p>
+                <div style={{ padding: '14px 18px', borderRadius: 12, backgroundColor: '#F7F7F8', border: '1px solid rgba(112,115,124,0.16)' }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>기획서</p>
+                  <p style={{ fontSize: 13, color: 'rgba(46,47,51,0.88)', lineHeight: 1.65, maxHeight: 72, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const }}>{brief}</p>
                 </div>
 
                 {/* Step indicators */}
@@ -4367,11 +4187,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     { label: analyzeError ? '질문지 생성 실패' : '맞춤형 질문지 생성 중...', done: false, active: !analyzeError },
                   ].map((item, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: item.done ? '#111111' : '#f0f0f0', border: item.active ? '1.5px solid #dddddd' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: item.done ? '#171719' : 'rgba(112,115,124,0.08)', border: item.active ? '1.5px solid rgba(112,115,124,0.16)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         {item.done && <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="2,5.5 4,7.5 8,3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                        {item.active && <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid #aaaaaa', borderTopColor: '#111111', animation: 'wf-spin 0.75s linear infinite' }} />}
+                        {item.active && <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid rgba(55,56,60,0.28)', borderTopColor: '#171719', animation: 'wf-spin 0.75s linear infinite' }} />}
                       </div>
-                      <span style={{ fontSize: 13, color: item.done ? '#111111' : '#999999', fontWeight: item.active ? 500 : 400, letterSpacing: '-0.1px' }}>{item.label}</span>
+                      <span style={{ fontSize: 13, color: item.done ? '#171719' : 'rgba(55,56,60,0.61)', fontWeight: item.active ? 500 : 400, letterSpacing: '-0.1px' }}>{item.label}</span>
                     </div>
                   ))}
                 </div>
@@ -4435,7 +4255,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                           style={{
                             borderRadius: '8px',
                             borderColor: isActive ? F.primary : F.hairline,
-                            backgroundColor: isActive ? '#EBF3FF' : F.surface,
+                            backgroundColor: isActive ? '#EAF2FE' : F.surface,
                             outline: 'none',
                           }}
                         >
@@ -4587,23 +4407,23 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             <div className="flex items-start justify-between mb-8">
               <div>
                 <h1 className="text-[22px] font-bold mb-1" style={{ letterSpacing: '-0.05em' }}>이 기준으로 만들게요</h1>
-                <p className="text-[14px] text-[#666666]">{questionnaire.projectSummary}</p>
+                <p className="text-[14px] text-[rgba(55,56,60,0.61)]">{questionnaire.projectSummary}</p>
               </div>
-              <button onClick={() => { clearBlueprints(); setStartedFromLanding(false); setStep(1) }} className="flex items-center gap-1.5 text-sm text-[#666666] hover:text-[#111111] transition-colors mt-1">
+              <button onClick={() => { clearGeneratedBoard(); setStartedFromLanding(false); setStep(1) }} className="flex items-center gap-1.5 text-sm text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors mt-1">
                 <ArrowLeft size={14} /> 뒤로
               </button>
             </div>
 
             <div className="mb-8 flex items-center justify-between gap-4 px-4 py-3" style={{ borderRadius: 12, backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.08)' }}>
               <div>
-                <div className="text-[13px] font-semibold text-[#111111]">
+                <div className="text-[13px] font-semibold text-[#171719]">
                   AI 추천값을 미리 선택해뒀어요
                 </div>
-                <div className="text-[12px] text-[#777777] mt-0.5">
+                <div className="text-[12px] text-[rgba(55,56,60,0.61)] mt-0.5">
                   필요하면 아래 버튼만 바꾸고 바로 시안을 생성하면 됩니다.
                 </div>
               </div>
-              <div className="shrink-0 text-[12px] font-semibold px-3 py-2" style={{ borderRadius: 8, backgroundColor: '#f5f5f5', color: '#111111', border: '1px solid rgba(0,0,0,0.08)' }}>
+              <div className="shrink-0 text-[12px] font-semibold px-3 py-2" style={{ borderRadius: 8, backgroundColor: '#F4F4F5', color: '#171719', border: '1px solid rgba(0,0,0,0.08)' }}>
                 {platform === 'web' ? '웹 프리뷰' : '모바일 프리뷰'}
               </div>
             </div>
@@ -4615,7 +4435,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             </div>
 
             {generateError && (
-              <div className="mb-4 px-4 py-3 text-sm text-[#ff6b6b]" style={{ borderRadius: '8px', backgroundColor: 'rgba(255,107,107,0.10)', border: '1px solid rgba(255,107,107,0.25)' }}>
+              <div className="mb-4 px-4 py-3 text-sm text-[#FF4242]" style={{ borderRadius: '8px', backgroundColor: 'rgba(255,107,107,0.10)', border: '1px solid rgba(255,107,107,0.25)' }}>
                 {generateError}
               </div>
             )}
@@ -4650,8 +4470,8 @@ function ResponsiveFrame({
   const scaledH = Math.round(frameH * scale)
 
   const getBreakpoint = (w: number) => {
-    if (w < 480) return { label: 'Mobile', color: '#22c55e' }
-    if (w < 1024) return { label: 'Tablet', color: '#f59e0b' }
+    if (w < 480) return { label: 'Mobile', color: '#00BF40' }
+    if (w < 1024) return { label: 'Tablet', color: '#FF9200' }
     return { label: 'Desktop', color: '#3b82f6' }
   }
   const bp = getBreakpoint(previewWidth)
@@ -4689,8 +4509,8 @@ function ResponsiveFrame({
       {/* 브레이크포인트 인디케이터 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, paddingLeft: 2 }}>
         <div style={{ width: 8, height: 8, borderRadius: '50%', background: bp.color, flexShrink: 0 }} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#444' }}>{bp.label}</span>
-        <span style={{ fontSize: 12, color: '#999' }}>{previewWidth}px</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(46,47,51,0.88)' }}>{bp.label}</span>
+        <span style={{ fontSize: 12, color: 'rgba(55,56,60,0.61)' }}>{previewWidth}px</span>
       </div>
 
       {/* 프레임 + 드래그 핸들 */}
@@ -4755,10 +4575,10 @@ function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange, share
   if (!styles) {
     return (
       <div className="w-72 shrink-0 border-l border-[rgba(0,0,0,0.09)] bg-white flex flex-col items-center justify-center text-center p-8">
-        <div className="size-12 bg-[#e8e8e8] rounded-full flex items-center justify-center mb-4" style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
-          <SlidersHorizontal size={20} className="text-[#999999]" />
+        <div className="size-12 bg-[rgba(112,115,124,0.16)] rounded-full flex items-center justify-center mb-4" style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
+          <SlidersHorizontal size={20} className="text-[rgba(55,56,60,0.61)]" />
         </div>
-        <p className="text-[13px] text-[#666666] leading-[1.6]">요소를 클릭하면<br />스타일을 확인하고<br />수정할 수 있습니다</p>
+        <p className="text-[13px] text-[rgba(55,56,60,0.61)] leading-[1.6]">요소를 클릭하면<br />스타일을 확인하고<br />수정할 수 있습니다</p>
       </div>
     )
   }
@@ -4772,25 +4592,25 @@ function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange, share
       <div className="flex-1 overflow-y-auto">
       {/* Element label */}
       <div className="px-4 py-3 border-b border-[rgba(0,0,0,0.07)] flex items-center gap-2">
-        <span className="text-[13px] font-mono bg-[#f0f0f0] text-[#666666] px-1.5 py-0.5 rounded">&lt;{styles.tagName}&gt;</span>
-        {styles.text && <span className="text-[#666666] truncate">{styles.text}</span>}
+        <span className="text-[13px] font-mono bg-[rgba(112,115,124,0.08)] text-[rgba(55,56,60,0.61)] px-1.5 py-0.5 rounded">&lt;{styles.tagName}&gt;</span>
+        {styles.text && <span className="text-[rgba(55,56,60,0.61)] truncate">{styles.text}</span>}
       </div>
 
       {/* Shared component sync toggle */}
       {isShared && (
         <div
           className="px-4 py-2.5 border-b border-[rgba(0,0,0,0.07)] flex items-center justify-between cursor-pointer"
-          style={{ backgroundColor: syncAllScreens ? 'rgba(0,85,255,0.06)' : '#fafafa' }}
+          style={{ backgroundColor: syncAllScreens ? 'rgba(0,85,255,0.06)' : '#F7F7F8' }}
           onClick={onToggleSync}
         >
           <div className="flex items-center gap-2">
-            <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#0055ff', flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: '#444444', fontWeight: 500 }}>공통 컴포넌트 — 모든 화면 동기화</span>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#0066FF', flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: 'rgba(46,47,51,0.88)', fontWeight: 500 }}>공통 컴포넌트 — 모든 화면 동기화</span>
           </div>
           <div
             style={{
               width: 32, height: 18, borderRadius: 9, flexShrink: 0,
-              backgroundColor: syncAllScreens ? '#0055ff' : '#cccccc',
+              backgroundColor: syncAllScreens ? '#0066FF' : 'rgba(55,56,60,0.16)',
               position: 'relative', transition: 'background 0.2s',
             }}
           >
@@ -4873,7 +4693,7 @@ function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange, share
             <button
               onClick={onCreonReplace}
               className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-semibold"
-              style={{ backgroundColor: '#111111', color: '#ffffff', border: 'none', cursor: 'pointer' }}
+              style={{ backgroundColor: '#171719', color: '#ffffff', border: 'none', cursor: 'pointer' }}
             >
               <ImageIcon size={13} />
               Creon에서 변경
@@ -4883,7 +4703,7 @@ function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange, share
             <button
               onClick={onIconChange}
               className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-semibold"
-              style={{ backgroundColor: '#f0f0f0', color: '#111111', border: '1px solid rgba(0,0,0,0.09)', cursor: 'pointer' }}
+              style={{ backgroundColor: 'rgba(112,115,124,0.08)', color: '#171719', border: '1px solid rgba(0,0,0,0.09)', cursor: 'pointer' }}
             >
               <Shapes size={13} />
               아이콘 변경
@@ -4973,8 +4793,8 @@ function IconPickerPanel({ pickedIcon, onPick, onApply, onCancel }: {
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[rgba(0,0,0,0.07)] shrink-0">
-        <span className="text-[14px] font-semibold text-[#111111]">아이콘 변경</span>
-        <button onClick={onCancel} className="text-[#666666] hover:text-[#111111] transition-colors">
+        <span className="text-[14px] font-semibold text-[#171719]">아이콘 변경</span>
+        <button onClick={onCancel} className="text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors">
           <X size={15} />
         </button>
       </div>
@@ -4986,23 +4806,23 @@ function IconPickerPanel({ pickedIcon, onPick, onApply, onCancel }: {
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="아이콘 검색..."
-          className="w-full bg-[#f0f0f0] text-[13px] text-[#111111] placeholder:text-[#999999] px-3 py-1.5 outline-none"
+          className="w-full bg-[rgba(112,115,124,0.08)] text-[13px] text-[#171719] placeholder:text-[rgba(55,56,60,0.61)] px-3 py-1.5 outline-none"
           style={{ borderRadius: '8px', border: '1px solid rgba(0,0,0,0.09)' }}
         />
       </div>
 
       {/* Current pick preview */}
       {pickedIcon && (
-        <div className="px-4 py-2 border-b border-[rgba(0,0,0,0.07)] flex items-center gap-2 bg-[#f8f8f8] shrink-0">
-          <span className="material-symbols-outlined" style={{ fontSize: '22px', color: '#0055ff' }}>{pickedIcon}</span>
-          <span className="text-[13px] text-[#0055ff] font-medium">{pickedIcon}</span>
+        <div className="px-4 py-2 border-b border-[rgba(0,0,0,0.07)] flex items-center gap-2 bg-[#F7F7F8] shrink-0">
+          <span className="material-symbols-outlined" style={{ fontSize: '22px', color: '#0066FF' }}>{pickedIcon}</span>
+          <span className="text-[13px] text-[#0066FF] font-medium">{pickedIcon}</span>
         </div>
       )}
 
       {/* Icon grid */}
       <div className="flex-1 overflow-y-auto px-2 py-2">
         {loading && (
-          <div className="flex items-center justify-center gap-2 py-6 text-[13px] text-[#888888]">
+          <div className="flex items-center justify-center gap-2 py-6 text-[13px] text-[rgba(55,56,60,0.61)]">
             <Spinner />
             <span>아이콘 불러오는 중...</span>
           </div>
@@ -5015,16 +4835,16 @@ function IconPickerPanel({ pickedIcon, onPick, onApply, onCancel }: {
               onClick={() => onPick(name)}
               className="flex flex-col items-center justify-center gap-0.5 py-2 rounded-lg transition-all"
               style={pickedIcon === name
-                ? { backgroundColor: '#0055ff15', outline: '1.5px solid #0055ff' }
+                ? { backgroundColor: '#0066FF15', outline: '1.5px solid #0066FF' }
                 : { backgroundColor: 'transparent' }
               }
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: pickedIcon === name ? '#0055ff' : '#333333' }}>{name}</span>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: pickedIcon === name ? '#0066FF' : 'rgba(46,47,51,0.88)' }}>{name}</span>
             </button>
           ))}
         </div>
         {filtered.length === 0 && (
-          <p className="text-center text-[13px] text-[#999999] py-8">검색 결과 없음</p>
+          <p className="text-center text-[13px] text-[rgba(55,56,60,0.61)] py-8">검색 결과 없음</p>
         )}
       </div>
 
@@ -5033,7 +4853,7 @@ function IconPickerPanel({ pickedIcon, onPick, onApply, onCancel }: {
         <button
           onClick={onCancel}
           className="flex-1 py-2 text-[13px] font-medium border transition-all"
-          style={{ borderRadius: '8px', backgroundColor: '#f0f0f0', borderColor: 'rgba(0,0,0,0.09)', color: '#666666' }}
+          style={{ borderRadius: '8px', backgroundColor: 'rgba(112,115,124,0.08)', borderColor: 'rgba(0,0,0,0.09)', color: 'rgba(55,56,60,0.61)' }}
         >
           취소
         </button>
@@ -5041,7 +4861,7 @@ function IconPickerPanel({ pickedIcon, onPick, onApply, onCancel }: {
           onClick={onApply}
           disabled={!pickedIcon}
           className="flex-1 py-2 text-[13px] font-medium border transition-all disabled:opacity-40"
-          style={{ borderRadius: '8px', backgroundColor: '#111111', borderColor: '#111111', color: '#ffffff' }}
+          style={{ borderRadius: '8px', backgroundColor: '#171719', borderColor: '#171719', color: '#ffffff' }}
         >
           적용
         </button>
@@ -5064,17 +4884,17 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
     <div className="fixed inset-0 z-50 flex items-end justify-end p-6 pointer-events-none">
       <div className="pointer-events-auto bg-white w-72 overflow-y-auto max-h-[90vh]" style={{ borderRadius: '16px', boxShadow: '0 8px 40px rgba(0,0,0,0.18)', border: `1px solid ${F.hairlineSoft}` }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(0,0,0,0.07)]">
-          <span className="text-[14px] font-semibold text-[#111111]">Tweaks</span>
-          <button onClick={onClose} className="text-[#666666] hover:text-[#111111] transition-colors">
+          <span className="text-[14px] font-semibold text-[#171719]">Tweaks</span>
+          <button onClick={onClose} className="text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors">
             <X size={16} />
           </button>
         </div>
 
         {/* 시나리오 */}
         <div className="px-5 py-4 border-b border-[rgba(0,0,0,0.07)]">
-          <p className="text-[13px] font-semibold text-[#999999] uppercase tracking-wider mb-2.5">시나리오</p>
+          <p className="text-[13px] font-semibold text-[rgba(55,56,60,0.61)] uppercase tracking-wider mb-2.5">시나리오</p>
           {isLoadingTweaks ? (
-            <div className="flex items-center gap-2 text-[13px] text-[#666666]">
+            <div className="flex items-center gap-2 text-[13px] text-[rgba(55,56,60,0.61)]">
               <Spinner /> 분석 중...
             </div>
           ) : tweakSpec?.states.length ? (
@@ -5087,8 +4907,8 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
                   style={{
                     borderRadius: '6px',
                     ...(activeStateId === state.id
-                      ? { background: '#111111', color: '#ffffff', borderColor: '#111111' }
-                      : { background: '#f0f0f0', color: '#666666', borderColor: 'rgba(0,0,0,0.09)' }),
+                      ? { background: '#171719', color: '#ffffff', borderColor: '#171719' }
+                      : { background: 'rgba(112,115,124,0.08)', color: 'rgba(55,56,60,0.61)', borderColor: 'rgba(0,0,0,0.09)' }),
                   }}
                 >
                   {state.label}
@@ -5096,14 +4916,14 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
               ))}
             </div>
           ) : (
-            <p className="text-[13px] text-[#999999]">UI를 생성하면 시나리오가 분석됩니다</p>
+            <p className="text-[13px] text-[rgba(55,56,60,0.61)]">UI를 생성하면 시나리오가 분석됩니다</p>
           )}
         </div>
 
         {/* 데이터 변수 슬라이더 */}
         {!isLoadingTweaks && tweakSpec && tweakSpec.variables.length > 0 && (
           <div className="px-5 py-4 border-b border-[rgba(0,0,0,0.07)]">
-            <p className="text-[13px] font-semibold text-[#999999] uppercase tracking-wider mb-3">데이터</p>
+            <p className="text-[13px] font-semibold text-[rgba(55,56,60,0.61)] uppercase tracking-wider mb-3">데이터</p>
             <div className="space-y-4">
               {tweakSpec.variables.map(v => (
                 <SliderField
@@ -5120,16 +4940,16 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
         {/* 핵심 순간 */}
         {!isLoadingTweaks && tweakSpec && tweakSpec.events.length > 0 && (
           <div className="px-5 py-4 border-b border-[rgba(0,0,0,0.07)]">
-            <p className="text-[13px] font-semibold text-[#999999] uppercase tracking-wider mb-2.5">핵심 순간</p>
+            <p className="text-[13px] font-semibold text-[rgba(55,56,60,0.61)] uppercase tracking-wider mb-2.5">핵심 순간</p>
             <div className="flex flex-col gap-2">
               {tweakSpec.events.map(ev => (
                 <button
                   key={ev.id}
                   onClick={() => onEvent(ev.script)}
-                  className="flex items-center gap-2 w-full text-left text-[13px] py-2 px-3 border transition-all hover:bg-[#f5f5f5]"
-                  style={{ borderRadius: '8px', borderColor: 'rgba(0,0,0,0.09)', background: '#fafafa', color: '#111111' }}
+                  className="flex items-center gap-2 w-full text-left text-[13px] py-2 px-3 border transition-all hover:bg-[#F4F4F5]"
+                  style={{ borderRadius: '8px', borderColor: 'rgba(0,0,0,0.09)', background: '#F7F7F8', color: '#171719' }}
                 >
-                  <Zap size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                  <Zap size={13} style={{ color: '#FF9200', flexShrink: 0 }} />
                   {ev.label}
                 </button>
               ))}
@@ -5139,18 +4959,18 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
 
         {/* 테마 */}
         <div className="p-5">
-          <p className="text-[13px] font-semibold text-[#999999] uppercase tracking-wider mb-3">테마</p>
+          <p className="text-[13px] font-semibold text-[rgba(55,56,60,0.61)] uppercase tracking-wider mb-3">테마</p>
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 text-[13px] text-[#111111]">
+            <div className="flex items-center gap-2 text-[13px] text-[#171719]">
               {darkMode ? <Moon size={14} /> : <Sun size={14} />}
               다크 모드
             </div>
             <Toggle on={darkMode} onChange={onDarkMode} />
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[13px] text-[#111111]">브랜드 컬러</span>
+            <span className="text-[13px] text-[#171719]">브랜드 컬러</span>
             <div className="flex items-center gap-2">
-              <span className="text-[13px] text-[#666666] font-mono">{brandColor}</span>
+              <span className="text-[13px] text-[rgba(55,56,60,0.61)] font-mono">{brandColor}</span>
               <label className="cursor-pointer">
                 <div className="size-7 border-2 cursor-pointer" style={{ borderRadius: '9999px', backgroundColor: brandColor, borderColor: 'rgba(0,0,0,0.12)', boxShadow: '0 0 0 1px rgba(0,0,0,0.06)' }} />
                 <input type="color" value={brandColor} onChange={e => onBrandColor(e.target.value)} className="sr-only" />
@@ -5160,404 +4980,6 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
         </div>
       </div>
     </div>
-  )
-}
-
-// Single gray tone skeleton — shapes on white background, no color variation
-function BlueprintSectionContent({ role, scaledHeight, children, columns, density, heroType, imageStrategy, cPad, cGap }: {
-  role: LayoutBlueprintSection['role']
-  scaledHeight: number
-  children: string[]
-  columns?: number
-  density: LayoutBlueprintSection['density']
-  heroType?: LayoutBlueprint['heroType']
-  imageStrategy?: LayoutBlueprintSection['imageStrategy']
-  cPad: number
-  cGap: number
-}) {
-  const G = '#DEDEDE'
-  const GL = '#EBEBEB'
-  const circle = (size: number) => (
-    <div style={{ width: size, height: size, borderRadius: '50%', backgroundColor: G, flexShrink: 0 }} />
-  )
-  const bar = (w: string | number, h: number, color = G) => (
-    <div style={{ width: w, height: h, borderRadius: 2, backgroundColor: color, flexShrink: 0 }} />
-  )
-  const rect = (w: string | number, h: string | number, radius = 2, color = G) => (
-    <div style={{ width: w, height: h, borderRadius: radius, backgroundColor: color, flexShrink: 0 }} />
-  )
-  // density → item count
-  const densityCount = (sparse: number, balanced: number, dense: number) =>
-    density === 'sparse' ? sparse : density === 'dense' ? dense : balanced
-
-  if (role === 'nav') return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '100%', padding: `0 ${cPad}px` }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: cGap }}>
-        {circle(14)} {bar(36, 5, GL)}
-      </div>
-      <div style={{ display: 'flex', gap: cGap }}>
-        {circle(12)} {circle(12)}
-      </div>
-    </div>
-  )
-
-  if (role === 'tabbar') {
-    const count = Math.max(3, Math.min(5, children.length || 4))
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', height: '100%', padding: `0 ${cPad}px` }}>
-        {Array.from({ length: count }).map((_, i) => (
-          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: Math.max(2, cGap - 2) }}>
-            {rect(16, 16, 2)}
-            {bar(18, 3, GL)}
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  if (role === 'hero') {
-    // heroType별 구분 렌더링
-    const imgH = Math.round((scaledHeight - cPad * 2) * 0.52)
-    if (heroType === 'image-hero' || heroType === '3d-hero' || imageStrategy) {
-      const imgPos = imageStrategy?.position ?? 'top'
-      if (imgPos === 'background') return (
-        // 배경 이미지형 히어로
-        <div style={{ position: 'relative', height: '100%', borderRadius: 2, backgroundColor: GL, overflow: 'hidden' }}>
-          {rect('100%', '100%', 2, '#D0D0D0')}
-          <div style={{ position: 'absolute', bottom: cPad, left: cPad, right: cPad, display: 'flex', flexDirection: 'column', gap: cGap }}>
-            {bar('60%', 7)}
-            {bar('40%', 5, 'rgba(255,255,255,0.6)')}
-            {rect('30%', Math.max(10, cPad + cGap))}
-          </div>
-        </div>
-      )
-      if (imgPos === 'left') return (
-        // 좌측 이미지 + 우측 텍스트
-        <div style={{ display: 'flex', gap: cGap, height: '100%', padding: `${cPad}px` }}>
-          {rect(Math.round(scaledHeight * 0.7), '100%')}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: cGap }}>
-            {bar('80%', 6)}
-            {bar('65%', 4, GL)}
-            {rect('55%', Math.max(10, cPad))}
-          </div>
-        </div>
-      )
-      // top image (default)
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px` }}>
-          {imgH > 14 && rect('100%', imgH)}
-          {bar('65%', 7)}
-          {bar('45%', 5, GL)}
-          {rect('38%', Math.max(10, cPad + cGap))}
-        </div>
-      )
-    }
-    if (heroType === 'stat-dashboard') return (
-      // KPI 숫자 중심 히어로
-      <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px` }}>
-        {bar('55%', 7)}
-        {bar('38%', 4, GL)}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: cGap, marginTop: cGap }}>
-          {[0,1,2].map(i => (
-            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, backgroundColor: GL, borderRadius: 2, padding: `${Math.max(2, cPad - 2)}px` }}>
-              {bar('55%', 8)}
-              {bar('75%', 3, '#D8D8D8')}
-            </div>
-          ))}
-        </div>
-        {rect('35%', Math.max(10, cPad))}
-      </div>
-    )
-    if (heroType === 'search-bar') return (
-      // 검색창 중심 히어로
-      <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px` }}>
-        {bar('60%', 7)}
-        {rect('100%', Math.max(10, cPad + 6), 20)}
-        <div style={{ display: 'flex', gap: cGap }}>
-          {[0,1,2,3].map(i => (
-            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-              {rect(14, 14, 2)}
-              {bar(16, 3, GL)}
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-    if (heroType === 'action-cta') return (
-      // 큰 CTA 중심 히어로
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: cGap, padding: `${cPad}px`, height: '100%' }}>
-        {bar('55%', 9)}
-        {bar('70%', 4, GL)}
-        {bar('45%', 4, GL)}
-        {rect('55%', Math.max(12, cPad + 4), 20)}
-      </div>
-    )
-    // none / fallback
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px` }}>
-        {bar('65%', 7)}
-        {bar('45%', 5, GL)}
-        {rect('38%', Math.max(10, cPad + cGap))}
-      </div>
-    )
-  }
-
-  if (role === 'banner') {
-    const imgPos = imageStrategy?.position ?? 'background'
-    if (imgPos === 'background') return (
-      <div style={{ position: 'relative', height: '100%', borderRadius: 2, overflow: 'hidden' }}>
-        {rect('100%', '100%', 2, '#D4D4D4')}
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: `${cPad}px`, gap: cGap }}>
-          {bar('50%', 7, 'rgba(255,255,255,0.7)')}
-          {rect('28%', Math.max(10, cPad), 20, 'rgba(255,255,255,0.5)')}
-        </div>
-      </div>
-    )
-    return (
-      <div style={{ display: 'flex', gap: cGap, height: '100%', padding: `${cPad}px`, alignItems: 'center' }}>
-        {rect(Math.round(scaledHeight * 0.75), '100%')}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: cGap }}>
-          {bar('80%', 6)}
-          {bar('55%', 4, GL)}
-          {rect('45%', Math.max(10, cPad))}
-        </div>
-      </div>
-    )
-  }
-
-  if (role === 'collection') {
-    const cardW = Math.round(scaledHeight * 0.65)
-    const count = densityCount(2, 3, 4)
-    return (
-      <div style={{ display: 'flex', gap: cGap, padding: `${cPad}px`, overflowX: 'hidden', height: '100%' }}>
-        {Array.from({ length: count }).map((_, i) => (
-          <div key={i} style={{ width: cardW, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: Math.max(2, cGap - 2) }}>
-            {rect(cardW, Math.round(scaledHeight * 0.55))}
-            {bar('70%', 4)}
-            {bar('50%', 3, GL)}
-          </div>
-        ))}
-        {/* scroll hint */}
-        <div style={{ width: 8, height: '100%', display: 'flex', alignItems: 'center' }}>
-          {bar(2, 16, GL)}
-        </div>
-      </div>
-    )
-  }
-
-  if (role === 'chart') return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px` }}>
-      {bar('40%', 5)}
-      <div style={{ flex: 1, backgroundColor: GL, borderRadius: 2, minHeight: 20 }} />
-    </div>
-  )
-
-  if (role === 'cta-block') return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: cGap, height: '100%', padding: `${cPad * 2}px ${cPad}px`, backgroundColor: GL, borderRadius: 2 }}>
-      {bar('50%', 8)}
-      {bar('65%', 4, '#D0D0D0')}
-      {rect('45%', Math.max(12, cPad + 4), 20)}
-    </div>
-  )
-
-  if (role === 'kpi') {
-    const cols = columns ?? Math.min(4, Math.max(2, children.length || 3))
-    return (
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: cGap, height: '100%', padding: `${cPad}px` }}>
-        {Array.from({ length: cols }).map((_, i) => (
-          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: Math.max(2, cGap - 2), backgroundColor: GL, borderRadius: 2 }}>
-            {bar('50%', 8)}
-            {bar('70%', 4, '#D0D0D0')}
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  if (role === 'actions') {
-    const count = densityCount(3, 4, 5)
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', height: '100%', padding: `${cPad}px` }}>
-        {Array.from({ length: count }).map((_, i) => (
-          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: Math.max(2, cGap - 2) }}>
-            {rect(20, 20, 2)}
-            {bar(20, 3, GL)}
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  if (role === 'list') {
-    const itemCount = densityCount(2, 3, 5)
-    const hasThumb = imageStrategy != null || children.some(c => c.toLowerCase().includes('image') || c.toLowerCase().includes('thumb'))
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px 0` }}>
-        {Array.from({ length: itemCount }).map((_, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: cGap }}>
-            {hasThumb
-              ? rect(cPad + 12, cPad + 12, 2)
-              : circle(cPad + 4)
-            }
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: Math.max(2, cGap - 2) }}>
-              {bar('68%', 5)}
-              {bar('44%', 4, GL)}
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  if (role === 'form') {
-    const inputH = Math.max(10, cPad + 6)
-    const fieldH = 4 + Math.max(2, cGap - 2) + inputH
-    const inputCount = Math.max(1, Math.min(4, Math.floor((scaledHeight - cPad * 2) / (fieldH + cGap))))
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px 0` }}>
-        {Array.from({ length: inputCount }).map((_, i) => (
-          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: Math.max(2, cGap - 2) }}>
-            {bar(28, 4, GL)}
-            {rect('100%', inputH)}
-          </div>
-        ))}
-        {rect('45%', Math.max(10, cPad + 4))}
-      </div>
-    )
-  }
-
-  if (role === 'media') {
-    const cols = columns ?? densityCount(2, 3, 4)
-    const rows = densityCount(1, 2, 3)
-    const cellH = Math.max(14, Math.round((scaledHeight - cPad * 2 - cGap * (rows - 1)) / rows))
-    return (
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: cGap, padding: `${cPad}px` }}>
-        {Array.from({ length: cols * rows }).map((_, i) => (
-          <div key={i} style={{ borderRadius: 2, backgroundColor: G, height: cellH }} />
-        ))}
-      </div>
-    )
-  }
-
-  // content / fallback
-  const lineCount = densityCount(3, 4, 6)
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: cGap, padding: `${cPad}px 0` }}>
-      {bar('55%', 7)}
-      {Array.from({ length: lineCount - 1 }).map((_, i) => (
-        <div key={i} style={{ width: i === lineCount - 2 ? '60%' : `${95 - i * 5}%`, height: 4, borderRadius: 2, backgroundColor: GL, flexShrink: 0 }} />
-      ))}
-    </div>
-  )
-}
-
-function BlueprintPreview({ blueprint }: {
-  blueprint: LayoutBlueprint
-}) {
-  const vpW = Math.max(blueprint.viewport?.width ?? 390, 1)
-  const isWeb = vpW > 700
-  const isLnb = blueprint.navType === 'lnb'
-
-  const sortedSections = [...blueprint.sections].sort((a, b) => a.y - b.y)
-
-  const INNER_W = isWeb ? 220 : 180
-  const scale = INNER_W / vpW
-
-  // Use actual rhythm values for spacing (reliable, not from LLM y/height)
-  const sGap = Math.max(3, Math.round((blueprint.rhythm?.sectionGap ?? 24) * scale))
-  const cPad = Math.max(2, Math.round((blueprint.rhythm?.cardPadding ?? 16) * scale))
-  const cGap = Math.max(1, Math.round((blueprint.rhythm?.cardGap ?? 12) * scale))
-  const hPad = Math.max(4, Math.round((blueprint.rhythm?.pagePadding ?? 16) * scale))
-  const lnbW = isLnb ? Math.round(240 * scale) : 0
-
-  const navSection = isLnb ? sortedSections.find(s => s.role === 'nav') : null
-  const mainSections = isLnb ? sortedSections.filter(s => s.role !== 'nav') : sortedSections
-
-  // Render the blueprint literally. The previous preview recalculated heights by role,
-  // which made different A/B/C blueprints look almost identical.
-  const sections = mainSections.map(s => ({
-    ...s,
-    _top: Math.max(0, Math.round(s.y * scale)),
-    _h: Math.max(14, Math.round(s.height * scale)),
-  }))
-  const contentBottom = sections.reduce((max, s) => Math.max(max, s._top + s._h), 0)
-  const viewportH = Math.round((blueprint.viewport?.height ?? 844) * scale)
-  const contentH = Math.max(viewportH, contentBottom + sGap)
-
-  return (
-    <>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="size-5 flex items-center justify-center text-[11px] font-bold text-white shrink-0"
-          style={{ borderRadius: 6, backgroundColor: '#111' }}>
-          {blueprint.variant}
-        </span>
-        <span className="text-[13px] font-semibold text-[#111] truncate">{blueprint.strategy ?? `시안 ${blueprint.variant}`}</span>
-      </div>
-
-      <div style={{
-        position: 'relative',
-        display: 'flex',
-        height: contentH,
-        backgroundColor: '#fff',
-        borderRadius: 4,
-        border: '1px solid rgba(0,0,0,0.1)',
-        overflow: 'hidden',
-      }}>
-        {/* LNB sidebar */}
-        {isLnb && (
-          <div style={{
-            width: lnbW,
-            flexShrink: 0,
-            borderRight: '1px solid #EBEBEB',
-            backgroundColor: '#F8F8F8',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: cGap,
-            padding: `${cPad}px ${Math.max(3, cPad - 2)}px`,
-          }}>
-            {/* Logo area */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: Math.max(2, cGap - 2), marginBottom: cGap }}>
-              <div style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: '#DEDEDE', flexShrink: 0 }} />
-              <div style={{ height: 4, borderRadius: 2, backgroundColor: '#DEDEDE', flex: 1 }} />
-            </div>
-            {/* Nav items */}
-            {Array.from({ length: navSection?.children.length || 5 }).map((_, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: Math.max(2, cGap - 2), padding: `${Math.max(2, cPad - 2)}px ${Math.max(2, cPad - 2)}px`, borderRadius: 2, backgroundColor: i === 0 ? '#DEDEDE' : 'transparent' }}>
-                <div style={{ width: 9, height: 9, borderRadius: 2, backgroundColor: i === 0 ? '#BDBDBD' : '#E8E8E8', flexShrink: 0 }} />
-                <div style={{ height: 3, borderRadius: 1, backgroundColor: i === 0 ? '#BDBDBD' : '#EBEBEB', flex: 1 }} />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Main content area */}
-        <div style={{ flex: 1, position: 'relative' }}>
-          {sections.map(s => (
-            <div key={s.id} style={{
-              position: 'absolute',
-              left: isLnb ? hPad : hPad,
-              right: hPad,
-              top: s._top,
-              height: s._h,
-              overflow: 'visible',
-            }}>
-              <BlueprintSectionContent
-                role={s.role}
-                scaledHeight={s._h}
-                columns={s.columns}
-                density={s.density}
-                heroType={s.role === 'hero' ? blueprint.heroType : undefined}
-                imageStrategy={s.imageStrategy}
-                cPad={cPad}
-                cGap={cGap}
-              >
-                {s.children}
-              </BlueprintSectionContent>
-            </div>
-          ))}
-        </div>
-      </div>
-    </>
   )
 }
 
@@ -5583,7 +5005,7 @@ function PrimaryButton({ onClick, disabled, loading, loadingText, children }: {
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="border-b border-[rgba(0,0,0,0.07)] px-4 py-3">
-      <p className="text-[13px] font-semibold text-[#999999] uppercase tracking-wider mb-2">{label}</p>
+      <p className="text-[13px] font-semibold text-[rgba(55,56,60,0.61)] uppercase tracking-wider mb-2">{label}</p>
       <div className="space-y-1.5">{children}</div>
     </div>
   )
@@ -5596,7 +5018,7 @@ function TwoCol({ left, right }: { left: React.ReactNode; right: React.ReactNode
 function PropRow({ label, children, wide }: { label: string; children?: React.ReactNode; wide?: boolean }) {
   return (
     <div className={cn('flex items-center', wide ? 'flex-col items-start gap-0.5' : 'justify-between gap-2')}>
-      <span className="text-[13px] text-[#666666] shrink-0">{label}</span>
+      <span className="text-[13px] text-[rgba(55,56,60,0.61)] shrink-0">{label}</span>
       {children}
     </div>
   )
@@ -5659,7 +5081,7 @@ function EditField({ value, prop, suffix = '', onUpdate, wide }: {
       onMouseDown={handleMouseDown}
       style={{ cursor: isNum ? (scrubbing ? 'ew-resize' : 'col-resize') : undefined }}
       className={cn(
-        'text-[13px] text-[#111111] bg-[#f0f0f0] border border-transparent hover:border-[rgba(0,0,0,0.15)] focus:border-[rgba(0,0,0,0.4)] outline-none rounded-[4px] transition-colors font-mono',
+        'text-[13px] text-[#171719] bg-[rgba(112,115,124,0.08)] border border-transparent hover:border-[rgba(0,0,0,0.15)] focus:border-[rgba(0,0,0,0.4)] outline-none rounded-[4px] transition-colors font-mono',
         wide ? 'w-full px-2 py-1' : 'w-20 px-1.5 py-1 text-right'
       )}
     />
@@ -5679,7 +5101,7 @@ function AlignField({ value, prop, onUpdate }: { value: string; prop: string; on
           key={opt.value}
           onClick={() => onUpdate(prop, opt.value)}
           className="flex items-center justify-center w-7 h-6 rounded transition-colors"
-          style={value === opt.value ? { background: '#111111', color: '#ffffff' } : { background: '#e8e8e8', color: '#666666' }}
+          style={value === opt.value ? { background: '#171719', color: '#ffffff' } : { background: 'rgba(112,115,124,0.16)', color: 'rgba(55,56,60,0.61)' }}
         >
           {opt.icon}
         </button>
@@ -5709,8 +5131,8 @@ function SliderField({ variable, value, onChange }: {
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[13px] text-[#666666]">{variable.label}</span>
-        <span className="text-[13px] font-medium text-[#111111] font-mono">
+        <span className="text-[13px] text-[rgba(55,56,60,0.61)]">{variable.label}</span>
+        <span className="text-[13px] font-medium text-[#171719] font-mono">
           {formatVarDisplay(display, variable)}
         </span>
       </div>
@@ -5726,11 +5148,11 @@ function SliderField({ variable, value, onChange }: {
           onChange(variable.id, v)
         }}
         className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-        style={{ accentColor: '#0055ff' }}
+        style={{ accentColor: '#0066FF' }}
       />
       <div className="flex justify-between mt-1">
-        <span className="text-[13px] text-[#999999]">{formatVarDisplay(variable.min, variable)}</span>
-        <span className="text-[13px] text-[#999999]">{formatVarDisplay(variable.max, variable)}</span>
+        <span className="text-[13px] text-[rgba(55,56,60,0.61)]">{formatVarDisplay(variable.min, variable)}</span>
+        <span className="text-[13px] text-[rgba(55,56,60,0.61)]">{formatVarDisplay(variable.max, variable)}</span>
       </div>
     </div>
   )
@@ -5741,7 +5163,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
     <button
       onClick={() => onChange(!on)}
       className="relative w-10 h-5 rounded-full transition-colors"
-      style={{ backgroundColor: on ? '#0055ff' : '#cccccc' }}
+      style={{ backgroundColor: on ? '#0066FF' : 'rgba(55,56,60,0.16)' }}
     >
       <div
         className="absolute top-0.5 size-4 bg-white rounded-full shadow transition-all"
@@ -5778,12 +5200,12 @@ function QuestionCard({ index, question, answer, onAnswer }: {
   return (
     <div>
       <div className="flex items-start gap-3 mb-3">
-        <span className="shrink-0 size-6 flex items-center justify-center text-xs font-medium mt-0.5 transition-colors" style={{ borderRadius: '8px', ...(hasAnswer ? { backgroundColor: '#111111', color: '#ffffff' } : { backgroundColor: '#e8e8e8', color: '#666666', border: '1px solid rgba(0,0,0,0.09)' }) }}>
+        <span className="shrink-0 size-6 flex items-center justify-center text-xs font-medium mt-0.5 transition-colors" style={{ borderRadius: '8px', ...(hasAnswer ? { backgroundColor: '#171719', color: '#ffffff' } : { backgroundColor: 'rgba(112,115,124,0.16)', color: 'rgba(55,56,60,0.61)', border: '1px solid rgba(0,0,0,0.09)' }) }}>
           {hasAnswer ? <Check size={11} /> : index}
         </span>
         <div>
-          <h3 className="text-[15px] font-medium text-[#111111]">{question.question}</h3>
-          {question.description && <p className="text-[13px] text-[#666666] mt-0.5">{question.description}</p>}
+          <h3 className="text-[15px] font-medium text-[#171719]">{question.question}</h3>
+          {question.description && <p className="text-[13px] text-[rgba(55,56,60,0.61)] mt-0.5">{question.description}</p>}
         </div>
       </div>
 
@@ -5792,7 +5214,7 @@ function QuestionCard({ index, question, answer, onAnswer }: {
           <textarea
             value={(answer as string) ?? ''}
             onChange={e => onAnswer(e.target.value)}
-            className="w-full bg-[#f0f0f0] border p-3 text-sm text-[#111111] placeholder:text-[#999999] resize-none"
+            className="w-full bg-[rgba(112,115,124,0.08)] border p-3 text-sm text-[#171719] placeholder:text-[rgba(55,56,60,0.61)] resize-none"
             style={{ borderRadius: '8px', outline: 'none', borderColor: 'rgba(0,0,0,0.09)' }}
             rows={3}
             placeholder="자유롭게 입력해주세요..."
@@ -5806,19 +5228,19 @@ function QuestionCard({ index, question, answer, onAnswer }: {
                 key={option}
                 onClick={() => onAnswer(option)}
                 className="px-4 py-2 text-sm border transition-all inline-flex items-center gap-1.5"
-                style={{ borderRadius: '8px', ...(isSelected(option) ? { backgroundColor: '#EBF3FF', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}
+                style={{ borderRadius: '8px', ...(isSelected(option) ? { backgroundColor: '#EAF2FE', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}
               >
                 {isSelected(option) && <Check size={13} />}
                 {option}
               </button>
             ))}
             {question.hasDecideForMe && (
-              <button onClick={() => onAnswer('AI가 결정')} className="px-4 py-2 text-sm border flex items-center gap-1.5 transition-all" style={{ borderRadius: '8px', borderStyle: 'dashed', ...(isSelected('AI가 결정') ? { backgroundColor: '#EBF3FF', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}>
+              <button onClick={() => onAnswer('AI가 결정')} className="px-4 py-2 text-sm border flex items-center gap-1.5 transition-all" style={{ borderRadius: '8px', borderStyle: 'dashed', ...(isSelected('AI가 결정') ? { backgroundColor: '#EAF2FE', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}>
                 <Sparkles size={12} /> AI가 결정
               </button>
             )}
             {question.hasExplore && (
-              <button onClick={() => onAnswer('다양하게 보기')} className="px-4 py-2 text-sm border transition-all" style={{ borderRadius: '8px', borderStyle: 'dashed', ...(isSelected('다양하게 보기') ? { backgroundColor: '#EBF3FF', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}>
+              <button onClick={() => onAnswer('다양하게 보기')} className="px-4 py-2 text-sm border transition-all" style={{ borderRadius: '8px', borderStyle: 'dashed', ...(isSelected('다양하게 보기') ? { backgroundColor: '#EAF2FE', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}>
                 ✦ 다양하게 보기
               </button>
             )}
@@ -5829,7 +5251,7 @@ function QuestionCard({ index, question, answer, onAnswer }: {
             type="text"
             value={customDomainText}
             onChange={e => onAnswer(e.target.value ? `기타: ${e.target.value}` : '기타')}
-            className="mt-2 w-full bg-[#f0f0f0] border px-3 py-2 text-sm text-[#111111] placeholder:text-[#999999]"
+            className="mt-2 w-full bg-[rgba(112,115,124,0.08)] border px-3 py-2 text-sm text-[#171719] placeholder:text-[rgba(55,56,60,0.61)]"
             style={{ borderRadius: '8px', outline: 'none', borderColor: 'rgba(0,0,0,0.09)' }}
             placeholder="예: 부동산, 물류, 교육 등..."
             autoFocus
@@ -5843,17 +5265,17 @@ function QuestionCard({ index, question, answer, onAnswer }: {
               type="text"
               value={hero3DKeyword}
               onChange={e => onAnswer(e.target.value ? `직접 입력: ${e.target.value}` : '직접 입력')}
-              className="w-full bg-[#f0f0f0] border px-3 py-2 text-sm text-[#111111] placeholder:text-[#999999]"
+              className="w-full bg-[rgba(112,115,124,0.08)] border px-3 py-2 text-sm text-[#171719] placeholder:text-[rgba(55,56,60,0.61)]"
               style={{ borderRadius: '8px', outline: 'none', borderColor: 'rgba(0,0,0,0.09)' }}
               placeholder="예: 귀여운 로봇, 스마트폰 캐릭터, 달리는 강아지..."
               autoFocus
               onFocus={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.35)' }}
               onBlur={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.09)' }}
             />
-            <p className="text-[11px] text-[#999] mt-1">한국어로 입력해도 돼요. Creon 3D 스타일로 생성됩니다.</p>
+            <p className="text-[11px] text-[rgba(55,56,60,0.61)] mt-1">한국어로 입력해도 돼요. Creon 3D 스타일로 생성됩니다.</p>
           </div>
         )}
-        {question.type === 'multi' && <p className="text-[13px] text-[#666666] mt-2">복수 선택 가능</p>}
+        {question.type === 'multi' && <p className="text-[13px] text-[rgba(55,56,60,0.61)] mt-2">복수 선택 가능</p>}
       </div>
     </div>
   )

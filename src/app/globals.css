@@ -14,9 +14,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-poppins);
+  /* dogfooding: aide.md type.family = Pretendard */
+  --font-sans: var(--font-pretendard);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-poppins);
+  --font-heading: var(--font-pretendard);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -46,37 +47,68 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.333);
 
-  /* Framer design tokens */
+  /* Framer design tokens (랜딩 다크 캔버스 연출용 — 액센트만 aide primary로 통일) */
   --color-canvas: #111111;
   --color-surface-1: #1a1a1a;
   --color-surface-2: #252525;
   --color-ink: #ffffff;
   --color-ink-muted: #999999;
-  --color-accent-blue: #0055ff;
+  --color-accent-blue: #0066FF;
 
   --shadow-card: rgba(0,0,0,0.4) 0 4px 20px 0, rgba(255,255,255,0.05) 0 0.5px 0 0 inset;
 }
 
+/* ── Aide Design System tokens (src/lib/design-systems/aide.md와 동기) ─────────
+   앱 자체 UI(dogfooding)의 단일 소스. 새 UI는 아래 변수만 사용할 것. */
+:root {
+  --aide-primary: #0066FF;
+  --aide-primary-strong: #005EEB;
+  --aide-primary-heavy: #0054D1;
+  --aide-primary-soft: #EAF2FE;
+  --aide-primary-tint: rgba(0, 102, 255, 0.08);
+  --aide-page: #F7F7F8;
+  --aide-surface: #FFFFFF;
+  --aide-surface-muted: #F4F4F5;
+  --aide-text: #171719;
+  --aide-text-strong: #000000;
+  --aide-text-neutral: rgba(46, 47, 51, 0.88);
+  --aide-text-muted: rgba(55, 56, 60, 0.61);
+  --aide-text-assistive: rgba(55, 56, 60, 0.28);
+  --aide-text-disabled: rgba(55, 56, 60, 0.16);
+  --aide-border: rgba(112, 115, 124, 0.16);
+  --aide-border-alt: rgba(112, 115, 124, 0.08);
+  --aide-fill: rgba(112, 115, 124, 0.08);
+  --aide-fill-strong: rgba(112, 115, 124, 0.16);
+  --aide-positive: #00BF40;
+  --aide-caution: #FF9200;
+  --aide-negative: #FF4242;
+  --aide-radius-control: 12px;
+  --aide-radius-card: 16px;
+  --aide-radius-sheet: 20px;
+  --aide-shadow-card: 0px 2px 4px -2px rgba(23, 23, 23, 0.06), 0px 4px 6px -1px rgba(23, 23, 23, 0.06);
+  --aide-shadow-elevated: 0px 4px 6px -2px rgba(23, 23, 23, 0.07), 0px 10px 15px -3px rgba(23, 23, 23, 0.07);
+}
+
 :root {
   --background: #ffffff;
-  --foreground: #111111;
+  --foreground: #171719;
   --card: #ffffff;
-  --card-foreground: #111111;
+  --card-foreground: #171719;
   --popover: #ffffff;
-  --popover-foreground: #111111;
-  --primary: #111111;
+  --popover-foreground: #171719;
+  --primary: #0066FF;
   --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #111111;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #f4f4f5;
-  --accent-foreground: #111111;
-  --destructive: #ef4444;
-  --border: rgba(0,0,0,0.1);
-  --input: rgba(0,0,0,0.1);
-  --ring: #0055ff;
-  --radius: 0.9375rem;
+  --secondary: #F4F4F5;
+  --secondary-foreground: #171719;
+  --muted: #F4F4F5;
+  --muted-foreground: rgba(55, 56, 60, 0.61);
+  --accent: #EAF2FE;
+  --accent-foreground: #171719;
+  --destructive: #FF4242;
+  --border: rgba(112, 115, 124, 0.16);
+  --input: rgba(112, 115, 124, 0.16);
+  --ring: #0066FF;
+  --radius: 1rem;
   --sidebar: #111111;
   --sidebar-foreground: #ffffff;
   --sidebar-primary: #ffffff;
@@ -93,8 +125,9 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-poppins), var(--font-inter), -apple-system, sans-serif;
-    font-feature-settings: 'cv01', 'cv05', 'cv09', 'cv11', 'ss03', 'ss07', 'dlig';
+    /* dogfooding: aide.md type.family */
+    font-family: var(--font-pretendard);
+    letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
   }
   html {
