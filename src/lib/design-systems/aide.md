@@ -50,6 +50,7 @@ tokens:
     body: "16px/24px 400"
     body-sm: "15px/22px 400"
     label: "14px/20px 600"
+    button: "14px/20px 500"
     caption: "12px/16px 400"
   spacing:
     page-padding: 16px
@@ -65,7 +66,15 @@ tokens:
     pill: 9999px
   shadow:
     card: "0px 2px 4px -2px rgba(23,23,23,0.06), 0px 4px 6px -1px rgba(23,23,23,0.06)"
+    popover: "0px 1px 2px rgba(23,23,23,0.04), 0px 4px 8px -4px rgba(23,23,23,0.06), 0px 16px 24px -8px rgba(23,23,23,0.08)"
+    modal: "0px 1px 2px rgba(23,23,23,0.04), 0px 8px 16px -4px rgba(23,23,23,0.06), 0px 24px 32px -8px rgba(23,23,23,0.08)"
     elevated: "0px 4px 6px -2px rgba(23,23,23,0.07), 0px 10px 15px -3px rgba(23,23,23,0.07)"
+  motion:
+    fast: "150ms"
+    base: "200ms"
+    slow: "300ms"
+    easing: "cubic-bezier(0.175, 0.885, 0.32, 1.1)"
+    note: "fast=hover·active·checked, base=드롭다운·팝오버, slow=오버레이·모달. prefers-reduced-motion 반드시 준수."
   chrome:
     header-height: 56px
     tabbar-height: 72px
@@ -124,11 +133,13 @@ Core CSS contract:
 ```css
 :root {
   --color-primary: #0066FF;
+  --color-primary-soft: #EAF2FE;
   --color-page: #F7F7F8;
   --color-surface: #FFFFFF;
   --color-text: #171719;
   --color-muted: rgba(55,56,60,0.61);
   --color-border: rgba(112,115,124,0.16);
+  --color-negative: #FF4242;
   --aide-page-padding: 16px;
   --aide-section-gap: 16px;
   --aide-card-padding: 16px;
@@ -136,7 +147,14 @@ Core CSS contract:
   --aide-card-radius: 16px;
   --aide-header-height: 56px;
   --aide-tabbar-height: 72px;
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --motion-slow: 300ms;
+  --motion-easing: cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  --aide-focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-primary);
 }
+:focus-visible { outline: none; box-shadow: var(--aide-focus-ring); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }
 .app-shell { background: var(--color-page); height: 100dvh; min-height: 100dvh; position: relative; overflow: hidden; display: flex; flex-direction: column; }
 .top-navigation { position: sticky; top: 0; z-index: 20; height: var(--aide-header-height); background: rgba(255,255,255,.88); backdrop-filter: blur(32px); border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--aide-page-padding); }
 .scroll-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: var(--aide-section-gap) var(--aide-page-padding) calc(var(--aide-tabbar-height) + 16px); display: flex; flex-direction: column; gap: var(--aide-section-gap); }
@@ -337,6 +355,100 @@ Before final answer, the generated HTML must pass:
 - Minimum 4 sections and 9 UI units.
 - Responsive CSS exists.
 
+## Primary Color Hierarchy
+
+`--color-primary: #0066FF` has four distinct roles — apply only the role that matches the context:
+
+| 토큰 | 용도 | 사용 예 |
+|---|---|---|
+| `primary` (#0066FF) | CTA 버튼 배경, 아이콘 강조, 숫자 KPI | 주요 행동 버튼, 탭 활성 아이콘 |
+| `primary-strong` (#005EEB) | CTA :hover / :active 상태 | 버튼 눌림 시 색 변화 |
+| `primary-heavy` (#0054D1) | 선택된 항목의 텍스트·아이콘 | 활성 탭 레이블 |
+| `primary-soft` (#EAF2FE) | 선택·활성 상태의 배경 | 칩 선택 배경, 탭 인디케이터 배경 |
+| `primary-tint` (rgba 8%) | 경계 없이 tint 효과 | 토스트 배경, 인라인 강조 |
+
+Rules:
+- Primary blue는 **CTA, 활성 상태, KPI 숫자**에만 사용한다. 장식·배경·텍스트 기본색에 쓰지 않는다.
+- 비활성 CTA는 `opacity: 0.38`로 처리. 색상 변형 금지.
+- 보조 버튼(secondary)은 `fill`/`fill-strong` 배경 또는 `border` 테두리만 사용.
+
+## Motion
+
+세 단계 duration + 단일 easing으로 모든 전환을 표현한다:
+
+| 토큰 | 값 | 적용 대상 |
+|---|---|---|
+| `--motion-fast` | 150ms | hover·active·checked·icon swap |
+| `--motion-base` | 200ms | 드롭다운·팝오버 열기/닫기, 색상 전환 |
+| `--motion-slow` | 300ms | 오버레이·모달·시트 진입/퇴장 |
+
+Easing: `cubic-bezier(0.175, 0.885, 0.32, 1.1)` — 살짝 overshoot하는 스프링감.
+
+```css
+.btn-primary { transition: filter var(--motion-fast) var(--motion-easing); }
+.dropdown    { transition: opacity var(--motion-base) var(--motion-easing),
+                           transform var(--motion-base) var(--motion-easing); }
+.modal-sheet { transition: transform var(--motion-slow) var(--motion-easing); }
+```
+
+`prefers-reduced-motion: reduce` 미디어 쿼리가 CSS contract에 포함돼 있다 — 별도 추가 불필요.
+
+## Focus Style
+
+키보드 탐색 사용자를 위해 모든 인터랙티브 요소는 `:focus-visible` 링을 반드시 표시한다:
+
+```css
+/* Core CSS contract에 포함 — 재선언 불필요 */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-primary);
+}
+```
+
+- 2px 흰색 gap + 2px primary 링 구조.
+- 버튼·카드 등 개별 컴포넌트에서 `box-shadow` 재정의 시 이 값을 보존한다.
+- `outline: none`은 반드시 `box-shadow` 대체가 있을 때만 사용한다.
+
+## Voice & Copy (Korean)
+
+Aide UI에서 사용하는 한국어 카피의 어조와 규칙.
+
+### 기본 어조
+
+- **간결·직접**: 주어 생략 가능, 동사 끝맺음 명확
+- **존댓말 기본**: `-요` 체 (예: "확인해요", "설정하세요")
+- **명사형 레이블**: 버튼·탭·칩은 명사 또는 동사 어간+기 (예: "저장하기", "분석 시작")
+
+### CTA 버튼 카피
+
+| 상황 | 권장 | 금지 |
+|---|---|---|
+| 주요 행동 | "지금 시작하기", "바로 확인하기" | "클릭", "OK", "Submit" |
+| 완료·확정 | "저장하기", "신청하기" | "완료", "Done" |
+| 취소·닫기 | "취소", "닫기" | "Cancel", "Close" |
+| 삭제·위험 | "삭제하기", "탈퇴하기" | "삭제", "Delete" |
+
+### 상태 메시지
+
+- 오류: `[대상]을(를) [동사]하지 못했어요. [이유 또는 해결 방법].`
+  - 예: "파일을 업로드하지 못했어요. 5MB 이하의 이미지를 사용해 주세요."
+- 성공: `[대상]이(가) [동작]됐어요.`
+  - 예: "프로필이 저장됐어요."
+- 빈 상태: `아직 [대상]이 없어요.` + 행동 유도 문구
+  - 예: "아직 기록이 없어요. 첫 번째 분석을 시작해 보세요."
+
+### 숫자·단위
+
+- 한국식 단위 우선: 만·억 (예: "1,200만원", "2.3억건")
+- 퍼센트 공백 없음: "12%" (not "12 %")
+- 날짜: "2025년 6월 26일" 또는 "6월 26일"
+
+### 금지 표현
+
+- 영어 혼용 레이블 (예: "My page", "Home") → "내 페이지", "홈"
+- 지나친 감탄 (예: "와우!", "굉장해요!") — 제품 UI에 부적합
+- 수동형 모호 표현 (예: "처리되어집니다") → "처리돼요"
+
 ## Do Not
 
 - Do not use Montage icon names.
@@ -346,3 +458,6 @@ Before final answer, the generated HTML must pass:
 - Do not center-float buttons in the middle of image/content blocks.
 - Do not make all variants the same layout.
 - Do not create empty, decorative, low-content screens.
+- Do not apply primary blue (#0066FF) to decorative backgrounds, body text, or non-CTA elements.
+- Do not omit `:focus-visible` ring on interactive elements.
+- Do not use English copy for labels, CTAs, or status messages in Korean-language screens.

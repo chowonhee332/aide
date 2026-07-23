@@ -1,18 +1,7 @@
 import type { Metadata } from "next";
-import { Inter, Poppins, Geist_Mono } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const poppins = Poppins({
-  variable: "--font-poppins",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
-});
+import { AUI_ROOT_CSS } from "@/lib/aide-product-tokens";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -35,14 +24,17 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
-      className={`${inter.variable} ${poppins.variable} ${geistMono.variable} h-full antialiased`}
+      lang="ko"
+      className={`${geistMono.variable} h-full antialiased`}
     >
       <head>
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
         />
+        {/* Product tokens compiled from aide-product-ui.md. Loaded after globals.css so the
+            contract wins; tokens the md omits keep their globals.css fallback. */}
+        <style id="aui-tokens">{AUI_ROOT_CSS}</style>
       </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

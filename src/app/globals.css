@@ -14,18 +14,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* dogfooding: aide.md type.family = Pretendard */
+  /* Aide Product UI typography */
   --font-sans: var(--font-pretendard);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-pretendard);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -46,77 +38,155 @@
   --radius-md: calc(var(--radius) * 0.667);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.333);
-
-  /* Framer design tokens (랜딩 다크 캔버스 연출용 — 액센트만 aide primary로 통일) */
-  --color-canvas: #111111;
-  --color-surface-1: #1a1a1a;
-  --color-surface-2: #252525;
-  --color-ink: #ffffff;
-  --color-ink-muted: #999999;
-  --color-accent-blue: #0066FF;
-
-  --shadow-card: rgba(0,0,0,0.4) 0 4px 20px 0, rgba(255,255,255,0.05) 0 0.5px 0 0 inset;
 }
 
-/* ── Aide Design System tokens (src/lib/design-systems/aide.md와 동기) ─────────
-   앱 자체 UI(dogfooding)의 단일 소스. 새 UI는 아래 변수만 사용할 것. */
+/* ── Aide Product UI tokens ────────────────────────────────────────────
+   Contract: src/lib/design-systems/aide-product-ui.md
+   Product chrome must use --aui-*; generated artifacts use their DESIGN.md. */
 :root {
-  --aide-primary: #0066FF;
-  --aide-primary-strong: #005EEB;
-  --aide-primary-heavy: #0054D1;
-  --aide-primary-soft: #EAF2FE;
-  --aide-primary-tint: rgba(0, 102, 255, 0.08);
-  --aide-page: #F7F7F8;
-  --aide-surface: #FFFFFF;
-  --aide-surface-muted: #F4F4F5;
-  --aide-text: #171719;
-  --aide-text-strong: #000000;
-  --aide-text-neutral: rgba(46, 47, 51, 0.88);
-  --aide-text-muted: rgba(55, 56, 60, 0.61);
-  --aide-text-assistive: rgba(55, 56, 60, 0.28);
-  --aide-text-disabled: rgba(55, 56, 60, 0.16);
-  --aide-border: rgba(112, 115, 124, 0.16);
-  --aide-border-alt: rgba(112, 115, 124, 0.08);
-  --aide-fill: rgba(112, 115, 124, 0.08);
-  --aide-fill-strong: rgba(112, 115, 124, 0.16);
-  --aide-positive: #00BF40;
-  --aide-caution: #FF9200;
-  --aide-negative: #FF4242;
-  --aide-radius-control: 12px;
-  --aide-radius-card: 16px;
-  --aide-radius-sheet: 20px;
-  --aide-shadow-card: 0px 2px 4px -2px rgba(23, 23, 23, 0.06), 0px 4px 6px -1px rgba(23, 23, 23, 0.06);
-  --aide-shadow-elevated: 0px 4px 6px -2px rgba(23, 23, 23, 0.07), 0px 10px 15px -3px rgba(23, 23, 23, 0.07);
+  --aui-primary: #0066FF;
+  --aui-primary-strong: #005EEB;
+  --aui-primary-heavy: #0054D1;
+  --aui-primary-soft: #EAF2FE;
+  --aui-primary-tint: rgba(0, 102, 255, 0.08);
+  --aui-canvas: #FFFFFF;
+  --aui-page: #F7F7F8;
+  --aui-surface: #FFFFFF;
+  --aui-surface-muted: #F4F4F5;
+  --aui-text: #171719;
+  --aui-text-strong: #000000;
+  --aui-text-neutral: rgba(46, 47, 51, 0.88);
+  --aui-text-muted: rgba(55, 56, 60, 0.61);
+  --aui-text-assistive: rgba(55, 56, 60, 0.28);
+  --aui-text-disabled: rgba(55, 56, 60, 0.16);
+  --aui-on-primary: #FFFFFF;
+  --aui-on-dark: #FFFFFF;
+  --aui-on-dark-strong: rgba(255, 255, 255, 0.90);
+  --aui-on-dark-muted: rgba(255, 255, 255, 0.72);
+  --aui-on-dark-subtle: rgba(255, 255, 255, 0.30);
+  --aui-on-dark-faint: rgba(255, 255, 255, 0.15);
+  --aui-inverse-surface: #1A1A1A;
+  --aui-inverse-surface-raised: #2A2A2A;
+  --aui-border: rgba(112, 115, 124, 0.16);
+  --aui-border-subtle: rgba(112, 115, 124, 0.08);
+  --aui-fill: rgba(112, 115, 124, 0.08);
+  --aui-fill-strong: rgba(112, 115, 124, 0.16);
+  --aui-primary-muted: #DCEAFF;
+  --aui-primary-disabled: #7AAEFF;
+  --aui-scrim-soft: rgba(0, 0, 0, 0.25);
+  --aui-scrim: rgba(0, 0, 0, 0.45);
+  --aui-scrim-strong: rgba(0, 0, 0, 0.65);
+  --aui-shadow-line: rgba(0, 0, 0, 0.07);
+  --aui-shadow-soft: rgba(0, 0, 0, 0.09);
+  --aui-shadow-medium: rgba(0, 0, 0, 0.15);
+  --aui-positive: #00BF40;
+  --aui-caution: #FF9200;
+  --aui-negative: #FF4242;
+  --aui-negative-soft: rgba(255, 66, 66, 0.08);
+  --aui-negative-border: rgba(255, 66, 66, 0.25);
+  --aui-caution-soft: #FFF7ED;
+  --aui-caution-border: #FED7AA;
+  --aui-caution-text: #B45309;
+  --aui-space-1: 4px;
+  --aui-space-2: 8px;
+  --aui-space-3: 12px;
+  --aui-space-4: 16px;
+  --aui-space-5: 20px;
+  --aui-space-6: 24px;
+  --aui-space-8: 32px;
+  --aui-space-10: 40px;
+  --aui-radius-sm: 8px;
+  --aui-radius-control: 12px;
+  --aui-radius-card: 16px;
+  --aui-radius-overlay: 20px;
+  --aui-radius-pill: 9999px;
+  --aui-shadow-card: 0px 2px 4px -2px rgba(23, 23, 23, 0.06), 0px 4px 6px -1px rgba(23, 23, 23, 0.06);
+  --aui-shadow-elevated: 0px 4px 6px -2px rgba(23, 23, 23, 0.07), 0px 10px 15px -3px rgba(23, 23, 23, 0.07);
+  --aui-motion-fast: 150ms;
+  --aui-motion-base: 200ms;
+  --aui-motion-slow: 300ms;
+  --aui-motion-easing: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Typography scale. Named --aui-type-* to avoid collision with --aui-text-* colors.
+     Scale keys mirror `contract.tokens.typography` in aide-product-ui.md. */
+  --aui-type-display-size: 32px;
+  --aui-type-display-leading: 44px;
+  --aui-type-display-weight: 700;
+  --aui-type-display-tracking: -0.8px;
+  --aui-type-page-title-size: 24px;
+  --aui-type-page-title-leading: 32px;
+  --aui-type-page-title-weight: 700;
+  --aui-type-page-title-tracking: -0.55px;
+  --aui-type-section-title-size: 18px;
+  --aui-type-section-title-leading: 26px;
+  --aui-type-section-title-weight: 700;
+  --aui-type-section-title-tracking: 0px;
+  --aui-type-body-size: 15px;
+  --aui-type-body-leading: 22px;
+  --aui-type-body-weight: 400;
+  --aui-type-body-tracking: 0px;
+  --aui-type-label-size: 14px;
+  --aui-type-label-leading: 20px;
+  --aui-type-label-weight: 600;
+  --aui-type-label-tracking: 0px;
+  --aui-type-compact-size: 13px;
+  --aui-type-compact-leading: 18px;
+  --aui-type-compact-weight: 600;
+  --aui-type-compact-tracking: 0px;
+  --aui-type-caption-size: 12px;
+  --aui-type-caption-leading: 16px;
+  --aui-type-caption-weight: 400;
+  --aui-type-caption-tracking: 0px;
+
+  /* Transitional aliases. Remove after all product screens use --aui-*. */
+  --aide-primary: var(--aui-primary);
+  --aide-primary-strong: var(--aui-primary-strong);
+  --aide-primary-heavy: var(--aui-primary-heavy);
+  --aide-primary-soft: var(--aui-primary-soft);
+  --aide-primary-tint: var(--aui-primary-tint);
+  --aide-page: var(--aui-page);
+  --aide-surface: var(--aui-surface);
+  --aide-surface-muted: var(--aui-surface-muted);
+  --aide-text: var(--aui-text);
+  --aide-text-strong: var(--aui-text-strong);
+  --aide-text-neutral: var(--aui-text-neutral);
+  --aide-text-muted: var(--aui-text-muted);
+  --aide-text-assistive: var(--aui-text-assistive);
+  --aide-text-disabled: var(--aui-text-disabled);
+  --aide-border: var(--aui-border);
+  --aide-border-alt: var(--aui-border-subtle);
+  --aide-fill: var(--aui-fill);
+  --aide-fill-strong: var(--aui-fill-strong);
+  --aide-positive: var(--aui-positive);
+  --aide-caution: var(--aui-caution);
+  --aide-negative: var(--aui-negative);
+  --aide-radius-control: var(--aui-radius-control);
+  --aide-radius-card: var(--aui-radius-card);
+  --aide-radius-sheet: var(--aui-radius-overlay);
+  --aide-shadow-card: var(--aui-shadow-card);
+  --aide-shadow-elevated: var(--aui-shadow-elevated);
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171719;
-  --card: #ffffff;
-  --card-foreground: #171719;
-  --popover: #ffffff;
-  --popover-foreground: #171719;
-  --primary: #0066FF;
-  --primary-foreground: #ffffff;
-  --secondary: #F4F4F5;
-  --secondary-foreground: #171719;
-  --muted: #F4F4F5;
-  --muted-foreground: rgba(55, 56, 60, 0.61);
-  --accent: #EAF2FE;
-  --accent-foreground: #171719;
-  --destructive: #FF4242;
-  --border: rgba(112, 115, 124, 0.16);
-  --input: rgba(112, 115, 124, 0.16);
-  --ring: #0066FF;
-  --radius: 1rem;
-  --sidebar: #111111;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #111111;
-  --sidebar-accent: #1a1a1a;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgba(255,255,255,0.08);
-  --sidebar-ring: #0055ff;
+  --background: var(--aui-canvas);
+  --foreground: var(--aui-text);
+  --card: var(--aui-surface);
+  --card-foreground: var(--aui-text);
+  --popover: var(--aui-surface);
+  --popover-foreground: var(--aui-text);
+  --primary: var(--aui-primary);
+  --primary-foreground: var(--aui-on-primary);
+  --secondary: var(--aui-surface-muted);
+  --secondary-foreground: var(--aui-text);
+  --muted: var(--aui-surface-muted);
+  --muted-foreground: var(--aui-text-muted);
+  --accent: var(--aui-primary-soft);
+  --accent-foreground: var(--aui-text);
+  --destructive: var(--aui-negative);
+  --border: var(--aui-border);
+  --input: var(--aui-border);
+  --ring: var(--aui-primary);
+  --radius: var(--aui-radius-card);
 }
 
 @layer base {
@@ -125,12 +195,21 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* dogfooding: aide.md type.family */
+    /* Aide Product UI typography */
     font-family: var(--font-pretendard);
     letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
   }
   html {
     @apply font-sans;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

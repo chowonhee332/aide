@@ -313,6 +313,14 @@ components:
     typography: "{typography.body-lg}"
     height: 56px
     padding: 0 16px
+  list-default:
+    storybookComponent: "Components/List"
+    variants: ["Default","Example 1","Example 2"]
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    typography: "{typography.body-md}"
+    itemMinHeight: 56px
+    note: "Playground에서는 반복 행/메뉴/설정 목록의 기본 컨테이너로 사용한다. 단일 행은 list-item-default 토큰을 따른다."
   chip-default:
     backgroundColor: "transparent"
     textColor: "{colors.text}"
@@ -408,6 +416,13 @@ components:
     backgroundColor: "{colors.surface}"
     rounded: "{rounded.2xl}"
     padding: 16px 24px
+  bottom-sheet-with-controls:
+    storybookComponent: "Components/Bottom Sheet"
+    variant: "With Controls"
+    backgroundColor: "{colors.surface}"
+    rounded: "{rounded.2xl}"
+    padding: 16px 24px
+    note: "모바일 필터, 정렬, 선택 옵션처럼 하단에서 조작이 필요한 경우 우선 사용한다."
   snackbar-default:
     backgroundColor: "#28292c"
     textColor: "#ffffff"
@@ -646,6 +661,14 @@ components:
     typography: "{typography.caption-lg}"
     rounded: "{rounded.sm}"
     padding: 2px 8px
+  empty-default:
+    storybookComponent: "Components/Empty"
+    variants: ["Default","Empty Text","Empty Icon Text","Empty Data"]
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    typography: "{typography.body-md}"
+    padding: "{spacing.3xl}"
+    note: "데이터 없음, 검색 결과 없음, 초기 상태에는 Empty를 사용한다. 임의의 빈 카드나 회색 박스로 대체하지 않는다."
   divider-default:
     backgroundColor: "{colors.border-alt}"
     height: 1px
@@ -770,6 +793,14 @@ components:
     maxFiles: 1
     maxFileSize: 10485760
     allowFileTypes: ["xlsx","xls","docx","doc","pptx","ppt","txt","pdf","zip","jpg","jpeg","png","gif"]
+  editor-default:
+    storybookComponent: "Components/Editor"
+    variant: "Default"
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.md}"
+    border: "1px solid {colors.border}"
+    note: "공지/게시글/상세 설명처럼 리치 텍스트 입력이 필요한 경우에만 사용한다."
   dropdown-menu-default:
     backgroundColor: "{colors.surface}"
     rounded: "{rounded.md}"
@@ -872,6 +903,7 @@ Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학
 - **브랜드**: KT DS (케이티 디에스)
 - **브랜드 컬러**: `#1a75ff` (Primary)
 - **모드**: Light / Dark 완전 지원
+- **Aide Playground 기준**: DSCore Storybook의 `stable` 컴포넌트 이름을 원본으로 삼고, Aide 내부 컴포넌트 id는 아래 Playground 매핑을 따른다.
 
 ---
 
@@ -880,8 +912,9 @@ Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학
 이 문서는 **DSCore Storybook 최종 문서**를 기준으로 유지한다.
 
 - 기준 URL: `https://dscore-ui.ktds.co.kr/`
-- 확인일: 2026-06-02
+- 확인일: 2026-07-06
 - 기준 문서: Storybook `index.json`의 `type: docs` 항목과 각 `iframe.html?viewMode=docs&id=...` 문서
+- 기준 엔트리: `type: docs`, `type: story`, `tags`에 `stable`이 포함된 DSCore Storybook 항목
 - 컴포넌트 상태: Storybook에 stable Docs로 노출된 항목은 사용 가능 컴포넌트로 본다. 로컬 소스 확인 여부보다 Storybook 문서를 우선한다.
 - 단, B2B/B2C 카드 표면 정책처럼 서비스 적용을 위해 추가한 규칙은 **KTDS 적용 프로필 확장 규칙**으로 별도 표기한다.
 
@@ -916,28 +949,54 @@ Clarity(명확성) · Trust(신뢰감) · Efficiency(효율성)를 핵심 철학
 생성 결과에서 자주 필요한 공식 Storybook variant는 아래를 우선 반영한다.
 
 - Button: `With Icon`, `Button Stack`, `Button Stack Vertical`, `Alignment`, `Alignment Vertical`
+- Button FAB: `Default`, `Icon Only`, `With Options`, `Scroll To Top`
 - Input: `Input Clear`, `Input Reveal`, `With Slot`
+- Select: `Variant`, `Full Width`, `Invalid`, `Size`
+- Checkbox / Radio: `Group`, `Group Vertical`, `Group Invalid`, `Controlled`
 - Card: `Example 1`-`Example 4` 카드 레이아웃 패턴
 - Bottom Sheet: `Default`, `With Controls`
 - Navigation Bottom: `With Badge`
+- Navigation Side: `With Initial Active Menu`, `With Icons`
+- TabList: `Box Variant`, `Small Box Variant`, `Text Variant`, `Small Text Variant`
+- Tab: Menu Tab: `With Icon`
 - Table: `With Checkbox Selection`, `With Radio Selection`, `With Height`
 - Date Picker: `Date Range`, `With Min And Max Date`
 - Chart: `Line Chart`, `Bar Chart`, `Doughnut Chart`, `Pie Chart`, `Mix Chart`
 - Toast: `Primary Variant`, `With Icon`, `Long Message`
 - Empty: `Empty Text`, `Empty Icon Text`, `Empty Data`
 - FileUploader: `Button File Uploader`, `Max Files And Size`, `With Error Message`, `With Default Files`
+- Dropdown Menu: `Variant`, `With Custom Trigger`, `With Custom Trigger Avatar`
+- Tree Menu: `Radio Selection`, `Checkbox Selection`
+
+#### Aide Playground Stable Catalog
+
+Playground의 컴포넌트 팔레트는 아래 Storybook stable 컴포넌트를 1차 대상으로 삼는다. 내부 id는 사용자가 이해하기 쉬운 한글 이름을 붙이되, 생성/저장 시에는 Storybook 원형을 `storybookComponent` 메타로 유지한다.
+
+| Playground group | Storybook source | Recommended internal ids |
+|---|---|---|
+| Layout / structure | `Card`, `List`, `Divider`, `Accordion`, `SplitLayout`, `Content`, `ContentTitle` | `card`, `list`, `list-item`, `divider`, `accordion`, `split-layout`, `content-title` |
+| Navigation | `Navigation: Bottom`, `Navigation: Side`, `Navigation: Top`, `Breadcrumb`, `TabList`, `Tab: Menu Tab`, `Anchor`, `Pagination`, `Tree Menu` | `nav-bottom`, `nav-side`, `nav-top`, `breadcrumb`, `tablist`, `menu-tab`, `anchor`, `pagination`, `tree-menu` |
+| Actions | `Button`, `Button: FAB`, `Dropdown Menu`, `Alert Dialog`, `Toast`, `Tooltip` | `button`, `button-area`, `fab`, `dropdown-menu`, `alert-dialog`, `toast`, `tooltip` |
+| Inputs | `Input`, `Textarea`, `Select`, `Checkbox`, `Radio`, `Switch`, `Slider`, `Date Picker`, `FileUploader`, `Rate`, `Editor` | `input`, `textarea`, `select`, `checkbox`, `radio`, `switch`, `slider`, `date-picker`, `file-uploader`, `rate`, `editor` |
+| Feedback / status | `Badge`, `Tag`, `Chip`, `Admonition`, `Loading`, `Empty`, `Skeleton` | `badge`, `tag`, `chip`, `admonition`, `loading`, `empty`, `skeleton` |
+| Data display | `Table`, `Chart`, `Avatar`, `Carousel`, `Text List`, `Link`, `Mark`, `Heading`, `Text` | `table`, `chart`, `avatar`, `carousel`, `text-list`, `link`, `mark`, `heading`, `text` |
+
+**Playground에서 우선 제외:** 현재 Storybook `Components/*` stable inventory에 없는 `Combobox`, `Popover`, `Progress`는 자동 팔레트의 기본 항목으로 노출하지 않는다. 기존 문서 섹션은 프로젝트 fallback 레퍼런스로만 유지한다.
+
+**명칭 정규화:** `Empty State`는 Storybook 기준 `Empty`, `List Item`은 `List`의 단일 행 패턴, `Tab Bar`는 상황에 따라 `Navigation: Bottom` 또는 `TabList`, `Toggle`은 `Switch`, `Snackbar`는 `Toast`로 정규화한다.
 
 ---
 
 ## Package Imports
 
-모든 일반 컴포넌트는 `@ktds-ui/components`에서 import한다. Toast·Alert Dialog만 context 패키지를 사용한다.
+모든 일반 컴포넌트는 `@ktds-ui/components`에서 import한다. Toast와 imperative Alert Dialog 호출은 context 패키지를 사용한다.
 
 ```ts
 // Storybook stable Docs 기준 컴포넌트 + 관련 헬퍼(ButtonArea, Stack, FormItem 등)
 import {
   Accordion,
   Admonition,
+  AlertDialog,
   Anchor,
   Avatar,
   Badge,
@@ -958,7 +1017,7 @@ import {
   Fab,
   FileUploader,
   Form, FormItem,
-  Heading, Text, Link, Mark,
+  Heading, Text, TextList, Link, Mark,
   Icon, IconButton,
   Input,
   List,
@@ -3050,7 +3109,7 @@ import { Heading, Chart, Table, Progress } from '@ktds-ui/components';
 - 화면을 빈 카드와 큰 공백으로 채우지 않는다. 각 섹션은 제목, 보조 설명, 상태/수치/시간/담당자/가격/진행률 등 실제 서비스 데이터를 포함한다.
 - KTDS의 기본 레이어는 `body/page background = var(--color-primary-fill-neutral)`, `content surface/card = var(--color-surface)`이다.
 - Primary Blue는 CTA, 활성 탭, 링크, 포커스, 핵심 상태 강조에만 사용한다. 넓은 장식 배경이나 그라데이션 용도로 사용하지 않는다.
-- B2B/관리자/대시보드는 `border-only card`를 우선하고, B2C/모바일 홈은 `shadow-only card`를 사용할 수 있다. 같은 카드에 border와 shadow를 동시에 쓰지 않는다.
+- 카드 표면은 Aide 적용 프로필에서 B2B/B2C 구분 없이 `shadow-only card`를 기본으로 통일한다. 같은 카드에 border와 shadow를 동시에 쓰지 않는다.
 
 ### Spacing Rhythm
 
@@ -3129,7 +3188,10 @@ KTDS는 엔터프라이즈 UI 시스템이므로 3D/이미지는 장식이 아�
 
 1. 컴포넌트는 반드시 `components:` 토큰 이름으로 정확히 지칭하라 (예: `button-primary`, `tab-item-active`, `alert-negative`)
 2. 색상은 반드시 `var(--color-*)` CSS 변수로만 참조 — hex 직접 입력 절대 금지
-3. 수정 후 `npx @google/design.md lint ktds.md` 실행으로 스펙 준수 여부 확인 (`@google/design.md` npm 패키지 필요)
+3. 수정 후 아래 체크리스트로 스펙 준수 여부를 수동 확인한다
+   - 모든 색상이 `var(--color-*)` 변수 참조인가?
+   - 모든 spacing이 `var(--spacing-*)` 변수 참조인가?
+   - 다크모드 `@media` 블록이 `:root` 바로 뒤에 있는가?
 4. 새 섹션 추가 시 배경 레이어를 먼저 결정하라
    - 전체 페이지 배경: `var(--color-primary-fill-neutral)` (항상)
    - 카드/모달/시트: `var(--color-surface)` (항상)
@@ -3165,7 +3227,8 @@ Storybook Docs에 명시된 import, props, token 값을 최우선으로 사용�
 - **포커스 링**: `outline: 2px solid var(--color-primary)` + `outline-offset: 2px`
 - **z-index 레이어**: 기본 콘텐츠 0 → Sticky 헤더 100 → Dropdown 200 → Modal/Dialog 300 → Snackbar/Toast 400 → Tooltip 500
 - **애니메이션 타이밍**: hover/press `var(--dsx-transition-base)` · expand/collapse `var(--dsx-transition-collapse)` · fade `var(--dsx-transition-fade)` · popover `var(--dsx-transition-popover)`
-- **Storybook stable 컴포넌트 우선:** `Accordion`, `List`, `Drawer`, `Slider`, `Stepper`, `Carousel` 등은 Storybook Docs 기준으로 사용 가능 컴포넌트다. 구현 시 각 Storybook 문서의 import/props/guideline을 우선한다.
+- **Storybook stable 컴포넌트 우선:** `Accordion`, `Admonition`, `Alert Dialog`, `Anchor`, `Avatar`, `Badge`, `Bottom Sheet`, `Breadcrumb`, `Button`, `Button: FAB`, `Card`, `Carousel`, `Chart`, `Checkbox`, `Chip`, `Date Picker`, `Dialog`, `Drawer`, `Dropdown Menu`, `Editor`, `Empty`, `FileUploader`, `Input`, `List`, `Loading`, `Navigation: Bottom`, `Navigation: Side`, `Navigation: Top`, `Pagination`, `Radio`, `Rate`, `Select`, `Slider`, `Stepper`, `Switch`, `Tab: Menu Tab`, `TabList`, `Table`, `Tag`, `Textarea`, `Toast`, `Tooltip`, `Tree Menu`를 공식 사용 가능 컴포넌트로 본다.
+- **Playground 팔레트 제외:** `Combobox`, `Popover`, `Progress`는 현재 Storybook stable inventory에 없으므로 Playground 기본 팔레트에 넣지 않는다. 이미 생성된 시안 호환 또는 프로젝트 fallback 용도로만 유지한다.
 - **Bottom Sheet 구현:** Storybook stable Docs의 `BottomSheet` 컴포넌트를 우선한다. `Drawer placement="bottom"`은 공식 BottomSheet를 사용할 수 없는 환경에서만 fallback으로 사용한다.
 - **Editor 컴포넌트:** Storybook Docs에 등록되어 있으므로 사용 가능 목록에는 포함한다. 단, 실제 에디터 기능 범위와 플러그인 정책은 프로젝트 적용 전 Storybook 예제와 제품 정책을 함께 확인한다.
 
@@ -3889,6 +3952,16 @@ Aide 생성 HTML/CSS 시안의 아이콘은 반드시 Google Material Symbols Ro
 
 ## 완전한 DSX 토큰 레퍼런스
 
+> **토큰 네임스페이스 안내**
+> 이 파일에는 두 가지 토큰 네임스페이스가 존재한다.
+>
+> | 네임스페이스 | 예시 | 사용 대상 |
+> |-------------|------|-----------|
+> | `--color-*` | `--color-primary`, `--color-text` | **AI HTML/CSS 생성 시 사용** (CSS Implementation 섹션 참조) |
+> | `--dsx-color-*` | `--dsx-color-primary-fill-default` | `@ktds-ui` 컴포넌트 라이브러리 내부 전용 (직접 사용 금지) |
+>
+> Aide가 생성하는 HTML/CSS에서는 반드시 `--color-*` 형태만 사용한다.
+
 ### Color Tokens — 시맨틱 (--dsx-color-*)
 
 #### Primary
@@ -4167,4 +4240,176 @@ Aide 생성 HTML/CSS 시안의 아이콘은 반드시 Google Material Symbols Ro
   --dsx-transition-collapse: .25s ease-out;
   --dsx-transition-popover: .16s cubic-bezier(.16, 1, .3, 1);
 }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary: #1253b5;
+    --color-primary-text: #1a75ff;
+    --color-primary-text-neutral: #1253b5;
+    --color-primary-fill: #1253b5;
+    --color-primary-fill-neutral: #02060e;
+    --color-primary-border: #4891ff;
+    --color-primary-border-neutral: #1253b5;
+    --color-primary-icon: #1a75ff;
+    --color-primary-icon-neutral: #1253b5;
+    --color-surface: #1b1c1e;
+    --color-surface-alt: #0f0f10;
+    --color-surface-disabled: #2e2f33;
+    --color-surface-inactive: #333438;
+    --color-text: #f7f7f8;
+    --color-text-neutral: rgba(194,196,200,0.88);
+    --color-text-alt: rgba(174,176,182,0.61);
+    --color-text-assistive: rgba(174,176,182,0.28);
+    --color-text-strong: #ffffff;
+    --color-text-disabled: rgba(174,176,182,0.35);
+    --color-text-inactive: #5a5c63;
+    --color-border: rgba(112,115,124,0.52);
+    --color-border-alt: rgba(112,115,124,0.35);
+    --color-border-inactive: #37383c;
+    --color-border-disabled: #333438;
+    --color-fill: rgba(112,115,124,0.35);
+    --color-fill-neutral: rgba(112,115,124,0.16);
+    --color-fill-alt: rgba(112,115,124,0.12);
+    --color-fill-strong: rgba(112,115,124,0.43);
+    --color-fill-inactive: rgba(112,115,124,0.22);
+    --color-fill-disabled: rgba(112,115,124,0.12);
+    --color-icon: #f7f7f8;
+    --color-icon-neutral: rgba(194,196,200,0.88);
+    --color-dimmer: rgba(23,23,25,0.74);
+    --color-inverse-text: #171719;
+    --color-inverse-surface: #f7f7f8;
+    --color-inverse-fill: rgba(112,115,124,0.08);
+    --color-inverse-icon: #171719;
+    --color-positive: #1ed45a;
+    --color-caution: #ffa938;
+    --color-negative: #ff6363;
+    --color-info: #3385ff;
+    --dsx-shadow-1: 0px 1px 3px rgba(0,0,0,0.32);
+    --dsx-shadow-2: 0px 3px 4px rgba(0,0,0,0.32);
+    --dsx-shadow-3: 0px 8px 20px rgba(0,0,0,0.24);
+    --dsx-shadow-4: 0px 18px 28px rgba(0,0,0,0.20);
+    --dsx-shadow-5: 4px 16px 40px rgba(0,0,0,0.24);
+    --dsx-shadow-6: 6px 32px 48px rgba(0,0,0,0.24);
+  }
+}
 ```
+
+---
+
+## 색상 사용 규칙
+
+토큰 값이 아닌 사용 맥락을 기술한다. AI는 아래 규칙을 기준으로 색상을 배치한다.
+
+| 색상 토큰 | 사용 맥락 | 금지 맥락 |
+|-----------|-----------|-----------|
+| `--color-primary` | CTA 버튼, 링크, 선택 상태, 핵심 지표 강조 | 단순 장식, 배경 면적 채우기 |
+| `--color-positive` | 성공 완료, 통과, 활성 뱃지 | 단순 녹색 배경, 오류 표현 |
+| `--color-caution` | 경고·주의 안내 (비파괴적 상황) | 오류 메시지, 삭제 확인 |
+| `--color-negative` | 오류, 삭제 확인, 파괴적 행동 | 일반 강조, 단순 눈길 끌기 |
+| `--color-info` | 정보성 안내, 도움말, 상태 배지 | 오류·경고 대체 |
+| `--color-text` | 주요 본문 텍스트 | 힌트·부연 설명 |
+| `--color-text-alt` | 보조 텍스트, 설명, 부제 | 주요 제목, 핵심 지표 |
+| `--color-text-assistive` | 힌트, 플레이스홀더, 자리 표시자 | 주요 텍스트, 행동 유도 레이블 |
+| `--color-surface` | 카드·모달·입력 배경 | 페이지 전체 배경 (→ `--color-primary-fill-neutral`) |
+| `--color-surface-alt` | 목록 행 구분, 비활성 영역 배경 | 카드 메인 배경 |
+
+### 다크모드 색상 규칙
+
+다크모드에서도 동일한 시맨틱 맥락을 유지한다. `--color-primary`가 CTA에 쓰였다면 다크모드에서도 CTA에만 쓴다. 라이트/다크 간 역할 교체 금지.
+
+---
+
+## 톤과 카피 규칙
+
+### KT DS 브랜드 보이스
+
+- **신뢰감**: 과장 없이, 정확하고 명확하게
+- **전문성**: 기술 용어는 쉬운 한국어로 병기 (예: "인증(Authentication)")
+- **친절함**: 오류 상황에서도 사용자를 탓하지 않음
+- **간결함**: 한 문장에 하나의 메시지만
+
+### 버튼 레이블
+
+- 동사+목적어 형식 우선: "저장", "확인", "삭제하기", "다음 단계로"
+- 2글자 이상 필수 ("OK", "예" 단독 사용 지양)
+- 파괴적 행동은 동작을 명확히 표기: "삭제", "탈퇴하기" — "확인"으로 대체 금지
+- 모달 취소 버튼은 항상 "취소" (×버튼과 역할 구분)
+
+### 에러 메시지
+
+- 원인 + 해결책 2단 구조: "비밀번호가 일치하지 않습니다. 다시 확인해 주세요."
+- 사용자 탓 표현 금지: "잘못 입력하셨습니다" → "입력 내용을 확인해 주세요"
+- 시스템 오류: "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+- 오류 코드 단독 노출 금지 — 코드가 필요하면 사람이 읽는 메시지 뒤에 배치
+
+### 빈 상태 (Empty State)
+
+- 상황 설명 + 행동 유도 2단 구조
+  - 예: "아직 등록된 항목이 없습니다. / 지금 첫 항목을 추가해 보세요."
+- 부정적·기계적 표현 금지: "데이터 없음" → "아직 항목이 없어요"
+- 빈 상태에서 CTA가 있으면 버튼 레이블은 구체적 행동으로: "항목 추가하기"
+
+### 플레이스홀더 (Placeholder)
+
+- 입력 형식 힌트 우선: "example@ktds.com", "숫자만 입력", "홍길동"
+- 질문형 금지: "이름을 입력하세요?" → "홍길동"
+- 플레이스홀더로 레이블(label) 대체 금지 — 레이블은 별도 표기
+
+### 토스트 / 스낵바
+
+- 완료 알림: "저장되었습니다.", "삭제되었습니다."
+- 최대 2줄, 행동 결과만 기술 — 이유·배경 설명 금지
+- 마침표로 종결
+- 자동 닫힘 3–5초, 복잡한 행동 유도는 스낵바 대신 모달 사용
+
+### 레이블 / 헤더
+
+- 명사형으로 끝내기: "설정", "알림", "내 정보"
+- 탭·헤더에서 동사형 금지: "설정하기", "알림 보기" 지양
+
+### 숫자·단위
+
+- 천 단위 쉼표: 1,234,567
+- 단위는 숫자 바로 뒤 붙여 쓰기: "32GB", "1,200원", "3분"
+- 퍼센트는 기호로: "98.6%"
+
+---
+
+## 금지 패턴 (Do Not)
+
+### 색상
+
+- 시맨틱 토큰 없이 헥스·rgba 직접 기입 금지 (예: `color: #1a75ff` → `color: var(--color-primary)`)
+- `--color-primary`를 배경 면적, 장식, 비CTA 요소에 사용 금지
+- `--color-negative`를 단순 강조 목적으로 사용 금지 (빨강이 눈에 띈다는 이유만으로)
+- 토큰 외의 임의 색상 값 추가 금지
+- 다크모드에서 라이트 전용 값 하드코딩 금지
+
+### 타이포그래피
+
+- 동일 화면에 font-size 4종 이상 혼용 금지
+- `font-weight: bold`를 전반적 강조 목적으로 남용 금지 (강조는 `semibold` 우선)
+- `px` 단위 직접 사용 금지 — `rem` 또는 Sass `rem()` 함수 사용
+- 줄 바꿈으로 문단 간격 대체 금지 — `gap`·`margin` 사용
+
+### 컴포넌트
+
+- 모달 위에 모달 중첩 금지 (z-index 충돌, UX 혼란)
+- 카드 안에 카드 중첩 금지
+- 아이콘만으로 액션 표현 금지 — `aria-label` 또는 시각적 텍스트 레이블 필수
+- 비활성(disabled) 상태에 hover·focus 효과 적용 금지
+- Tooltip을 필수 정보 전달 수단으로 사용 금지 (보조 정보만)
+
+### 레이아웃
+
+- `position: fixed` 요소가 스크롤 콘텐츠를 가리는 구조 금지 — `padding-bottom` 확보
+- 모바일에서 `min-width` 픽스 사용 금지 (`max-width` + `%` 활용)
+- 좌우 여백 없이 콘텐츠를 화면 끝까지 붙이는 레이아웃 금지
+
+### 카피·텍스트
+
+- 버튼 레이블에 "클릭", "누르기" 단어 사용 금지 (접근성 — 마우스·터치 비종속)
+- 에러 메시지에 사용자 탓 표현 금지
+- 플레이스홀더로 레이블 대체 금지
+- 빈 상태 메시지에 "데이터 없음", "null", "N/A" 노출 금지
+- 로딩 중 텍스트 없이 스피너만 사용 금지 — "불러오는 중..." 텍스트 병기

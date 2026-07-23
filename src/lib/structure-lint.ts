@@ -20,6 +20,7 @@ export type StructureViolation = {
     | 'missing-visual'        // required visual slot placeholder 누락
     | 'missing-top-nav'       // 상단 네비 누락
     | 'missing-bottom-nav'    // 모바일 하단 네비 누락
+    | 'center-floating-cta'   // design system 금지 패턴: center-floating CTA
     | 'invalid-icon'          // 존재하지 않는 Material Symbols 이름 (자동 교정됨)
   severity: 'severe' | 'minor'
   detail: string
@@ -172,6 +173,108 @@ export function sanitizeMaterialSymbols(html: string): { html: string; correctio
 
 // ── IR 대조 lint ──────────────────────────────────────────────────────────────
 
+/**
+ * data-ui-section 속성이 없는 <section> 요소에 레이아웃 클래스 기반으로 속성을 주입한다.
+ * layout-{id} 클래스가 있고 IR sections에 해당 id가 있을 때만 주입.
+ */
+export function injectSectionAttrs(html: string, ir: UIStructureIR): string {
+  const irIds = new Set(ir.sections.map(s => s.id))
+  return html.replace(/<section\b([^>]*)>/gi, (match, attrs: string) => {
+    if (/data-ui-section/i.test(attrs)) return match
+    const layoutMatch = /\blayout-([a-z][a-z0-9-]*)/.exec(attrs)
+    if (!layoutMatch) return match
+    const candidateId = layoutMatch[1]
+    if (!irIds.has(candidateId)) return match
+    return `<section${attrs} data-ui-section="${candidateId}">`
+  })
+}
+
+/**
+ * data-ui-section 속성 기반으로 섹션 블록을 IR 순서로 DOM 재배치한다 (1층 결정론).
+ * 중첩 <section> 처리: 깊이 카운팅 방식으로 완전한 블록을 추출.
+ * 재배치 불가(섹션 누락 등)이면 null 반환.
+ */
+export function repairSectionOrder(html: string, irOrder: string[]): string | null {
+  interface Block { id: string; start: number; end: number }
+  const blocks: Block[] = []
+
+  let pos = 0
+  while (pos < html.length) {
+    const tagStart = html.indexOf('<section', pos)
+    if (tagStart === -1) break
+
+    // '<section' 뒤 문자가 '>' 또는 공백이어야 실제 section 태그
+    const charAfter = html[tagStart + 8]
+    if (charAfter !== '>' && !/\s/.test(charAfter ?? '')) {
+      pos = tagStart + 8
+      continue
+    }
+
+    const tagEnd = html.indexOf('>', tagStart)
+    if (tagEnd === -1) break
+    const openTagStr = html.slice(tagStart, tagEnd + 1)
+    const idMatch = /data-ui-section=["']([^"']+)["']/.exec(openTagStr)
+
+    if (!idMatch || !irOrder.includes(idMatch[1])) {
+      pos = tagEnd + 1
+      continue
+    }
+
+    const id = idMatch[1]
+    let depth = 1
+    let i = tagEnd + 1
+    let found = false
+
+    while (i < html.length && depth > 0) {
+      const nextOpen = html.indexOf('<section', i)
+      const nextClose = html.indexOf('</section>', i)
+      if (nextClose === -1) break
+
+      // nextOpen이 유효한 section 태그인지 확인
+      const validNextOpen = nextOpen !== -1 && (() => {
+        const c = html[nextOpen + 8]
+        return c === '>' || /\s/.test(c ?? '')
+      })()
+
+      if (validNextOpen && nextOpen < nextClose) {
+        depth++
+        i = nextOpen + 9
+      } else {
+        depth--
+        if (depth === 0) {
+          blocks.push({ id, start: tagStart, end: nextClose + 10 })
+          pos = nextClose + 10
+          found = true
+        } else {
+          i = nextClose + 10
+        }
+      }
+    }
+
+    if (!found) pos = tagEnd + 1
+  }
+
+  if (blocks.length < 2) return null
+
+  blocks.sort((a, b) => a.start - b.start)
+
+  const foundIds = blocks.map(b => b.id)
+  const desiredOrder = irOrder.filter(id => foundIds.includes(id))
+  if (desiredOrder.join(',') === foundIds.join(',')) return null // 이미 올바른 순서
+
+  const idToContent = new Map(blocks.map(b => [b.id, html.slice(b.start, b.end)]))
+
+  let result = ''
+  let lastEnd = 0
+  for (let i = 0; i < blocks.length; i++) {
+    result += html.slice(lastEnd, blocks[i].start)
+    result += idToContent.get(desiredOrder[i]) ?? html.slice(blocks[i].start, blocks[i].end)
+    lastEnd = blocks[i].end
+  }
+  result += html.slice(lastEnd)
+  return result
+}
+
 export function lintStructure(html: string, ir: UIStructureIR): StructureViolation[] {
   const violations: StructureViolation[] = []
 
@@ -191,7 +294,7 @@ export function lintStructure(html: string, ir: UIStructureIR): StructureViolati
     const irOrder = ir.sections.map(s => s.id).filter(id => foundSections.includes(id))
     const actualOrder = foundSections.filter(id => irOrder.includes(id))
     if (irOrder.join('>') !== actualOrder.join('>')) {
-      violations.push({ code: 'section-order', severity: 'minor', detail: `IR ${irOrder.join('>')} vs 실제 ${actualOrder.join('>')}` })
+      violations.push({ code: 'section-order', severity: 'severe', detail: `IR ${irOrder.join('>')} vs 실제 ${actualOrder.join('>')}` })
     }
   }
 
@@ -203,16 +306,27 @@ export function lintStructure(html: string, ir: UIStructureIR): StructureViolati
   if (needs.has('SCENE_3D') && !/%%(?:SCENE_3D|SHARED_HERO_3D_SCENE|HERO_SCENE_3D)/.test(html)) {
     violations.push({ code: 'missing-visual', severity: 'severe', detail: 'SCENE_3D placeholder 없음' })
   }
-  if (needs.has('REAL_PHOTO') && !/%%IMG_\d|%%THUMB:|images\.unsplash/.test(html)) {
+  if (needs.has('REAL_PHOTO') && !/%%IMG_\d|%%THUMB:/.test(html)) {
     violations.push({ code: 'missing-visual', severity: 'severe', detail: '실사 이미지 placeholder 없음' })
   }
 
   // 3) chrome — 상단/하단 네비
-  if (ir.chrome.topNav && !/class=["'][^"']*\b(?:top-navigation|app-header|global-nav)\b/.test(html) && !/<header\b/i.test(html)) {
+  const hasTopNavEl = /class=["'][^"']*\b(?:top-navigation|app-header|global-nav|top-nav|header-bar|navbar|app-bar|nav-header)\b/i.test(html) || /<header\b/i.test(html)
+  if (ir.chrome.topNav && !hasTopNavEl) {
     violations.push({ code: 'missing-top-nav', severity: 'severe', detail: '상단 네비(top-navigation/header) 없음' })
   }
-  if (ir.chrome.bottomNav && !/class=["'][^"']*\b(?:bottom-navigation|mobile-tabbar|tabbar|tab-bar|bottom-nav)\b/.test(html)) {
+  const hasBottomNavEl = /class=["'][^"']*\b(?:bottom-navigation|mobile-tabbar|tabbar|tab-bar|bottom-nav|nav-bottom|bottom-bar|tab-navigation|bottom-tabs)\b/i.test(html)
+  if (ir.chrome.bottomNav && !hasBottomNavEl) {
     violations.push({ code: 'missing-bottom-nav', severity: 'severe', detail: '하단 네비(bottom-navigation/tabbar) 없음' })
+  }
+
+  // 4) CTA — center-floating 금지 (design system 명시 금지)
+  const hasCenterFloatingCta =
+    /class=["'][^"']*\b(?:fab|floating-cta|cta-float|fab-cta|cta-floating|fixed-cta)\b/i.test(html) ||
+    /style=["'][^"']*position\s*:\s*(?:fixed|absolute)[^"']*(?:left|right)\s*:\s*50%/i.test(html) ||
+    /style=["'][^"']*(?:left|right)\s*:\s*50%[^"']*position\s*:\s*(?:fixed|absolute)/i.test(html)
+  if (hasCenterFloatingCta) {
+    violations.push({ code: 'center-floating-cta', severity: 'severe', detail: 'center-floating CTA 감지 — design system 금지 패턴' })
   }
 
   return violations
@@ -228,6 +342,11 @@ export function buildStructureRepairMessage(violations: StructureViolation[], ir
     if (v.code === 'missing-visual') return `- 누락된 비주얼 추가: ${v.detail} — IR의 visual slot 규칙대로 placeholder img를 해당 섹션에 1회 삽입`
     if (v.code === 'missing-top-nav') return `- 상단 네비 추가: <header class="top-navigation">…</header> (스크롤 영역 밖, aide-logo-slot 포함)`
     if (v.code === 'missing-bottom-nav') return `- 하단 네비 추가: <nav class="bottom-navigation">…</nav> (fixed, 스크롤 영역 밖)`
+    if (v.code === 'section-order') {
+      const targetOrder = v.detail.split(' vs ')[0].replace('IR ', '')
+      return `- 섹션 순서 수정: data-ui-section 속성의 <section> 요소를 아래 순서로 DOM 재배치 (콘텐츠·스타일 변경 금지, 순서만): ${targetOrder.split('>').join(' → ')}`
+    }
+    if (v.code === 'center-floating-cta') return `- center-floating CTA 제거: .fab/.floating-cta 클래스나 position:fixed+left:50% 버튼을 삭제하고, scroll-body 맨 끝에 full-width 인라인 CTA 버튼으로 교체`
     return `- ${v.code}: ${v.detail}`
   })
   return `구조 계약(UI Structure IR) 위반이 발견되었습니다. 아래 항목만 정확히 수정하고, 나머지 마크업·스타일·콘텐츠는 한 글자도 바꾸지 마세요.\n\n${lines.join('\n')}`

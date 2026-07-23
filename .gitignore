@@ -46,3 +46,11 @@ next-env.d.ts
 
 # local structure-lint violation logs (graduation-cycle data)
 /.aide-logs
+
+# iCloud sync conflict duplicates ("File 2.md")
+* 2.md
+* 2.ts
+* 2.tsx
+
+# personal Claude Code settings (launch.json is shared)
+/.claude/settings.local.json

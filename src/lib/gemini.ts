@@ -5,7 +5,7 @@ import sharp from 'sharp';
 import { type AppDomain, DOMAIN_KEY_TO_LABEL, DOMAIN_HOME_EMPHASIS_OPTIONS, DOMAIN_PRIMARY_JOURNEY_OPTIONS, DOMAIN_FIRST_SCREEN_FOCUS_OPTIONS } from './domain-constants';
 import { getDomainGuidance } from './variant-refs';
 import { archetypeToPrompt } from './layout-archetypes';
-import { sanitizeMaterialSymbols, lintStructure, buildStructureRepairMessage, logStructureRecord } from './structure-lint';
+import { sanitizeMaterialSymbols, lintStructure, buildStructureRepairMessage, logStructureRecord, injectSectionAttrs, repairSectionOrder } from './structure-lint';
 export type { AppDomain } from './domain-constants';
 export { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY, DOMAIN_HOME_EMPHASIS_OPTIONS, DOMAIN_PRIMARY_JOURNEY_OPTIONS, DOMAIN_FIRST_SCREEN_FOCUS_OPTIONS } from './domain-constants';
 
@@ -164,6 +164,14 @@ async function fetchUnsplashUrl(keyword: string, width: number, height: number, 
   return fallbackUrl
 }
 
+function detectImageMimeType(base64: string): string {
+  if (base64.startsWith('/9j/')) return 'image/jpeg'
+  if (base64.startsWith('iVBOR')) return 'image/png'
+  if (base64.startsWith('UklGR')) return 'image/webp'
+  if (base64.startsWith('R0lGO')) return 'image/gif'
+  return 'image/png'
+}
+
 async function generatePro(prompt: string, apiKey?: string, model = 'gemini-3.5-flash', onChunk?: (accumulated: string) => void): Promise<string> {
   const ai = getAi(apiKey)
   console.log('[gemini] generatePro start, model=', model, 'prompt length=', prompt.length)
@@ -248,6 +256,12 @@ async function generateProWithMultipleImages(prompt: string, images: Array<{ dat
       if (onChunk) onChunk(text)
       return text
     }, `generateProWithMultipleImages/${model}`)
+  } catch (err) {
+    const name = err instanceof Error ? err.name : 'unknown'
+    const message = err instanceof Error ? err.message : String(err)
+    const cause = err instanceof Error ? (err as NodeJS.ErrnoException).cause : undefined
+    console.error('[gemini] generateProWithMultipleImages error:', { name, message, cause })
+    throw err
   } finally {
     geminiSemaphore.release()
   }
@@ -481,16 +495,11 @@ function loadPlatformGuide(platform: PlatformType): string {
 }
 
 function loadDefaultDesignMd(): string {
-  const candidates = [
-    path.join(process.cwd(), 'src', 'lib', 'design-systems', 'aide.md'),
-    path.join(process.cwd(), 'src', 'lib', 'default-design.md'),
-  ]
-  for (const filePath of candidates) {
-    try {
-      return fs.readFileSync(filePath, 'utf-8')
-    } catch { /* try next */ }
+  try {
+    return fs.readFileSync(path.join(process.cwd(), 'src', 'lib', 'design-systems', 'aide.md'), 'utf-8')
+  } catch {
+    return ''
   }
-  return ''
 }
 
 export interface VariantDescription {
@@ -1507,22 +1516,33 @@ function buildComponentReferenceSnippets(contract: DesignRhythmContract): string
   return `\`\`\`html
 <!-- ✅ Button Primary -->
 <button class="btn-primary">레이블</button>
+<button class="btn-primary" disabled>비활성 버튼</button>
 <style>
 .btn-primary { height:${btnH}; padding:${btnPad}; background:var(--color-primary,${btnBg}); color:var(--color-on-primary,${btnColor}); border:none; border-radius:var(--rounded-md,${btnRadius}); font-size:14px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
 .btn-primary:hover { filter: brightness(0.92); }
+.btn-primary:disabled { opacity:0.38; cursor:not-allowed; pointer-events:none; }
 </style>
 
 <!-- ✅ Button Secondary -->
 <button class="btn-secondary">레이블</button>
+<button class="btn-secondary" disabled>비활성</button>
 <style>
 .btn-secondary { height:${btnH}; padding:${btnPad}; background:var(--color-fill-neutral,${fillNeutral}); color:var(--color-text,${textColor}); border:none; border-radius:var(--rounded-md,${btnRadius}); font-size:14px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+.btn-secondary:disabled { opacity:0.38; cursor:not-allowed; pointer-events:none; }
 </style>
 
-<!-- ✅ Input Field -->
+<!-- ✅ Input Field (default / focus / error / disabled) -->
 <input class="input-default" type="text" placeholder="입력하세요" />
+<input class="input-default input-error" type="text" value="잘못된 입력" aria-invalid="true" />
+<p class="input-error-msg">오류 메시지를 여기에 표시합니다.</p>
+<input class="input-default" type="text" placeholder="비활성" disabled />
 <style>
 .input-default { height:${inpH}; padding:0 12px; background:var(--color-surface,${inpBg}); border:${inpBorder}; border-radius:var(--rounded-md,${inpRadius}); color:var(--color-text,${textColor}); width:100%; box-sizing:border-box; font-size:14px; }
-.input-default:focus { outline:none; border-color:var(--color-primary,${primaryColor}); }
+.input-default:focus { outline:none; border-color:var(--color-primary,${primaryColor}); box-shadow:0 0 0 3px color-mix(in srgb, var(--color-primary,${primaryColor}) 20%, transparent); }
+.input-default.input-error, .input-default[aria-invalid="true"] { border-color:var(--color-negative,#e53e3e); }
+.input-default.input-error:focus, .input-default[aria-invalid="true"]:focus { box-shadow:0 0 0 3px color-mix(in srgb, var(--color-negative,#e53e3e) 20%, transparent); }
+.input-error-msg { font-size:12px; color:var(--color-negative,#e53e3e); margin:4px 0 0; }
+.input-default:disabled { opacity:0.5; cursor:not-allowed; background:var(--color-fill-neutral,${fillNeutral}); }
 </style>
 
 <!-- ✅ Card (B2C: shadow / B2B: border) -->
@@ -1825,6 +1845,77 @@ body { overflow:hidden !important; }
   const cleaned = html.replace(/<style\b[^>]*data-aide-layout-essentials=["'][^"']*["'][^>]*>[\s\S]*?<\/style>/gi, '')
   if (/<\/head>/i.test(cleaned)) return cleaned.replace(/<\/head>/i, `${css}\n</head>`)
   return css + cleaned
+}
+
+function injectBaseTransitions(html: string): string {
+  if (/aide-base-transitions/.test(html)) return html
+  const css = [
+    '<style id="aide-base-transitions">',
+    'button,[role="button"],.tab-item,.btn,[class*="btn-"],.chip,.card,a[href]{transition:background-color .18s ease,color .18s ease,box-shadow .18s ease,opacity .18s ease,transform .12s ease}',
+    'button:not([disabled]):active,[role="button"]:active,[class*="btn-"]:not([disabled]):active{transform:scale(.97);transition:transform .1s ease}',
+    '.card:hover{box-shadow:0 4px 16px rgba(0,0,0,.10);transform:translateY(-1px)}',
+    '.tab-item{transition:color .18s ease,background-color .18s ease}',
+    '</style>',
+  ].join('\n')
+  return html.replace(/<\/head>/i, `${css}\n</head>`)
+}
+
+const DOMAIN_TABS: Record<string, Array<{ label: string; icon: string; ariaLabel: string }>> = {
+  finance:       [{ label: '홈', icon: 'home', ariaLabel: '홈' }, { label: '이체', icon: 'payments', ariaLabel: '이체' }, { label: '혜택', icon: 'card_giftcard', ariaLabel: '혜택' }, { label: '마이', icon: 'person', ariaLabel: '내 정보' }],
+  commerce:      [{ label: '홈', icon: 'home', ariaLabel: '홈' }, { label: '탐색', icon: 'search', ariaLabel: '탐색' }, { label: '주문', icon: 'shopping_bag', ariaLabel: '주문' }, { label: '마이', icon: 'person', ariaLabel: '내 정보' }],
+  health:        [{ label: '홈', icon: 'home', ariaLabel: '홈' }, { label: '기록', icon: 'monitoring', ariaLabel: '기록' }, { label: '운동', icon: 'fitness_center', ariaLabel: '운동' }, { label: '마이', icon: 'person', ariaLabel: '내 정보' }],
+  food:          [{ label: '홈', icon: 'home', ariaLabel: '홈' }, { label: '주문', icon: 'restaurant', ariaLabel: '주문' }, { label: '쿠폰', icon: 'local_offer', ariaLabel: '쿠폰' }, { label: '마이', icon: 'person', ariaLabel: '내 정보' }],
+  travel:        [{ label: '홈', icon: 'home', ariaLabel: '홈' }, { label: '탐색', icon: 'travel_explore', ariaLabel: '탐색' }, { label: '예약', icon: 'event', ariaLabel: '예약' }, { label: '마이', icon: 'person', ariaLabel: '내 정보' }],
+  education:     [{ label: '홈', icon: 'home', ariaLabel: '홈' }, { label: '학습', icon: 'menu_book', ariaLabel: '학습' }, { label: '과제', icon: 'assignment', ariaLabel: '과제' }, { label: '마이', icon: 'person', ariaLabel: '내 정보' }],
+  social:        [{ label: '홈', icon: 'home', ariaLabel: '홈' }, { label: '탐색', icon: 'search', ariaLabel: '탐색' }, { label: '알림', icon: 'notifications', ariaLabel: '알림' }, { label: '마이', icon: 'person', ariaLabel: '내 정보' }],
+  productivity:  [{ label: '홈', icon: 'home', ariaLabel: '홈' }, { label: '업무', icon: 'task_alt', ariaLabel: '업무' }, { label: '팀', icon: 'groups', ariaLabel: '팀' }, { label: '마이', icon: 'person', ariaLabel: '내 정보' }],
+  entertainment: [{ label: '홈', icon: 'home', ariaLabel: '홈' }, { label: '탐색', icon: 'search', ariaLabel: '탐색' }, { label: '저장', icon: 'bookmark', ariaLabel: '저장' }, { label: '마이', icon: 'person', ariaLabel: '내 정보' }],
+  business:      [{ label: '홈', icon: 'home', ariaLabel: '홈' }, { label: '현황', icon: 'bar_chart', ariaLabel: '현황' }, { label: '업무', icon: 'work', ariaLabel: '업무' }, { label: '마이', icon: 'person', ariaLabel: '내 정보' }],
+}
+const DEFAULT_TABS = [{ label: '홈', icon: 'home', ariaLabel: '홈' }, { label: '탐색', icon: 'search', ariaLabel: '탐색' }, { label: '활동', icon: 'notifications', ariaLabel: '활동' }, { label: '마이', icon: 'person', ariaLabel: '내 정보' }]
+
+function injectMissingMobileChrome(html: string, ir: import('./layout-archetypes').UIStructureIR, domain?: AppDomain): string {
+  if (!ir.chrome.topNav && !ir.chrome.bottomNav) return html
+
+  const hasTopNav =
+    /class=["'][^"']*\b(?:top-navigation|app-header|global-nav|top-nav|header-bar|navbar|app-bar|nav-header)\b/i.test(html) ||
+    /<header\b/i.test(html)
+  const hasBottomNav = /class=["'][^"']*\b(?:bottom-navigation|mobile-tabbar|tabbar|tab-bar|bottom-nav|nav-bottom|bottom-bar|tab-navigation|bottom-tabs)\b/i.test(html)
+
+  let result = html
+
+  if (ir.chrome.topNav && !hasTopNav) {
+    const topNav = [
+      '<header class="top-navigation">',
+      '  <span class="aide-logo-slot" aria-label="brand logo"></span>',
+      '  <div class="top-actions">',
+      '    <button class="icon-button" aria-label="알림"><span class="material-symbols-rounded">notifications</span></button>',
+      '  </div>',
+      '</header>',
+    ].join('\n')
+    if (/<main\b/i.test(result)) {
+      result = result.replace(/<main\b/i, `${topNav}\n<main`)
+    } else if (/class=["'][^"']*\b(?:scroll-body|aide-page|content-scroll|page-scroll|main-content)\b/i.test(result)) {
+      result = result.replace(/(<(?:div|section)\b[^>]*class=["'][^"']*\b(?:scroll-body|aide-page|content-scroll|page-scroll|main-content)\b[^"']*["'][^>]*>)/i, `${topNav}\n$1`)
+    } else {
+      result = result.replace(/(<body[^>]*>)/i, `$1\n${topNav}`)
+    }
+  }
+
+  if (ir.chrome.bottomNav && !hasBottomNav) {
+    const tabs = (domain && DOMAIN_TABS[domain]) ?? DEFAULT_TABS
+    const tabItems = tabs.map((t, i) =>
+      `  <button class="tab-item${i === 0 ? ' active' : ''}" aria-label="${t.ariaLabel}"><span class="material-symbols-rounded">${t.icon}</span><span class="tab-label">${t.label}</span></button>`
+    ).join('\n')
+    const bottomNav = `<nav class="bottom-navigation">\n${tabItems}\n</nav>`
+    if (/<\/body>/i.test(result)) {
+      result = result.replace(/<\/body>/i, `${bottomNav}\n</body>`)
+    } else {
+      result += '\n' + bottomNav
+    }
+  }
+
+  return result
 }
 
 function ensureRequiredVariantVisuals(html: string, options: {
@@ -2563,7 +2654,7 @@ function buildQualityRules(heroImagePrompt?: string, domain?: AppDomain): string
 ${domainBlock}
 ## 공통 품질 및 시각 계층 원칙
 
-1. **선택한 DESIGN.md가 스타일의 최상위 기준 (CRITICAL)**
+1. **선택한 DESIGN.md가 스타일의 최상위 기준**
    - 색상, 타이포그래피, 간격, 라운드, 카드, 입력, 버튼, 그림자, 내비게이션은 반드시 [디자인 시스템]에 정의된 토큰과 규칙을 따른다.
    - DESIGN.md에 없는 임의의 hex, px, shadow, radius를 새로 만들지 않는다. 필요한 경우 가장 가까운 토큰을 선택한다.
    - 시각적 완성도는 높이되, 선택한 디자인 시스템의 정체성을 바꾸는 장식(과한 그라데이션, 임의 shadow, 임의 pill, 임의 컬러)을 추가하지 않는다.
@@ -2575,7 +2666,7 @@ ${domainBlock}
    - [ ] 리스트, 카드, 폼, 내비게이션이 서비스 목적에 맞게 충분한 정보를 담고 있는가?
    - [ ] 반응형에서 정보 구조가 유지되는가?
 
-2. **디자인 시스템 토큰 100% 동적 상속 (MANDATORY)**
+2. **디자인 시스템 토큰 100% 동적 상속**
    - 임의의 px, hex, shadow 값을 프롬프트 수준에서 하드코딩하지 마십시오.
    - 모든 스타일은 오직 제공된 [디자인 시스템] (DESIGN.md)의 colors, typography, rounded, spacing 토큰을 참조한 CSS 변수만을 사용하여 구현되어야 합니다.
    - :root { --color-primary: <브랜드 주색>; } 등을 선언하고, 브랜드 액션 컬러는 반드시 var(--color-primary)를 사용하십시오.
@@ -2584,42 +2675,31 @@ ${domainBlock}
    - 서비스 도메인과 기획서의 성격(예: 미니멀 브랜드 소개, 대시보드형 그리드, 리스트 피드, 폼 중심 페이지)에 부합하는 레이아웃 구조를 AI가 자율적으로 판단하여 짜야 합니다.
    - 획일화된 1열 리스트나 특정 히어로 템플릿의 강제 사용을 금지합니다.
 
-4. **Composition Quality Layer — 허접한 시안 방지 (CRITICAL)**
-   - 디자인 시스템은 절대 변경하지 말고, 그 안에서 화면의 완성도를 높인다.
-   - UI를 만들기 전에 확정된 productBrief, firstViewportContract, variantArchetype을 반드시 구현한다. 이 계약을 무시하고 예쁜 카드 몇 개만 만들면 실패다.
+4. **화면 완성도 — 실제 서비스처럼 보일 것**
+   - 디자인 시스템 범위 안에서 화면의 완성도를 높인다.
+   - 확정된 productBrief, firstViewportContract, variantArchetype을 반드시 구현한다.
    - 첫 화면에는 명확한 focal point를 하나 만든다. 사용자가 처음 보는 순간 무엇을 해야 하는지 보여야 한다.
    - 주요 CTA는 한 화면에서 가장 빠르게 발견되어야 한다.
-   - 카드들은 같은 크기, 같은 간격, 같은 정렬 리듬을 가진다. 같은 성격의 카드가 제각각 흔들리면 실패다.
+   - 카드들은 같은 크기, 같은 간격, 같은 정렬 리듬을 가진다.
    - 화면을 3개 영역으로 나눈다: 핵심 요약, 주요 행동, 보조 탐색.
-   - 정보가 많은 화면도 여백과 구분선을 이용해 스캔 가능하게 만든다.
-   - 모든 섹션은 실제 서비스 데이터처럼 구체적인 텍스트와 수치를 가진다.
-   - 빈 박스, 추상 카드, 의미 없는 아이콘 나열을 금지한다.
-   - 와이어프레임처럼 보이는 회색 박스, placeholder title/card, 의미 없는 skeleton block, 추상 도형 장식은 실패다.
-   - 실제 서비스처럼 보이도록 각 카드에는 제목, 설명, 상태/시간/가격/진행률/수치/메타 중 최소 2개 이상을 포함한다.
-   - 헤더+큰 빈 히어로+버튼 하나로 첫 화면을 끝내지 않는다. 서비스의 반복 콘텐츠나 업무/탐색 단위가 반드시 보이게 한다.
+   - 와이어프레임처럼 보이는 회색 박스, 빈 카드, 의미 없는 skeleton block은 실패다.
+   - 각 카드에는 제목, 설명, 상태/시간/가격/진행률/수치/메타 중 최소 2개 이상을 포함한다.
    - 첫 화면은 반드시 3개 이상의 의미 있는 영역으로 구성한다: 상단 내비/검색, 핵심 가치 또는 요약, 주요 콘텐츠 리스트/카드, 하단 액션/내비.
-   - 한 화면의 절반 이상을 빈 공간, 빈 카드, 흰 배경으로 남기지 않는다. 여백은 의도적인 그룹핑에만 사용한다.
-   - 모든 카드/리스트는 실제 서비스 데이터처럼 제목, 설명, 가격/상태/시간/평점 등 메타 정보, 액션을 포함한다.
-   - 한글 문장은 절대 세로로 한 글자씩 쌓지 않는다. writing-mode, text-orientation, 과도하게 좁은 텍스트 column 사용 금지.
-   - 짧은 한글 UI 라벨은 절대 어색하게 줄바꿈하지 않는다. 예: "건강식"이 "건강/식"으로, "오늘 이 메뉴 만들기"가 글자 단위로 벌어지거나 여러 줄로 깨지면 실패다.
-   - 버튼, CTA, 칩, 배지, 탭, 카테고리, 메타 라벨, 가격/시간/칼로리/평점은 기본적으로 한 줄이어야 한다.
-   - 짧은 UI 라벨에는 CSS로 white-space: nowrap; word-break: keep-all; overflow-wrap: normal; min-width: max-content; flex: 0 0 auto;를 적용한다.
-   - CTA/button 텍스트는 justify-content:center; text-align:center; letter-spacing:0;으로 중앙 정렬한다. space-between, grid column, 과한 letter-spacing으로 글자를 벌리지 않는다.
-   - 메타 정보 row는 display:flex; align-items:center; gap: var(--spacing-*); flex-wrap: wrap;으로 구성하고, 각 meta item은 inline-flex + white-space:nowrap으로 만든다.
-   - emoji를 아이콘이나 라벨로 사용하지 않는다. 아이콘은 반드시 Google Material Symbols Rounded를 사용한다.
-   - "star", "home", "BEST"만 덩그러니 보이는 placeholder성 문구 금지. 필요한 경우 "별점", "홈", "추천"처럼 자연스러운 한국어 UI 라벨을 사용한다.
-   - 음식/배달/커머스/여행 등 이미지가 중요한 도메인은 무관한 랜덤 이미지 금지. 반드시 브리프와 직접 관련된 placeholder 설명을 작성한다.
-   - 하단 내비게이션, floating CTA, 장바구니 버튼은 콘텐츠를 가리지 않도록 main content padding-bottom을 충분히 확보한다.
+   - 한글 문장은 세로로 한 글자씩 쌓지 않는다. writing-mode, text-orientation, 과도하게 좁은 텍스트 column 사용 금지.
+   - 짧은 한글 UI 라벨이 어색하게 줄바꿈되지 않아야 한다. 버튼·칩·배지·탭·메타 라벨은 기본적으로 한 줄이어야 한다.
+   - 짧은 UI 라벨: white-space: nowrap; word-break: keep-all; overflow-wrap: normal; min-width: max-content; flex: 0 0 auto;
+   - CTA/button 텍스트: justify-content:center; text-align:center; letter-spacing:0;
+   - 메타 정보 row: display:flex; align-items:center; gap: var(--spacing-*); flex-wrap: wrap; 각 item은 inline-flex + white-space:nowrap
+   - emoji 아이콘 사용 금지. 아이콘은 반드시 Google Material Symbols Rounded를 사용한다.
+   - 이미지 키워드는 반드시 브리프와 직접 관련된 명사 사용. 무관한 랜덤 키워드(landscape, laptop 등) 금지.
+   - 하단 내비/floating CTA가 콘텐츠를 가리지 않도록 main content padding-bottom을 충분히 확보한다.
 
-   **⛔ 리스트/피드 아이템 패딩 일관성 (CRITICAL)**
-   - 같은 화면 안의 모든 리스트·피드 아이템은 **상하좌우 패딩이 동일해야 한다**.
-   - 퀘스트 카드 아이템, 식물 상태 아이템, 할 일 아이템처럼 **같은 성격의 리스트 행**은 반드시 동일한 padding 값을 사용하라.
-   - 리스트 아이템 기본 구조: padding은 var(--aide-card-padding) var(--aide-page-padding) 또는 섹션 카드 안에 있을 경우 var(--aide-card-padding) 사용.
-   - ❌ 실패: 같은 화면에서 퀘스트 아이템은 상하 padding이 있는데 식물 상태 아이템은 상하 padding이 0이거나 없는 경우.
-   - ❌ 실패: 카드(card) 안 아이템은 패딩이 있는데, 섹션 하위 리스트 아이템은 패딩이 0이거나 좌우만 있고 상하가 없는 경우.
+   **리스트/피드 아이템 패딩 일관성**
+   - 같은 화면 안의 모든 리스트·피드 아이템은 상하좌우 패딩이 동일해야 한다.
+   - padding은 var(--aide-card-padding) var(--aide-page-padding) 또는 카드 안에 있을 경우 var(--aide-card-padding) 사용.
    - 모든 리스트 아이템의 min-height는 44px 이상(모바일 터치 타겟)이어야 한다.
 
-5. **[WCAG AA] 색상 대비 규칙 (CRITICAL — 절대 위반 금지)**
+5. **[WCAG AA] 색상 대비 규칙**
    - **Primary/Accent 배경(진한 색) 위 텍스트는 반드시 흰색(#ffffff)**: 배경이 파란색·보라색·검정·짙은 그라데이션인 경우
      * 올바른 예: style="background:#1A75FF; color:#ffffff;" ✅
      * 금지 예: style="background:#1A75FF; color:#000000;" ❌  style="background:#1A75FF; color:#333333;" ❌
@@ -2650,7 +2730,7 @@ ${domainBlock}
    - keyword는 반드시 브리프와 직접 관련된 명사를 사용한다. 음식 배달이면 sandwich, salad, coffee, avocado처럼 음식 키워드만 사용하고 landscape, laptop, mountain, ocean 같은 무관한 키워드 금지.
    - A/B/C의 하위 콘텐츠 이미지는 AI가 서비스 성격에 맞게 판단합니다. 통신/멤버십 앱이면 제휴처, 혜택, 매장, 라이프스타일 카드에 실사 썸네일을 쓸 수 있고, 데이터/비교 화면이면 이미지 없이 정보 컴포넌트로 충분히 구성해도 됩니다.
    - 단, "모든 시안에 실사 이미지" 또는 "C안의 모든 이미지 영역을 실사로 채우기"처럼 기계적으로 강제하지 마십시오. 브리프, 도메인, 사용자가 요청한 캐릭터 중요도에 따라 자연스럽게 선택하십시오.
-   - ⛔ **[CRITICAL] 플레이스홀더는 반드시 img src 속성값에만 사용** — %%SCENE_3D%%·%%HERO_3D%%·%%SHARED_IMG:keyword:width:height%%·%%IMG_1%%·%%THUMB%%·%%THUMB:...%% 등 모든 플레이스홀더 문자열은 반드시 <img src="%%...%%"> 형태로만 사용하십시오. 텍스트 노드(<p>, <span>, <div> 등의 내용), alt, href, 주석, 또는 다른 어떤 위치에도 절대 삽입 금지.
+   - **플레이스홀더는 반드시 img src 속성값에만 사용** — %%SCENE_3D%%·%%HERO_3D%%·%%SHARED_IMG:keyword:width:height%%·%%IMG_1%%·%%THUMB%%·%%THUMB:...%% 등 모든 플레이스홀더 문자열은 반드시 <img src="%%...%%"> 형태로만 사용하십시오. 텍스트 노드(<p>, <span>, <div> 등의 내용), alt, href, 주석, 또는 다른 어떤 위치에도 절대 삽입 금지.
    ${heroImagePrompt ? `
    ⚠️ **3D 히어로 이미지 규칙 (CRITICAL)**
    - 3D 플레이스홀더는 딱 2가지만 사용합니다. 한 화면에서 3D는 **메인 히어로 1회만** 사용합니다.
@@ -3497,7 +3577,7 @@ JSON 코드블록만 출력하세요.`
 }
 
 export async function generateUI(params: GenerateParams, apiKey?: string): Promise<GenerateUIResult> {
-  const { designMd, brief, answers, projectSummary, logoDataUrl, brandColors, mainOnly = false, variantStyle, referenceImageBase64, referenceImageKind = 'reference', asIsAnalysis, platform, modelId = 'gemini-3.1-pro-preview', heroImagePrompt, heroSubject, sharedVisualMode, sharedVisualSubject, visualPolicy, generationPlan, domain, onStep, prdDoc, iaImageBase64, iaText } = params;
+  const { designMd, brief, answers, projectSummary, logoDataUrl, brandColors, mainOnly = false, variantStyle, referenceImageBase64, referenceImageKind = 'reference', asIsAnalysis, platform, modelId = 'gemini-3.5-flash', heroImagePrompt, heroSubject, sharedVisualMode, sharedVisualSubject, visualPolicy, generationPlan, domain, onStep, prdDoc, iaImageBase64, iaText } = params;
   const effectiveHeroImagePrompt = heroSubject || heroImagePrompt
   const effectiveVisualPolicy = visualPolicy ?? (() => {
     if (getVariantLabel(variantStyle) !== 'B') return undefined
@@ -4159,7 +4239,7 @@ ${usesKtdsCompatibleRules ? `> - [ ] ⛔ ${ktdsCompatibleLabel} 치수 준수: �
 ${logoDataUrl ? `\n## ⚠️ 브랜드 로고 슬롯 (CRITICAL)\n- 로고 이미지를 직접 작성하지 마세요. src, data URL, placeholder 이미지, 텍스트 로고를 만들지 마세요.\n- **메인 화면과 모든 서브 화면(탭 목적지, 내부 페이지)의 헤더/앱바 브랜드 위치에 각각 1개씩 슬롯을 삽입하세요.** 화면이 3개면 슬롯도 3개입니다.\n${AIDE_LOGO_SLOT_HTML}\n- Aide가 생성 후 마지막 단계에서 모든 슬롯을 실제 업로드 로고 이미지로 치환합니다.\n- 텍스트 브랜드명(앱 이름, 서비스명 등)으로 대체 금지. 모든 화면의 로고 슬롯이 항상 우선입니다.\n- ❌ 히어로 배경, 대형 이미지, 히어로 카드 안에 슬롯을 넣지 마세요. 헤더/앱바 전용입니다.\n- ❌ 로고를 화면 폭의 큰 영역으로 확대하지 마세요. 헤더/앱바 안의 작은 브랜드 영역만 예약하세요.` : `\n## 브랜드명 표시 규칙\n- 로고 입력이 없습니다. 앱/서비스 브랜드는 텍스트로 표시하세요.\n- <img src="FreshFit">처럼 존재하지 않는 로고 이미지를 만들지 마세요.\n- 선택된 디자인 시스템의 로고나 회사명(예: kt ds)을 최종 서비스 로고로 표시하지 마세요.`}
 ${hasBrandColors ? `\n## 브랜드 컬러 적용 규칙\n로고에서 추출한 브랜드 컬러는 사용자의 회사 정체성을 반영하기 위한 값입니다. DESIGN.md가 기본 UI 품질과 컴포넌트 구조를 보장하고, 브랜드 컬러는 primary/action/accent 계열만 치환합니다.\n\n메인 브랜드 컬러: ${brandColors![0]}${brandColors![1] ? `\n보조 브랜드 컬러: ${brandColors![1]}` : ''}${brandColors!.length > 2 ? `\n추가 브랜드 컬러: ${brandColors!.slice(2).join(', ')}` : ''}\n\nCSS 변수 선언 규칙:\n- --color-primary, --color-primary-text, --color-primary-fill, --color-primary-border, --color-primary-icon 등 primary/action/accent 계열은 브랜드 컬러 기반으로 선언\n- --color-secondary는 보조 브랜드 컬러가 있을 때만 선언\n- --color-surface, --color-surface-alt, --color-background, --color-text, --color-border, --color-fill, --color-disabled, --color-positive, --color-caution, --color-negative, --color-info 등 neutral/surface/background/border/status 계열은 DESIGN.md 값을 유지\n- spacing, rounded, typography, component height/padding/radius/card rules는 DESIGN.md 값을 유지\n- 브랜드 컬러와 DESIGN.md 토큰 외 임의 hex 사용 금지\n- CTA, 주요 액션, 활성 탭, 링크, primary icon에만 브랜드 컬러를 사용하고 카드 배경/페이지 배경/본문 텍스트를 브랜드 컬러로 덮지 않음` : ''}
 ${asIsAnalysis ? `\n## As-is URL 구조 분석 — 리디자인 대상 정보 구조 (스타일 금지)\n아래 데이터는 기존 서비스의 정보 구조, 섹션 순서, 주요 CTA, 내비게이션, 콘텐츠 재료를 파악하기 위한 것입니다.\n\n절대 규칙:\n- As-is URL의 색상, 폰트, 라운드, 카드 그림자, 아이콘 스타일, 시각 톤을 복사하지 마세요.\n- 최종 시각 스타일은 DESIGN.md와 브랜드 규칙만 따릅니다.\n- As-is는 \"무엇을 유지/개선할지\" 판단하는 입력입니다.\n- 기존 화면의 핵심 섹션/CTA/콘텐츠 의미는 유지하되, 정보 위계·스캔성·반응형 레이아웃·CTA 발견성을 개선하세요.\n\n분석 JSON:\n\`\`\`json\n${JSON.stringify(asIsAnalysis, null, 2).slice(0, 12000)}\n\`\`\`` : ''}
-${prdDoc?.trim() ? `\n## PRD / IA 문서 (기획 문서 원문 — 화면 구조·메뉴·플로우의 근거)\n아래는 사용자가 첨부한 PRD·IA·메뉴 구조 문서입니다.\n- 이 문서에 명시된 메뉴 구조, 화면 목록, 핵심 기능, 유저 플로우를 UI 레이아웃과 네비게이션 설계에 정확히 반영하세요.\n- 기획서 요약(brief)보다 이 문서가 화면 구성의 우선 근거입니다.\n- 스타일·컬러·타이포그래피는 DESIGN.md를 따릅니다.\n\`\`\`\n${prdDoc.slice(0, 10000)}\n\`\`\`` : ''}
+${prdDoc?.trim() ? `\n## PRD / IA 문서 (기획 문서 원문 — 화면 구조·메뉴·플로우의 근거)\n아래는 사용자가 첨부한 PRD·IA·메뉴 구조 문서입니다.\n- 이 문서에 명시된 메뉴 구조, 화면 목록, 핵심 기능, 유저 플로우를 UI 레이아웃과 네비게이션 설계에 정확히 반영하세요.\n- 기획서 요약(brief)보다 이 문서가 화면 구성의 우선 근거입니다.\n- 스타일·컬러·타이포그래피는 DESIGN.md를 따릅니다.\n- 문서가 HTML 화면기획서라면 기존 HTML의 CSS나 시각 스타일을 복사하지 말고, 표시 텍스트·메뉴명·버튼명·콘텐츠 문구·정보 구조를 원문과 동일하게 유지하세요.\n- 사용자가 제공한 문구와 콘텐츠를 임의로 다시 쓰거나 요약하지 마세요. A/B/C 시안 차이는 레이아웃, 정보 위계, 밀도, CTA 위치, 반응형 배치에서만 만듭니다.\n\`\`\`\n${prdDoc.slice(0, 10000)}\n\`\`\`` : ''}
 ## 프로젝트 개요
 ${projectSummary}
 
@@ -4173,6 +4253,13 @@ ${brief}
 - 한국어 서비스 화면이면 UI 라벨은 한국어로 통일합니다. "Today's Routine", "Store", "Magazine", "Home" 같은 영어 라벨을 쓰지 말고 "오늘의 루틴", "스토어", "매거진", "홈"으로 작성하세요.
 - 반려식물/식물 케어 도메인의 썸네일 이미지는 반드시 식물 관련 키워드만 사용하세요: indoor plant, monstera plant, houseplant care, succulent plant, sunlight plant, plant watering.
 - 도메인과 맞지 않는 어둡거나 무관한 랜덤 썸네일은 실패입니다.
+
+## Uploaded Planning Source Preservation Contract (CRITICAL)
+- 사용자가 PRD, IA, 와이어프레임, HTML 화면기획서를 업로드한 경우, 그 자료는 하나의 "기획/화면 설계 원본"입니다.
+- 업로드 자료에 화면 텍스트, 메뉴명, 버튼명, 카드 제목, 상품명, 수치, CTA 문구, 콘텐츠 목록이 명시되어 있으면 최종 HTML에서 동일한 의미와 동일한 문구를 유지하세요.
+- A/B/C 시안은 원본 텍스트와 콘텐츠를 바꾸는 실험이 아니라, 같은 콘텐츠를 다른 레이아웃과 정보 위계로 보여주는 실험입니다.
+- HTML 화면기획서가 입력되었더라도 기존 CSS, 색상, 폰트, 그림자, 라운드, 라이브러리 구조를 복사하지 마세요. 시각 스타일은 DESIGN.md가 최종 기준입니다.
+- 필요한 경우 긴 원문은 화면 안에서 자연스럽게 배치하거나 일부는 접힘/상세 영역으로 이동할 수 있지만, 의미를 삭제하거나 새 문구로 대체하지 마세요.
 
 ## 사용자 선택 옵션
 ${answersText || '(선택 없음 — AI가 최적의 방향으로 결정)'}
@@ -4521,7 +4608,7 @@ ${effectivePlatform === 'web' ? `
     : ''
 
   const iaTextSection = iaText
-    ? `\n## IA 메뉴구조도 / 화면설계서 (엑셀 데이터, CRITICAL — 화면 구조의 최우선 근거)\n아래는 기획자가 작성한 IA 메뉴 구조도 또는 화면 설계 데이터입니다 (엑셀에서 변환):\n\n${iaText}\n\n- 위 데이터에 표시된 메뉴 계층, 화면 목록, 플로우를 네비게이션과 UI 레이아웃에 정확히 반영하세요.\n- brief보다 이 IA 구조가 화면 구성의 최우선 근거입니다.\n- 시각 스타일(색상·폰트·카드)은 DESIGN.md를 따릅니다.\n`
+    ? `\n## IA 메뉴구조도 / 화면설계서 (엑셀·HTML·텍스트 데이터, CRITICAL — 화면 구조의 최우선 근거)\n아래는 기획자가 작성한 IA 메뉴 구조도 또는 화면 설계 데이터입니다:\n\n${iaText}\n\n- 위 데이터에 표시된 메뉴 계층, 화면 목록, 플로우를 네비게이션과 UI 레이아웃에 정확히 반영하세요.\n- brief보다 이 IA 구조가 화면 구성의 최우선 근거입니다.\n- 화면 텍스트, 메뉴명, 버튼명, 카드 제목, 상품명, 수치, CTA 문구, 콘텐츠 목록은 원본과 동일하게 유지하세요.\n- A/B/C 시안은 같은 텍스트와 콘텐츠를 유지한 채 레이아웃, 정보 위계, 밀도, CTA 위치, 반응형 배치만 다르게 구성하세요.\n- HTML 화면기획서가 입력되었더라도 기존 CSS, 색상, 폰트, 그림자, 라운드, 라이브러리 구조를 복사하지 마세요.\n- 시각 스타일(색상·폰트·카드)은 DESIGN.md를 따릅니다.\n`
     : ''
 
   const iaSection = iaImageSection + iaTextSection
@@ -4529,8 +4616,8 @@ ${effectivePlatform === 'web' ? `
   const fullPrompt = prompt + referenceSection + iaSection
 
   const images = [
-    ...(iaImageBase64 ? [{ data: iaImageBase64, mimeType: 'image/png' }] : []),
-    ...(referenceImageBase64 ? [{ data: referenceImageBase64, mimeType: 'image/png' }] : []),
+    ...(iaImageBase64 ? [{ data: iaImageBase64, mimeType: detectImageMimeType(iaImageBase64) }] : []),
+    ...(referenceImageBase64 ? [{ data: referenceImageBase64, mimeType: detectImageMimeType(referenceImageBase64) }] : []),
   ]
 
   const { onHtmlChunk } = params
@@ -4571,12 +4658,28 @@ ${effectivePlatform === 'web' ? `
   html = applyLogoDataUrlOnce(html, logoDataUrl)
   html = injectLayoutEssentialsGuard(html)
 
+  // ── 1층 승격: chrome 결정론 주입 — LLM이 생략한 경우 코드가 직접 삽입 ──
+  if (variantStructure) {
+    html = injectMissingMobileChrome(html, variantStructure, domain)
+    // data-ui-section 속성 누락 시 레이아웃 클래스 기반으로 보완 (lint의 section 체크 전에)
+    html = injectSectionAttrs(html, variantStructure)
+  }
+
   // ── 3층 안전망: 아이콘 자동 교정 → IR 계약 대조 → 로그 적재 → severe만 핀포인트 수정 1회 ──
   // 반복 잡히는 위반은 로그로 확인해 1·2층(결정론/계약)으로 승격하고 여기서 제거한다.
   const iconResult = sanitizeMaterialSymbols(html)
   html = iconResult.html
   if (variantStructure) {
     let lintViolations = lintStructure(html, variantStructure)
+    // 섹션 순서 위반은 결정론으로 먼저 수정 (LLM 호출 전)
+    const sectionOrderViolation = lintViolations.find(v => v.code === 'section-order')
+    if (sectionOrderViolation) {
+      const reordered = repairSectionOrder(html, variantStructure.sections.map(s => s.id))
+      if (reordered) {
+        html = reordered
+        lintViolations = lintStructure(html, variantStructure)
+      }
+    }
     const severeViolations = lintViolations.filter(v => v.severity === 'severe')
     let repaired = false
     let repairFixed = false
@@ -4584,7 +4687,7 @@ ${effectivePlatform === 'web' ? `
       try {
         onStep?.('구조 계약 위반 수정 중...')
         const repairMessage = buildStructureRepairMessage(severeViolations, variantStructure)
-        const fixedRaw = await refineUI(html, repairMessage, brief, effectiveDesignMd, apiKey, logoDataUrl, domain)
+        const fixedRaw = await refineUI(html, repairMessage, brief, effectiveDesignMd, apiKey, logoDataUrl, domain, modelId)
         repaired = true
         const fixedIcons = sanitizeMaterialSymbols(fixedRaw)
         const fixedHtml = injectLayoutEssentialsGuard(fixedIcons.html)
@@ -4627,6 +4730,7 @@ ${effectivePlatform === 'web' ? `
     }
   } catch { /* intentionally ignored */ }
 
+  html = injectBaseTransitions(html)
   return { html, variantDescription }
 }
 
@@ -4708,7 +4812,7 @@ function stripScreenHomeDiv(html: string): string {
 }
 
 export async function expandToPrototype(mainHtml: string, params: GenerateParams, apiKey?: string): Promise<string> {
-  const { brief, answers, projectSummary, designMd, logoDataUrl: expandLogoUrl, brandColors: expandBrandColors, asIsAnalysis, modelId = 'gemini-3.1-pro-preview', platform, domain, heroImagePrompt, heroSubject } = params;
+  const { brief, answers, projectSummary, designMd, logoDataUrl: expandLogoUrl, brandColors: expandBrandColors, asIsAnalysis, modelId = 'gemini-3.5-flash', platform, domain, heroImagePrompt, heroSubject } = params;
   const answersText = Object.entries(answers)
     .map(([k, v]) => `- ${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
     .join('\n');
@@ -4906,7 +5010,7 @@ ${buildQualityRules(heroSubject || heroImagePrompt, domain)}
   return html
 }
 
-export async function refineUI(html: string, message: string, brief: string, designMd?: string, apiKey?: string, logoDataUrl?: string | null, domain?: AppDomain): Promise<string> {
+export async function refineUI(html: string, message: string, brief: string, designMd?: string, apiKey?: string, logoDataUrl?: string | null, domain?: AppDomain, modelId?: string): Promise<string> {
   const TINY_GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
   const logoSwapped = logoDataUrl ? html.split(logoDataUrl).join('__LOGO_DATA_URL__') : html
   const safeHtml = logoSwapped.replace(/data:[^;]+;base64,[A-Za-z0-9+/]+=*/g, TINY_GIF)
@@ -4937,7 +5041,7 @@ ${logoDataUrl ? '- HTML에 `aide-logo-slot`, `aide-brand-logo`, 또는 `__LOGO_D
 > 수정 요청 외의 기존 품질을 절대 낮추지 말 것. 아래는 기존 퀄리티를 지키기 위한 기준이다.
 ${buildQualityRules(undefined, domain)}`;
 
-  const text = (await generatePro(prompt, apiKey)).trim();
+  const text = (await generatePro(prompt, apiKey, modelId ?? 'gemini-3.5-flash')).trim();
   const mdMatch = text.match(/```(?:html)?\n?([\s\S]*?)```/);
   let result = mdMatch ? mdMatch[1].trim() : text;
   result = sanitizeGeneratedBranding(result, brief, designMd, logoDataUrl)

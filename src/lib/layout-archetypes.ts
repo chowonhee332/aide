@@ -294,11 +294,23 @@ function sectionLayout(section: string, archetype: LayoutArchetype): string {
 
 function sectionContent(section: string, fallback: string[]): string[] {
   if (/kpi|summary|savings|metric|progress/.test(section)) return ['headline', 'primaryMetric', 'secondaryMetric', 'statusBadge', 'supportingCopy']
-  if (/actions|cta/.test(section)) return ['primaryAction', 'secondaryAction', 'shortcutItems']
+  if (/actions|cta|shortcut/.test(section)) return ['primaryAction', 'secondaryAction', 'shortcutItems']
   if (/comparison|table/.test(section)) return ['optionA', 'optionB', 'recommendedOption', 'decisionReason']
   if (/recommendation|top|result|featured|cards|grid|rail|collection/.test(section)) return ['itemTitle', 'itemMeta', 'itemValue', 'badge', 'detailAction']
   if (/activity|timeline|history|records/.test(section)) return ['eventTitle', 'eventTime', 'eventStatus', 'eventValue']
   if (/search|category|chips|filter/.test(section)) return ['searchInput', 'categoryTabs', 'filterChip', 'resultHint']
+  if (/story/.test(section)) return ['avatarCircle', 'storyLabel', 'unseenIndicator']
+  if (/feed|post|card-item/.test(section)) return ['authorAvatar', 'authorName', 'postContent', 'postImage', 'reactionBar', 'commentCount']
+  if (/follow|suggest/.test(section)) return ['userAvatar', 'userName', 'userBio', 'followAction']
+  if (/hero|banner|photo|object|split/.test(section)) return ['brandTagline', 'heroSubcopy', 'primaryCta', 'trustBadge']
+  if (/benefit|checklist|feature|why/.test(section)) return ['benefitIcon', 'benefitTitle', 'benefitDescription']
+  if (/profile|member|wallet|tier/.test(section)) return ['userAvatar', 'userName', 'tierBadge', 'primaryValue', 'expiryInfo', 'primaryAction']
+  if (/status|analysis|insight/.test(section)) return ['statusLabel', 'statusValue', 'trendIndicator', 'statusDetail', 'actionLink']
+  if (/map|location|nearby/.test(section)) return ['mapArea', 'locationPin', 'nearbyList', 'filterChip', 'distanceBadge']
+  if (/onboarding|welcome|intro|permission/.test(section)) return ['illustrationOrIcon', 'headline', 'description', 'primaryCta', 'skipLink']
+  if (/booking|schedule|slot|calendar/.test(section)) return ['dateSelector', 'timeSlotGrid', 'selectedSlotSummary', 'confirmAction']
+  if (/order|cart|checkout/.test(section)) return ['itemThumb', 'itemName', 'quantityControl', 'priceRow', 'orderAction']
+  if (/detail|report|overview/.test(section)) return ['sectionTitle', 'primaryStat', 'chartArea', 'breakdownList', 'footnote']
   return fallback
 }
 

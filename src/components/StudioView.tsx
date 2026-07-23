@@ -14,6 +14,8 @@ import { getVariantStyles, getVariantInfo } from '@/lib/variant-refs'
 import { buildDesignIntelligencePlan } from '@/lib/design-intelligence'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import { saveHistoryItem, updateHistoryItem, compressThumbnail, loadHistory, deleteHistoryItem, type HistoryItem } from '@/lib/history'
+import { AIDE_UI, DEFAULT_GENERATED_BRAND_COLOR } from '@/lib/aide-ui'
+import { Button } from '@/components/ui/button'
 
 async function fetchAutoReferenceImage(keyword: string): Promise<string | undefined> {
   try {
@@ -36,24 +38,23 @@ async function fetchAutoReferenceImage(keyword: string): Promise<string | undefi
   }
 }
 
-// ─── KTDS 디자인 토큰 ────────────────────────────────────────────────────────
-// 앱 자체 UI 토큰 — src/lib/design-systems/aide.md와 동기 (dogfooding)
+// Aide product chrome tokens. Generated previews use their selected DESIGN.md separately.
 const F = {
   // 서피스
-  canvas:          '#F7F7F8',                 // aide page
-  surface:         '#FFFFFF',                 // aide surface
-  surface1:        '#FFFFFF',                 // 하위 호환
+  canvas:          AIDE_UI.page,
+  surface:         AIDE_UI.surface,
+  surface1:        AIDE_UI.surface,
   // 텍스트
-  ink:             '#171719',                 // aide text
-  inkMuted:        'rgba(55,56,60,0.61)',     // aide text-muted
-  inkAlternative:  'rgba(55,56,60,0.28)',     // aide text-assistive
-  inkSubtle:       'rgba(55,56,60,0.28)',     // 하위 호환
+  ink:             AIDE_UI.text,
+  inkMuted:        AIDE_UI.textMuted,
+  inkAlternative:  AIDE_UI.textAssistive,
+  inkSubtle:       AIDE_UI.textAssistive,
   // Primary
-  primary:         '#0066FF',                 // aide primary
-  primaryActive:   '#005EEB',                 // aide primary-strong
+  primary:         AIDE_UI.primary,
+  primaryActive:   AIDE_UI.primaryStrong,
   // 보더
-  hairline:        'rgba(112,115,124,0.16)',  // aide border
-  hairlineSoft:    'rgba(112,115,124,0.08)',  // aide border-alt
+  hairline:        AIDE_UI.border,
+  hairlineSoft:    AIDE_UI.borderSubtle,
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -653,36 +654,36 @@ function ExpandingOverlay({ image, platform, variantLabel }: { image?: string; p
         .ep-stage { animation: ep-fade 0.4s ease forwards }
       `}</style>
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 36 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: "var(--aui-space-10)" }}>
 
         {/* ── Three screens ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-4)" }}>
 
           {/* Screen 1: selected thumbnail */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: "var(--aui-space-2)" }}>
             <div style={{
               width: W, height: H,
               borderRadius: isMob ? 10 : 6,
               overflow: 'hidden',
               boxShadow: '0 6px 24px rgba(0,0,0,0.18)',
-              border: '2.5px solid #171719',
+              border: '2.5px solid var(--aui-text)',
               flexShrink: 0,
             }}>
               {image
-                ? <img src={image} alt={`${variantLabel ?? '선택된 시안'} 미리보기`} style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'top center', display: 'block', background: '#ffffff' }} />
+                ? <img src={image} alt={`${variantLabel ?? '선택된 시안'} 미리보기`} style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'top center', display: 'block', background: 'var(--aui-surface)' }} />
                 : <div style={{ width: '100%', height: '100%', background: 'rgba(112,115,124,0.16)' }} />}
             </div>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#171719', letterSpacing: '-0.01em' }}>{variantLabel ?? '선택된 시안'}</span>
+            <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', letterSpacing: '-0.01em' }}>{variantLabel ?? '선택된 시안'}</span>
           </div>
 
           {/* Arrow 1 */}
-          <div className="ep-arr ep-arr1" style={{ color: 'rgba(55,56,60,0.28)', fontSize: 20, lineHeight: '1' }}>→</div>
+          <div className="ep-arr ep-arr1" style={{ color: 'rgba(55,56,60,0.28)', fontSize: "var(--aui-icon-md)", lineHeight: "var(--aui-leading-none)" }}>→</div>
 
           {/* Screen 2: wireframe drawing */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: "var(--aui-space-2)" }}>
             {isMob ? (
               <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
-                <rect className="ep-fr2" x="2" y="2" width={W-4} height={H-4} rx="9" stroke="#171719" strokeWidth="2"/>
+                <rect className="ep-fr2" x="2" y="2" width={W-4} height={H-4} rx="9" stroke="var(--aui-text)" strokeWidth="2"/>
                 <line className="ep-h2" x1="10" y1="20" x2={W-10} y2="20" stroke="rgba(55,56,60,0.28)" strokeWidth="1.2"/>
                 <rect className="ep-b2" x="8" y="28" width={W-16} height={Math.round(H*0.3)} rx="4" stroke="rgba(55,56,60,0.61)" strokeWidth="1.4"/>
                 <line className="ep-c2" x1="8" y1={H*0.68} x2={W*0.7} y2={H*0.68} stroke="rgba(55,56,60,0.16)" strokeWidth="1.2"/>
@@ -690,24 +691,24 @@ function ExpandingOverlay({ image, platform, variantLabel }: { image?: string; p
               </svg>
             ) : (
               <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
-                <rect className="ep-fr2" x="2" y="2" width={W-4} height={H-4} rx="5" stroke="#171719" strokeWidth="2"/>
+                <rect className="ep-fr2" x="2" y="2" width={W-4} height={H-4} rx="5" stroke="var(--aui-text)" strokeWidth="2"/>
                 <line className="ep-h2" x1="2" y1="17" x2={W-2} y2="17" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2"/>
                 <rect className="ep-b2" x="8" y="23" width={W-16} height={Math.round(H*0.32)} rx="3" stroke="rgba(55,56,60,0.61)" strokeWidth="1.4"/>
                 <rect className="ep-c2" x="8" y={H*0.65} width={(W-20)/2} height={Math.round(H*0.25)} rx="3" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2"/>
                 <rect className="ep-c2" x={8+(W-20)/2+4} y={H*0.65} width={(W-20)/2} height={Math.round(H*0.25)} rx="3" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2"/>
               </svg>
             )}
-            <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.61)', fontWeight: 500 }}>서브 화면</span>
+            <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'rgba(55,56,60,0.61)', fontWeight: "var(--aui-weight-medium)" }}>서브 화면</span>
           </div>
 
           {/* Arrow 2 */}
-          <div className="ep-arr ep-arr2" style={{ color: 'rgba(55,56,60,0.28)', fontSize: 20, lineHeight: '1' }}>→</div>
+          <div className="ep-arr ep-arr2" style={{ color: 'rgba(55,56,60,0.28)', fontSize: "var(--aui-icon-md)", lineHeight: "var(--aui-leading-none)" }}>→</div>
 
           {/* Screen 3: wireframe drawing */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: "var(--aui-space-2)" }}>
             {isMob ? (
               <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
-                <rect className="ep-fr3" x="2" y="2" width={W-4} height={H-4} rx="9" stroke="#171719" strokeWidth="2"/>
+                <rect className="ep-fr3" x="2" y="2" width={W-4} height={H-4} rx="9" stroke="var(--aui-text)" strokeWidth="2"/>
                 <line className="ep-h3" x1="10" y1="20" x2={W-10} y2="20" stroke="rgba(55,56,60,0.28)" strokeWidth="1.2"/>
                 <rect className="ep-b3" x="8" y="28" width={W-16} height={Math.round(H*0.38)} rx="4" stroke="rgba(55,56,60,0.61)" strokeWidth="1.4"/>
                 <rect className="ep-c3" x="8" y={H*0.72} width={W-16} height={Math.round(H*0.18)} rx="3" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2"/>
@@ -715,30 +716,30 @@ function ExpandingOverlay({ image, platform, variantLabel }: { image?: string; p
               </svg>
             ) : (
               <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
-                <rect className="ep-fr3" x="2" y="2" width={W-4} height={H-4} rx="5" stroke="#171719" strokeWidth="2"/>
+                <rect className="ep-fr3" x="2" y="2" width={W-4} height={H-4} rx="5" stroke="var(--aui-text)" strokeWidth="2"/>
                 <line className="ep-h3" x1="2" y1="17" x2={W-2} y2="17" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2"/>
                 <rect className="ep-b3" x="8" y="23" width={Math.round((W-20)*0.42)} height={H-30} rx="3" stroke="rgba(55,56,60,0.61)" strokeWidth="1.4"/>
                 <rect className="ep-c3" x={8+Math.round((W-20)*0.42)+4} y="23" width={Math.round((W-20)*0.54)} height={Math.round((H-30)/2-2)} rx="3" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2"/>
                 <rect className="ep-c3" x={8+Math.round((W-20)*0.42)+4} y={23+Math.round((H-30)/2)+2} width={Math.round((W-20)*0.54)} height={Math.round((H-30)/2-2)} rx="3" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2"/>
               </svg>
             )}
-            <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.61)', fontWeight: 500 }}>내비게이션</span>
+            <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'rgba(55,56,60,0.61)', fontWeight: "var(--aui-weight-medium)" }}>내비게이션</span>
           </div>
         </div>
 
         {/* ── Text ── */}
-        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#171719', letterSpacing: '-0.03em', margin: 0 }}>
+        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
+          <h2 style={{ fontSize: "var(--aui-type-section-title-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', letterSpacing: '-0.03em', margin: 0 }}>
             선택한 시안으로 프로토타입을 완성하고 있습니다
           </h2>
-          <p key={stageIdx} className="ep-stage" style={{ fontSize: 13, color: 'rgba(55,56,60,0.61)', margin: 0 }}>
+          <p key={stageIdx} className="ep-stage" style={{ fontSize: "var(--aui-type-compact-size)", color: 'rgba(55,56,60,0.61)', margin: 0 }}>
             {EXPAND_STAGES[stageIdx]}
           </p>
         </div>
 
         {/* ── Progress bar ── */}
-        <div style={{ width: 220, height: 3, backgroundColor: 'rgba(112,115,124,0.16)', borderRadius: 2, overflow: 'hidden' }}>
-          <div style={{ height: '100%', backgroundColor: '#171719', borderRadius: 2, animation: 'ep-bar 1.8s ease-in-out infinite' }} />
+        <div style={{ width: 220, height: 3, backgroundColor: 'rgba(112,115,124,0.16)', borderRadius: "var(--aui-radius-sm)", overflow: 'hidden' }}>
+          <div style={{ height: '100%', backgroundColor: 'var(--aui-text)', borderRadius: "var(--aui-radius-sm)", animation: 'ep-bar 1.8s ease-in-out infinite' }} />
         </div>
       </div>
     </div>
@@ -830,6 +831,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(DEFAULT_AIDE_LOGO_SRC)
   const [logoLoading, setLogoLoading] = useState(false)
   const [brandColors, setBrandColors] = useState<string[]>([])
+  const [extractedColors, setExtractedColors] = useState<string[]>([])
   const logoInputRef = useRef<HTMLInputElement>(null)
   const [briefDesc, setBriefDesc] = useState('')
   const [briefFeatures, setBriefFeatures] = useState('')
@@ -870,6 +872,7 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const [variantContentHeights, setVariantContentHeights] = useState<[number | null, number | null, number | null]>([null, null, null])
   const variantIframeRefs = useRef<[HTMLIFrameElement | null, HTMLIFrameElement | null, HTMLIFrameElement | null]>([null, null, null])
   const [variantGenerationStarted, setVariantGenerationStarted] = useState(false)
+  const [variantFailed, setVariantFailed] = useState<[boolean, boolean, boolean]>([false, false, false])
   const [isExpandingPrototype, setIsExpandingPrototype] = useState(false)
   const [mainVariants, setMainVariants] = useState<[GenerateResult|null, GenerateResult|null, GenerateResult|null]>([null, null, null])
   const [streamingHtml, setStreamingHtml] = useState<[string|null, string|null, string|null]>([null, null, null])
@@ -940,8 +943,8 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const [pickedIcon, setPickedIcon] = useState<string | null>(null)
   const [originalIconText, setOriginalIconText] = useState<string | null>(null)
   const [darkMode, setDarkMode] = useState(false)
-  const [brandColor, setBrandColor] = useState('#ff385c')
-  const [debouncedBrandColor, setDebouncedBrandColor] = useState('#ff385c')
+  const [brandColor, setBrandColor] = useState(DEFAULT_GENERATED_BRAND_COLOR)
+  const [debouncedBrandColor, setDebouncedBrandColor] = useState(DEFAULT_GENERATED_BRAND_COLOR)
   const brandDebounceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const screenIframeRefs = useRef<Map<string, HTMLIFrameElement>>(new Map())
@@ -1304,12 +1307,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Wireframe animation loop while analyzing
+  // Wireframe animation loop while loading screen is visible
   useEffect(() => {
-    if (!isAnalyzing) return
+    if (!isAnalyzing && !startedFromLanding) return
     const id = setInterval(() => setWfAnimKey(k => k + 1), 4000)
     return () => clearInterval(id)
-  }, [isAnalyzing])
+  }, [isAnalyzing, startedFromLanding])
 
   // Undo/Redo keyboard shortcuts
   useEffect(() => {
@@ -1388,7 +1391,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       setHistoryB([]); setHistoryIndexB(-1)
       setScreens(item.board.prototypeScreens ?? [])
       setActiveScreenId(item.board.prototypeScreens?.[0]?.id ?? '')
-      const extractedColor = prototypeHtml.match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? '#0066FF'
+      const extractedColor = prototypeHtml.match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? 'var(--aui-primary)'
       setBrandColor(extractedColor); setDebouncedBrandColor(extractedColor)
       setCurrentHistoryId(item.id)
       setCurrentBoardHistoryId(item.id)
@@ -1408,7 +1411,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     setActiveVariant(0)
     setHistoryA([item.html]); setHistoryIndexA(0)
     setHistoryB([]); setHistoryIndexB(-1)
-    const extractedColor = item.html.match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? '#0066FF'
+    const extractedColor = item.html.match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? 'var(--aui-primary)'
     setBrandColor(extractedColor); setDebouncedBrandColor(extractedColor)
     setCurrentHistoryId(item.id)
     setCurrentBoardHistoryId(null)
@@ -1457,10 +1460,59 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     try {
       const dataUrl = await resizeLogo(file)
       setLogoDataUrl(dataUrl)
+      setExtractedColors([])
+      setBrandColors([])
     } finally {
       setLogoLoading(false)
       e.target.value = ''
     }
+  }, [])
+
+  const handleExtractColors = useCallback(() => {
+    if (!logoDataUrl || logoDataUrl === DEFAULT_AIDE_LOGO_SRC) return
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64; canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      ctx.drawImage(img, 0, 0, 64, 64)
+      const data = ctx.getImageData(0, 0, 64, 64).data
+      const colorMap: Record<string, number> = {}
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3]
+        if (a < 128) continue
+        if (r > 220 && g > 220 && b > 220) continue
+        if (r < 35 && g < 35 && b < 35) continue
+        if (Math.max(r, g, b) - Math.min(r, g, b) < 30) continue
+        const qr = Math.round(r / 32) * 32
+        const qg = Math.round(g / 32) * 32
+        const qb = Math.round(b / 32) * 32
+        const key = `${qr},${qg},${qb}`
+        colorMap[key] = (colorMap[key] ?? 0) + 1
+      }
+      const top = Object.entries(colorMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([key]) => {
+          const [r, g, b] = key.split(',').map(Number)
+          return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+        })
+      setExtractedColors(top)
+      if (top.length > 0) setBrandColors([top[0]])
+    }
+    img.src = logoDataUrl
+  }, [logoDataUrl])
+
+  const handleSwatchClick = useCallback((color: string) => {
+    setBrandColors(prev => {
+      const [p, s] = [prev[0], prev[1]]
+      if (color === p) return s ? [s] : []
+      if (color === s) return p ? [p] : []
+      if (!p) return [color, ...(s ? [s] : [])]
+      if (!s) return [p, color]
+      return [color, s]
+    })
   }, [])
 
   const handleAnalyze = async () => {
@@ -1660,6 +1712,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     if (!questionnaire) return
     const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
     setVariantGenerationStarted(true)
+    setVariantFailed([false, false, false])
     setIsGenerating(true)
     setIsGeneratingB(false)
     setIsGeneratingBScene(false)
@@ -1696,7 +1749,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     const genId = ++generationIdRef.current
     try {
       const asIsAnalysis = readAsIsAnalysis()
-      const modelId = 'gemini-3.1-pro-preview'
+      const modelId = sessionStorage.getItem('aide_model') ?? 'gemini-3.1-pro-preview'
       const prdDocFromStorage = sessionStorage.getItem('prdDoc') ?? undefined
       const iaImageFromStorage = sessionStorage.getItem('iaImage') ?? undefined
       const iaTextFromStorage = sessionStorage.getItem('iaText') ?? undefined
@@ -1817,7 +1870,13 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
         setVariantLoading(idx, true)
         const json = await fetchVariant(variantStyle, idx)
         setVariantLoading(idx, false)
-        if (!json || generationIdRef.current !== genId || abort.signal.aborted) return
+        if (!json) {
+          if (generationIdRef.current === genId && !abort.signal.aborted) {
+            setVariantFailed(prev => { const n: [boolean, boolean, boolean] = [prev[0], prev[1], prev[2]]; n[idx] = true; return n })
+          }
+          return
+        }
+        if (generationIdRef.current !== genId || abort.signal.aborted) return
         boardVariants[idx] = json
         completed.push({ letter: variantLetters[idx], result: json })
         setMainVariants(prev => {
@@ -1928,7 +1987,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       setVarValues({})
       setScreens([]); setActiveScreenId(''); setFocusedScreenId('')
       screenIframeRefs.current.clear()
-      const extractedColor = (data.html as string).match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? '#ff385c'
+      const extractedColor = (data.html as string).match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? DEFAULT_GENERATED_BRAND_COLOR
       setBrandColor(extractedColor); setDebouncedBrandColor(extractedColor)
       setHistoryA([data.html]); setHistoryIndexA(0)
       setHistoryB([]); setHistoryIndexB(-1)
@@ -1980,7 +2039,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     setStep(1); setVariants([null, null]); setActiveVariant(0); setQuestionnaire(null)
     setStartedFromLanding(false)
     setAnswers({}); setGenerateError(''); setAnalyzeError('')
-    setSelectedStyles(null); setDarkMode(false); setBrandColor('#ff385c'); setDebouncedBrandColor('#ff385c')
+    setSelectedStyles(null); setDarkMode(false); setBrandColor(DEFAULT_GENERATED_BRAND_COLOR); setDebouncedBrandColor(DEFAULT_GENERATED_BRAND_COLOR)
     setTweakSpecA(null); setTweakSpecB(null)
     setIsAnalyzingTweakA(false); setIsAnalyzingTweakB(false)
     setActiveStateId('typical'); setVarValues({})
@@ -2002,7 +2061,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     if (!questionnaire) return
     const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
     const asIsAnalysis = readAsIsAnalysis()
-    const modelId = 'gemini-3.1-pro-preview'
+    const modelId = sessionStorage.getItem('aide_model') ?? 'gemini-3.1-pro-preview'
     const prdDocFromStorage = sessionStorage.getItem('prdDoc') ?? undefined
     const iaImageFromStorage = sessionStorage.getItem('iaImage') ?? undefined
     const iaTextFromStorage = sessionStorage.getItem('iaText') ?? undefined
@@ -2043,6 +2102,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       bgFetchAbortRef.current?.abort()
       const abort = new AbortController()
       bgFetchAbortRef.current = abort
+      setVariantFailed(prev => [prev[0], false, prev[2]])
       setIsGeneratingB(true)
       try {
         const res = await fetch('/api/generate', { method: 'POST', headers, body: JSON.stringify(baseParams), signal: abort.signal })
@@ -2051,15 +2111,17 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           setMainVariants(prev => [prev[0], json, prev[2]])
       } catch (e) {
         if ((e as Error)?.name === 'AbortError') return
+        setVariantFailed(prev => [prev[0], true, prev[2]])
       } finally { setIsGeneratingB(false) }
     } else {
+      setVariantFailed(prev => [prev[0], prev[1], false])
       setIsGeneratingC(true)
       try {
         const res = await fetch('/api/generate', { method: 'POST', headers, body: JSON.stringify(baseParams) })
         const json = await readGenerateStream(res)
         if (generationIdRef.current === genId)
           setMainVariants(prev => [prev[0], prev[1], json])
-      } catch { /* silent */ }
+      } catch { setVariantFailed(prev => [prev[0], prev[1], true]) }
       finally { setIsGeneratingC(false) }
     }
   }
@@ -2255,18 +2317,18 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
     return (
       <div
-        className="h-screen overflow-hidden flex flex-col text-[#171719] relative"
+        className="h-screen overflow-hidden flex flex-col text-[var(--aui-text)] relative"
         style={{
           fontFamily: "var(--font-pretendard)",
-          backgroundColor: '#F4F4F5',
+          backgroundColor: 'var(--aui-surface-muted)',
         }}
       >
         {/* Header */}
-        <div className="border-b border-[rgba(0,0,0,0.09)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
-          <button onClick={onBack} aria-label="Aide 홈으로 이동" className="flex items-center px-4 border-r border-[rgba(0,0,0,0.09)] hover:bg-[rgba(112,115,124,0.16)] transition-colors shrink-0">
+        <div className="border-b border-[var(--aui-shadow-soft)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
+          <button onClick={onBack} aria-label="Aide 홈으로 이동" className="flex items-center px-4 border-r border-[var(--aui-shadow-soft)] hover:bg-[var(--aui-border)] transition-colors shrink-0">
             <img src="/logo_aide.png" alt="Aide" className="h-14 w-auto object-contain" />
           </button>
-          <div className="px-5 text-[13px] flex items-center gap-2 text-[rgba(55,56,60,0.61)]">
+          <div className="px-5 text-[13px] flex items-center gap-2 text-[var(--aui-text-muted)]">
             {isAnyGenerating ? (
               <>
                 <svg className="animate-spin shrink-0" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -2285,7 +2347,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 onClick={handleGenerate}
                 disabled={isAnyGenerating}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-semibold text-white transition-colors disabled:opacity-50"
-                style={{ borderRadius: 8, backgroundColor: '#0066FF' }}
+                style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-primary)' }}
               >
                 <Sparkles size={13} /> 시안 A/B/C 생성
               </button>
@@ -2294,12 +2356,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               <button
                 onClick={() => handleGenerate()}
                 disabled={isAnyGenerating}
-                className="flex items-center gap-1.5 text-[13px] text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors disabled:opacity-40"
+                className="flex items-center gap-1.5 text-[13px] text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors disabled:opacity-40"
               >
                 <RefreshCw size={13} /> 다시 생성
               </button>
             )}
-            <button onClick={() => { clearGeneratedBoard(); setStep(2) }} disabled={isAnyGenerating} className="flex items-center gap-1.5 text-[13px] text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            <button onClick={() => { clearGeneratedBoard(); setStep(2) }} disabled={isAnyGenerating} className="flex items-center gap-1.5 text-[13px] text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               <ArrowLeft size={14} /> 설문
             </button>
           </div>
@@ -2317,43 +2379,50 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           const VARIANT_INFO = getVariantInfo((questionnaire?.domain ?? 'other') as AppDomain)
 
           return (
-            <div style={{ width: 252, flexShrink: 0, borderRight: '1px solid rgba(0,0,0,0.09)', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', padding: '24px 20px' }}>
+            <div style={{ width: 252, flexShrink: 0, borderRight: '1px solid var(--aui-shadow-soft)', backgroundColor: 'var(--aui-on-dark)', display: 'flex', flexDirection: 'column', padding: `var(--aui-space-6) var(--aui-space-5)` }}>
               {selectedCard === 'design-md' ? (() => {
                 const preset = visualizedDesignPreset
                 const sidebarMeta = customDesignMd ? parseCustomDesignMdMeta(customDesignMd) : null
-                const sidebarPalette = sidebarMeta?.palette ?? preset.palette
+                const baseSidebarPalette = sidebarMeta?.palette ?? preset.palette
+                const sidebarPalette = brandColors[0]
+                  ? [
+                      { name: 'Primary', hex: brandColors[0] },
+                      ...(brandColors[1] ? [{ name: 'Secondary', hex: brandColors[1] }] : []),
+                      ...(baseSidebarPalette ?? []).filter(s => s.name !== 'Primary' && s.name !== 'Secondary'),
+                    ]
+                  : baseSidebarPalette
                 const sidebarFonts = sidebarMeta?.fonts ?? preset.fonts
-                const sidebarColor = sidebarMeta?.color ?? preset.color
+                const sidebarColor = brandColors[0] ?? sidebarMeta?.color ?? preset.color
                 const sidebarLabel = designSystemDisplayName
                 return (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0, overflow: 'hidden' }}>
                     {/* Header */}
-                    <div style={{ paddingBottom: 18, borderBottom: '1px solid rgba(0,0,0,0.07)', marginBottom: 18 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9 }}>
+                    <div style={{ paddingBottom: 18, borderBottom: '1px solid var(--aui-shadow-line)', marginBottom: 18 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", marginBottom: 9 }}>
                         {sidebarColor ? (
-                          <div style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: sidebarColor, flexShrink: 0 }} />
+                          <div style={{ width: 26, height: 26, borderRadius: "var(--aui-radius-sm)", backgroundColor: sidebarColor, flexShrink: 0 }} />
                         ) : (
-                          <div style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: '#F4F4F5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(55,56,60,0.61)" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                          <div style={{ width: 26, height: 26, borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-surface-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--aui-text-muted)" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                           </div>
                         )}
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#171719', letterSpacing: '-0.3px', lineHeight: 1.2 }}>{sidebarLabel}</span>
+                        <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', letterSpacing: '-0.3px', lineHeight: "var(--aui-leading-tight)" }}>{sidebarLabel}</span>
                       </div>
-                      <p style={{ fontSize: 12, color: 'rgba(55,56,60,0.61)', lineHeight: 1.55, letterSpacing: '-0.1px' }}>{customDesignMd ? 'custom design.md' : preset.description}</p>
+                      <p style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-muted)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: '-0.1px' }}>{customDesignMd ? 'custom design.md' : preset.description}</p>
                     </div>
 
-                    <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+                    <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-5)" }}>
                       {/* Color palette */}
                       {sidebarPalette && sidebarPalette.length > 0 && (
                         <div>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>컬러 팔레트</p>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>컬러 팔레트</p>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
                             {sidebarPalette.map(swatch => (
-                              <div key={swatch.hex} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <div style={{ width: 22, height: 22, borderRadius: 6, backgroundColor: swatch.hex, border: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }} />
+                              <div key={swatch.hex} style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)" }}>
+                                <div style={{ width: 22, height: 22, borderRadius: "var(--aui-radius-sm)", backgroundColor: swatch.hex, border: '1px solid var(--aui-border-subtle)', flexShrink: 0 }} />
                                 <div>
-                                  <p style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(46,47,51,0.88)', margin: 0, lineHeight: 1.2 }}>{swatch.name}</p>
-                                  <p style={{ fontSize: 10, color: 'rgba(55,56,60,0.28)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.03em' }}>{swatch.hex}</p>
+                                  <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text-neutral)', margin: 0, lineHeight: "var(--aui-leading-tight)" }}>{swatch.name}</p>
+                                  <p style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-assistive)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.03em' }}>{swatch.hex}</p>
                                 </div>
                               </div>
                             ))}
@@ -2364,15 +2433,15 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Fonts */}
                       {sidebarFonts && (
                         <div>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>타이포그래피</p>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>타이포그래피</p>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.28)' }}>Headline</span>
-                              <span style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(46,47,51,0.88)' }}>{sidebarFonts.headline}</span>
+                              <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-assistive)' }}>Headline</span>
+                              <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text-neutral)' }}>{sidebarFonts.headline}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.28)' }}>Body</span>
-                              <span style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(46,47,51,0.88)' }}>{sidebarFonts.body}</span>
+                              <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-assistive)' }}>Body</span>
+                              <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text-neutral)' }}>{sidebarFonts.body}</span>
                             </div>
                           </div>
                         </div>
@@ -2381,10 +2450,10 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Traits */}
                       {preset.traits && preset.traits.length > 0 && (
                         <div>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>디자인 특성</p>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>디자인 특성</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-2)" }}>
                             {preset.traits.map(trait => (
-                              <span key={trait} style={{ fontSize: 11, fontWeight: 500, color: 'rgba(55,56,60,0.61)', backgroundColor: '#F4F4F5', borderRadius: 6, padding: '4px 8px', lineHeight: 1.2 }}>{trait}</span>
+                              <span key={trait} style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-medium)", color: 'var(--aui-text-muted)', backgroundColor: 'var(--aui-surface-muted)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-1) var(--aui-space-2)`, lineHeight: "var(--aui-leading-tight)" }}>{trait}</span>
                             ))}
                           </div>
                         </div>
@@ -2393,16 +2462,16 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Typography Scale */}
                       {preset.typographyScale && preset.typographyScale.length > 0 && (
                         <div>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>타이포그래피 스케일</p>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>타이포그래피 스케일</p>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
                             {preset.typographyScale.map(step => (
-                              <div key={step.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div key={step.name} style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
                                 <div style={{ width: 36, flexShrink: 0, textAlign: 'right' }}>
-                                  <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', fontFamily: 'monospace' }}>{step.size}</span>
+                                  <span style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', fontFamily: 'monospace' }}>{step.size}</span>
                                 </div>
-                                <div style={{ width: 1, height: 14, backgroundColor: 'rgba(112,115,124,0.16)', flexShrink: 0 }} />
-                                <span style={{ fontSize: parseInt(step.size) > 20 ? 14 : 12, fontWeight: step.weight >= 600 ? 600 : step.weight >= 500 ? 500 : 400, color: '#171719', lineHeight: 1, letterSpacing: '-0.1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>{step.name}</span>
-                                <span style={{ marginLeft: 'auto', fontSize: 10, color: 'rgba(55,56,60,0.16)', fontFamily: 'monospace' }}>{step.weight}</span>
+                                <div style={{ width: 1, height: 14, backgroundColor: 'var(--aui-border)', flexShrink: 0 }} />
+                                <span style={{ fontSize: parseInt(step.size) > 20 ? "var(--aui-type-label-size)" : "var(--aui-type-caption-size)", fontWeight: step.weight >= 600 ? 600 : step.weight >= 500 ? 500 : 400, color: 'var(--aui-text)', lineHeight: "var(--aui-leading-none)", letterSpacing: '-0.1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>{step.name}</span>
+                                <span style={{ marginLeft: 'auto', fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-disabled)', fontFamily: 'monospace' }}>{step.weight}</span>
                               </div>
                             ))}
                           </div>
@@ -2412,14 +2481,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Status Colors */}
                       {preset.statusColors && preset.statusColors.length > 0 && (
                         <div>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>상태 색상</p>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 10px' }}>
+                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>상태 색상</p>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: `var(--aui-space-2) var(--aui-space-3)` }}>
                             {preset.statusColors.map(s => (
-                              <div key={s.hex} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                                <div style={{ width: 16, height: 16, borderRadius: 4, backgroundColor: s.hex, flexShrink: 0 }} />
+                              <div key={s.hex} style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
+                                <div style={{ width: 16, height: 16, borderRadius: "var(--aui-radius-sm)", backgroundColor: s.hex, flexShrink: 0 }} />
                                 <div>
-                                  <p style={{ fontSize: 11, fontWeight: 600, color: 'rgba(46,47,51,0.88)', margin: 0, lineHeight: 1.2 }}>{s.name}</p>
-                                  <p style={{ fontSize: 9.5, color: 'rgba(55,56,60,0.28)', margin: 0, fontFamily: 'monospace' }}>{s.hex}</p>
+                                  <p style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text-neutral)', margin: 0, lineHeight: "var(--aui-leading-tight)" }}>{s.name}</p>
+                                  <p style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-assistive)', margin: 0, fontFamily: 'monospace' }}>{s.hex}</p>
                                 </div>
                               </div>
                             ))}
@@ -2430,16 +2499,16 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Radius Tokens */}
                       {preset.radiusTokens && preset.radiusTokens.length > 0 && (
                         <div>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>Border Radius</p>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 8px', alignItems: 'flex-end' }}>
+                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>Border Radius</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: `var(--aui-space-2) var(--aui-space-2)`, alignItems: 'flex-end' }}>
                             {preset.radiusTokens.map(r => {
                               const px = parseInt(r.value)
                               const sz = Math.min(Math.max(px === 9999 || px >= 100 ? 20 : px * 1.2, 6), 20)
                               return (
-                                <div key={r.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                                  <div style={{ width: sz + 4, height: sz + 4, border: '1.5px solid #c8c8cc', borderRadius: px >= 999 ? 9999 : Math.min(px, (sz + 4) / 2), backgroundColor: '#F4F4F5' }} />
-                                  <span style={{ fontSize: 9.5, color: 'rgba(55,56,60,0.28)', fontFamily: 'monospace', lineHeight: 1 }}>{r.name}</span>
-                                  <span style={{ fontSize: 9, color: 'rgba(55,56,60,0.16)', fontFamily: 'monospace', lineHeight: 1 }}>{r.value}</span>
+                                <div key={r.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: "var(--aui-space-1)" }}>
+                                  <div style={{ width: sz + 4, height: sz + 4, border: '1.5px solid var(--aui-border)', borderRadius: px >= 999 ? 9999 : Math.min(px, (sz + 4) / 2), backgroundColor: 'var(--aui-surface-muted)' }} />
+                                  <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-assistive)', fontFamily: 'monospace', lineHeight: "var(--aui-leading-none)" }}>{r.name}</span>
+                                  <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-disabled)', fontFamily: 'monospace', lineHeight: "var(--aui-leading-none)" }}>{r.value}</span>
                                 </div>
                               )
                             })}
@@ -2451,9 +2520,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 )
               })() : !selectedVariant ? (() => {
                 const iconForEvent = (event: GenerationEvent) => {
-                  const stroke = event.status === 'error' ? '#FF4242' : event.status === 'done' ? '#2f8f57' : '#8a8d93'
+                  const stroke = event.status === 'error' ? 'var(--aui-negative)' : event.status === 'done' ? 'var(--aui-positive)' : 'var(--aui-text-muted)'
                   if (event.status === 'active') {
-                    return <div className="animate-spin" style={{ width: 14, height: 14, borderRadius: '50%', border: '1.5px solid rgba(0,0,0,0.12)', borderTopColor: '#171719' }} />
+                    return <div className="animate-spin" style={{ width: 14, height: 14, borderRadius: '50%', border: '1.5px solid var(--aui-shadow-medium)', borderTopColor: 'var(--aui-text)' }} />
                   }
                   if (event.kind === 'summary') {
                     return <Sparkles size={14} color={stroke} strokeWidth={2} />
@@ -2485,16 +2554,16 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
                 return (
                   <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <div style={{ paddingBottom: 16, borderBottom: '1px solid rgba(0,0,0,0.07)', marginBottom: 14 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <div style={{ width: 24, height: 24, borderRadius: 7, backgroundColor: '#171719', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ paddingBottom: 16, borderBottom: '1px solid var(--aui-shadow-line)', marginBottom: 14 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", marginBottom: 8 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Sparkles size={13} />
                         </div>
-                        <span style={{ fontSize: 13, fontWeight: 750, color: '#171719', letterSpacing: '-0.25px' }}>생성 진행</span>
+                        <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', letterSpacing: '-0.25px' }}>생성 진행</span>
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 650, color: '#0066FF', backgroundColor: 'rgba(26,117,255,0.09)', borderRadius: 999, padding: '4px 8px', lineHeight: 1 }}>{designSystemDisplayName}</span>
-                        <span style={{ fontSize: 10.5, fontWeight: 650, color: 'rgba(55,56,60,0.61)', backgroundColor: '#F4F4F5', borderRadius: 999, padding: '4px 8px', lineHeight: 1 }}>{platformLabel(platform)}</span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-2)" }}>
+                        <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-primary)', backgroundColor: 'var(--aui-primary-tint)', borderRadius: "var(--aui-radius-pill)", padding: `var(--aui-space-1) var(--aui-space-2)`, lineHeight: "var(--aui-leading-none)" }}>{designSystemDisplayName}</span>
+                        <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text-muted)', backgroundColor: 'var(--aui-surface-muted)', borderRadius: "var(--aui-radius-pill)", padding: `var(--aui-space-1) var(--aui-space-2)`, lineHeight: "var(--aui-leading-none)" }}>{platformLabel(platform)}</span>
                       </div>
                     </div>
 
@@ -2504,20 +2573,20 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                           const isLast = idx === visibleEvents.length - 1
                           const isSummary = event.kind === 'summary'
                           return (
-                            <div key={event.id} style={{ display: 'grid', gridTemplateColumns: '22px 1fr', columnGap: 10 }}>
+                            <div key={event.id} style={{ display: 'grid', gridTemplateColumns: '22px 1fr', columnGap: "var(--aui-space-3)" }}>
                               <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
-                                {!isLast && <div style={{ position: 'absolute', top: 19, bottom: -2, width: 1, backgroundColor: 'rgba(112,115,124,0.16)' }} />}
-                                <div style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: event.status === 'active' ? '#ffffff' : '#f7f7f8', border: '1px solid rgba(112,115,124,0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+                                {!isLast && <div style={{ position: 'absolute', top: 19, bottom: -2, width: 1, backgroundColor: 'var(--aui-border)' }} />}
+                                <div style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: event.status === 'active' ? 'var(--aui-on-dark)' : 'var(--aui-page)', border: '1px solid var(--aui-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
                                   {iconForEvent(event)}
                                 </div>
                               </div>
                               <div style={{ paddingBottom: isSummary ? 16 : 14 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
-                                  <p style={{ fontSize: isSummary ? 13 : 12.2, fontWeight: isSummary ? 750 : 600, color: event.status === 'error' ? '#FF4242' : 'rgba(46,47,51,0.88)', letterSpacing: '-0.18px', lineHeight: 1.35, margin: 0 }}>{event.title}</p>
-                                  {event.variant && <span style={{ fontSize: 9.5, color: 'rgba(55,56,60,0.61)', backgroundColor: '#F4F4F5', borderRadius: 4, padding: '1px 4px', lineHeight: 1.2 }}>{event.variant}</span>}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", marginTop: 1 }}>
+                                  <p style={{ fontSize: isSummary ? "var(--aui-type-compact-size)" : "var(--aui-type-caption-size)", fontWeight: isSummary ? 750 : 600, color: event.status === 'error' ? 'var(--aui-negative)' : 'var(--aui-text-neutral)', letterSpacing: '-0.18px', lineHeight: "var(--aui-leading-snug)", margin: 0 }}>{event.title}</p>
+                                  {event.variant && <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-muted)', backgroundColor: 'var(--aui-surface-muted)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-1) var(--aui-space-1)`, lineHeight: "var(--aui-leading-tight)" }}>{event.variant}</span>}
                                 </div>
                                 {event.detail && (
-                                  <p style={{ whiteSpace: 'pre-line', fontSize: isSummary ? 12.2 : 11.4, color: isSummary ? 'rgba(46,47,51,0.88)' : 'rgba(55,56,60,0.61)', lineHeight: isSummary ? 1.72 : 1.55, letterSpacing: '-0.08px', margin: '5px 0 0' }}>{event.detail}</p>
+                                  <p style={{ whiteSpace: 'pre-line', fontSize: isSummary ? "var(--aui-type-caption-size)" : "var(--aui-type-micro-size)", color: isSummary ? 'var(--aui-text-neutral)' : 'var(--aui-text-muted)', lineHeight: isSummary ? 1.72 : 1.55, letterSpacing: '-0.08px', margin: `var(--aui-space-1) 0 0` }}>{event.detail}</p>
                                 )}
                               </div>
                             </div>
@@ -2526,14 +2595,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       </div>
 
                       {generateError && (
-                        <div style={{ marginTop: 4, padding: '10px 11px', borderRadius: 8, backgroundColor: '#fff1f2', border: '1px solid #fecdd3', color: '#be123c', fontSize: 11.5, lineHeight: 1.55 }}>
+                        <div style={{ marginTop: 4, padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-negative-soft)', border: '1px solid var(--aui-negative-border)', color: 'var(--aui-negative)', fontSize: "var(--aui-type-caption-size)", lineHeight: "var(--aui-leading-relaxed)" }}>
                           {generateError}
                         </div>
                       )}
                     </div>
 
-                    <div style={{ paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.07)', marginTop: 12 }}>
-                      <p style={{ fontSize: 11.2, color: 'rgba(55,56,60,0.61)', lineHeight: 1.55, letterSpacing: '-0.06px', margin: 0 }}>
+                    <div style={{ paddingTop: 12, borderTop: '1px solid var(--aui-shadow-line)', marginTop: 12 }}>
+                      <p style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-muted)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: '-0.06px', margin: 0 }}>
                         생성이 끝난 뒤 시안 카드를 클릭하면 각 방향의 UX 전략과 설계 포인트를 볼 수 있습니다.
                       </p>
                     </div>
@@ -2544,40 +2613,40 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 return (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0, overflow: 'hidden' }}>
                     {/* Header */}
-                    <div style={{ paddingBottom: 16, borderBottom: '1px solid rgba(0,0,0,0.07)', marginBottom: 16 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
-                        <div style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: '#171719', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <span style={{ fontSize: 12, fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{selectedVariant}</span>
+                    <div style={{ paddingBottom: 16, borderBottom: '1px solid var(--aui-shadow-line)', marginBottom: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", marginBottom: 10 }}>
+                        <div style={{ width: 26, height: 26, borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-extrabold)", color: 'var(--aui-on-dark)', lineHeight: "var(--aui-leading-none)" }}>{selectedVariant}</span>
                         </div>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#171719', letterSpacing: '-0.3px', lineHeight: 1.2 }}>{info.name}</span>
+                        <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', letterSpacing: '-0.3px', lineHeight: "var(--aui-leading-tight)" }}>{info.name}</span>
                       </div>
                       {/* Strategy badge */}
-                      <span style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, color: '#0066FF', backgroundColor: 'rgba(26,117,255,0.09)', borderRadius: 5, padding: '3px 7px', letterSpacing: '0.02em', marginBottom: 8 }}>{info.strategy}</span>
-                      <p style={{ fontSize: 11.5, color: 'rgba(55,56,60,0.61)', lineHeight: 1.6, letterSpacing: '-0.1px', margin: 0 }}>{info.tagline}</p>
+                      <span style={{ display: 'inline-block', fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-primary)', backgroundColor: 'var(--aui-primary-tint)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-1) var(--aui-space-2)`, letterSpacing: '0.02em', marginBottom: 8 }}>{info.strategy}</span>
+                      <p style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-muted)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: '-0.1px', margin: 0 }}>{info.tagline}</p>
                     </div>
 
                     {/* Analysis */}
-                    <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-4)" }}>
                       {/* Rationale */}
-                      <div style={{ backgroundColor: '#F7F7F8', borderRadius: 8, padding: '10px 11px' }}>
-                        <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>UX 전략 근거</p>
-                        <p style={{ fontSize: 11.5, color: 'rgba(46,47,51,0.88)', lineHeight: 1.65, letterSpacing: '-0.1px', margin: 0 }}>{info.rationale}</p>
+                      <div style={{ backgroundColor: 'var(--aui-page)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-3) var(--aui-space-3)` }}>
+                        <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>UX 전략 근거</p>
+                        <p style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-neutral)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: '-0.1px', margin: 0 }}>{info.rationale}</p>
                       </div>
 
                       {/* Key Points */}
                       <div>
-                        <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>설계 포인트</p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>설계 포인트</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-3)" }}>
                           {info.points.map((point, i) => {
                             const [before, after] = point.split(' → ')
                             return (
-                              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
-                                <div style={{ width: 17, height: 17, borderRadius: '50%', backgroundColor: '#171719', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1.5 }}>
-                                  <span style={{ fontSize: 8.5, fontWeight: 800, color: '#ffffff' }}>{i + 1}</span>
+                              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: "var(--aui-space-2)" }}>
+                                <div style={{ width: 17, height: 17, borderRadius: '50%', backgroundColor: 'var(--aui-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1.5 }}>
+                                  <span style={{ fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-extrabold)", color: 'var(--aui-on-dark)' }}>{i + 1}</span>
                                 </div>
-                                <p style={{ fontSize: 11.5, color: 'rgba(46,47,51,0.88)', lineHeight: 1.6, letterSpacing: '-0.1px', margin: 0 }}>
+                                <p style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-neutral)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: '-0.1px', margin: 0 }}>
                                   {after ? (
-                                    <>{before} <span style={{ color: 'rgba(55,56,60,0.28)', fontWeight: 400 }}>→</span> <span style={{ color: '#0066FF', fontWeight: 500 }}>{after}</span></>
+                                    <>{before} <span style={{ color: 'var(--aui-text-assistive)', fontWeight: "var(--aui-weight-regular)" }}>→</span> <span style={{ color: 'var(--aui-primary)', fontWeight: "var(--aui-weight-medium)" }}>{after}</span></>
                                   ) : point}
                                 </p>
                               </div>
@@ -2587,15 +2656,15 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       </div>
 
                       {/* Best for */}
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, paddingTop: 2 }}>
-                        <svg style={{ marginTop: 1, flexShrink: 0 }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(55,56,60,0.28)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-                        <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.61)', letterSpacing: '-0.05px', lineHeight: 1.55 }}><span style={{ fontWeight: 600, color: 'rgba(55,56,60,0.61)' }}>적합한 컨텍스트</span>  {info.bestFor}</span>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: "var(--aui-space-2)", paddingTop: 2 }}>
+                        <svg style={{ marginTop: 1, flexShrink: 0 }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--aui-text-assistive)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                        <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-muted)', letterSpacing: '-0.05px', lineHeight: "var(--aui-leading-relaxed)" }}><span style={{ fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text-muted)' }}>적합한 컨텍스트</span>  {info.bestFor}</span>
                       </div>
 
                       {/* Expected effect */}
-                      <div style={{ backgroundColor: 'rgba(26,117,255,0.05)', borderRadius: 8, padding: '9px 11px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                        <svg style={{ marginTop: 1.5, flexShrink: 0 }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0066FF" strokeWidth="2.2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-                        <span style={{ fontSize: 11, color: 'rgba(46,47,51,0.88)', letterSpacing: '-0.05px', lineHeight: 1.6 }}><span style={{ fontWeight: 700, color: '#0066FF' }}>기대 효과</span>  {info.expectedEffect}</span>
+                      <div style={{ backgroundColor: 'var(--aui-primary-tint)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-2) var(--aui-space-3)`, display: 'flex', alignItems: 'flex-start', gap: "var(--aui-space-2)" }}>
+                        <svg style={{ marginTop: 1.5, flexShrink: 0 }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--aui-primary)" strokeWidth="2.2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                        <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-neutral)', letterSpacing: '-0.05px', lineHeight: "var(--aui-leading-relaxed)" }}><span style={{ fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-primary)' }}>기대 효과</span>  {info.expectedEffect}</span>
                       </div>
                     </div>
 
@@ -2603,15 +2672,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     {variant && (
                       <button
                         onClick={() => handlePickVariant(variantIdx as 0|1|2)}
-                        style={{ marginTop: 16, width: '100%', padding: '11px 0', borderRadius: '8px', backgroundColor: '#171719', color: '#ffffff', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', letterSpacing: '-0.2px', transition: 'background 0.15s' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(46,47,51,0.88)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#171719' }}
+                        className="hover:!bg-[var(--aui-text-neutral)]"
+                        style={{ marginTop: 16, width: '100%', padding: `var(--aui-space-3) 0`, borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", border: 'none', cursor: 'pointer', letterSpacing: '-0.2px', transition: 'background 0.15s' }}
                       >
                         이 시안으로 진행
                       </button>
                     )}
                     {!variant && (
-                      <div style={{ marginTop: 16, width: '100%', padding: '11px 0', borderRadius: '8px', backgroundColor: '#F4F4F5', color: 'rgba(55,56,60,0.16)', fontSize: 13, fontWeight: 600, textAlign: 'center', letterSpacing: '-0.2px' }}>
+                      <div style={{ marginTop: 16, width: '100%', padding: `var(--aui-space-3) 0`, borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-surface-muted)', color: 'var(--aui-text-disabled)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", textAlign: 'center', letterSpacing: '-0.2px' }}>
                         생성 중...
                       </div>
                     )}
@@ -2627,7 +2695,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           <div className="absolute inset-0 pointer-events-none" style={{ zIndex: -1 }}>
             <DotField />
           </div>
-          <div ref={canvasTransformRef} style={{ transformOrigin: '0 0', display: 'flex', alignItems: 'flex-start', gap: 24, padding: 40, width: 'max-content' }}>
+          <div ref={canvasTransformRef} style={{ transformOrigin: '0 0', display: 'flex', alignItems: 'flex-start', gap: "var(--aui-space-6)", padding: "var(--aui-space-10)", width: 'max-content' }}>
           <style>{`@keyframes aide-bar{0%{transform:translateX(-150%)}100%{transform:translateX(500%)}}`}</style>
 
           {/* DESIGN.md text card */}
@@ -2640,9 +2708,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             function parseMdInline(text: string): React.ReactNode[] {
               return text.split(/(\*\*[^*]+\*\*|`[^`\n]+`)/).map((s, j) => {
                 if (s.startsWith('**') && s.endsWith('**'))
-                  return <strong key={j} style={{ fontWeight: 700, color: '#171719' }}>{s.slice(2, -2)}</strong>
+                  return <strong key={j} style={{ fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)' }}>{s.slice(2, -2)}</strong>
                 if (s.startsWith('`') && s.endsWith('`'))
-                  return <code key={j} style={{ fontFamily: 'monospace', fontSize: '0.85em', backgroundColor: 'rgba(0,0,0,0.06)', padding: '0 3px', borderRadius: 3, color: '#c7254e' }}>{s.slice(1, -1)}</code>
+                  return <code key={j} style={{ fontFamily: 'monospace', fontSize: '0.85em', backgroundColor: 'var(--aui-border-subtle)', padding: `0 var(--aui-space-1)`, borderRadius: "var(--aui-radius-sm)", color: 'var(--aui-negative)' }}>{s.slice(1, -1)}</code>
                 return s
               })
             }
@@ -2686,35 +2754,35 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             }
 
             return (
-              <div key="design-md" className="shrink-0 flex flex-col overflow-hidden" onClick={e => { e.stopPropagation(); setSelectedCard('design-md') }} style={{ width: 300, height: 560, borderRadius: 16, backgroundColor: '#ffffff', border: selectedCard === 'design-md' ? '2px solid #0066FF' : '1px solid rgba(0,0,0,0.08)', cursor: 'default', outline: selectedCard === 'design-md' ? '3px solid rgba(26,117,255,0.18)' : 'none', outlineOffset: '2px' }}>
-                <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(55,56,60,0.61)" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#171719' }}>DESIGN.md</span>
-                  <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.28)', marginLeft: 2 }}>{designSystemDisplayName}</span>
+              <div key="design-md" className="shrink-0 flex flex-col overflow-hidden" onClick={e => { e.stopPropagation(); setSelectedCard('design-md') }} style={{ width: 300, height: 560, borderRadius: "var(--aui-radius-card)", backgroundColor: 'var(--aui-on-dark)', border: selectedCard === 'design-md' ? '2px solid var(--aui-primary)' : '1px solid var(--aui-border-subtle)', cursor: 'default', outline: selectedCard === 'design-md' ? '3px solid var(--aui-primary-muted)' : 'none', outlineOffset: '2px' }}>
+                <div style={{ padding: `var(--aui-space-3) var(--aui-space-4)`, borderBottom: '1px solid var(--aui-shadow-line)', display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", flexShrink: 0 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--aui-text-muted)" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text)' }}>DESIGN.md</span>
+                  <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-assistive)', marginLeft: 2 }}>{designSystemDisplayName}</span>
                 </div>
-                <div data-card-scroll="design-md" style={{ overflowY: 'auto', padding: '14px 14px 18px', flex: 1 }}>
+                <div data-card-scroll="design-md" style={{ overflowY: 'auto', padding: `var(--aui-space-4) var(--aui-space-4) var(--aui-space-5)`, flex: 1 }}>
                   {segs.map(seg => {
                     const k = seg.i
                     if (seg.t === 'blank') return <div key={k} style={{ height: 5 }} />
-                    if (seg.t === 'hr')    return <div key={k} style={{ height: 1, backgroundColor: 'rgba(112,115,124,0.16)', margin: '8px 0' }} />
-                    if (seg.t === 'h1')    return <p key={k} style={{ fontSize: 14, fontWeight: 700, color: '#171719', margin: '14px 0 4px', lineHeight: 1.3 }}>{parseMdInline(seg.text)}</p>
-                    if (seg.t === 'h2')    return <p key={k} style={{ fontSize: 12, fontWeight: 700, color: '#171719', margin: '10px 0 3px', lineHeight: 1.3 }}>{parseMdInline(seg.text)}</p>
-                    if (seg.t === 'h3')    return <p key={k} style={{ fontSize: 11, fontWeight: 600, color: 'rgba(46,47,51,0.88)', margin: '8px 0 2px' }}>{parseMdInline(seg.text)}</p>
-                    if (seg.t === 'h4')    return <p key={k} style={{ fontSize: 10, fontWeight: 600, color: 'rgba(55,56,60,0.61)', margin: '6px 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{parseMdInline(seg.text)}</p>
-                    if (seg.t === 'bullet') return <p key={k} style={{ fontSize: 11, color: 'rgba(46,47,51,0.88)', margin: '1px 0 1px 8px', lineHeight: 1.5 }}>{'• '}{parseMdInline(seg.text)}</p>
+                    if (seg.t === 'hr')    return <div key={k} style={{ height: 1, backgroundColor: 'var(--aui-border)', margin: `var(--aui-space-2) 0` }} />
+                    if (seg.t === 'h1')    return <p key={k} style={{ fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', margin: `var(--aui-space-4) 0 var(--aui-space-1)`, lineHeight: "var(--aui-leading-snug)" }}>{parseMdInline(seg.text)}</p>
+                    if (seg.t === 'h2')    return <p key={k} style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', margin: `var(--aui-space-3) 0 var(--aui-space-1)`, lineHeight: "var(--aui-leading-snug)" }}>{parseMdInline(seg.text)}</p>
+                    if (seg.t === 'h3')    return <p key={k} style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text-neutral)', margin: `var(--aui-space-2) 0 var(--aui-space-1)` }}>{parseMdInline(seg.text)}</p>
+                    if (seg.t === 'h4')    return <p key={k} style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text-muted)', margin: `var(--aui-space-2) 0 var(--aui-space-1)`, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{parseMdInline(seg.text)}</p>
+                    if (seg.t === 'bullet') return <p key={k} style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-neutral)', margin: `var(--aui-space-1) 0 var(--aui-space-1) var(--aui-space-2)`, lineHeight: "var(--aui-leading-normal)" }}>{'• '}{parseMdInline(seg.text)}</p>
                     if (seg.t === 'code')  return (
-                      <pre key={k} style={{ fontSize: 10, fontFamily: 'monospace', backgroundColor: '#F4F4F5', borderRadius: 6, padding: '8px 10px', margin: '4px 0', overflowX: 'auto', color: 'rgba(46,47,51,0.88)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                      <pre key={k} style={{ fontSize: "var(--aui-type-meta-size)", fontFamily: 'monospace', backgroundColor: 'var(--aui-surface-muted)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-2) var(--aui-space-3)`, margin: `var(--aui-space-1) 0`, overflowX: 'auto', color: 'var(--aui-text-neutral)', lineHeight: "var(--aui-leading-relaxed)", whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                         {seg.lines.join('\n')}
                       </pre>
                     )
                     if (seg.t === 'table') return (
-                      <div key={k} style={{ overflowX: 'auto', margin: '4px 0' }}>
-                        <table style={{ fontSize: 10, borderCollapse: 'collapse', width: '100%' }}>
+                      <div key={k} style={{ overflowX: 'auto', margin: `var(--aui-space-1) 0` }}>
+                        <table style={{ fontSize: "var(--aui-type-meta-size)", borderCollapse: 'collapse', width: '100%' }}>
                           <tbody>
                             {seg.rows.map((row, ri) => (
-                              <tr key={ri} style={{ borderBottom: '1px solid rgba(112,115,124,0.08)' }}>
+                              <tr key={ri} style={{ borderBottom: '1px solid var(--aui-border-subtle)' }}>
                                 {row.map((cell, ci) => (
-                                  <td key={ci} style={{ padding: '3px 6px', color: ri === 0 ? '#171719' : 'rgba(55,56,60,0.61)', fontWeight: ri === 0 ? 600 : 400, whiteSpace: 'nowrap' }}>
+                                  <td key={ci} style={{ padding: `var(--aui-space-1) var(--aui-space-2)`, color: ri === 0 ? 'var(--aui-text)' : 'var(--aui-text-muted)', fontWeight: ri === 0 ? 600 : 400, whiteSpace: 'nowrap' }}>
                                     {parseMdInline(cell)}
                                   </td>
                                 ))}
@@ -2724,7 +2792,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         </table>
                       </div>
                     )
-                    return <p key={k} style={{ fontSize: 11, color: 'rgba(55,56,60,0.61)', margin: '1px 0', lineHeight: 1.6 }}>{parseMdInline((seg as { text: string }).text)}</p>
+                    return <p key={k} style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-muted)', margin: `var(--aui-space-1) 0`, lineHeight: "var(--aui-leading-relaxed)" }}>{parseMdInline((seg as { text: string }).text)}</p>
                   })}
                 </div>
               </div>
@@ -2734,17 +2802,24 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           {/* Design system card — grid visualization */}
           {hasDesign ? (() => {
             const customMeta = customDesignMd ? parseCustomDesignMdMeta(customDesignMd) : null
-            const effectivePalette = (customMeta?.palette ?? preset.palette) ?? [{ name: 'Primary', hex: '#0066FF' }]
+            const basePalette = (customMeta?.palette ?? preset.palette) ?? [{ name: 'Primary', hex: 'var(--aui-primary)' }]
+            const effectivePalette = brandColors[0]
+              ? [
+                  { name: 'Primary', hex: brandColors[0] },
+                  ...(brandColors[1] ? [{ name: 'Secondary', hex: brandColors[1] }] : []),
+                  ...basePalette.filter(s => s.name !== 'Primary' && s.name !== 'Secondary'),
+                ]
+              : basePalette
             const effectiveFonts = (customMeta?.fonts ?? preset.fonts) ?? { headline: 'sans-serif', body: 'sans-serif' }
-            const effectiveColor = (customMeta?.color ?? preset.color) ?? '#0066FF'
+            const effectiveColor = brandColors[0] ?? (customMeta?.color ?? preset.color) ?? 'var(--aui-primary)'
             const isDark = customMeta?.isDark ?? false
-            const outerBg = isDark ? '#171719' : 'rgba(112,115,124,0.16)'
-            const cellBg = isDark ? '#1a1a1a' : '#ffffff'
-            const gridLine = isDark ? '#272727' : '#e0e0e3'
-            const ink = isDark ? '#ffffff' : '#171719'
-            const muted = isDark ? 'rgba(55,56,60,0.61)' : 'rgba(55,56,60,0.61)'
-            const subtle = isDark ? '#252525' : '#f4f4f5'
-            const border = isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.07)'
+            const outerBg = isDark ? 'var(--aui-text)' : 'var(--aui-border)'
+            const cellBg = isDark ? 'var(--aui-inverse-surface)' : 'var(--aui-on-dark)'
+            const gridLine = isDark ? 'var(--aui-inverse-surface-raised)' : 'var(--aui-border)'
+            const ink = isDark ? 'var(--aui-on-dark)' : 'var(--aui-text)'
+            const muted = isDark ? 'var(--aui-text-muted)' : 'var(--aui-text-muted)'
+            const subtle = isDark ? 'var(--aui-inverse-surface)' : 'var(--aui-surface-muted)'
+            const border = isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-line)'
 
             // Derived design tokens from preset RICH_META (customMeta has no token fields)
             const effectiveTypographyScale = preset.typographyScale
@@ -2757,7 +2832,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             const hasPill = effectiveRadiusTokens?.some((t: { name: string; value: string }) => t.name === 'pill' || t.value === '9999px' || t.value === '999px') ?? false
             const chipRadius = hasPill ? '9999px' : (effectiveRadiusTokens?.find((t: { name: string; value: string }) => ['xl', 'lg', 'full'].includes(t.name))?.value ?? '20px')
             const badgeRadius = effectiveRadiusTokens?.find((t: { name: string; value: string }) => ['xs', 'sm'].includes(t.name))?.value ?? '4px'
-            const negativeColor = effectiveStatusColors?.find((s: { name: string; hex: string }) => s.name.toLowerCase().includes('negative'))?.hex ?? '#ff4242'
+            const negativeColor = effectiveStatusColors?.find((s: { name: string; hex: string }) => s.name.toLowerCase().includes('negative'))?.hex ?? 'var(--aui-negative)'
 
             const TYPO_VISUAL_SIZES = [58, 46, 36, 28]
             type TypoRow = { label: string; font: string; size: number; weight: number; actualSize: string | null }
@@ -2801,34 +2876,34 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             const stylePlanLabel = designSystemDisplayName
 
             return (
-              <div className="shrink-0 flex flex-col overflow-hidden" onClick={e => { e.stopPropagation(); setSelectedCard('style-plan') }} style={{ width: 680, height: 560, borderRadius: 16, backgroundColor: outerBg, border: selectedCard === 'style-plan' ? '2px solid #0066FF' : (isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.06)'), cursor: 'default', outline: selectedCard === 'style-plan' ? '3px solid rgba(26,117,255,0.18)' : 'none', outlineOffset: '2px' }}>
+              <div className="shrink-0 flex flex-col overflow-hidden" onClick={e => { e.stopPropagation(); setSelectedCard('style-plan') }} style={{ width: 680, height: 560, borderRadius: "var(--aui-radius-card)", backgroundColor: outerBg, border: selectedCard === 'style-plan' ? '2px solid var(--aui-primary)' : (isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-border-subtle)'), cursor: 'default', outline: selectedCard === 'style-plan' ? '3px solid var(--aui-primary-muted)' : 'none', outlineOffset: '2px' }}>
 
                 {/* Header */}
-                <div style={{ padding: '10px 14px', borderBottom: border, display: 'flex', alignItems: 'center', gap: 8, backgroundColor: cellBg }}>
+                <div style={{ padding: `var(--aui-space-3) var(--aui-space-4)`, borderBottom: border, display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", backgroundColor: cellBg }}>
                   <Sparkles size={11} style={{ color: effectiveColor }} />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: ink }}>{stylePlanLabel} Style Plan</span>
-                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 5, alignItems: 'center' }}>
+                  <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: ink }}>{stylePlanLabel} Style Plan</span>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: "var(--aui-space-1)", alignItems: 'center' }}>
                     {(['A', 'B', 'C'] as const).map((l, i) => {
                       const v = mainVariants[i]
                       const loading = i === 0 ? isGenerating : i === 1 ? isGeneratingB : isGeneratingC
-                      return <div key={l} style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: v ? '#00BF40' : loading ? effectiveColor : isDark ? '#2a2a2a' : 'rgba(112,115,124,0.16)', transition: 'background-color 0.3s' }} />
+                      return <div key={l} style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: v ? 'var(--aui-positive)' : loading ? effectiveColor : isDark ? 'var(--aui-inverse-surface-raised)' : 'var(--aui-border)', transition: 'background-color 0.3s' }} />
                     })}
                   </div>
                 </div>
 
                 {/* 4-column grid */}
-                <div data-card-scroll="style-plan" style={{ display: 'grid', gridTemplateColumns: '175px 140px 1fr 1fr', gap: 1, backgroundColor: gridLine, flex: 1, overflowY: 'auto' }}>
+                <div data-card-scroll="style-plan" style={{ display: 'grid', gridTemplateColumns: '175px 140px 1fr 1fr', gap: "var(--aui-space-1)", backgroundColor: gridLine, flex: 1, overflowY: 'auto' }}>
 
                   {/* Col 1: Color swatches + tint strips */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
                     {effectivePalette.map(swatch => {
                       const tints = genTints(swatch.hex)
-                      const onSwatch = isLightHex(swatch.hex) ? '#171719' : '#ffffff'
+                      const onSwatch = isLightHex(swatch.hex) ? 'var(--aui-text)' : 'var(--aui-on-dark)'
                       return (
                         <div key={swatch.name} style={{ backgroundColor: cellBg, display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
-                          <div style={{ backgroundColor: swatch.hex, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: onSwatch }}>{swatch.name}</span>
-                            <span style={{ fontSize: 9, fontFamily: 'monospace', color: onSwatch, opacity: 0.75 }}>{swatch.hex.toUpperCase()}</span>
+                          <div style={{ backgroundColor: swatch.hex, padding: `var(--aui-space-3) var(--aui-space-3)`, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)", flex: 1 }}>
+                            <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)", color: onSwatch }}>{swatch.name}</span>
+                            <span style={{ fontSize: "var(--aui-type-meta-size)", fontFamily: 'monospace', color: onSwatch, opacity: 0.75 }}>{swatch.hex.toUpperCase()}</span>
                           </div>
                           <div style={{ display: 'flex', height: 14 }}>
                             {tints.map((t, ti) => <div key={ti} style={{ flex: 1, backgroundColor: t }} />)}
@@ -2839,50 +2914,50 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   </div>
 
                   {/* Col 2: Typography — reads from preset.typographyScale */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
                     {typoRows.map(({ label, font, size, weight, actualSize }, i) => (
-                      <div key={i} style={{ backgroundColor: cellBg, padding: '8px 12px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 2, overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
-                          <span style={{ fontSize: 8, fontWeight: 600, color: muted, textTransform: 'uppercase', letterSpacing: '0.07em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 70 }}>{label}</span>
-                          <span style={{ fontSize: 7.5, color: isDark ? 'rgba(46,47,51,0.88)' : 'rgba(55,56,60,0.28)', flexShrink: 0 }}>{font.split(',')[0].trim()}</span>
+                      <div key={i} style={{ backgroundColor: cellBg, padding: `var(--aui-space-2) var(--aui-space-3)`, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: "var(--aui-space-1)", overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: "var(--aui-space-1)" }}>
+                          <span style={{ fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-semibold)", color: muted, textTransform: 'uppercase', letterSpacing: '0.07em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 70 }}>{label}</span>
+                          <span style={{ fontSize: "var(--aui-type-nano-size)", color: isDark ? 'var(--aui-text-neutral)' : 'var(--aui-text-assistive)', flexShrink: 0 }}>{font.split(',')[0].trim()}</span>
                         </div>
                         {actualSize && (
-                          <span style={{ fontSize: 7.5, color: isDark ? 'rgba(46,47,51,0.88)' : 'rgba(55,56,60,0.16)', fontFamily: 'monospace', lineHeight: 1 }}>{actualSize} · {weight}</span>
+                          <span style={{ fontSize: "var(--aui-type-nano-size)", color: isDark ? 'var(--aui-text-neutral)' : 'var(--aui-text-disabled)', fontFamily: 'monospace', lineHeight: "var(--aui-leading-none)" }}>{actualSize} · {weight}</span>
                         )}
-                        <div style={{ fontSize: size, fontWeight: weight, color: ink, lineHeight: 1, fontFamily: font, letterSpacing: '-0.02em', overflow: 'hidden', marginTop: 'auto' }}>Aa</div>
+                        <div style={{ fontSize: size, fontWeight: weight, color: ink, lineHeight: "var(--aui-leading-none)", fontFamily: font, letterSpacing: '-0.02em', overflow: 'hidden', marginTop: 'auto' }}>Aa</div>
                       </div>
                     ))}
                   </div>
 
                   {/* Col 3: Components */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
                     {/* Buttons — radius from radiusTokens.md, negative from statusColors */}
-                    <div style={{ backgroundColor: cellBg, padding: '10px 10px', flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 5 }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
-                        <button style={{ backgroundColor: effectiveColor, color: '#fff', border: 'none', borderRadius: btnRadius, padding: '7px 4px', fontSize: 9, fontWeight: 600, cursor: 'default' }}>Primary</button>
-                        <button style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.07)', color: ink, border: 'none', borderRadius: btnRadius, padding: '7px 4px', fontSize: 9, fontWeight: 500, cursor: 'default' }}>Secondary</button>
-                        <button style={{ backgroundColor: 'transparent', color: ink, border: `1px solid ${isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.22)'}`, borderRadius: btnRadius, padding: '7px 4px', fontSize: 9, fontWeight: 500, cursor: 'default' }}>Outline</button>
-                        <button style={{ backgroundColor: 'transparent', color: ink, border: 'none', borderRadius: btnRadius, padding: '7px 4px', fontSize: 9, fontWeight: 500, cursor: 'default' }}>Ghost</button>
+                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: "var(--aui-space-1)" }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: "var(--aui-space-1)" }}>
+                        <button style={{ backgroundColor: effectiveColor, color: 'var(--aui-on-dark)', border: 'none', borderRadius: btnRadius, padding: `var(--aui-space-2) var(--aui-space-1)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)", cursor: 'default' }}>Primary</button>
+                        <button style={{ backgroundColor: isDark ? 'var(--aui-on-dark-faint)' : 'var(--aui-shadow-line)', color: ink, border: 'none', borderRadius: btnRadius, padding: `var(--aui-space-2) var(--aui-space-1)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'default' }}>Secondary</button>
+                        <button style={{ backgroundColor: 'transparent', color: ink, border: `1px solid ${isDark ? 'var(--aui-on-dark-faint)' : 'var(--aui-scrim-soft)'}`, borderRadius: btnRadius, padding: `var(--aui-space-2) var(--aui-space-1)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'default' }}>Outline</button>
+                        <button style={{ backgroundColor: 'transparent', color: ink, border: 'none', borderRadius: btnRadius, padding: `var(--aui-space-2) var(--aui-space-1)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'default' }}>Ghost</button>
                       </div>
-                      <button style={{ backgroundColor: negativeColor, color: '#fff', border: 'none', borderRadius: btnRadius, padding: '7px 4px', fontSize: 9, fontWeight: 600, cursor: 'default', width: '100%' }}>Negative</button>
+                      <button style={{ backgroundColor: negativeColor, color: 'var(--aui-on-dark)', border: 'none', borderRadius: btnRadius, padding: `var(--aui-space-2) var(--aui-space-1)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)", cursor: 'default', width: '100%' }}>Negative</button>
                     </div>
 
                     {/* Dividers */}
-                    <div style={{ backgroundColor: cellBg, padding: '10px 10px', display: 'flex', alignItems: 'center', flex: 1 }}>
-                      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <div style={{ height: 1.5, borderRadius: 2, backgroundColor: effectiveColor, width: '100%' }} />
-                        <div style={{ height: 1.5, borderRadius: 2, backgroundColor: isDark ? '#2a2a2a' : 'rgba(112,115,124,0.16)', width: '75%' }} />
-                        <div style={{ height: 1.5, borderRadius: 2, backgroundColor: isDark ? '#2a2a2a' : 'rgba(112,115,124,0.16)', width: '50%' }} />
+                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, display: 'flex', alignItems: 'center', flex: 1 }}>
+                      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
+                        <div style={{ height: 1.5, borderRadius: "var(--aui-radius-sm)", backgroundColor: effectiveColor, width: '100%' }} />
+                        <div style={{ height: 1.5, borderRadius: "var(--aui-radius-sm)", backgroundColor: isDark ? 'var(--aui-inverse-surface-raised)' : 'var(--aui-border)', width: '75%' }} />
+                        <div style={{ height: 1.5, borderRadius: "var(--aui-radius-sm)", backgroundColor: isDark ? 'var(--aui-inverse-surface-raised)' : 'var(--aui-border)', width: '50%' }} />
                       </div>
                     </div>
 
                     {/* Toggle + checkbox + radio */}
-                    <div style={{ backgroundColor: cellBg, padding: '10px 10px', display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-                      <div style={{ width: 32, height: 18, borderRadius: 9, backgroundColor: effectiveColor, display: 'flex', alignItems: 'center', padding: '0 2px' }}>
-                        <div style={{ width: 14, height: 14, borderRadius: '50%', backgroundColor: '#fff', marginLeft: 'auto' }} />
+                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", flex: 1 }}>
+                      <div style={{ width: 32, height: 18, borderRadius: "var(--aui-radius-sm)", backgroundColor: effectiveColor, display: 'flex', alignItems: 'center', padding: `0 var(--aui-space-1)` }}>
+                        <div style={{ width: 14, height: 14, borderRadius: '50%', backgroundColor: 'var(--aui-on-dark)', marginLeft: 'auto' }} />
                       </div>
-                      <div style={{ width: 14, height: 14, borderRadius: 3, backgroundColor: effectiveColor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      <div style={{ width: 14, height: 14, borderRadius: "var(--aui-radius-sm)", backgroundColor: effectiveColor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="var(--aui-on-dark)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </div>
                       <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${effectiveColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: effectiveColor }} />
@@ -2890,7 +2965,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     </div>
 
                     {/* Nav icons */}
-                    <div style={{ backgroundColor: cellBg, padding: '10px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-around', flex: 1 }}>
+                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, display: 'flex', alignItems: 'center', justifyContent: 'space-around', flex: 1 }}>
                       {['M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z', 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'].map((d, i) => (
                         <div key={i} style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: subtle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={ink} strokeWidth="1.8"><path d={d}/></svg>
@@ -2900,37 +2975,37 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   </div>
 
                   {/* Col 4: UI Patterns */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
                     {/* Search */}
-                    <div style={{ backgroundColor: cellBg, padding: '10px 10px', flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, backgroundColor: subtle, border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.07)', borderRadius: 7, padding: '6px 8px' }}>
+                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", backgroundColor: subtle, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-line)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-2) var(--aui-space-2)` }}>
                         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={muted} strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                        <span style={{ fontSize: 10, color: muted }}>Search</span>
+                        <span style={{ fontSize: "var(--aui-type-meta-size)", color: muted }}>Search</span>
                       </div>
                     </div>
 
                     {/* List rows */}
-                    <div style={{ backgroundColor: cellBg, padding: '0 10px', flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1 }}>
+                    <div style={{ backgroundColor: cellBg, padding: `0 var(--aui-space-3)`, flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: "var(--aui-space-1)" }}>
                       {[100, 75, 55].map((w, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 0', borderBottom: i < 2 ? (isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)') : 'none' }}>
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", padding: `var(--aui-space-1) 0`, borderBottom: i < 2 ? (isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-border-subtle)') : 'none' }}>
                           <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: i === 0 ? effectiveColor : subtle, flexShrink: 0 }} />
-                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                            <div style={{ height: 6, borderRadius: 3, backgroundColor: isDark ? '#2a2a2a' : 'rgba(112,115,124,0.16)', width: `${w}%` }} />
-                            <div style={{ height: 4, borderRadius: 3, backgroundColor: isDark ? '#171719' : 'rgba(112,115,124,0.08)', width: `${Math.round(w * 0.6)}%` }} />
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
+                            <div style={{ height: 6, borderRadius: "var(--aui-radius-sm)", backgroundColor: isDark ? 'var(--aui-inverse-surface-raised)' : 'var(--aui-border)', width: `${w}%` }} />
+                            <div style={{ height: 4, borderRadius: "var(--aui-radius-sm)", backgroundColor: isDark ? 'var(--aui-text)' : 'var(--aui-border-subtle)', width: `${Math.round(w * 0.6)}%` }} />
                           </div>
                         </div>
                       ))}
                     </div>
 
                     {/* Badge + chips — radius from radiusTokens */}
-                    <div style={{ backgroundColor: cellBg, padding: '10px 10px', flex: 1, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                      <div style={{ backgroundColor: effectiveColor, color: '#fff', borderRadius: badgeRadius, padding: '2px 7px', fontSize: 9, fontWeight: 600 }}>New</div>
-                      <div style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)', borderRadius: chipRadius, padding: '2px 8px', fontSize: 9 }}>Filter</div>
-                      <div style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)', borderRadius: chipRadius, padding: '2px 8px', fontSize: 9 }}>Sort</div>
+                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", flexWrap: 'wrap' }}>
+                      <div style={{ backgroundColor: effectiveColor, color: 'var(--aui-on-dark)', borderRadius: badgeRadius, padding: `var(--aui-space-1) var(--aui-space-2)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)" }}>New</div>
+                      <div style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-medium)', borderRadius: chipRadius, padding: `var(--aui-space-1) var(--aui-space-2)`, fontSize: "var(--aui-type-meta-size)" }}>Filter</div>
+                      <div style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-medium)', borderRadius: chipRadius, padding: `var(--aui-space-1) var(--aui-space-2)`, fontSize: "var(--aui-type-meta-size)" }}>Sort</div>
                     </div>
 
                     {/* Action icons */}
-                    <div style={{ backgroundColor: cellBg, padding: '10px 10px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-around' }}>
+                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-around' }}>
                       {['M12 5v14M5 12l7 7 7-7', 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0', 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'].map((d, i) => (
                         <div key={i} style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: subtle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={ink} strokeWidth="1.8"><path d={d}/></svg>
@@ -2944,20 +3019,20 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             )
           })() : (
             /* No design system: simple spinner card */
-            <div className="shrink-0 flex flex-col items-center justify-center gap-4" style={{ width: 280, padding: '32px 24px', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.97)', border: `1px solid ${F.hairlineSoft}`, boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}>
-              <div className="size-10 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#0066FF' }} />
-              <p style={{ fontSize: 13, color: 'rgba(55,56,60,0.61)', textAlign: 'center', lineHeight: 1.6 }}>AI가 최적의 디자인을<br />설계하고 있습니다</p>
-              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="shrink-0 flex flex-col items-center justify-center gap-4" style={{ width: 280, padding: `var(--aui-space-8) var(--aui-space-6)`, borderRadius: "var(--aui-radius-card)", backgroundColor: 'var(--aui-on-dark-strong)', border: `1px solid ${F.hairlineSoft}`, boxShadow: '0 8px 40px var(--aui-shadow-medium)' }}>
+              <div className="size-10 rounded-full animate-spin" style={{ border: '2px solid var(--aui-border-subtle)', borderTopColor: 'var(--aui-primary)' }} />
+              <p style={{ fontSize: "var(--aui-type-compact-size)", color: 'var(--aui-text-muted)', textAlign: 'center', lineHeight: "var(--aui-leading-relaxed)" }}>AI가 최적의 디자인을<br />설계하고 있습니다</p>
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
                 {(['A', 'B', 'C'] as const).map((letter, idx) => {
                   const variant = mainVariants[idx]
                   const isLoadingThis = idx === 0 ? isGenerating : idx === 1 ? isGeneratingB : isGeneratingC
                   return (
-                    <div key={letter} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div className={isLoadingThis ? 'animate-spin' : ''} style={{ width: 15, height: 15, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', ...(variant ? { backgroundColor: '#171719' } : isLoadingThis ? { border: '2px solid rgba(0,0,0,0.10)', borderTopColor: '#171719' } : { backgroundColor: 'rgba(112,115,124,0.16)' }) }}>
-                        {variant && <Check size={7} color="#ffffff" />}
+                    <div key={letter} style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
+                      <div className={isLoadingThis ? 'animate-spin' : ''} style={{ width: 15, height: 15, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', ...(variant ? { backgroundColor: 'var(--aui-text)' } : isLoadingThis ? { border: '2px solid var(--aui-shadow-medium)', borderTopColor: 'var(--aui-text)' } : { backgroundColor: 'var(--aui-border)' }) }}>
+                        {variant && <Check size={7} color="var(--aui-on-dark)" />}
                       </div>
-                      <span style={{ fontSize: 12, color: 'rgba(55,56,60,0.61)' }}>시안 {letter}</span>
-                      <span style={{ fontSize: 11, marginLeft: 'auto', color: variant ? '#00BF40' : isLoadingThis ? 'rgba(55,56,60,0.61)' : 'rgba(55,56,60,0.16)' }}>
+                      <span style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-muted)' }}>시안 {letter}</span>
+                      <span style={{ fontSize: "var(--aui-type-micro-size)", marginLeft: 'auto', color: variant ? 'var(--aui-positive)' : isLoadingThis ? 'var(--aui-text-muted)' : 'var(--aui-text-disabled)' }}>
                         {variant ? '완료' : isLoadingThis ? '생성 중...' : '대기 중'}
                       </span>
                     </div>
@@ -2970,14 +3045,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           {mainVariants.every(v => !v) && !isAnyGenerating && (
             <div
               className="flex flex-col items-center justify-center cursor-pointer hover:bg-white transition-colors shrink-0"
-              style={{ borderRadius: 14, border: '2px dashed rgba(0,0,0,0.13)', minHeight: 280, width: isMobile ? 340 : isTablet ? 520 : 760, padding: 32 }}
+              style={{ borderRadius: "var(--aui-radius-card)", border: '2px dashed var(--aui-shadow-medium)', minHeight: 280, width: isMobile ? 340 : isTablet ? 520 : 760, padding: "var(--aui-space-8)" }}
               onClick={handleGenerate}
             >
-              <div className="mb-3 size-11 flex items-center justify-center bg-[#F4F4F5]" style={{ borderRadius: 12 }}>
-                <Shapes size={20} color="rgba(55,56,60,0.61)" />
+              <div className="mb-3 size-11 flex items-center justify-center bg-[var(--aui-surface-muted)]" style={{ borderRadius: "var(--aui-radius-control)" }}>
+                <Shapes size={20} color="var(--aui-text-muted)" />
               </div>
-              <p className="text-[13px] font-semibold text-[rgba(46,47,51,0.88)] mb-1">시안 생성</p>
-              <p className="text-[12px] text-[rgba(55,56,60,0.61)] text-center">A/B/C 디자인 시안을 바로 생성합니다</p>
+              <p className="text-[13px] font-semibold text-[var(--aui-text-neutral)] mb-1">시안 생성</p>
+              <p className="text-[12px] text-[var(--aui-text-muted)] text-center">A/B/C 디자인 시안을 바로 생성합니다</p>
             </div>
           )}
 
@@ -2986,7 +3061,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             {(['A', 'B', 'C'] as const).map((letter, idx) => {
               const variant = mainVariants[idx]
               const isLoadingThis = idx === 0 ? isGenerating : idx === 1 ? isGeneratingB : isGeneratingC
-              const isFailed = !variant && !isLoadingThis && idx > 0
+              const isFailed = variantFailed[idx]
               const cardW = isMobile ? 180 : isTablet ? 220 : 320
               const previewNativeW = platform === 'mobile' ? 390 : 1440
               const previewNativeH = platform === 'mobile' ? 844 : 1024
@@ -2997,9 +3072,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               return (
                 <div key={letter} className="flex flex-col gap-3 shrink-0" style={{ width: cardW }}>
                   <div className="flex items-center gap-2" style={{ minHeight: 26 }}>
-                    <span className="text-[13px] font-semibold" style={{ color: '#171719' }}>시안 {letter}</span>
+                    <span className="text-[13px] font-semibold" style={{ color: 'var(--aui-text)' }}>시안 {letter}</span>
                     {isLoadingThis && (
-                      <div className="flex items-center gap-1.5 text-[13px]" style={{ color: 'rgba(55,56,60,0.61)' }}>
+                      <div className="flex items-center gap-1.5 text-[13px]" style={{ color: 'var(--aui-text-muted)' }}>
                         <svg className="animate-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" strokeOpacity="0.3" />
                           <path d="M21 12a9 9 0 00-9-9" />
@@ -3008,21 +3083,21 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       </div>
                     )}
                     {variant && !isLoadingThis && (
-                      <span className="text-[12px]" style={{ color: 'rgba(55,56,60,0.61)' }}>완료</span>
+                      <span className="text-[12px]" style={{ color: 'var(--aui-text-muted)' }}>완료</span>
                     )}
                     {/* B 시안 히어로 스타일 토글 */}
                     {letter === 'B' && variant && (
-                      <div className="ml-auto flex items-center" style={{ gap: 2, padding: '2px', borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.06)' }}>
+                      <div className="ml-auto flex items-center" style={{ gap: "var(--aui-space-1)", padding: "var(--aui-space-1)", borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-border-subtle)' }}>
                         <button
                           onClick={e => { e.stopPropagation(); setBHeroStyle('object') }}
-                          style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500, border: 'none', cursor: 'pointer', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'object' ? '#fff' : 'transparent', color: bHeroStyle === 'object' ? '#171719' : 'rgba(55,56,60,0.61)', boxShadow: bHeroStyle === 'object' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}
+                          style={{ padding: `var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-sm)", fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-medium)", border: 'none', cursor: 'pointer', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'object' ? 'var(--aui-on-dark)' : 'transparent', color: bHeroStyle === 'object' ? 'var(--aui-text)' : 'var(--aui-text-muted)', boxShadow: bHeroStyle === 'object' ? '0 1px 3px var(--aui-shadow-medium)' : 'none' }}
                         >
                           오브젝트
                         </button>
                         <button
                           onClick={e => { e.stopPropagation(); if (bSceneImage) setBHeroStyle('scene') }}
                           disabled={!bSceneImage && !isGeneratingBScene}
-                          style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500, border: 'none', cursor: bSceneImage ? 'pointer' : 'not-allowed', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'scene' ? '#fff' : 'transparent', color: bHeroStyle === 'scene' ? '#171719' : bSceneImage ? 'rgba(55,56,60,0.61)' : 'rgba(55,56,60,0.16)', boxShadow: bHeroStyle === 'scene' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+                          style={{ padding: `var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-sm)", fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-medium)", border: 'none', cursor: bSceneImage ? 'pointer' : 'not-allowed', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'scene' ? 'var(--aui-on-dark)' : 'transparent', color: bHeroStyle === 'scene' ? 'var(--aui-text)' : bSceneImage ? 'var(--aui-text-muted)' : 'var(--aui-text-disabled)', boxShadow: bHeroStyle === 'scene' ? '0 1px 3px var(--aui-shadow-medium)' : 'none', display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}
                         >
                           {isGeneratingBScene && bHeroStyle !== 'scene' && (
                             <svg className="animate-spin" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -3037,7 +3112,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     {letter !== 'B' && variant?.imageWarnings?.length ? (
                       <span
                         className="ml-auto text-[11px] px-1.5 py-0.5"
-                        style={{ color: '#b45309', backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6 }}
+                        style={{ color: 'var(--aui-caution-text)', backgroundColor: 'var(--aui-caution-soft)', border: '1px solid var(--aui-caution-border)', borderRadius: "var(--aui-radius-sm)" }}
                         title={variant.imageWarnings.join('\n')}
                       >
                         이미지 대체
@@ -3048,20 +3123,20 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     className="relative bg-white"
                     onClick={e => { e.stopPropagation(); setSelectedCard(`variant-${letter}`) }}
                     style={{
-                      borderRadius: '12px',
+                      borderRadius: "var(--aui-radius-control)",
                       height: cardH,
                       overflow: 'hidden',
-                      border: (isExpandingPrototype && pickedVariantIdx === idx) ? '2px solid #0066FF' : selectedCard === `variant-${letter}` ? '2px solid #0066FF' : '2px solid rgba(255,255,255,0.7)',
-                      outline: (isExpandingPrototype && pickedVariantIdx === idx) ? '3px solid rgba(26,117,255,0.28)' : selectedCard === `variant-${letter}` ? '3px solid rgba(26,117,255,0.18)' : 'none',
+                      border: (isExpandingPrototype && pickedVariantIdx === idx) ? '2px solid var(--aui-primary)' : selectedCard === `variant-${letter}` ? '2px solid var(--aui-primary)' : '2px solid var(--aui-on-dark-muted)',
+                      outline: (isExpandingPrototype && pickedVariantIdx === idx) ? '3px solid var(--aui-primary-muted)' : selectedCard === `variant-${letter}` ? '3px solid var(--aui-primary-muted)' : 'none',
                       outlineOffset: '2px',
                       cursor: 'default',
                     }}
                   >
                     {/* 프로토타입 생성 중 오버레이 */}
                     {isExpandingPrototype && pickedVariantIdx === idx && (
-                      <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid rgba(26,117,255,0.2)', borderTopColor: '#0066FF', animation: 'spin 0.85s linear infinite' }} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#0066FF', letterSpacing: '-0.1px' }}>프로토타입 생성 중...</span>
+                      <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'var(--aui-on-dark-strong)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-3)" }}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid var(--aui-primary-muted)', borderTopColor: 'var(--aui-primary)', animation: 'spin 0.85s linear infinite' }} />
+                        <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-primary)', letterSpacing: '-0.1px' }}>프로토타입 생성 중...</span>
                       </div>
                     )}
                     {variant ? (
@@ -3092,7 +3167,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                           display: 'block',
                           transform: `scale(${previewScale})`,
                           transformOrigin: 'top left',
-                          backgroundColor: '#ffffff',
+                          backgroundColor: 'var(--aui-on-dark)',
                         }}
                       />
                     ) : isLoadingThis ? (
@@ -3109,48 +3184,46 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                             display: 'block',
                             transform: `scale(${previewScale})`,
                             transformOrigin: 'top left',
-                            backgroundColor: '#ffffff',
+                            backgroundColor: 'var(--aui-on-dark)',
                             pointerEvents: 'none',
                           }}
                         />
                         {streamingHtml[idx] ? (
-                          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 72%, rgba(247,247,248,0.78) 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 14, pointerEvents: 'none' }}>
+                          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 72%, color-mix(in srgb, var(--aui-page) 78%, transparent) 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 14, pointerEvents: 'none' }}>
                             {/* Stitch 스타일 "그리는 중" 버블 — AI가 화면을 실시간으로 그리는 느낌 */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 9999, background: '#0066FF', boxShadow: '0 4px 12px rgba(0,102,255,0.35)' }}>
-                              <span style={{ display: 'inline-flex', gap: 3 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", padding: `var(--aui-space-2) var(--aui-space-3)`, borderRadius: "var(--aui-radius-pill)", background: 'var(--aui-primary)', boxShadow: '0 4px 12px var(--aui-primary-muted)' }}>
+                              <span style={{ display: 'inline-flex', gap: "var(--aui-space-1)" }}>
                                 {[0, 1, 2].map(d => (
-                                  <span key={d} className="animate-bounce" style={{ width: 4, height: 4, borderRadius: '50%', background: '#fff', animationDelay: `${d * 0.15}s`, animationDuration: '0.9s' }} />
+                                  <span key={d} className="animate-bounce" style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--aui-on-dark)', animationDelay: `${d * 0.15}s`, animationDuration: '0.9s' }} />
                                 ))}
                               </span>
-                              <span style={{ fontSize: 10.5, fontWeight: 600, color: '#fff', letterSpacing: '-0.2px' }}>AI가 그리는 중</span>
+                              <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-on-dark)', letterSpacing: '-0.2px' }}>AI가 그리는 중</span>
                             </div>
                           </div>
                         ) : (
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="size-8 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#0066FF' }} />
+                            <div className="size-8 rounded-full animate-spin" style={{ border: '2px solid var(--aui-border-subtle)', borderTopColor: 'var(--aui-primary)' }} />
                           </div>
                         )}
                       </>
                     ) : isFailed ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                        <span className="text-[13px] text-[rgba(55,56,60,0.61)]">생성 실패</span>
-                        <button onClick={() => handleRetryVariant(idx as 1 | 2)} className="flex items-center gap-1 text-[13px] text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors">
+                        <span className="text-[13px] text-[var(--aui-text-muted)]">생성 실패</span>
+                        <button onClick={() => idx === 0 ? handleGenerate() : handleRetryVariant(idx as 1 | 2)} className="flex items-center gap-1 text-[13px] text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors">
                           <RefreshCw size={11} /> 다시 시도
                         </button>
                       </div>
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="size-8 rounded-full" style={{ border: '2px solid rgba(0,0,0,0.08)', borderTopColor: 'rgba(0,0,0,0.3)' }} />
+                        <div className="size-8 rounded-full" style={{ border: '2px solid var(--aui-border-subtle)', borderTopColor: 'var(--aui-scrim)' }} />
                       </div>
                     )}
                   </div>
                   {variant && (
                     <button
                       onClick={() => handlePickVariant(idx as 0|1|2)}
-                      className="w-full py-2.5 text-[13px] font-medium text-white transition-colors"
-                      style={{ borderRadius: '8px', backgroundColor: '#171719' }}
-                      onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(46,47,51,0.88)' }}
-                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#171719' }}
+                      className="w-full py-2.5 text-[13px] font-medium text-white transition-colors hover:!bg-[var(--aui-text-neutral)]"
+                      style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-text)' }}
                     >
                       이 시안으로 진행
                     </button>
@@ -3171,7 +3244,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             return (
               <div className="flex items-start gap-6 shrink-0">
                 {/* 구분 화살표 */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', gap: 4, paddingTop: 24, color: 'rgba(55,56,60,0.16)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', gap: "var(--aui-space-1)", paddingTop: 24, color: 'var(--aui-text-disabled)' }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12h14M13 6l6 6-6 6"/>
                   </svg>
@@ -3180,9 +3253,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 <div className="flex flex-col gap-3 shrink-0" style={{ width: cardW }}>
                   {/* 헤더 */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-semibold" style={{ color: '#171719' }}>프로토타입 {pickedLabel}</span>
+                    <span className="text-[13px] font-semibold" style={{ color: 'var(--aui-text)' }}>프로토타입 {pickedLabel}</span>
                     {isExpandingPrototype && (
-                      <div className="flex items-center gap-1.5 text-[13px]" style={{ color: '#0066FF' }}>
+                      <div className="flex items-center gap-1.5 text-[13px]" style={{ color: 'var(--aui-primary)' }}>
                         <svg className="animate-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" strokeOpacity="0.3" />
                           <path d="M21 12a9 9 0 00-9-9" />
@@ -3192,11 +3265,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     )}
                     {!isExpandingPrototype && result && (
                       <>
-                        <span className="text-[12px]" style={{ color: '#00BF40' }}>완료</span>
+                        <span className="text-[12px]" style={{ color: 'var(--aui-positive)' }}>완료</span>
                         <button
                           onClick={() => setStep(4)}
                           className="ml-auto flex items-center gap-1 text-[12px] font-semibold transition-colors"
-                          style={{ color: '#0066FF' }}
+                          style={{ color: 'var(--aui-primary)' }}
                         >
                           편집 →
                         </button>
@@ -3206,7 +3279,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
                   {/* 서브 화면 탭 (screens가 있을 때만) */}
                   {!isExpandingPrototype && screens.length > 1 && (
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: "var(--aui-space-1)", flexWrap: 'wrap' }}>
                       {screens.map(s => (
                         <button
                           key={s.id}
@@ -3215,9 +3288,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                             sendToIframe({ type: 'aide:navigate', id: s.id })
                           }}
                           style={{
-                            padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 500, border: 'none', cursor: 'pointer', transition: 'all 0.12s',
-                            backgroundColor: activeScreenId === s.id ? '#171719' : 'rgba(0,0,0,0.06)',
-                            color: activeScreenId === s.id ? '#fff' : 'rgba(55,56,60,0.61)',
+                            padding: `var(--aui-space-1) var(--aui-space-3)`, borderRadius: "var(--aui-radius-pill)", fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-medium)", border: 'none', cursor: 'pointer', transition: 'all 0.12s',
+                            backgroundColor: activeScreenId === s.id ? 'var(--aui-text)' : 'var(--aui-border-subtle)',
+                            color: activeScreenId === s.id ? 'var(--aui-on-dark)' : 'var(--aui-text-muted)',
                           }}
                         >
                           {s.label}
@@ -3227,11 +3300,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   )}
 
                   {/* 프레임 */}
-                  <div className="relative overflow-hidden bg-white" style={{ borderRadius: 12, height: cardH, border: '2px solid #0066FF', outline: '3px solid rgba(26,117,255,0.18)', outlineOffset: 2 }}>
+                  <div className="relative overflow-hidden bg-white" style={{ borderRadius: "var(--aui-radius-control)", height: cardH, border: '2px solid var(--aui-primary)', outline: '3px solid var(--aui-primary-muted)', outlineOffset: 2 }}>
                     {isExpandingPrototype ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid rgba(26,117,255,0.15)', borderTopColor: '#0066FF', animation: 'spin 0.85s linear infinite' }} />
-                        <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.61)', letterSpacing: '-0.1px' }}>멀티스크린 확장 중</span>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid var(--aui-primary-muted)', borderTopColor: 'var(--aui-primary)', animation: 'spin 0.85s linear infinite' }} />
+                        <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-muted)', letterSpacing: '-0.1px' }}>멀티스크린 확장 중</span>
                       </div>
                     ) : result ? (
                       <iframe
@@ -3254,7 +3327,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
         </div>{/* ← closes content-area flex wrapper */}
 
         {generateError && (
-          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-3 text-sm text-[#FF4242]" style={{ borderRadius: '8px', backgroundColor: 'rgba(30,30,30,0.9)', border: '1px solid rgba(255,107,107,0.3)', backdropFilter: 'blur(8px)' }}>
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-3 text-sm text-[var(--aui-negative)]" style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-inverse-surface)', border: '1px solid var(--aui-negative-border)', backdropFilter: 'blur(8px)' }}>
             {generateError}
           </div>
         )}
@@ -3266,11 +3339,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
   // ─── Step 4: Figma-style full-screen editor ──────────────────────────────
   if (step === 4 && result) {
     return (
-      <div className="h-screen overflow-hidden flex flex-col text-[#171719] relative" style={{ fontFamily: "var(--font-pretendard)", backgroundColor: '#F4F4F5' }}>
+      <div className="h-screen overflow-hidden flex flex-col text-[var(--aui-text)] relative" style={{ fontFamily: "var(--font-pretendard)", backgroundColor: 'var(--aui-surface-muted)' }}>
 
         {/* Tab bar */}
-        <div className="border-b border-[rgba(0,0,0,0.09)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
-          <button onClick={onBack} aria-label="Aide 홈으로 이동" className="flex items-center px-3 border-r border-[rgba(0,0,0,0.09)] hover:bg-[rgba(112,115,124,0.16)] transition-colors shrink-0">
+        <div className="border-b border-[var(--aui-shadow-soft)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
+          <button onClick={onBack} aria-label="Aide 홈으로 이동" className="flex items-center px-3 border-r border-[var(--aui-shadow-soft)] hover:bg-[var(--aui-border)] transition-colors shrink-0">
             <img src="/logo_aide.png" alt="Aide" className="h-14 w-auto object-contain" />
           </button>
           {/* Scrollable history tabs */}
@@ -3285,10 +3358,10 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     flexShrink: 0,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 2,
-                    padding: '0 8px 0 14px',
+                    gap: "var(--aui-space-1)",
+                    padding: `0 var(--aui-space-2) 0 var(--aui-space-4)`,
                     maxWidth: 180,
-                    borderRight: '1px solid rgba(0,0,0,0.06)',
+                    borderRight: '1px solid var(--aui-border-subtle)',
                     borderBottom: isActive ? `2px solid ${F.primary}` : '2px solid transparent',
                     backgroundColor: 'transparent',
                     height: '100%',
@@ -3299,7 +3372,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     style={{
                       flex: 1,
                       minWidth: 0,
-                      fontSize: 13,
+                      fontSize: "var(--aui-type-compact-size)",
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -3311,8 +3384,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       textAlign: 'left',
                       transition: 'color 0.1s',
                     }}
-                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = F.ink }}
-                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = F.inkAlternative }}
+                    className={isActive ? undefined : 'hover:!text-[var(--aui-text)]'}
                   >
                     {item.brief.length > 16 ? item.brief.slice(0, 16) + '…' : item.brief}
                   </button>
@@ -3334,19 +3406,17 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderRadius: '8px',
+                      borderRadius: "var(--aui-radius-sm)",
                       border: 'none',
                       backgroundColor: 'transparent',
                       cursor: 'pointer',
-                      color: 'rgba(55,56,60,0.61)',
-                      fontSize: 11,
+                      color: 'var(--aui-text-muted)',
+                      fontSize: "var(--aui-type-micro-size)",
                       opacity: 0,
                       transition: 'opacity 0.1s, background-color 0.1s',
                       padding: 0,
                     }}
-                    className="group-hover:!opacity-100"
-                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.08)'; e.currentTarget.style.color = 'rgba(46,47,51,0.88)' }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'rgba(55,56,60,0.61)' }}
+                    className="group-hover:!opacity-100 hover:!bg-[var(--aui-border-subtle)] hover:!text-[var(--aui-text-neutral)]"
                     title="탭 닫기"
                   >
                     ✕
@@ -3359,54 +3429,52 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             <div className="relative" ref={shareRef}>
               <button
                 onClick={() => setShareOpen(o => !o)}
-                className="text-[13px] font-medium text-[#171719] px-4 py-1.5 transition-colors shrink-0 flex items-center gap-1.5"
-                style={{ borderRadius: '8px', backgroundColor: '#ffffff' }}
-                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(112,115,124,0.16)' }}
-                onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#ffffff' }}
+                className="text-[13px] font-medium text-[var(--aui-text)] px-4 py-1.5 transition-colors shrink-0 flex items-center gap-1.5 hover:!bg-[var(--aui-border)]"
+                style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-on-dark)' }}
               >
                 공유 <ChevronDown size={11} />
               </button>
               {shareOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-52 bg-white overflow-hidden z-50" style={{ borderRadius: '8px', boxShadow: '0 8px 40px rgba(0,0,0,0.18)', border: `1px solid ${F.hairlineSoft}` }}>
-                  <button onClick={handleCopyLink} className="w-full flex items-start gap-2.5 px-4 py-2.5 hover:bg-[rgba(112,115,124,0.08)] transition-colors text-left">
+                <div className="absolute right-0 top-full mt-1.5 w-52 bg-white overflow-hidden z-50" style={{ borderRadius: "var(--aui-radius-sm)", boxShadow: '0 8px 40px var(--aui-shadow-medium)', border: `1px solid ${F.hairlineSoft}` }}>
+                  <button onClick={handleCopyLink} className="w-full flex items-start gap-2.5 px-4 py-2.5 hover:bg-[var(--aui-border-subtle)] transition-colors text-left">
                     {copyLinkDone
-                      ? <><span className="text-[#00BF40] mt-0.5">✓</span><span className="text-[13px] text-[#00BF40]">복사됨!</span></>
+                      ? <><span className="text-[var(--aui-positive)] mt-0.5">✓</span><span className="text-[13px] text-[var(--aui-positive)]">복사됨!</span></>
                       : <><span className="text-[16px] mt-0.5 shrink-0">🔗</span>
                           <span>
-                            <span className="block text-[13px] text-[#171719]">링크 복사</span>
-                            <span className="block text-[13px] text-[rgba(55,56,60,0.61)] leading-tight">결과물을 저장하지 않으므로<br />HTML을 먼저 다운로드 하세요</span>
+                            <span className="block text-[13px] text-[var(--aui-text)]">링크 복사</span>
+                            <span className="block text-[13px] text-[var(--aui-text-muted)] leading-tight">결과물을 저장하지 않으므로<br />HTML을 먼저 다운로드 하세요</span>
                           </span>
                         </>
                     }
                   </button>
-                  <div className="h-px bg-[rgba(0,0,0,0.06)] mx-3" />
-                  <button onClick={downloadHtml} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#171719] hover:bg-[rgba(112,115,124,0.08)] transition-colors text-left">
+                  <div className="h-px bg-[var(--aui-border-subtle)] mx-3" />
+                  <button onClick={downloadHtml} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[var(--aui-text)] hover:bg-[var(--aui-border-subtle)] transition-colors text-left">
                     <span className="text-[16px]">📄</span> HTML 다운로드
                   </button>
-                  <button onClick={downloadPng} disabled={!result?.image} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-[rgba(112,115,124,0.08)] transition-colors text-left disabled:opacity-40" style={{ color: '#171719' }}>
+                  <button onClick={downloadPng} disabled={!result?.image} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-[var(--aui-border-subtle)] transition-colors text-left disabled:opacity-40" style={{ color: 'var(--aui-text)' }}>
                     <span className="text-[16px]">🖼️</span> PNG 내보내기
                   </button>
-                  <div className="h-px bg-[rgba(0,0,0,0.06)] mx-3" />
-                  <button onClick={exportToFigma} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#171719] hover:bg-[rgba(112,115,124,0.08)] transition-colors text-left">
+                  <div className="h-px bg-[var(--aui-border-subtle)] mx-3" />
+                  <button onClick={exportToFigma} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[var(--aui-text)] hover:bg-[var(--aui-border-subtle)] transition-colors text-left">
                     <span className="text-[16px]">🎨</span> Figma로 내보내기
                   </button>
                 </div>
               )}
             </div>
-            <div className="size-7 flex items-center justify-center text-[13px] font-bold text-white shrink-0" style={{ borderRadius: '9999px', backgroundColor: '#171719' }}>
+            <div className="size-7 flex items-center justify-center text-[13px] font-bold text-white shrink-0" style={{ borderRadius: "var(--aui-radius-pill)", backgroundColor: 'var(--aui-text)' }}>
               W
             </div>
           </div>
         </div>
 
         {/* Toolbar */}
-        <div className="h-9 border-b border-[rgba(0,0,0,0.09)] flex items-center px-4 shrink-0 bg-white">
+        <div className="h-9 border-b border-[var(--aui-shadow-soft)] flex items-center px-4 shrink-0 bg-white">
           <div className="flex items-center gap-1">
             <button
               onClick={handleUndo}
               disabled={!canUndo}
-              className="flex items-center justify-center size-7 rounded hover:bg-[rgba(112,115,124,0.16)] transition-colors disabled:opacity-30"
-              style={{ color: 'rgba(55,56,60,0.61)' }}
+              className="flex items-center justify-center size-7 rounded hover:bg-[var(--aui-border)] transition-colors disabled:opacity-30"
+              style={{ color: 'var(--aui-text-muted)' }}
               title="실행 취소 (⌘Z)"
             >
               <CornerUpLeft size={14} />
@@ -3414,8 +3482,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             <button
               onClick={handleRedo}
               disabled={!canRedo}
-              className="flex items-center justify-center size-7 rounded hover:bg-[rgba(112,115,124,0.16)] transition-colors disabled:opacity-30"
-              style={{ color: 'rgba(55,56,60,0.61)' }}
+              className="flex items-center justify-center size-7 rounded hover:bg-[var(--aui-border)] transition-colors disabled:opacity-30"
+              style={{ color: 'var(--aui-text-muted)' }}
               title="다시 실행 (⌘⇧Z)"
             >
               <CornerUpRight size={14} />
@@ -3423,65 +3491,65 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-3">
-            <div className="flex items-center rounded overflow-hidden border border-[rgba(0,0,0,0.09)]">
+            <div className="flex items-center rounded overflow-hidden border border-[var(--aui-shadow-soft)]">
               <button
                 onClick={() => { setPlatform('mobile'); setPreviewWidth(390); setZoom(100) }}
                 className="px-3 py-1 text-[12px] font-medium transition-colors"
-                style={platform === 'mobile' ? { background: '#171719', color: '#ffffff' } : { color: 'rgba(55,56,60,0.61)', background: 'transparent' }}
+                style={platform === 'mobile' ? { background: 'var(--aui-text)', color: 'var(--aui-on-dark)' } : { color: 'var(--aui-text-muted)', background: 'transparent' }}
               >앱</button>
               <button
                 onClick={() => { setPlatform('web'); setPreviewWidth(1440); setZoom(60) }}
-                className="px-3 py-1 text-[12px] font-medium transition-colors border-l border-[rgba(0,0,0,0.09)]"
-                style={platform === 'web' ? { background: '#171719', color: '#ffffff' } : { color: 'rgba(55,56,60,0.61)', background: 'transparent' }}
+                className="px-3 py-1 text-[12px] font-medium transition-colors border-l border-[var(--aui-shadow-soft)]"
+                style={platform === 'web' ? { background: 'var(--aui-text)', color: 'var(--aui-on-dark)' } : { color: 'var(--aui-text-muted)', background: 'transparent' }}
               >웹</button>
             </div>
-            <div className="w-px h-4 bg-[rgba(0,0,0,0.09)]" />
-            <div className="flex items-center gap-2 text-[13px] text-[rgba(55,56,60,0.61)]">
+            <div className="w-px h-4 bg-[var(--aui-shadow-soft)]" />
+            <div className="flex items-center gap-2 text-[13px] text-[var(--aui-text-muted)]">
               <SlidersHorizontal size={12} />
               <span>Tweaks</span>
               <Toggle on={tweaksOpen} onChange={setTweaksOpen} />
             </div>
-            <div className="w-px h-4 bg-[rgba(0,0,0,0.09)]" />
+            <div className="w-px h-4 bg-[var(--aui-shadow-soft)]" />
             <button
               onClick={() => { if (editMode) commitIframeHtml(); setEditMode(e => !e); setSelectedStyles(null); setSelectedSharedClasses([]); setSyncAllScreens(false) }}
               className="flex items-center gap-1.5 text-[13px] px-2.5 py-1 border transition-colors"
-              style={{ borderRadius: '6px', ...(editMode ? { backgroundColor: '#171719', color: '#ffffff', borderColor: '#171719' } : { color: 'rgba(55,56,60,0.61)', borderColor: 'rgba(0,0,0,0.09)' }) }}
+              style={{ borderRadius: "var(--aui-radius-sm)", ...(editMode ? { backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)', borderColor: 'var(--aui-text)' } : { color: 'var(--aui-text-muted)', borderColor: 'var(--aui-shadow-soft)' }) }}
             >
               <Pencil size={12} /> Edit
             </button>
             <button
               onClick={() => setCreonOpen(o => !o)}
               className="flex items-center gap-1.5 text-[13px] px-2.5 py-1 border transition-colors"
-              style={{ borderRadius: '6px', ...(creonOpen ? { backgroundColor: '#171719', color: '#ffffff', borderColor: '#171719' } : { color: 'rgba(55,56,60,0.61)', borderColor: 'rgba(0,0,0,0.09)' }) }}
+              style={{ borderRadius: "var(--aui-radius-sm)", ...(creonOpen ? { backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)', borderColor: 'var(--aui-text)' } : { color: 'var(--aui-text-muted)', borderColor: 'var(--aui-shadow-soft)' }) }}
               title="Creon 에셋 패널"
             >
               <ImageIcon size={12} /> Creon
             </button>
             <button
               onClick={() => { const next = !darkMode; setDarkMode(next); sendToIframe({ type: 'aide:dark', on: next }) }}
-              className="flex items-center justify-center size-7 rounded hover:bg-[rgba(112,115,124,0.16)] transition-colors"
-              style={{ color: 'rgba(55,56,60,0.61)' }}
+              className="flex items-center justify-center size-7 rounded hover:bg-[var(--aui-border)] transition-colors"
+              style={{ color: 'var(--aui-text-muted)' }}
               title={darkMode ? '라이트 모드' : '다크 모드'}
             >
               {darkMode ? <Sun size={14} /> : <Moon size={14} />}
             </button>
-            <div className="w-px h-4 bg-[rgba(0,0,0,0.09)]" />
+            <div className="w-px h-4 bg-[var(--aui-shadow-soft)]" />
             <div className="relative" ref={zoomRef}>
               <button
                 onClick={() => setZoomOpen(o => !o)}
-                className="flex items-center gap-1 text-[13px] text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors"
+                className="flex items-center gap-1 text-[13px] text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors"
               >
                 <span>{zoom}%</span>
                 <ChevronDown size={11} />
               </button>
               {zoomOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-28 bg-white overflow-hidden z-50" style={{ borderRadius: '8px', boxShadow: '0 8px 40px rgba(0,0,0,0.18)', border: `1px solid ${F.hairlineSoft}` }}>
+                <div className="absolute right-0 top-full mt-1.5 w-28 bg-white overflow-hidden z-50" style={{ borderRadius: "var(--aui-radius-sm)", boxShadow: '0 8px 40px var(--aui-shadow-medium)', border: `1px solid ${F.hairlineSoft}` }}>
                   {[50, 60, 75, 100].map(z => (
                     <button
                       key={z}
                       onClick={() => { setZoom(z); setZoomOpen(false) }}
-                      className="w-full px-3 py-2 text-[13px] text-left hover:bg-[rgba(112,115,124,0.08)] transition-colors flex items-center justify-between"
-                      style={{ color: zoom === z ? '#171719' : 'rgba(55,56,60,0.61)' }}
+                      className="w-full px-3 py-2 text-[13px] text-left hover:bg-[var(--aui-border-subtle)] transition-colors flex items-center justify-between"
+                      style={{ color: zoom === z ? 'var(--aui-text)' : 'var(--aui-text-muted)' }}
                     >
                       <span>{z}%</span>
                       {zoom === z && <Check size={10} />}
@@ -3490,11 +3558,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 </div>
               )}
             </div>
-            <div className="w-px h-4 bg-[rgba(0,0,0,0.09)]" />
-            <button onClick={downloadHtml} className="flex items-center gap-1 text-[13px] text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors">
+            <div className="w-px h-4 bg-[var(--aui-shadow-soft)]" />
+            <button onClick={downloadHtml} className="flex items-center gap-1 text-[13px] text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors">
               <Download size={12} />HTML
             </button>
-            <button onClick={handleReset} className="flex items-center gap-1 text-[13px] text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors ml-1">
+            <button onClick={handleReset} className="flex items-center gap-1 text-[13px] text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors ml-1">
               <RefreshCw size={11} />새로 만들기
             </button>
           </div>
@@ -3502,13 +3570,13 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
         {/* Screen navigation */}
         {screens.length > 0 && (
-          <div className="h-9 border-b border-[rgba(0,0,0,0.09)] flex items-center px-4 gap-1 shrink-0 overflow-x-auto bg-white">
+          <div className="h-9 border-b border-[var(--aui-shadow-soft)] flex items-center px-4 gap-1 shrink-0 overflow-x-auto bg-white">
             {screens.map(s => (
               <button
                 key={s.id}
                 onClick={() => { setActiveScreenId(s.id); sendToIframe({ type: 'aide:navigate', id: s.id }) }}
                 className="px-3 py-1 text-[13px] shrink-0 transition-colors"
-                style={{ borderRadius: '8px', ...(activeScreenId === s.id ? { backgroundColor: '#171719', color: '#ffffff' } : { color: 'rgba(55,56,60,0.61)' }) }}
+                style={{ borderRadius: "var(--aui-radius-sm)", ...(activeScreenId === s.id ? { backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)' } : { color: 'var(--aui-text-muted)' }) }}
               >
                 {s.label}
               </button>
@@ -3520,20 +3588,20 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
         <div className="flex flex-1 overflow-hidden">
 
           {/* Left panel: description + chat */}
-          <div className="w-64 shrink-0 border-r border-[rgba(0,0,0,0.09)] bg-white flex flex-col overflow-hidden">
-            <div className="px-4 py-3 border-b border-[rgba(0,0,0,0.07)] shrink-0">
-              <p className="text-[13px] font-semibold text-[#171719] mb-1 leading-[1.4]">
+          <div className="w-64 shrink-0 border-r border-[var(--aui-shadow-soft)] bg-white flex flex-col overflow-hidden">
+            <div className="px-4 py-3 border-b border-[var(--aui-shadow-line)] shrink-0">
+              <p className="text-[13px] font-semibold text-[var(--aui-text)] mb-1 leading-[1.4]">
                 {questionnaire?.projectSummary?.split('.')[0] || '서비스 요약'}
               </p>
               {questionnaire?.projectSummary && (
-                <p className="text-[13px] text-[rgba(55,56,60,0.61)] leading-[1.6] mt-1">{questionnaire.projectSummary}</p>
+                <p className="text-[13px] text-[var(--aui-text-muted)] leading-[1.6] mt-1">{questionnaire.projectSummary}</p>
               )}
             </div>
             <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
               {chatMessages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center gap-2 py-8">
-                  <Sparkles size={16} className="text-[rgba(55,56,60,0.61)]" />
-                  <p className="text-[13px] text-[rgba(55,56,60,0.61)] leading-[1.6]">대화로 디자인을<br />수정할 수 있습니다</p>
+                  <Sparkles size={16} className="text-[var(--aui-text-muted)]" />
+                  <p className="text-[13px] text-[var(--aui-text-muted)] leading-[1.6]">대화로 디자인을<br />수정할 수 있습니다</p>
                 </div>
               ) : (
                 chatMessages.map((msg, i) => (
@@ -3541,10 +3609,10 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     <div
                       className="max-w-[85%] px-3 py-2 text-[14px] leading-[1.5]"
                       style={{
-                        borderRadius: '10px',
+                        borderRadius: "var(--aui-radius-control)",
                         ...(msg.role === 'user'
-                          ? { backgroundColor: '#171719', color: '#ffffff' }
-                          : { backgroundColor: 'rgba(112,115,124,0.08)', color: 'rgba(46,47,51,0.88)' }),
+                          ? { backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)' }
+                          : { backgroundColor: 'var(--aui-border-subtle)', color: 'var(--aui-text-neutral)' }),
                       }}
                     >
                       {msg.content}
@@ -3554,16 +3622,16 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               )}
               {isRefining && (
                 <div className="flex justify-start">
-                  <div className="bg-[rgba(112,115,124,0.08)] px-3 py-2 flex items-center gap-2 text-[13px] text-[rgba(55,56,60,0.61)]" style={{ borderRadius: '10px' }}>
-                    <div className="size-3 rounded-full animate-spin" style={{ border: '1.5px solid rgba(0,0,0,0.15)', borderTopColor: 'rgba(0,0,0,0.6)' }} />
+                  <div className="bg-[var(--aui-border-subtle)] px-3 py-2 flex items-center gap-2 text-[13px] text-[var(--aui-text-muted)]" style={{ borderRadius: "var(--aui-radius-control)" }}>
+                    <div className="size-3 rounded-full animate-spin" style={{ border: '1.5px solid var(--aui-shadow-medium)', borderTopColor: 'var(--aui-scrim-strong)' }} />
                     수정 중...
                   </div>
                 </div>
               )}
               <div ref={chatEndRef} />
             </div>
-            <div className="p-3 border-t border-[rgba(0,0,0,0.07)] shrink-0">
-              <div className="flex items-end gap-2 bg-[rgba(112,115,124,0.08)] px-3 py-2" style={{ borderRadius: '10px' }}>
+            <div className="p-3 border-t border-[var(--aui-shadow-line)] shrink-0">
+              <div className="flex items-end gap-2 bg-[var(--aui-border-subtle)] px-3 py-2" style={{ borderRadius: "var(--aui-radius-control)" }}>
                 <textarea
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
@@ -3571,7 +3639,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleRefine() }
                   }}
                   placeholder="수정 요청을 입력하세요..."
-                  className="flex-1 bg-transparent text-[13px] text-[#171719] placeholder:text-[rgba(55,56,60,0.61)] resize-none outline-none leading-[1.5]"
+                  className="flex-1 bg-transparent text-[13px] text-[var(--aui-text)] placeholder:text-[var(--aui-text-muted)] resize-none outline-none leading-[1.5]"
                   style={{ maxHeight: '96px', minHeight: '20px' }}
                   rows={1}
                   disabled={isRefining}
@@ -3580,12 +3648,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   onClick={handleRefine}
                   disabled={!chatInput.trim() || isRefining}
                   className="shrink-0 size-7 flex items-center justify-center rounded-full transition-colors"
-                  style={{ backgroundColor: chatInput.trim() && !isRefining ? '#171719' : 'rgba(112,115,124,0.16)' }}
+                  style={{ backgroundColor: chatInput.trim() && !isRefining ? 'var(--aui-text)' : 'var(--aui-border)' }}
                 >
-                  <Send size={12} style={{ color: chatInput.trim() && !isRefining ? '#ffffff' : 'rgba(55,56,60,0.61)', marginLeft: '1px' }} />
+                  <Send size={12} style={{ color: chatInput.trim() && !isRefining ? 'var(--aui-on-dark)' : 'var(--aui-text-muted)', marginLeft: '1px' }} />
                 </button>
               </div>
-              <p className="text-[13px] text-[rgba(55,56,60,0.61)] mt-1.5 pl-1">Enter 전송 · Shift+Enter 줄바꿈</p>
+              <p className="text-[13px] text-[var(--aui-text-muted)] mt-1.5 pl-1">Enter 전송 · Shift+Enter 줄바꿈</p>
             </div>
           </div>
 
@@ -3594,7 +3662,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             <div className="absolute inset-0 pointer-events-none" style={{ zIndex: -1 }}>
               <DotField />
             </div>
-            <div ref={canvasTransformRef} style={{ transformOrigin: '0 0', display: 'flex', alignItems: 'flex-start', gap: 32, padding: 40, width: 'max-content' }}>
+            <div ref={canvasTransformRef} style={{ transformOrigin: '0 0', display: 'flex', alignItems: 'flex-start', gap: "var(--aui-space-8)", padding: "var(--aui-space-10)", width: 'max-content' }}>
 
               {/* ── 디자인 시스템 카드 ── */}
               {(() => {
@@ -3602,47 +3670,47 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 const p4HasDesign = !!p4Preset.palette || !!customDesignMd
                 if (!p4HasDesign) return null
                 const p4Meta = customDesignMd ? parseCustomDesignMdMeta(customDesignMd) : null
-                const p4Palette = (p4Meta?.palette ?? p4Preset.palette) ?? [{ name: 'Primary', hex: '#0066FF' }]
+                const p4Palette = (p4Meta?.palette ?? p4Preset.palette) ?? [{ name: 'Primary', hex: 'var(--aui-primary)' }]
                 const p4Fonts = (p4Meta?.fonts ?? p4Preset.fonts) ?? { headline: 'sans-serif', body: 'sans-serif' }
-                const p4Color = (p4Meta?.color ?? p4Preset.color) ?? '#0066FF'
+                const p4Color = (p4Meta?.color ?? p4Preset.color) ?? 'var(--aui-primary)'
                 const p4Dark = p4Meta?.isDark ?? false
-                const p4Bg = p4Dark ? '#171719' : '#ffffff'
-                const p4Ink = p4Dark ? '#ffffff' : '#171719'
-                const p4Muted = p4Dark ? 'rgba(55,56,60,0.61)' : 'rgba(55,56,60,0.61)'
-                const p4Border = p4Dark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)'
+                const p4Bg = p4Dark ? 'var(--aui-text)' : 'var(--aui-on-dark)'
+                const p4Ink = p4Dark ? 'var(--aui-on-dark)' : 'var(--aui-text)'
+                const p4Muted = p4Dark ? 'var(--aui-text-muted)' : 'var(--aui-text-muted)'
+                const p4Border = p4Dark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-border-subtle)'
                 return (
                   <div
                     onClick={e => { e.stopPropagation(); setSelectedCard('design-md') }}
                     style={{
-                      width: 200, borderRadius: 14, backgroundColor: p4Bg, border: selectedCard === 'design-md' ? `2px solid ${p4Color}` : p4Border,
+                      width: 200, borderRadius: "var(--aui-radius-card)", backgroundColor: p4Bg, border: selectedCard === 'design-md' ? `2px solid ${p4Color}` : p4Border,
                       outline: selectedCard === 'design-md' ? `3px solid ${p4Color}28` : 'none', outlineOffset: 2,
                       overflow: 'hidden', flexShrink: 0, cursor: 'default',
                     }}
                   >
                     {/* 헤더 */}
-                    <div style={{ padding: '10px 12px', borderBottom: p4Border, display: 'flex', alignItems: 'center', gap: 6, backgroundColor: p4Dark ? '#1a1a1a' : '#f7f7f8' }}>
+                    <div style={{ padding: `var(--aui-space-3) var(--aui-space-3)`, borderBottom: p4Border, display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", backgroundColor: p4Dark ? 'var(--aui-inverse-surface)' : 'var(--aui-page)' }}>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={p4Color} strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: p4Ink, letterSpacing: '-0.1px' }}>DESIGN.md</span>
+                      <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-bold)", color: p4Ink, letterSpacing: '-0.1px' }}>DESIGN.md</span>
                     </div>
-                    <div style={{ padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ padding: `var(--aui-space-3) var(--aui-space-3) var(--aui-space-4)`, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-3)" }}>
                       {/* 디자인 시스템 이름 */}
-                      <span style={{ fontSize: 13, fontWeight: 700, color: p4Ink, letterSpacing: '-0.3px' }}>{designSystemDisplayName}</span>
+                      <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-bold)", color: p4Ink, letterSpacing: '-0.3px' }}>{designSystemDisplayName}</span>
                       {/* 팔레트 */}
                       <div>
-                        <span style={{ fontSize: 10, color: p4Muted, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Colors</span>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 5 }}>
+                        <span style={{ fontSize: "var(--aui-type-meta-size)", color: p4Muted, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: "var(--aui-weight-semibold)" }}>Colors</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-1)", marginTop: 5 }}>
                           {p4Palette.slice(0, 5).map((sw: { name: string; hex: string }) => (
-                            <div key={sw.name} title={`${sw.name} ${sw.hex}`} style={{ width: 20, height: 20, borderRadius: 5, backgroundColor: sw.hex, border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }} />
+                            <div key={sw.name} title={`${sw.name} ${sw.hex}`} style={{ width: 20, height: 20, borderRadius: "var(--aui-radius-sm)", backgroundColor: sw.hex, border: '1px solid var(--aui-shadow-medium)', flexShrink: 0 }} />
                           ))}
                         </div>
                       </div>
                       {/* 폰트 */}
                       <div>
-                        <span style={{ fontSize: 10, color: p4Muted, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Typography</span>
-                        <p style={{ fontSize: 11, color: p4Ink, margin: '3px 0 0', lineHeight: 1.5, letterSpacing: '-0.1px' }}>
+                        <span style={{ fontSize: "var(--aui-type-meta-size)", color: p4Muted, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: "var(--aui-weight-semibold)" }}>Typography</span>
+                        <p style={{ fontSize: "var(--aui-type-micro-size)", color: p4Ink, margin: `var(--aui-space-1) 0 0`, lineHeight: "var(--aui-leading-normal)", letterSpacing: '-0.1px' }}>
                           {p4Fonts.headline !== p4Fonts.body
-                            ? <><span style={{ fontWeight: 700 }}>{p4Fonts.headline}</span><br/><span style={{ opacity: 0.7 }}>{p4Fonts.body}</span></>
-                            : <span style={{ fontWeight: 600 }}>{p4Fonts.headline}</span>
+                            ? <><span style={{ fontWeight: "var(--aui-weight-bold)" }}>{p4Fonts.headline}</span><br/><span style={{ opacity: 0.7 }}>{p4Fonts.body}</span></>
+                            : <span style={{ fontWeight: "var(--aui-weight-semibold)" }}>{p4Fonts.headline}</span>
                           }
                         </p>
                       </div>
@@ -3653,7 +3721,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
               {/* ── 시안 A/B/C 썸네일 ── */}
               {mainVariants.some(v => !!v) && (
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: "var(--aui-space-4)" }}>
                   {(['A', 'B', 'C'] as const).map((letter, idx) => {
                     const variant = mainVariants[idx]
                     const isPicked = pickedVariantIdx === idx
@@ -3663,17 +3731,17 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     const thumbScale = thumbW / nativeW
                     const thumbH = Math.round(nativeH * thumbScale)
                     return (
-                      <div key={letter} style={{ display: 'flex', flexDirection: 'column', gap: 8, width: thumbW }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: isPicked ? '#0066FF' : 'rgba(55,56,60,0.61)', letterSpacing: '-0.1px' }}>시안 {letter}</span>
-                          {isPicked && <span style={{ fontSize: 10, color: '#0066FF', fontWeight: 700, background: 'rgba(26,117,255,0.1)', padding: '1px 6px', borderRadius: 4 }}>선택됨</span>}
+                      <div key={letter} style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", width: thumbW }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
+                          <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: isPicked ? 'var(--aui-primary)' : 'var(--aui-text-muted)', letterSpacing: '-0.1px' }}>시안 {letter}</span>
+                          {isPicked && <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-primary)', fontWeight: "var(--aui-weight-bold)", background: 'var(--aui-primary-tint)', padding: `var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-sm)" }}>선택됨</span>}
                         </div>
                         <div style={{
-                          height: thumbH, borderRadius: 10, overflow: 'hidden', position: 'relative',
-                          border: isPicked ? '2px solid #0066FF' : '1.5px solid rgba(0,0,0,0.1)',
-                          outline: isPicked ? '3px solid rgba(26,117,255,0.18)' : 'none',
+                          height: thumbH, borderRadius: "var(--aui-radius-control)", overflow: 'hidden', position: 'relative',
+                          border: isPicked ? '2px solid var(--aui-primary)' : '1.5px solid var(--aui-shadow-medium)',
+                          outline: isPicked ? '3px solid var(--aui-primary-muted)' : 'none',
                           outlineOffset: 2,
-                          background: '#fff',
+                          background: 'var(--aui-on-dark)',
                         }}>
                           {variant ? (
                             <iframe
@@ -3685,7 +3753,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                             />
                           ) : (
                             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(0,0,0,0.08)', borderTopColor: 'rgba(55,56,60,0.28)', animation: 'spin 1s linear infinite' }} />
+                              <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--aui-border-subtle)', borderTopColor: 'var(--aui-text-assistive)', animation: 'spin 1s linear infinite' }} />
                             </div>
                           )}
                         </div>
@@ -3697,11 +3765,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
               {/* ── 구분선 화살표 ── */}
               {mainVariants.some(v => !!v) && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', gap: 4, paddingTop: 24, color: 'rgba(55,56,60,0.16)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', gap: "var(--aui-space-1)", paddingTop: 24, color: 'var(--aui-text-disabled)' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M5 12h14M13 6l6 6-6 6"/>
                   </svg>
-                  <span style={{ fontSize: 10, color: 'rgba(55,56,60,0.16)', letterSpacing: '-0.1px', whiteSpace: 'nowrap' }}>프로토타입</span>
+                  <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-disabled)', letterSpacing: '-0.1px', whiteSpace: 'nowrap' }}>프로토타입</span>
                 </div>
               )}
 
@@ -3712,13 +3780,13 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   return (
                     <div
                       key={screen.id}
-                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: "var(--aui-space-3)" }}
                       onClick={e => { e.stopPropagation(); setFocusedScreenId(screen.id); setActiveScreenId(screen.id) }}
                     >
-                      <span style={{ fontSize: 12, fontWeight: 600, color: isFocused ? '#171719' : 'rgba(55,56,60,0.61)', letterSpacing: '-0.1px', userSelect: 'none' }}>
+                      <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: isFocused ? 'var(--aui-text)' : 'var(--aui-text-muted)', letterSpacing: '-0.1px', userSelect: 'none' }}>
                         {screen.label}
                       </span>
-                      <div style={{ outline: isFocused ? '2px solid #0066FF' : '2px solid transparent', outlineOffset: 4, borderRadius: platform === 'mobile' ? 12 : 8, transition: 'outline-color 0.15s' }}>
+                      <div style={{ outline: isFocused ? '2px solid var(--aui-primary)' : '2px solid transparent', outlineOffset: 4, borderRadius: platform === 'mobile' ? 12 : 8, transition: 'outline-color 0.15s' }}>
                         <ResponsiveFrame previewWidth={previewWidth} onWidthChange={setPreviewWidth} zoom={zoom} platform={platform}>
                           <iframe
                             ref={el => {
@@ -3742,8 +3810,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   )
                 })
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#171719', letterSpacing: '-0.1px', userSelect: 'none' }}>프로토타입</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: "var(--aui-space-3)" }}>
+                  <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text)', letterSpacing: '-0.1px', userSelect: 'none' }}>프로토타입</span>
                   <ResponsiveFrame previewWidth={previewWidth} onWidthChange={setPreviewWidth} zoom={zoom} platform={platform}>
                     <iframe
                       ref={iframeRef}
@@ -3801,27 +3869,27 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
           {/* Right: Creon asset panel */}
           {creonOpen && (
-            <div style={{ width: 520, borderLeft: '1px solid rgba(0,0,0,0.09)', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
-              <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(0,0,0,0.09)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#171719' }}>Creon Assets</span>
-                <button onClick={() => { sendToIframe({ type: 'aide:pulse', on: false }); setCreonOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 6, border: 'none', background: 'none', cursor: 'pointer', color: 'rgba(55,56,60,0.61)' }}>
+            <div style={{ width: 520, borderLeft: '1px solid var(--aui-shadow-soft)', backgroundColor: 'var(--aui-on-dark)', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+              <div style={{ padding: `var(--aui-space-2) var(--aui-space-3)`, borderBottom: '1px solid var(--aui-shadow-soft)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text)' }}>Creon Assets</span>
+                <button onClick={() => { sendToIframe({ type: 'aide:pulse', on: false }); setCreonOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: "var(--aui-radius-sm)", border: 'none', background: 'none', cursor: 'pointer', color: 'var(--aui-text-muted)' }}>
                   <X size={14} />
                 </button>
               </div>
               {creonAsset && (
-                <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(0,0,0,0.09)', backgroundColor: '#F7F7F8', flexShrink: 0 }}>
-                  <p style={{ fontSize: 11, color: 'rgba(55,56,60,0.61)', marginBottom: 6 }}>선택된 에셋{selectedStyles ? ' — 아래 버튼으로 적용' : ' — Edit 모드에서 요소를 클릭 후 적용'}</p>
+                <div style={{ padding: `var(--aui-space-2) var(--aui-space-3)`, borderBottom: '1px solid var(--aui-shadow-soft)', backgroundColor: 'var(--aui-page)', flexShrink: 0 }}>
+                  <p style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-muted)', marginBottom: 6 }}>선택된 에셋{selectedStyles ? ' — 아래 버튼으로 적용' : ' — Edit 모드에서 요소를 클릭 후 적용'}</p>
                   {/\.(mp4|webm|mov)(\?|$)/i.test(creonAsset) ? (
-                    <video src={creonAsset} autoPlay muted loop playsInline style={{ width: '100%', height: 72, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+                    <video src={creonAsset} autoPlay muted loop playsInline style={{ width: '100%', height: 72, objectFit: 'cover', borderRadius: "var(--aui-radius-sm)", display: 'block' }} />
                   ) : (
-                    <img src={creonAsset} alt="selected asset" style={{ width: '100%', height: 72, objectFit: 'contain', borderRadius: 6, display: 'block', background: 'rgba(112,115,124,0.16)' }} />
+                    <img src={creonAsset} alt="selected asset" style={{ width: '100%', height: 72, objectFit: 'contain', borderRadius: "var(--aui-radius-sm)", display: 'block', background: 'var(--aui-border)' }} />
                   )}
                   {/* 이미지 크기 조절 슬라이더 */}
                   {!/\.(mp4|webm|mov)(\?|$)/i.test(creonAsset) && (
                     <div style={{ marginTop: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 11, color: 'rgba(55,56,60,0.61)' }}>이미지 크기</span>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: '#171719', fontVariantNumeric: 'tabular-nums' }}>{creonImageWidth}%</span>
+                        <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-muted)' }}>이미지 크기</span>
+                        <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text)', fontVariantNumeric: 'tabular-nums' }}>{creonImageWidth}%</span>
                       </div>
                       <input
                         type="range"
@@ -3829,12 +3897,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         max={200}
                         value={creonImageWidth}
                         onChange={e => setCreonImageWidth(Number(e.target.value))}
-                        style={{ width: '100%', accentColor: '#171719' }}
+                        style={{ width: '100%', accentColor: 'var(--aui-text)' }}
                       />
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-                        <span style={{ fontSize: 10, color: 'rgba(55,56,60,0.28)' }}>20%</span>
-                        <button onClick={() => setCreonImageWidth(100)} style={{ fontSize: 10, color: 'rgba(55,56,60,0.61)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>초기화</button>
-                        <span style={{ fontSize: 10, color: 'rgba(55,56,60,0.28)' }}>200%</span>
+                        <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-assistive)' }}>20%</span>
+                        <button onClick={() => setCreonImageWidth(100)} style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>초기화</button>
+                        <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-assistive)' }}>200%</span>
                       </div>
                     </div>
                   )}
@@ -3844,7 +3912,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       (s.className.includes('material-symbol') || s.className.includes('material-icon'))) ||
                       s.tagName === 'svg'
                     return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)", marginTop: 6 }}>
                         {!isIcon && (
                           <button
                             onClick={() => {
@@ -3861,7 +3929,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                               }
                               sendToIframe({ type: 'aide:pulse', on: false })
                             }}
-                            style={{ width: '100%', padding: '5px 0', fontSize: 12, fontWeight: 600, color: '#ffffff', backgroundColor: '#171719', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                            style={{ width: '100%', padding: `var(--aui-space-1) 0`, fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-on-dark)', backgroundColor: 'var(--aui-text)', border: 'none', borderRadius: "var(--aui-radius-sm)", cursor: 'pointer' }}
                           >
                             선택된 요소에 적용
                           </button>
@@ -3877,7 +3945,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                               }
                               sendToIframe({ type: 'aide:pulse', on: false })
                             }}
-                            style={{ width: '100%', padding: '5px 0', fontSize: 12, fontWeight: 600, color: '#ffffff', backgroundColor: '#171719', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                            style={{ width: '100%', padding: `var(--aui-space-1) 0`, fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-on-dark)', backgroundColor: 'var(--aui-text)', border: 'none', borderRadius: "var(--aui-radius-sm)", cursor: 'pointer' }}
                           >
                             Aide에 적용하기
                           </button>
@@ -3915,50 +3983,50 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
         )}
 
         {figmaExportOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)' }}>
-            <div className="bg-white w-full max-w-md mx-4 overflow-hidden" style={{ borderRadius: '16px', boxShadow: '0 8px 40px rgba(0,0,0,0.18)', border: `1px solid ${F.hairlineSoft}` }}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'var(--aui-scrim)', backdropFilter: 'blur(6px)' }}>
+            <div className="bg-white w-full max-w-md mx-4 overflow-hidden" style={{ borderRadius: "var(--aui-radius-card)", boxShadow: '0 8px 40px var(--aui-shadow-medium)', border: `1px solid ${F.hairlineSoft}` }}>
               {figmaExportError ? (
                 <div className="flex flex-col items-center gap-5 px-8 py-10">
-                  <div className="size-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#ff000010', border: '1.5px solid #ff000030' }}>
+                  <div className="size-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'var(--aui-negative-soft)', border: '1.5px solid var(--aui-negative-border)' }}>
                     <span className="text-2xl">⚠️</span>
                   </div>
                   <div className="text-center">
-                    <p className="text-[15px] font-semibold text-[#171719] mb-1">내보내기 실패</p>
-                    <p className="text-[13px] text-[rgba(55,56,60,0.61)] leading-relaxed">{figmaExportError}</p>
+                    <p className="text-[15px] font-semibold text-[var(--aui-text)] mb-1">내보내기 실패</p>
+                    <p className="text-[13px] text-[var(--aui-text-muted)] leading-relaxed">{figmaExportError}</p>
                   </div>
                   <button
                     onClick={() => setFigmaExportOpen(false)}
                     className="w-full py-2.5 text-[13px] font-semibold rounded-xl transition-colors"
-                    style={{ backgroundColor: '#171719', color: '#ffffff' }}
+                    style={{ backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)' }}
                   >
                     닫기
                   </button>
                 </div>
               ) : isFigmaExporting ? (
                 <div className="flex flex-col items-center gap-5 px-8 py-10">
-                  <div className="size-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#0066ff10', border: '1.5px solid #0066ff30' }}>
+                  <div className="size-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'var(--aui-primary)10', border: '1.5px solid var(--aui-primary)30' }}>
                     <span className="text-2xl">🎨</span>
                   </div>
                   <div className="text-center">
-                    <p className="text-[15px] font-semibold text-[#171719] mb-1">Figma 데이터 생성 중...</p>
-                    <p className="text-[13px] text-[rgba(55,56,60,0.61)]">code.to.design으로 변환하고 있습니다</p>
+                    <p className="text-[15px] font-semibold text-[var(--aui-text)] mb-1">Figma 데이터 생성 중...</p>
+                    <p className="text-[13px] text-[var(--aui-text-muted)]">code.to.design으로 변환하고 있습니다</p>
                   </div>
-                  <div className="w-full h-1 bg-[rgba(112,115,124,0.08)] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#0066ff] rounded-full" style={{ width: '60%', animation: 'figma-bar 1.6s ease-in-out infinite' }} />
+                  <div className="w-full h-1 bg-[var(--aui-border-subtle)] rounded-full overflow-hidden">
+                    <div className="h-full bg-[var(--aui-primary)] rounded-full" style={{ width: '60%', animation: 'figma-bar 1.6s ease-in-out infinite' }} />
                   </div>
                   <style>{`@keyframes figma-bar{0%{transform:translateX(-150%)}100%{transform:translateX(300%)}}`}</style>
                 </div>
               ) : (
                 <div className="flex flex-col gap-0">
                   <div className="flex flex-col items-center gap-4 px-8 pt-8 pb-6">
-                    <div className="size-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#00BF4010', border: '1.5px solid #00BF4040' }}>
+                    <div className="size-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'var(--aui-positive)10', border: '1.5px solid var(--aui-positive)40' }}>
                       <span className="text-2xl">✅</span>
                     </div>
                     <div className="text-center">
-                      <p className="text-[15px] font-semibold text-[#171719] mb-1">
+                      <p className="text-[15px] font-semibold text-[var(--aui-text)] mb-1">
                         {figmaClipboardCopied ? 'Figma 붙여넣기 준비 완료!' : 'Figma 데이터 생성 완료'}
                       </p>
-                      <p className="text-[13px] text-[rgba(55,56,60,0.61)] leading-relaxed">
+                      <p className="text-[13px] text-[var(--aui-text-muted)] leading-relaxed">
                         {figmaClipboardCopied
                           ? '이제 Figma 캔버스에서 Cmd+V로 붙여넣으세요'
                           : '아래 버튼으로 클립보드에 복사한 뒤 Figma에 붙여넣으세요'}
@@ -3973,14 +4041,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       { step: '3', text: '붙여넣어진 editable layer 확인' },
                     ].map(item => (
                       <div key={item.step} className="flex items-start gap-3">
-                        <div className="size-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: '#171719' }}>
+                        <div className="size-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: 'var(--aui-text)' }}>
                           <span className="text-[11px] font-bold text-white">{item.step}</span>
                         </div>
-                        <p className="text-[13px] text-[rgba(46,47,51,0.88)] leading-snug pt-0.5">{item.text}</p>
+                        <p className="text-[13px] text-[var(--aui-text-neutral)] leading-snug pt-0.5">{item.text}</p>
                       </div>
                     ))}
 
-                    <div className="mt-1 p-3 rounded-xl text-[12px] text-[rgba(55,56,60,0.61)] leading-relaxed" style={{ backgroundColor: '#F7F7F8', border: '1px solid rgba(112,115,124,0.16)' }}>
+                    <div className="mt-1 p-3 rounded-xl text-[12px] text-[var(--aui-text-muted)] leading-relaxed" style={{ backgroundColor: 'var(--aui-page)', border: '1px solid var(--aui-border)' }}>
                       code.to.design API가 HTML/CSS를 Figma paste 데이터로 변환했습니다. 별도 플러그인 설치 없이 Figma 캔버스에 붙여넣으면 됩니다.
                     </div>
                   </div>
@@ -3990,7 +4058,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       <button
                         onClick={async () => setFigmaClipboardCopied(await copyFigmaClipboard(figmaClipboardHtml))}
                         className="w-full py-2.5 text-[13px] font-semibold rounded-xl transition-colors"
-                        style={{ backgroundColor: '#0066ff', color: '#ffffff' }}
+                        style={{ backgroundColor: 'var(--aui-primary)', color: 'var(--aui-on-dark)' }}
                       >
                         Figma 클립보드 복사
                       </button>
@@ -3998,7 +4066,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     <button
                       onClick={() => setFigmaExportOpen(false)}
                       className="w-full py-2.5 text-[13px] font-semibold rounded-xl transition-colors"
-                      style={{ backgroundColor: '#171719', color: '#ffffff' }}
+                      style={{ backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)' }}
                     >
                       닫기
                     </button>
@@ -4055,117 +4123,117 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               .wf-dot2 { animation: wf-pulse-bar 1.2s ease 0.2s infinite }
               .wf-dot3 { animation: wf-pulse-bar 1.2s ease 0.4s infinite }
             `}</style>
-            <div style={{ display: 'flex', gap: 56, alignItems: 'center', maxWidth: 780, width: '100%' }}>
+            <div style={{ display: 'flex', gap: "var(--aui-space-10)", alignItems: 'center', maxWidth: 780, width: '100%' }}>
 
               {/* Wireframe animation */}
-              <div key={wfAnimKey} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+              <div key={wfAnimKey} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: "var(--aui-space-5)" }}>
                 {platform === 'web' ? (
                   <svg width="260" height="180" viewBox="0 0 260 180" fill="none" xmlns="http://www.w3.org/2000/svg">
                     {/* Browser shell */}
-                    <rect className="wf-phone" x="4" y="4" width="252" height="172" rx="10" stroke="#171719" strokeWidth="2.5" />
+                    <rect className="wf-phone" x="4" y="4" width="252" height="172" rx="10" stroke="var(--aui-text)" strokeWidth="2.5" />
                     {/* Browser top bar */}
-                    <line className="wf-web-hdr" x1="4" y1="28" x2="256" y2="28" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
+                    <line className="wf-web-hdr" x1="4" y1="28" x2="256" y2="28" stroke="var(--aui-border)" strokeWidth="1.2" />
                     {/* Traffic lights */}
-                    <circle className="wf-web-hdr" cx="18" cy="16" r="4" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
-                    <circle className="wf-web-hdr" cx="30" cy="16" r="4" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
-                    <circle className="wf-web-hdr" cx="42" cy="16" r="4" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
+                    <circle className="wf-web-hdr" cx="18" cy="16" r="4" stroke="var(--aui-border)" strokeWidth="1.2" />
+                    <circle className="wf-web-hdr" cx="30" cy="16" r="4" stroke="var(--aui-border)" strokeWidth="1.2" />
+                    <circle className="wf-web-hdr" cx="42" cy="16" r="4" stroke="var(--aui-border)" strokeWidth="1.2" />
                     {/* URL bar */}
-                    <rect className="wf-web-hdr" x="70" y="10" width="120" height="12" rx="6" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
+                    <rect className="wf-web-hdr" x="70" y="10" width="120" height="12" rx="6" stroke="var(--aui-border)" strokeWidth="1.2" />
                     {/* Nav bar */}
-                    <rect className="wf-web-hero" x="12" y="34" width="236" height="22" rx="4" stroke="rgba(55,56,60,0.16)" strokeWidth="1.4" />
-                    <rect className="wf-web-hero" x="18" y="39" width="40" height="12" rx="2" stroke="rgba(55,56,60,0.28)" strokeWidth="1.2" />
-                    <line className="wf-web-hero" x1="160" y1="39" x2="190" y2="39" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
-                    <line className="wf-web-hero" x1="196" y1="39" x2="218" y2="39" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
-                    <rect className="wf-web-hero" x="224" y="38" width="18" height="14" rx="3" stroke="rgba(55,56,60,0.28)" strokeWidth="1.2" />
+                    <rect className="wf-web-hero" x="12" y="34" width="236" height="22" rx="4" stroke="var(--aui-text-disabled)" strokeWidth="1.4" />
+                    <rect className="wf-web-hero" x="18" y="39" width="40" height="12" rx="2" stroke="var(--aui-text-assistive)" strokeWidth="1.2" />
+                    <line className="wf-web-hero" x1="160" y1="39" x2="190" y2="39" stroke="var(--aui-border)" strokeWidth="1.2" />
+                    <line className="wf-web-hero" x1="196" y1="39" x2="218" y2="39" stroke="var(--aui-border)" strokeWidth="1.2" />
+                    <rect className="wf-web-hero" x="224" y="38" width="18" height="14" rx="3" stroke="var(--aui-text-assistive)" strokeWidth="1.2" />
                     {/* Hero banner */}
-                    <rect className="wf-web-c1" x="12" y="62" width="236" height="46" rx="6" stroke="rgba(55,56,60,0.28)" strokeWidth="1.6" />
-                    <line className="wf-web-c1" x1="22" y1="76" x2="100" y2="76" stroke="rgba(55,56,60,0.16)" strokeWidth="1.3" />
-                    <line className="wf-web-c1" x1="22" y1="86" x2="76" y2="86" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
-                    <rect className="wf-web-c1" x="192" y="72" width="48" height="20" rx="4" stroke="rgba(55,56,60,0.28)" strokeWidth="1.3" />
+                    <rect className="wf-web-c1" x="12" y="62" width="236" height="46" rx="6" stroke="var(--aui-text-assistive)" strokeWidth="1.6" />
+                    <line className="wf-web-c1" x1="22" y1="76" x2="100" y2="76" stroke="var(--aui-text-disabled)" strokeWidth="1.3" />
+                    <line className="wf-web-c1" x1="22" y1="86" x2="76" y2="86" stroke="var(--aui-border)" strokeWidth="1.2" />
+                    <rect className="wf-web-c1" x="192" y="72" width="48" height="20" rx="4" stroke="var(--aui-text-assistive)" strokeWidth="1.3" />
                     {/* Three content cards */}
-                    <rect className="wf-web-c2" x="12" y="116" width="72" height="48" rx="5" stroke="rgba(55,56,60,0.28)" strokeWidth="1.4" />
-                    <line className="wf-web-c2" x1="18" y1="130" x2="66" y2="130" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2" />
-                    <line className="wf-web-c2" x1="18" y1="140" x2="50" y2="140" stroke="rgba(112,115,124,0.16)" strokeWidth="1.1" />
-                    <rect className="wf-web-c2" x="94" y="116" width="72" height="48" rx="5" stroke="rgba(55,56,60,0.28)" strokeWidth="1.4" />
-                    <line className="wf-web-c2" x1="100" y1="130" x2="148" y2="130" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2" />
-                    <line className="wf-web-c2" x1="100" y1="140" x2="132" y2="140" stroke="rgba(112,115,124,0.16)" strokeWidth="1.1" />
-                    <rect className="wf-web-l1" x="176" y="116" width="72" height="48" rx="5" stroke="rgba(55,56,60,0.28)" strokeWidth="1.4" />
-                    <line className="wf-web-l1" x1="182" y1="130" x2="230" y2="130" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2" />
-                    <line className="wf-web-l1" x1="182" y1="140" x2="214" y2="140" stroke="rgba(112,115,124,0.16)" strokeWidth="1.1" />
+                    <rect className="wf-web-c2" x="12" y="116" width="72" height="48" rx="5" stroke="var(--aui-text-assistive)" strokeWidth="1.4" />
+                    <line className="wf-web-c2" x1="18" y1="130" x2="66" y2="130" stroke="var(--aui-text-disabled)" strokeWidth="1.2" />
+                    <line className="wf-web-c2" x1="18" y1="140" x2="50" y2="140" stroke="var(--aui-border)" strokeWidth="1.1" />
+                    <rect className="wf-web-c2" x="94" y="116" width="72" height="48" rx="5" stroke="var(--aui-text-assistive)" strokeWidth="1.4" />
+                    <line className="wf-web-c2" x1="100" y1="130" x2="148" y2="130" stroke="var(--aui-text-disabled)" strokeWidth="1.2" />
+                    <line className="wf-web-c2" x1="100" y1="140" x2="132" y2="140" stroke="var(--aui-border)" strokeWidth="1.1" />
+                    <rect className="wf-web-l1" x="176" y="116" width="72" height="48" rx="5" stroke="var(--aui-text-assistive)" strokeWidth="1.4" />
+                    <line className="wf-web-l1" x1="182" y1="130" x2="230" y2="130" stroke="var(--aui-text-disabled)" strokeWidth="1.2" />
+                    <line className="wf-web-l1" x1="182" y1="140" x2="214" y2="140" stroke="var(--aui-border)" strokeWidth="1.1" />
                     {/* Footer */}
-                    <line className="wf-web-l2" x1="4" y1="166" x2="256" y2="166" stroke="rgba(112,115,124,0.16)" strokeWidth="1" />
-                    <line className="wf-web-bar" x1="90" y1="171" x2="170" y2="171" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
+                    <line className="wf-web-l2" x1="4" y1="166" x2="256" y2="166" stroke="var(--aui-border)" strokeWidth="1" />
+                    <line className="wf-web-bar" x1="90" y1="171" x2="170" y2="171" stroke="var(--aui-border)" strokeWidth="1.2" />
                   </svg>
                 ) : (
                   <svg width="148" height="268" viewBox="0 0 148 268" fill="none" xmlns="http://www.w3.org/2000/svg">
                     {/* Phone shell */}
-                    <rect className="wf-phone" x="4" y="4" width="140" height="260" rx="20" stroke="#171719" strokeWidth="2.5" />
+                    <rect className="wf-phone" x="4" y="4" width="140" height="260" rx="20" stroke="var(--aui-text)" strokeWidth="2.5" />
                     {/* Notch */}
-                    <rect className="wf-hdr" x="50" y="4" width="48" height="10" rx="5" stroke="rgba(55,56,60,0.16)" strokeWidth="1.5" />
+                    <rect className="wf-hdr" x="50" y="4" width="48" height="10" rx="5" stroke="var(--aui-text-disabled)" strokeWidth="1.5" />
                     {/* Status bar dots */}
-                    <rect className="wf-hdr" x="16" y="22" width="32" height="4" rx="2" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
-                    <rect className="wf-hdr" x="100" y="22" width="28" height="4" rx="2" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
+                    <rect className="wf-hdr" x="16" y="22" width="32" height="4" rx="2" stroke="var(--aui-border)" strokeWidth="1.2" />
+                    <rect className="wf-hdr" x="100" y="22" width="28" height="4" rx="2" stroke="var(--aui-border)" strokeWidth="1.2" />
                     {/* Hero card */}
-                    <rect className="wf-hero" x="16" y="38" width="116" height="68" rx="10" stroke="rgba(55,56,60,0.28)" strokeWidth="1.8" />
-                    <line className="wf-hero" x1="28" y1="56" x2="90" y2="56" stroke="rgba(55,56,60,0.16)" strokeWidth="1.4" />
-                    <line className="wf-hero" x1="28" y1="68" x2="72" y2="68" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
-                    <rect className="wf-hero" x="28" y="80" width="48" height="14" rx="4" stroke="rgba(55,56,60,0.28)" strokeWidth="1.4" />
+                    <rect className="wf-hero" x="16" y="38" width="116" height="68" rx="10" stroke="var(--aui-text-assistive)" strokeWidth="1.8" />
+                    <line className="wf-hero" x1="28" y1="56" x2="90" y2="56" stroke="var(--aui-text-disabled)" strokeWidth="1.4" />
+                    <line className="wf-hero" x1="28" y1="68" x2="72" y2="68" stroke="var(--aui-border)" strokeWidth="1.2" />
+                    <rect className="wf-hero" x="28" y="80" width="48" height="14" rx="4" stroke="var(--aui-text-assistive)" strokeWidth="1.4" />
                     {/* Two stat cards */}
-                    <rect className="wf-c1" x="16" y="118" width="52" height="52" rx="8" stroke="rgba(55,56,60,0.28)" strokeWidth="1.6" />
-                    <line className="wf-c1" x1="26" y1="134" x2="58" y2="134" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2" />
-                    <line className="wf-c1" x1="26" y1="144" x2="46" y2="144" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
-                    <rect className="wf-c2" x="80" y="118" width="52" height="52" rx="8" stroke="rgba(55,56,60,0.28)" strokeWidth="1.6" />
-                    <line className="wf-c2" x1="90" y1="134" x2="122" y2="134" stroke="rgba(55,56,60,0.16)" strokeWidth="1.2" />
-                    <line className="wf-c2" x1="90" y1="144" x2="110" y2="144" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
+                    <rect className="wf-c1" x="16" y="118" width="52" height="52" rx="8" stroke="var(--aui-text-assistive)" strokeWidth="1.6" />
+                    <line className="wf-c1" x1="26" y1="134" x2="58" y2="134" stroke="var(--aui-text-disabled)" strokeWidth="1.2" />
+                    <line className="wf-c1" x1="26" y1="144" x2="46" y2="144" stroke="var(--aui-border)" strokeWidth="1.2" />
+                    <rect className="wf-c2" x="80" y="118" width="52" height="52" rx="8" stroke="var(--aui-text-assistive)" strokeWidth="1.6" />
+                    <line className="wf-c2" x1="90" y1="134" x2="122" y2="134" stroke="var(--aui-text-disabled)" strokeWidth="1.2" />
+                    <line className="wf-c2" x1="90" y1="144" x2="110" y2="144" stroke="var(--aui-border)" strokeWidth="1.2" />
                     {/* List item lines */}
-                    <line className="wf-l1" x1="16" y1="184" x2="132" y2="184" stroke="rgba(112,115,124,0.16)" strokeWidth="1.3" />
-                    <line className="wf-l2" x1="16" y1="198" x2="100" y2="198" stroke="rgba(112,115,124,0.16)" strokeWidth="1.2" />
+                    <line className="wf-l1" x1="16" y1="184" x2="132" y2="184" stroke="var(--aui-border)" strokeWidth="1.3" />
+                    <line className="wf-l2" x1="16" y1="198" x2="100" y2="198" stroke="var(--aui-border)" strokeWidth="1.2" />
                     {/* Progress bar */}
-                    <rect className="wf-bar" x="16" y="214" width="116" height="7" rx="3.5" fill="rgba(112,115,124,0.16)" />
-                    <rect className="wf-bar" x="16" y="214" width="70" height="7" rx="3.5" fill="#171719" />
+                    <rect className="wf-bar" x="16" y="214" width="116" height="7" rx="3.5" fill="var(--aui-border)" />
+                    <rect className="wf-bar" x="16" y="214" width="70" height="7" rx="3.5" fill="var(--aui-text)" />
                     {/* Tab divider */}
-                    <line className="wf-tab" x1="4" y1="234" x2="144" y2="234" stroke="rgba(112,115,124,0.16)" strokeWidth="1" />
+                    <line className="wf-tab" x1="4" y1="234" x2="144" y2="234" stroke="var(--aui-border)" strokeWidth="1" />
                     {/* Tab icons */}
-                    <rect className="wf-tab" x="22" y="242" width="20" height="18" rx="3" fill="rgba(112,115,124,0.16)" />
-                    <rect className="wf-tab" x="64" y="242" width="20" height="18" rx="3" fill="#171719" />
-                    <rect className="wf-tab" x="106" y="242" width="20" height="18" rx="3" fill="rgba(112,115,124,0.16)" />
+                    <rect className="wf-tab" x="22" y="242" width="20" height="18" rx="3" fill="var(--aui-border)" />
+                    <rect className="wf-tab" x="64" y="242" width="20" height="18" rx="3" fill="var(--aui-text)" />
+                    <rect className="wf-tab" x="106" y="242" width="20" height="18" rx="3" fill="var(--aui-border)" />
                   </svg>
                 )}
                 {/* Animated dots */}
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <div className="wf-dot1" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'rgba(55,56,60,0.16)' }} />
-                  <div className="wf-dot2" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'rgba(55,56,60,0.16)' }} />
-                  <div className="wf-dot3" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'rgba(55,56,60,0.16)' }} />
+                <div style={{ display: 'flex', gap: "var(--aui-space-2)", alignItems: 'center' }}>
+                  <div className="wf-dot1" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--aui-text-disabled)' }} />
+                  <div className="wf-dot2" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--aui-text-disabled)' }} />
+                  <div className="wf-dot3" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--aui-text-disabled)' }} />
                 </div>
               </div>
 
               {/* Right: info + steps */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 22 }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-6)" }}>
                 <div>
-                  <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.04em', color: '#171719', marginBottom: 6 }}>
+                  <h2 style={{ fontSize: "var(--aui-type-page-title-size)", fontWeight: "var(--aui-weight-bold)", letterSpacing: '-0.04em', color: 'var(--aui-text)', marginBottom: 6 }}>
                     {analyzeError ? '질문지 생성에 실패했습니다' : '정확한 시안을 위해 분석 중입니다'}
                   </h2>
-                  <p style={{ fontSize: 14, color: 'rgba(55,56,60,0.61)', lineHeight: 1.55 }}>
+                  <p style={{ fontSize: "var(--aui-type-label-size)", color: 'var(--aui-text-muted)', lineHeight: "var(--aui-leading-relaxed)" }}>
                     {analyzeError ? '입력 내용은 유지되어 있어요. 다시 시도하거나 세부 내용을 수정할 수 있습니다.' : '선택하신 내용을 바탕으로 맞춤형 질문지를 만들고 있어요'}
                   </p>
                 </div>
 
                 {/* Logo + Design system row */}
                 {(logoDataUrl || !!effectiveDesignMd) && (
-                  <div style={{ display: 'flex', gap: 10 }}>
+                  <div style={{ display: 'flex', gap: "var(--aui-space-3)" }}>
                     {logoDataUrl && (
-                      <div style={{ padding: '10px 14px', borderRadius: 12, backgroundColor: '#F7F7F8', border: '1px solid rgba(112,115,124,0.16)', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 80 }}>
-                        <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>Logo</p>
-                        <img src={logoDataUrl} alt="logo" style={{ height: 28, maxWidth: 72, objectFit: 'contain', borderRadius: 4 }} />
+                      <div style={{ padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)", backgroundColor: 'var(--aui-page)', border: '1px solid var(--aui-border)', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", minWidth: 80 }}>
+                        <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>Logo</p>
+                        <img src={logoDataUrl} alt="logo" style={{ height: 28, maxWidth: 72, objectFit: 'contain', borderRadius: "var(--aui-radius-sm)" }} />
                       </div>
                     )}
                     {!!effectiveDesignMd && (
-                      <div style={{ flex: 1, padding: '10px 14px', borderRadius: 12, backgroundColor: '#F7F7F8', border: '1px solid rgba(112,115,124,0.16)' }}>
-                        <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>Design System</p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <div style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: customDesignMd ? '#0066FF' : (visualizedDesignPreset.color ?? 'rgba(55,56,60,0.61)'), flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#171719' }}>{designSystemDisplayName}</span>
-                          <span style={{ fontSize: 12, color: 'rgba(55,56,60,0.61)' }}>{designSystemDescription}</span>
+                      <div style={{ flex: 1, padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)", backgroundColor: 'var(--aui-page)', border: '1px solid var(--aui-border)' }}>
+                        <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>Design System</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", flexWrap: 'wrap' }}>
+                          <div style={{ width: 12, height: 12, borderRadius: "var(--aui-radius-sm)", backgroundColor: customDesignMd ? 'var(--aui-primary)' : (visualizedDesignPreset.color ?? 'var(--aui-text-muted)'), flexShrink: 0 }} />
+                          <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text)' }}>{designSystemDisplayName}</span>
+                          <span style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-muted)' }}>{designSystemDescription}</span>
                         </div>
                       </div>
                     )}
@@ -4173,45 +4241,45 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 )}
 
                 {/* Brief preview */}
-                <div style={{ padding: '14px 18px', borderRadius: 12, backgroundColor: '#F7F7F8', border: '1px solid rgba(112,115,124,0.16)' }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(55,56,60,0.28)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>기획서</p>
-                  <p style={{ fontSize: 13, color: 'rgba(46,47,51,0.88)', lineHeight: 1.65, maxHeight: 72, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const }}>{brief}</p>
+                <div style={{ padding: `var(--aui-space-4) var(--aui-space-5)`, borderRadius: "var(--aui-radius-control)", backgroundColor: 'var(--aui-page)', border: '1px solid var(--aui-border)' }}>
+                  <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>기획서</p>
+                  <p style={{ fontSize: "var(--aui-type-compact-size)", color: 'var(--aui-text-neutral)', lineHeight: "var(--aui-leading-relaxed)", maxHeight: 72, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const }}>{brief}</p>
                 </div>
 
                 {/* Step indicators */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-3)" }}>
                   {[
                     { label: '요청사항 파악 완료', done: true },
                     ...(logoDataUrl ? [{ label: '브랜드 로고 인식 완료', done: true }] : []),
                     ...(effectiveDesignMd ? [{ label: `${designSystemDisplayName} 가이드라인 적용 완료`, done: true }] : []),
                     { label: analyzeError ? '질문지 생성 실패' : '맞춤형 질문지 생성 중...', done: false, active: !analyzeError },
                   ].map((item, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: item.done ? '#171719' : 'rgba(112,115,124,0.08)', border: item.active ? '1.5px solid rgba(112,115,124,0.16)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)" }}>
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: item.done ? 'var(--aui-text)' : 'var(--aui-border-subtle)', border: item.active ? '1.5px solid var(--aui-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         {item.done && <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="2,5.5 4,7.5 8,3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                        {item.active && <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid rgba(55,56,60,0.28)', borderTopColor: '#171719', animation: 'wf-spin 0.75s linear infinite' }} />}
+                        {item.active && <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid var(--aui-text-assistive)', borderTopColor: 'var(--aui-text)', animation: 'wf-spin 0.75s linear infinite' }} />}
                       </div>
-                      <span style={{ fontSize: 13, color: item.done ? '#171719' : 'rgba(55,56,60,0.61)', fontWeight: item.active ? 500 : 400, letterSpacing: '-0.1px' }}>{item.label}</span>
+                      <span style={{ fontSize: "var(--aui-type-compact-size)", color: item.done ? 'var(--aui-text)' : 'var(--aui-text-muted)', fontWeight: item.active ? 500 : 400, letterSpacing: '-0.1px' }}>{item.label}</span>
                     </div>
                   ))}
                 </div>
 
                 {analyzeError && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ padding: '12px 14px', borderRadius: 12, backgroundColor: 'rgba(255,56,92,0.08)', border: '1px solid rgba(255,56,92,0.18)', color: F.primary, fontSize: 13, lineHeight: 1.55 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-3)" }}>
+                    <div style={{ padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)", backgroundColor: 'var(--aui-negative-soft)', border: '1px solid var(--aui-negative-border)', color: F.primary, fontSize: "var(--aui-type-compact-size)", lineHeight: "var(--aui-leading-relaxed)" }}>
                       {analyzeError}
                     </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: "var(--aui-space-2)" }}>
                       <button
                         onClick={handleAnalyze}
                         disabled={!brief.trim() || isAnalyzing}
-                        style={{ height: 38, padding: '0 14px', borderRadius: 8, border: 'none', backgroundColor: F.ink, color: '#ffffff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                        style={{ height: 38, padding: `0 var(--aui-space-4)`, borderRadius: "var(--aui-radius-sm)", border: 'none', backgroundColor: F.ink, color: 'var(--aui-on-dark)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", cursor: 'pointer' }}
                       >
                         다시 시도
                       </button>
                       <button
                         onClick={() => { setStartedFromLanding(false); setAnalyzeError('') }}
-                        style={{ height: 38, padding: '0 14px', borderRadius: 8, border: `1px solid ${F.hairline}`, backgroundColor: F.canvas, color: F.ink, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+                        style={{ height: 38, padding: `0 var(--aui-space-4)`, borderRadius: "var(--aui-radius-sm)", border: `1px solid ${F.hairline}`, backgroundColor: F.canvas, color: F.ink, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer' }}
                       >
                         입력 내용 수정
                       </button>
@@ -4253,9 +4321,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                           onClick={() => setDesignPreset(isActive ? 'none' : key)}
                           className="flex flex-col gap-1.5 p-3 text-left border transition-all"
                           style={{
-                            borderRadius: '8px',
+                            borderRadius: "var(--aui-radius-sm)",
                             borderColor: isActive ? F.primary : F.hairline,
-                            backgroundColor: isActive ? '#EAF2FE' : F.surface,
+                            backgroundColor: isActive ? 'var(--aui-primary-soft)' : F.surface,
                             outline: 'none',
                           }}
                         >
@@ -4266,7 +4334,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                             />
                             <span className="text-[13px] font-semibold" style={{ color: isActive ? F.primary : F.ink }}>{preset.label}</span>
                             {isActive && (
-                              <span className="ml-auto text-[11px] font-600 px-2 py-0.5" style={{ borderRadius: '4px', backgroundColor: F.primary, color: '#ffffff' }}>
+                              <span className="ml-auto text-[11px] font-600 px-2 py-0.5" style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: F.primary, color: 'var(--aui-on-dark)' }}>
                                 선택됨
                               </span>
                             )}
@@ -4294,16 +4362,16 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     onChange={handleLogoUpload}
                   />
                   {logoLoading ? (
-                    <div className="flex items-center justify-center gap-2 px-4 py-6 border border-dashed bg-white" style={{ borderRadius: '12px', borderColor: F.hairline }}>
+                    <div className="flex items-center justify-center gap-2 px-4 py-6 border border-dashed bg-white" style={{ borderRadius: "var(--aui-radius-control)", borderColor: F.hairline }}>
                       <div className="size-4 rounded-full animate-spin" style={{ border: `2px solid ${F.hairline}`, borderTopColor: F.ink }} />
                       <span className="text-[13px]" style={{ color: F.inkMuted }}>처리 중...</span>
                     </div>
                   ) : logoDataUrl ? (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-white border" style={{ borderRadius: '12px', borderColor: F.hairlineSoft }}>
+                    <div className="flex items-center gap-3 px-4 py-3 bg-white border" style={{ borderRadius: "var(--aui-radius-control)", borderColor: F.hairlineSoft }}>
                       <img src={logoDataUrl} alt="logo" className="h-8 object-contain" />
                       <span className="flex-1 text-[13px]" style={{ color: F.inkMuted }}>로고가 UI에 자동으로 삽입됩니다</span>
                       <button
-                        onClick={() => setLogoDataUrl(null)}
+                        onClick={() => { setLogoDataUrl(null); setBrandColors([]); setExtractedColors([]) }}
                         className="transition-colors"
                         style={{ color: F.inkMuted }}
                       >
@@ -4313,10 +4381,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   ) : (
                     <button
                       onClick={() => logoInputRef.current?.click()}
-                      className="flex flex-col items-center justify-center gap-2 px-4 py-6 border border-dashed transition-colors text-center"
-                      style={{ borderRadius: '12px', borderColor: F.hairline, backgroundColor: F.canvas }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = F.surface1 }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = F.canvas }}
+                      className="flex flex-col items-center justify-center gap-2 px-4 py-6 border border-dashed transition-colors text-center hover:!bg-[var(--aui-surface)]"
+                      style={{ borderRadius: "var(--aui-radius-control)", borderColor: F.hairline, backgroundColor: F.canvas }}
                     >
                       <Upload size={18} style={{ color: F.inkSubtle }} />
                       <span className="text-[13px]" style={{ color: F.inkMuted }}>로고 이미지 업로드</span>
@@ -4350,7 +4416,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   {/* 서비스 설명 */}
                   <div
                     className="flex flex-col"
-                    style={{ borderRadius: '12px', border: `1px solid ${F.hairlineSoft}`, backgroundColor: F.canvas }}
+                    style={{ borderRadius: "var(--aui-radius-control)", border: `1px solid ${F.hairlineSoft}`, backgroundColor: F.canvas }}
                     onFocusCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairline }}
                     onBlurCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairlineSoft }}
                   >
@@ -4369,7 +4435,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   {/* 핵심 기능 */}
                   <div
                     className="flex flex-col"
-                    style={{ borderRadius: '12px', border: `1px solid ${F.hairlineSoft}`, backgroundColor: F.canvas }}
+                    style={{ borderRadius: "var(--aui-radius-control)", border: `1px solid ${F.hairlineSoft}`, backgroundColor: F.canvas }}
                     onFocusCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairline }}
                     onBlurCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairlineSoft }}
                   >
@@ -4390,7 +4456,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             </div>
 
             {analyzeError && (
-              <div className="mb-4 px-4 py-3 text-sm" style={{ borderRadius: '12px', color: F.primary, backgroundColor: 'rgba(255,56,92,0.08)', border: `1px solid rgba(255,56,92,0.2)` }}>
+              <div className="mb-4 px-4 py-3 text-sm" style={{ borderRadius: "var(--aui-radius-control)", color: F.primary, backgroundColor: 'var(--aui-negative-soft)', border: `1px solid var(--aui-negative-border)` }}>
                 {analyzeError}
               </div>
             )}
@@ -4407,35 +4473,170 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             <div className="flex items-start justify-between mb-8">
               <div>
                 <h1 className="text-[22px] font-bold mb-1" style={{ letterSpacing: '-0.05em' }}>이 기준으로 만들게요</h1>
-                <p className="text-[14px] text-[rgba(55,56,60,0.61)]">{questionnaire.projectSummary}</p>
+                <p className="text-[14px] text-[var(--aui-text-muted)]">{questionnaire.projectSummary}</p>
               </div>
-              <button onClick={() => { clearGeneratedBoard(); setStartedFromLanding(false); setStep(1) }} className="flex items-center gap-1.5 text-sm text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors mt-1">
+              <button onClick={() => { clearGeneratedBoard(); setStartedFromLanding(false); setStep(1) }} className="flex items-center gap-1.5 text-sm text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors mt-1">
                 <ArrowLeft size={14} /> 뒤로
               </button>
             </div>
 
-            <div className="mb-8 flex items-center justify-between gap-4 px-4 py-3" style={{ borderRadius: 12, backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.08)' }}>
+            <div className="mb-8 flex items-center justify-between gap-4 px-4 py-3" style={{ borderRadius: "var(--aui-radius-control)", backgroundColor: 'var(--aui-on-dark)', border: '1px solid var(--aui-border-subtle)' }}>
               <div>
-                <div className="text-[13px] font-semibold text-[#171719]">
+                <div className="text-[13px] font-semibold text-[var(--aui-text)]">
                   AI 추천값을 미리 선택해뒀어요
                 </div>
-                <div className="text-[12px] text-[rgba(55,56,60,0.61)] mt-0.5">
+                <div className="text-[12px] text-[var(--aui-text-muted)] mt-0.5">
                   필요하면 아래 버튼만 바꾸고 바로 시안을 생성하면 됩니다.
                 </div>
               </div>
-              <div className="shrink-0 text-[12px] font-semibold px-3 py-2" style={{ borderRadius: 8, backgroundColor: '#F4F4F5', color: '#171719', border: '1px solid rgba(0,0,0,0.08)' }}>
+              <div className="shrink-0 text-[12px] font-semibold px-3 py-2" style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-surface-muted)', color: 'var(--aui-text)', border: '1px solid var(--aui-border-subtle)' }}>
                 {platform === 'web' ? '웹 프리뷰' : '모바일 프리뷰'}
               </div>
             </div>
 
+            {/* Logo Upload + Color Picker */}
+            <div className="mb-8">
+              <input
+                type="file"
+                id="logo-upload-step2"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLogoUpload}
+              />
+              {logoLoading ? (
+                <div className="flex items-center justify-center gap-2 px-4 py-4 border border-dashed bg-white" style={{ borderRadius: "var(--aui-radius-control)", borderColor: F.hairline }}>
+                  <div className="size-4 rounded-full animate-spin" style={{ border: `2px solid ${F.hairline}`, borderTopColor: F.ink }} />
+                  <span className="text-[13px]" style={{ color: F.inkMuted }}>처리 중...</span>
+                </div>
+              ) : !logoDataUrl || logoDataUrl === DEFAULT_AIDE_LOGO_SRC ? (
+                <label htmlFor="logo-upload-step2" className="flex items-center gap-3 px-4 py-4 border border-dashed cursor-pointer" style={{ borderRadius: "var(--aui-radius-control)", borderColor: F.hairline, backgroundColor: F.canvas }}>
+                  <Upload size={18} style={{ color: F.inkSubtle }} />
+                  <div>
+                    <div className="text-[13px] font-medium" style={{ color: F.ink }}>로고 업로드 <span className="font-normal ml-1" style={{ color: F.inkMuted }}>선택사항</span></div>
+                    <div className="text-[12px] mt-0.5" style={{ color: F.inkSubtle }}>로고에서 브랜드 컬러를 추출할 수 있어요 · PNG · SVG · JPG</div>
+                  </div>
+                </label>
+              ) : (
+                <div className="border bg-white" style={{ borderRadius: "var(--aui-radius-control)", borderColor: F.hairlineSoft }}>
+                  {/* Logo row */}
+                  <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: extractedColors.length > 0 ? `1px solid ${F.hairlineSoft}` : 'none' }}>
+                    <img src={logoDataUrl} alt="logo" className="h-8 object-contain" />
+                    <span className="flex-1 text-[13px]" style={{ color: F.inkMuted }}>로고가 UI에 자동으로 삽입됩니다</span>
+                    <button
+                      onClick={handleExtractColors}
+                      className="text-[12px] font-semibold px-3 py-1.5 transition-opacity"
+                      style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: F.ink, color: 'var(--aui-on-dark)' }}
+                    >
+                      색상 추출하기
+                    </button>
+                    <button onClick={() => { setLogoDataUrl(null); setBrandColors([]); setExtractedColors([]) }} className="transition-colors ml-1" style={{ color: F.inkMuted }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  {/* Extracted palette */}
+                  {extractedColors.length > 0 && (
+                    <div className="px-4 py-3">
+                      <div className="text-[12px] mb-3" style={{ color: F.inkMuted }}>클릭해서 선택 — 첫 클릭: 프라이머리, 두 번째 클릭: 서브컬러</div>
+                      <div className="flex items-end gap-3 flex-wrap">
+                        {extractedColors.map(color => {
+                          const isPrimary = brandColors[0] === color
+                          const isSub = brandColors[1] === color
+                          return (
+                            <button
+                              key={color}
+                              onClick={() => handleSwatchClick(color)}
+                              className="flex flex-col items-center gap-1"
+                              title={color}
+                            >
+                              <div
+                                className="w-9 h-9 rounded-full"
+                                style={{
+                                  backgroundColor: color,
+                                  outline: isPrimary ? `3px solid ${F.ink}` : isSub ? `3px solid ${color}` : `2px solid ${F.hairline}`,
+                                  outlineOffset: '2px',
+                                  transform: (isPrimary || isSub) ? 'scale(1.15)' : 'scale(1)',
+                                  transition: 'transform 0.1s, outline 0.1s',
+                                }}
+                              />
+                              <span className="text-[10px] font-semibold" style={{ color: isPrimary ? F.ink : isSub ? color : 'transparent' }}>
+                                {isPrimary ? '주' : isSub ? '서브' : '-'}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Brand Colors — always visible */}
+            <div className="mb-8">
+              <div className="text-[13px] font-medium mb-2.5" style={{ color: F.ink }}>
+                브랜드 컬러 <span className="font-normal ml-1" style={{ color: F.inkMuted }}>선택사항</span>
+              </div>
+              <div className="space-y-2">
+                {([
+                  { label: '프라이머리', idx: 0, fallback: DEFAULT_GENERATED_BRAND_COLOR, hint: '클릭해서 색상 선택' },
+                  { label: '서브컬러',   idx: 1, fallback: 'var(--aui-inverse-surface)', hint: brandColors[0] ? '클릭해서 색상 선택' : '프라이머리 먼저 선택' },
+                ] as const).map(({ label, idx, fallback, hint }) => {
+                  const color = brandColors[idx] ?? null
+                  const disabled = idx === 1 && !brandColors[0]
+                  return (
+                    <div key={label} className="flex items-center gap-3 px-3 py-2.5 border bg-white" style={{ borderRadius: "var(--aui-radius-control)", borderColor: F.hairlineSoft, opacity: disabled ? 0.45 : 1 }}>
+                      <span className="text-[12px] w-[60px] shrink-0" style={{ color: F.inkMuted }}>{label}</span>
+                      <label className={`relative shrink-0${disabled ? ' pointer-events-none' : ' cursor-pointer'}`}>
+                        <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: color ?? 'var(--aui-surface-muted)', borderColor: F.hairline }} />
+                        {!disabled && (
+                          <input
+                            type="color"
+                            value={color ?? fallback}
+                            onChange={e => {
+                              const v = e.target.value
+                              setBrandColors(prev =>
+                                idx === 0
+                                  ? [v, ...(prev[1] ? [prev[1]] : [])]
+                                  : prev[0] ? [prev[0], v] : []
+                              )
+                            }}
+                            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                          />
+                        )}
+                      </label>
+                      {color
+                        ? <span className="text-[12px] font-mono flex-1" style={{ color: F.ink }}>{color}</span>
+                        : <span className="text-[12px] flex-1" style={{ color: F.inkSubtle }}>{hint}</span>
+                      }
+                      {color && (
+                        <button
+                          onClick={() => setBrandColors(prev =>
+                            idx === 0
+                              ? (prev[1] ? [prev[1]] : [])
+                              : (prev[0] ? [prev[0]] : [])
+                          )}
+                          style={{ color: F.inkMuted }}
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
             <div className="space-y-8 mb-10">
-              {questionnaire.questions.map((q, idx) => (
-                <QuestionCard key={q.id} index={idx + 1} question={q} answer={answers[q.id]} onAnswer={(value) => handleAnswer(q.id, value, q.type)} />
-              ))}
+              {questionnaire.questions
+                .filter(q => q.id === 'platform_intent' || q.id === 'hero_3d')
+                .map((q, idx) => (
+                  <QuestionCard key={q.id} index={idx + 1} question={q} answer={answers[q.id]} onAnswer={(value) => handleAnswer(q.id, value, q.type)} />
+                ))}
             </div>
 
             {generateError && (
-              <div className="mb-4 px-4 py-3 text-sm text-[#FF4242]" style={{ borderRadius: '8px', backgroundColor: 'rgba(255,107,107,0.10)', border: '1px solid rgba(255,107,107,0.25)' }}>
+              <div className="mb-4 px-4 py-3 text-sm text-[var(--aui-negative)]" style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-negative-soft)', border: '1px solid var(--aui-negative-border)' }}>
                 {generateError}
               </div>
             )}
@@ -4470,9 +4671,9 @@ function ResponsiveFrame({
   const scaledH = Math.round(frameH * scale)
 
   const getBreakpoint = (w: number) => {
-    if (w < 480) return { label: 'Mobile', color: '#00BF40' }
-    if (w < 1024) return { label: 'Tablet', color: '#FF9200' }
-    return { label: 'Desktop', color: '#3b82f6' }
+    if (w < 480) return { label: 'Mobile', color: 'var(--aui-positive)' }
+    if (w < 1024) return { label: 'Tablet', color: 'var(--aui-caution)' }
+    return { label: 'Desktop', color: 'var(--aui-primary)' }
   }
   const bp = getBreakpoint(previewWidth)
 
@@ -4507,10 +4708,10 @@ function ResponsiveFrame({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
       {/* 브레이크포인트 인디케이터 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, paddingLeft: 2 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", marginBottom: 10, paddingLeft: 2 }}>
         <div style={{ width: 8, height: 8, borderRadius: '50%', background: bp.color, flexShrink: 0 }} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(46,47,51,0.88)' }}>{bp.label}</span>
-        <span style={{ fontSize: 12, color: 'rgba(55,56,60,0.61)' }}>{previewWidth}px</span>
+        <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text-neutral)' }}>{bp.label}</span>
+        <span style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-muted)' }}>{previewWidth}px</span>
       </div>
 
       {/* 프레임 + 드래그 핸들 */}
@@ -4520,11 +4721,11 @@ function ResponsiveFrame({
           style={{
             width: scaledW,
             flexShrink: 0,
-            borderRadius: 10,
+            borderRadius: "var(--aui-radius-control)",
             overflow: 'hidden',
-            border: '0.5px solid rgba(0,0,0,0.12)',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-            background: '#fff',
+            border: '0.5px solid var(--aui-shadow-medium)',
+            boxShadow: '0 4px 24px var(--aui-border-subtle)',
+            background: 'var(--aui-on-dark)',
           }}
         >
           {/* 콘텐츠 클립 영역 */}
@@ -4562,7 +4763,7 @@ function ResponsiveFrame({
             flexShrink: 0,
           }}
         >
-          <div style={{ width: 4, height: 40, background: 'rgba(0,0,0,0.15)', borderRadius: 2 }} />
+          <div style={{ width: 4, height: 40, background: 'var(--aui-shadow-medium)', borderRadius: "var(--aui-radius-sm)" }} />
         </div>
       </div>
     </div>
@@ -4574,11 +4775,11 @@ function ResponsiveFrame({
 function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange, sharedClasses, syncAllScreens, onToggleSync }: { styles: ElementStyles | null; onUpdate: (prop: string, val: string) => void; onCreonReplace?: () => void; onIconChange?: () => void; sharedClasses?: string[]; syncAllScreens?: boolean; onToggleSync?: () => void }) {
   if (!styles) {
     return (
-      <div className="w-72 shrink-0 border-l border-[rgba(0,0,0,0.09)] bg-white flex flex-col items-center justify-center text-center p-8">
-        <div className="size-12 bg-[rgba(112,115,124,0.16)] rounded-full flex items-center justify-center mb-4" style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
-          <SlidersHorizontal size={20} className="text-[rgba(55,56,60,0.61)]" />
+      <div className="w-72 shrink-0 border-l border-[var(--aui-shadow-soft)] bg-white flex flex-col items-center justify-center text-center p-8">
+        <div className="size-12 bg-[var(--aui-border)] rounded-full flex items-center justify-center mb-4" style={{ border: '1px solid var(--aui-shadow-line)' }}>
+          <SlidersHorizontal size={20} className="text-[var(--aui-text-muted)]" />
         </div>
-        <p className="text-[13px] text-[rgba(55,56,60,0.61)] leading-[1.6]">요소를 클릭하면<br />스타일을 확인하고<br />수정할 수 있습니다</p>
+        <p className="text-[13px] text-[var(--aui-text-muted)] leading-[1.6]">요소를 클릭하면<br />스타일을 확인하고<br />수정할 수 있습니다</p>
       </div>
     )
   }
@@ -4588,36 +4789,36 @@ function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange, share
   const isShared = sharedClasses && sharedClasses.length > 0
 
   return (
-    <div className="w-72 shrink-0 border-l border-[rgba(0,0,0,0.09)] bg-white flex flex-col text-[13px]">
+    <div className="w-72 shrink-0 border-l border-[var(--aui-shadow-soft)] bg-white flex flex-col text-[13px]">
       <div className="flex-1 overflow-y-auto">
       {/* Element label */}
-      <div className="px-4 py-3 border-b border-[rgba(0,0,0,0.07)] flex items-center gap-2">
-        <span className="text-[13px] font-mono bg-[rgba(112,115,124,0.08)] text-[rgba(55,56,60,0.61)] px-1.5 py-0.5 rounded">&lt;{styles.tagName}&gt;</span>
-        {styles.text && <span className="text-[rgba(55,56,60,0.61)] truncate">{styles.text}</span>}
+      <div className="px-4 py-3 border-b border-[var(--aui-shadow-line)] flex items-center gap-2">
+        <span className="text-[13px] font-mono bg-[var(--aui-border-subtle)] text-[var(--aui-text-muted)] px-1.5 py-0.5 rounded">&lt;{styles.tagName}&gt;</span>
+        {styles.text && <span className="text-[var(--aui-text-muted)] truncate">{styles.text}</span>}
       </div>
 
       {/* Shared component sync toggle */}
       {isShared && (
         <div
-          className="px-4 py-2.5 border-b border-[rgba(0,0,0,0.07)] flex items-center justify-between cursor-pointer"
-          style={{ backgroundColor: syncAllScreens ? 'rgba(0,85,255,0.06)' : '#F7F7F8' }}
+          className="px-4 py-2.5 border-b border-[var(--aui-shadow-line)] flex items-center justify-between cursor-pointer"
+          style={{ backgroundColor: syncAllScreens ? 'var(--aui-primary-tint)' : 'var(--aui-page)' }}
           onClick={onToggleSync}
         >
           <div className="flex items-center gap-2">
-            <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#0066FF', flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: 'rgba(46,47,51,0.88)', fontWeight: 500 }}>공통 컴포넌트 — 모든 화면 동기화</span>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--aui-primary)', flexShrink: 0 }} />
+            <span style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-neutral)', fontWeight: "var(--aui-weight-medium)" }}>공통 컴포넌트 — 모든 화면 동기화</span>
           </div>
           <div
             style={{
-              width: 32, height: 18, borderRadius: 9, flexShrink: 0,
-              backgroundColor: syncAllScreens ? '#0066FF' : 'rgba(55,56,60,0.16)',
+              width: 32, height: 18, borderRadius: "var(--aui-radius-sm)", flexShrink: 0,
+              backgroundColor: syncAllScreens ? 'var(--aui-primary)' : 'var(--aui-text-disabled)',
               position: 'relative', transition: 'background 0.2s',
             }}
           >
             <div style={{
               position: 'absolute', top: 2, left: syncAllScreens ? 16 : 2,
-              width: 14, height: 14, borderRadius: '50%', backgroundColor: '#ffffff',
-              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              width: 14, height: 14, borderRadius: '50%', backgroundColor: 'var(--aui-on-dark)',
+              transition: 'left 0.2s', boxShadow: '0 1px 3px var(--aui-scrim-soft)',
             }} />
           </div>
         </div>
@@ -4688,12 +4889,12 @@ function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange, share
       </div>
 
       {(onCreonReplace || onIconChange) && (
-        <div className="px-3 py-3 border-t border-[rgba(0,0,0,0.07)] flex flex-col gap-2 shrink-0">
+        <div className="px-3 py-3 border-t border-[var(--aui-shadow-line)] flex flex-col gap-2 shrink-0">
           {onCreonReplace && (
             <button
               onClick={onCreonReplace}
               className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-semibold"
-              style={{ backgroundColor: '#171719', color: '#ffffff', border: 'none', cursor: 'pointer' }}
+              style={{ backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)', border: 'none', cursor: 'pointer' }}
             >
               <ImageIcon size={13} />
               Creon에서 변경
@@ -4703,7 +4904,7 @@ function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange, share
             <button
               onClick={onIconChange}
               className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-semibold"
-              style={{ backgroundColor: 'rgba(112,115,124,0.08)', color: '#171719', border: '1px solid rgba(0,0,0,0.09)', cursor: 'pointer' }}
+              style={{ backgroundColor: 'var(--aui-border-subtle)', color: 'var(--aui-text)', border: '1px solid var(--aui-shadow-soft)', cursor: 'pointer' }}
             >
               <Shapes size={13} />
               아이콘 변경
@@ -4789,40 +4990,40 @@ function IconPickerPanel({ pickedIcon, onPick, onApply, onCancel }: {
   return (
     <div
       className="fixed right-4 top-[60px] bottom-4 z-30 flex flex-col overflow-hidden bg-white w-72"
-      style={{ borderRadius: '16px', boxShadow: '0 8px 40px rgba(0,0,0,0.18)', border: `1px solid ${F.hairlineSoft}` }}
+      style={{ borderRadius: "var(--aui-radius-card)", boxShadow: '0 8px 40px var(--aui-shadow-medium)', border: `1px solid ${F.hairlineSoft}` }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[rgba(0,0,0,0.07)] shrink-0">
-        <span className="text-[14px] font-semibold text-[#171719]">아이콘 변경</span>
-        <button onClick={onCancel} className="text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--aui-shadow-line)] shrink-0">
+        <span className="text-[14px] font-semibold text-[var(--aui-text)]">아이콘 변경</span>
+        <button onClick={onCancel} className="text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors">
           <X size={15} />
         </button>
       </div>
 
       {/* Search */}
-      <div className="px-3 py-2 border-b border-[rgba(0,0,0,0.07)] shrink-0">
+      <div className="px-3 py-2 border-b border-[var(--aui-shadow-line)] shrink-0">
         <input
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="아이콘 검색..."
-          className="w-full bg-[rgba(112,115,124,0.08)] text-[13px] text-[#171719] placeholder:text-[rgba(55,56,60,0.61)] px-3 py-1.5 outline-none"
-          style={{ borderRadius: '8px', border: '1px solid rgba(0,0,0,0.09)' }}
+          className="w-full bg-[var(--aui-border-subtle)] text-[13px] text-[var(--aui-text)] placeholder:text-[var(--aui-text-muted)] px-3 py-1.5 outline-none"
+          style={{ borderRadius: "var(--aui-radius-sm)", border: '1px solid var(--aui-shadow-soft)' }}
         />
       </div>
 
       {/* Current pick preview */}
       {pickedIcon && (
-        <div className="px-4 py-2 border-b border-[rgba(0,0,0,0.07)] flex items-center gap-2 bg-[#F7F7F8] shrink-0">
-          <span className="material-symbols-outlined" style={{ fontSize: '22px', color: '#0066FF' }}>{pickedIcon}</span>
-          <span className="text-[13px] text-[#0066FF] font-medium">{pickedIcon}</span>
+        <div className="px-4 py-2 border-b border-[var(--aui-shadow-line)] flex items-center gap-2 bg-[var(--aui-page)] shrink-0">
+          <span className="material-symbols-outlined" style={{ fontSize: "var(--aui-icon-lg)", color: 'var(--aui-primary)' }}>{pickedIcon}</span>
+          <span className="text-[13px] text-[var(--aui-primary)] font-medium">{pickedIcon}</span>
         </div>
       )}
 
       {/* Icon grid */}
       <div className="flex-1 overflow-y-auto px-2 py-2">
         {loading && (
-          <div className="flex items-center justify-center gap-2 py-6 text-[13px] text-[rgba(55,56,60,0.61)]">
+          <div className="flex items-center justify-center gap-2 py-6 text-[13px] text-[var(--aui-text-muted)]">
             <Spinner />
             <span>아이콘 불러오는 중...</span>
           </div>
@@ -4835,25 +5036,25 @@ function IconPickerPanel({ pickedIcon, onPick, onApply, onCancel }: {
               onClick={() => onPick(name)}
               className="flex flex-col items-center justify-center gap-0.5 py-2 rounded-lg transition-all"
               style={pickedIcon === name
-                ? { backgroundColor: '#0066FF15', outline: '1.5px solid #0066FF' }
+                ? { backgroundColor: 'var(--aui-primary)15', outline: '1.5px solid var(--aui-primary)' }
                 : { backgroundColor: 'transparent' }
               }
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: pickedIcon === name ? '#0066FF' : 'rgba(46,47,51,0.88)' }}>{name}</span>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--aui-icon-md)", color: pickedIcon === name ? 'var(--aui-primary)' : 'var(--aui-text-neutral)' }}>{name}</span>
             </button>
           ))}
         </div>
         {filtered.length === 0 && (
-          <p className="text-center text-[13px] text-[rgba(55,56,60,0.61)] py-8">검색 결과 없음</p>
+          <p className="text-center text-[13px] text-[var(--aui-text-muted)] py-8">검색 결과 없음</p>
         )}
       </div>
 
       {/* Apply / Cancel */}
-      <div className="px-3 py-3 border-t border-[rgba(0,0,0,0.07)] flex gap-2 shrink-0">
+      <div className="px-3 py-3 border-t border-[var(--aui-shadow-line)] flex gap-2 shrink-0">
         <button
           onClick={onCancel}
           className="flex-1 py-2 text-[13px] font-medium border transition-all"
-          style={{ borderRadius: '8px', backgroundColor: 'rgba(112,115,124,0.08)', borderColor: 'rgba(0,0,0,0.09)', color: 'rgba(55,56,60,0.61)' }}
+          style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-border-subtle)', borderColor: 'var(--aui-shadow-soft)', color: 'var(--aui-text-muted)' }}
         >
           취소
         </button>
@@ -4861,7 +5062,7 @@ function IconPickerPanel({ pickedIcon, onPick, onApply, onCancel }: {
           onClick={onApply}
           disabled={!pickedIcon}
           className="flex-1 py-2 text-[13px] font-medium border transition-all disabled:opacity-40"
-          style={{ borderRadius: '8px', backgroundColor: '#171719', borderColor: '#171719', color: '#ffffff' }}
+          style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-text)', borderColor: 'var(--aui-text)', color: 'var(--aui-on-dark)' }}
         >
           적용
         </button>
@@ -4882,19 +5083,19 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-end p-6 pointer-events-none">
-      <div className="pointer-events-auto bg-white w-72 overflow-y-auto max-h-[90vh]" style={{ borderRadius: '16px', boxShadow: '0 8px 40px rgba(0,0,0,0.18)', border: `1px solid ${F.hairlineSoft}` }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(0,0,0,0.07)]">
-          <span className="text-[14px] font-semibold text-[#171719]">Tweaks</span>
-          <button onClick={onClose} className="text-[rgba(55,56,60,0.61)] hover:text-[#171719] transition-colors">
+      <div className="pointer-events-auto bg-white w-72 overflow-y-auto max-h-[90vh]" style={{ borderRadius: "var(--aui-radius-card)", boxShadow: '0 8px 40px var(--aui-shadow-medium)', border: `1px solid ${F.hairlineSoft}` }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--aui-shadow-line)]">
+          <span className="text-[14px] font-semibold text-[var(--aui-text)]">Tweaks</span>
+          <button onClick={onClose} className="text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors">
             <X size={16} />
           </button>
         </div>
 
         {/* 시나리오 */}
-        <div className="px-5 py-4 border-b border-[rgba(0,0,0,0.07)]">
-          <p className="text-[13px] font-semibold text-[rgba(55,56,60,0.61)] uppercase tracking-wider mb-2.5">시나리오</p>
+        <div className="px-5 py-4 border-b border-[var(--aui-shadow-line)]">
+          <p className="text-[13px] font-semibold text-[var(--aui-text-muted)] uppercase tracking-wider mb-2.5">시나리오</p>
           {isLoadingTweaks ? (
-            <div className="flex items-center gap-2 text-[13px] text-[rgba(55,56,60,0.61)]">
+            <div className="flex items-center gap-2 text-[13px] text-[var(--aui-text-muted)]">
               <Spinner /> 분석 중...
             </div>
           ) : tweakSpec?.states.length ? (
@@ -4905,10 +5106,10 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
                   onClick={() => onStateChange(state.id)}
                   className="flex-1 text-[13px] py-1.5 border transition-all"
                   style={{
-                    borderRadius: '6px',
+                    borderRadius: "var(--aui-radius-sm)",
                     ...(activeStateId === state.id
-                      ? { background: '#171719', color: '#ffffff', borderColor: '#171719' }
-                      : { background: 'rgba(112,115,124,0.08)', color: 'rgba(55,56,60,0.61)', borderColor: 'rgba(0,0,0,0.09)' }),
+                      ? { background: 'var(--aui-text)', color: 'var(--aui-on-dark)', borderColor: 'var(--aui-text)' }
+                      : { background: 'var(--aui-border-subtle)', color: 'var(--aui-text-muted)', borderColor: 'var(--aui-shadow-soft)' }),
                   }}
                 >
                   {state.label}
@@ -4916,14 +5117,14 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
               ))}
             </div>
           ) : (
-            <p className="text-[13px] text-[rgba(55,56,60,0.61)]">UI를 생성하면 시나리오가 분석됩니다</p>
+            <p className="text-[13px] text-[var(--aui-text-muted)]">UI를 생성하면 시나리오가 분석됩니다</p>
           )}
         </div>
 
         {/* 데이터 변수 슬라이더 */}
         {!isLoadingTweaks && tweakSpec && tweakSpec.variables.length > 0 && (
-          <div className="px-5 py-4 border-b border-[rgba(0,0,0,0.07)]">
-            <p className="text-[13px] font-semibold text-[rgba(55,56,60,0.61)] uppercase tracking-wider mb-3">데이터</p>
+          <div className="px-5 py-4 border-b border-[var(--aui-shadow-line)]">
+            <p className="text-[13px] font-semibold text-[var(--aui-text-muted)] uppercase tracking-wider mb-3">데이터</p>
             <div className="space-y-4">
               {tweakSpec.variables.map(v => (
                 <SliderField
@@ -4939,17 +5140,17 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
 
         {/* 핵심 순간 */}
         {!isLoadingTweaks && tweakSpec && tweakSpec.events.length > 0 && (
-          <div className="px-5 py-4 border-b border-[rgba(0,0,0,0.07)]">
-            <p className="text-[13px] font-semibold text-[rgba(55,56,60,0.61)] uppercase tracking-wider mb-2.5">핵심 순간</p>
+          <div className="px-5 py-4 border-b border-[var(--aui-shadow-line)]">
+            <p className="text-[13px] font-semibold text-[var(--aui-text-muted)] uppercase tracking-wider mb-2.5">핵심 순간</p>
             <div className="flex flex-col gap-2">
               {tweakSpec.events.map(ev => (
                 <button
                   key={ev.id}
                   onClick={() => onEvent(ev.script)}
-                  className="flex items-center gap-2 w-full text-left text-[13px] py-2 px-3 border transition-all hover:bg-[#F4F4F5]"
-                  style={{ borderRadius: '8px', borderColor: 'rgba(0,0,0,0.09)', background: '#F7F7F8', color: '#171719' }}
+                  className="flex items-center gap-2 w-full text-left text-[13px] py-2 px-3 border transition-all hover:bg-[var(--aui-surface-muted)]"
+                  style={{ borderRadius: "var(--aui-radius-sm)", borderColor: 'var(--aui-shadow-soft)', background: 'var(--aui-page)', color: 'var(--aui-text)' }}
                 >
-                  <Zap size={13} style={{ color: '#FF9200', flexShrink: 0 }} />
+                  <Zap size={13} style={{ color: 'var(--aui-caution)', flexShrink: 0 }} />
                   {ev.label}
                 </button>
               ))}
@@ -4959,20 +5160,20 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
 
         {/* 테마 */}
         <div className="p-5">
-          <p className="text-[13px] font-semibold text-[rgba(55,56,60,0.61)] uppercase tracking-wider mb-3">테마</p>
+          <p className="text-[13px] font-semibold text-[var(--aui-text-muted)] uppercase tracking-wider mb-3">테마</p>
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 text-[13px] text-[#171719]">
+            <div className="flex items-center gap-2 text-[13px] text-[var(--aui-text)]">
               {darkMode ? <Moon size={14} /> : <Sun size={14} />}
               다크 모드
             </div>
             <Toggle on={darkMode} onChange={onDarkMode} />
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[13px] text-[#171719]">브랜드 컬러</span>
+            <span className="text-[13px] text-[var(--aui-text)]">브랜드 컬러</span>
             <div className="flex items-center gap-2">
-              <span className="text-[13px] text-[rgba(55,56,60,0.61)] font-mono">{brandColor}</span>
+              <span className="text-[13px] text-[var(--aui-text-muted)] font-mono">{brandColor}</span>
               <label className="cursor-pointer">
-                <div className="size-7 border-2 cursor-pointer" style={{ borderRadius: '9999px', backgroundColor: brandColor, borderColor: 'rgba(0,0,0,0.12)', boxShadow: '0 0 0 1px rgba(0,0,0,0.06)' }} />
+                <div className="size-7 border-2 cursor-pointer" style={{ borderRadius: "var(--aui-radius-pill)", backgroundColor: brandColor, borderColor: 'var(--aui-shadow-medium)', boxShadow: '0 0 0 1px var(--aui-border-subtle)' }} />
                 <input type="color" value={brandColor} onChange={e => onBrandColor(e.target.value)} className="sr-only" />
               </label>
             </div>
@@ -4989,23 +5190,23 @@ function PrimaryButton({ onClick, disabled, loading, loadingText, children }: {
   onClick: () => void; disabled: boolean; loading: boolean; loadingText: string; children: React.ReactNode
 }) {
   return (
-    <button
+    <Button
+      type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full h-12 text-white font-medium flex items-center justify-center gap-2.5 transition-colors text-[16px]"
-      style={{ borderRadius: '8px', backgroundColor: disabled ? F.hairline : F.primary, cursor: disabled ? 'not-allowed' : 'pointer' }}
-      onMouseEnter={e => { if (!disabled) e.currentTarget.style.backgroundColor = F.primaryActive }}
-      onMouseLeave={e => { if (!disabled) e.currentTarget.style.backgroundColor = F.primary }}
+      size="lg"
+      className="w-full"
+      aria-busy={loading}
     >
       {loading ? <><Spinner />{loadingText}</> : children}
-    </button>
+    </Button>
   )
 }
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="border-b border-[rgba(0,0,0,0.07)] px-4 py-3">
-      <p className="text-[13px] font-semibold text-[rgba(55,56,60,0.61)] uppercase tracking-wider mb-2">{label}</p>
+    <div className="border-b border-[var(--aui-shadow-line)] px-4 py-3">
+      <p className="text-[13px] font-semibold text-[var(--aui-text-muted)] uppercase tracking-wider mb-2">{label}</p>
       <div className="space-y-1.5">{children}</div>
     </div>
   )
@@ -5018,7 +5219,7 @@ function TwoCol({ left, right }: { left: React.ReactNode; right: React.ReactNode
 function PropRow({ label, children, wide }: { label: string; children?: React.ReactNode; wide?: boolean }) {
   return (
     <div className={cn('flex items-center', wide ? 'flex-col items-start gap-0.5' : 'justify-between gap-2')}>
-      <span className="text-[13px] text-[rgba(55,56,60,0.61)] shrink-0">{label}</span>
+      <span className="text-[13px] text-[var(--aui-text-muted)] shrink-0">{label}</span>
       {children}
     </div>
   )
@@ -5081,7 +5282,7 @@ function EditField({ value, prop, suffix = '', onUpdate, wide }: {
       onMouseDown={handleMouseDown}
       style={{ cursor: isNum ? (scrubbing ? 'ew-resize' : 'col-resize') : undefined }}
       className={cn(
-        'text-[13px] text-[#171719] bg-[rgba(112,115,124,0.08)] border border-transparent hover:border-[rgba(0,0,0,0.15)] focus:border-[rgba(0,0,0,0.4)] outline-none rounded-[4px] transition-colors font-mono',
+        'text-[13px] text-[var(--aui-text)] bg-[var(--aui-border-subtle)] border border-transparent hover:border-[var(--aui-shadow-medium)] focus:border-[var(--aui-scrim)] outline-none rounded-[4px] transition-colors font-mono',
         wide ? 'w-full px-2 py-1' : 'w-20 px-1.5 py-1 text-right'
       )}
     />
@@ -5101,7 +5302,7 @@ function AlignField({ value, prop, onUpdate }: { value: string; prop: string; on
           key={opt.value}
           onClick={() => onUpdate(prop, opt.value)}
           className="flex items-center justify-center w-7 h-6 rounded transition-colors"
-          style={value === opt.value ? { background: '#171719', color: '#ffffff' } : { background: 'rgba(112,115,124,0.16)', color: 'rgba(55,56,60,0.61)' }}
+          style={value === opt.value ? { background: 'var(--aui-text)', color: 'var(--aui-on-dark)' } : { background: 'var(--aui-border)', color: 'var(--aui-text-muted)' }}
         >
           {opt.icon}
         </button>
@@ -5113,8 +5314,8 @@ function AlignField({ value, prop, onUpdate }: { value: string; prop: string; on
 function ColorSwatch({ color, prop, onUpdate }: { color: string; prop: string; onUpdate: (p: string, v: string) => void }) {
   return (
     <label className="cursor-pointer">
-      <div className="size-4 border border-[rgba(0,0,0,0.15)]" style={{ borderRadius: '2px', backgroundColor: color }} />
-      <input type="color" value={color.startsWith('#') ? color : '#000000'} onChange={e => onUpdate(prop, e.target.value)} className="sr-only" />
+      <div className="size-4 border border-[var(--aui-shadow-medium)]" style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: color }} />
+      <input type="color" value={color.startsWith('#') ? color : 'var(--aui-inverse-surface)'} onChange={e => onUpdate(prop, e.target.value)} className="sr-only" />
     </label>
   )
 }
@@ -5131,8 +5332,8 @@ function SliderField({ variable, value, onChange }: {
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[13px] text-[rgba(55,56,60,0.61)]">{variable.label}</span>
-        <span className="text-[13px] font-medium text-[#171719] font-mono">
+        <span className="text-[13px] text-[var(--aui-text-muted)]">{variable.label}</span>
+        <span className="text-[13px] font-medium text-[var(--aui-text)] font-mono">
           {formatVarDisplay(display, variable)}
         </span>
       </div>
@@ -5148,11 +5349,11 @@ function SliderField({ variable, value, onChange }: {
           onChange(variable.id, v)
         }}
         className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-        style={{ accentColor: '#0066FF' }}
+        style={{ accentColor: 'var(--aui-primary)' }}
       />
       <div className="flex justify-between mt-1">
-        <span className="text-[13px] text-[rgba(55,56,60,0.61)]">{formatVarDisplay(variable.min, variable)}</span>
-        <span className="text-[13px] text-[rgba(55,56,60,0.61)]">{formatVarDisplay(variable.max, variable)}</span>
+        <span className="text-[13px] text-[var(--aui-text-muted)]">{formatVarDisplay(variable.min, variable)}</span>
+        <span className="text-[13px] text-[var(--aui-text-muted)]">{formatVarDisplay(variable.max, variable)}</span>
       </div>
     </div>
   )
@@ -5163,7 +5364,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
     <button
       onClick={() => onChange(!on)}
       className="relative w-10 h-5 rounded-full transition-colors"
-      style={{ backgroundColor: on ? '#0066FF' : 'rgba(55,56,60,0.16)' }}
+      style={{ backgroundColor: on ? 'var(--aui-primary)' : 'var(--aui-text-disabled)' }}
     >
       <div
         className="absolute top-0.5 size-4 bg-white rounded-full shadow transition-all"
@@ -5200,12 +5401,12 @@ function QuestionCard({ index, question, answer, onAnswer }: {
   return (
     <div>
       <div className="flex items-start gap-3 mb-3">
-        <span className="shrink-0 size-6 flex items-center justify-center text-xs font-medium mt-0.5 transition-colors" style={{ borderRadius: '8px', ...(hasAnswer ? { backgroundColor: '#171719', color: '#ffffff' } : { backgroundColor: 'rgba(112,115,124,0.16)', color: 'rgba(55,56,60,0.61)', border: '1px solid rgba(0,0,0,0.09)' }) }}>
+        <span className="shrink-0 size-6 flex items-center justify-center text-xs font-medium mt-0.5 transition-colors" style={{ borderRadius: "var(--aui-radius-sm)", ...(hasAnswer ? { backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)' } : { backgroundColor: 'var(--aui-border)', color: 'var(--aui-text-muted)', border: '1px solid var(--aui-shadow-soft)' }) }}>
           {hasAnswer ? <Check size={11} /> : index}
         </span>
         <div>
-          <h3 className="text-[15px] font-medium text-[#171719]">{question.question}</h3>
-          {question.description && <p className="text-[13px] text-[rgba(55,56,60,0.61)] mt-0.5">{question.description}</p>}
+          <h3 className="text-[15px] font-medium text-[var(--aui-text)]">{question.question}</h3>
+          {question.description && <p className="text-[13px] text-[var(--aui-text-muted)] mt-0.5">{question.description}</p>}
         </div>
       </div>
 
@@ -5214,12 +5415,12 @@ function QuestionCard({ index, question, answer, onAnswer }: {
           <textarea
             value={(answer as string) ?? ''}
             onChange={e => onAnswer(e.target.value)}
-            className="w-full bg-[rgba(112,115,124,0.08)] border p-3 text-sm text-[#171719] placeholder:text-[rgba(55,56,60,0.61)] resize-none"
-            style={{ borderRadius: '8px', outline: 'none', borderColor: 'rgba(0,0,0,0.09)' }}
+            className="w-full bg-[var(--aui-border-subtle)] border p-3 text-sm text-[var(--aui-text)] placeholder:text-[var(--aui-text-muted)] resize-none"
+            style={{ borderRadius: "var(--aui-radius-sm)", outline: 'none', borderColor: 'var(--aui-shadow-soft)' }}
             rows={3}
             placeholder="자유롭게 입력해주세요..."
-            onFocus={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.35)' }}
-            onBlur={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.09)' }}
+            onFocus={e => { e.currentTarget.style.borderColor = 'var(--aui-scrim)' }}
+            onBlur={e => { e.currentTarget.style.borderColor = 'var(--aui-shadow-soft)' }}
           />
         ) : (
           <div className="flex flex-wrap gap-2">
@@ -5228,19 +5429,19 @@ function QuestionCard({ index, question, answer, onAnswer }: {
                 key={option}
                 onClick={() => onAnswer(option)}
                 className="px-4 py-2 text-sm border transition-all inline-flex items-center gap-1.5"
-                style={{ borderRadius: '8px', ...(isSelected(option) ? { backgroundColor: '#EAF2FE', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}
+                style={{ borderRadius: "var(--aui-radius-sm)", ...(isSelected(option) ? { backgroundColor: 'var(--aui-primary-soft)', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}
               >
                 {isSelected(option) && <Check size={13} />}
                 {option}
               </button>
             ))}
             {question.hasDecideForMe && (
-              <button onClick={() => onAnswer('AI가 결정')} className="px-4 py-2 text-sm border flex items-center gap-1.5 transition-all" style={{ borderRadius: '8px', borderStyle: 'dashed', ...(isSelected('AI가 결정') ? { backgroundColor: '#EAF2FE', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}>
+              <button onClick={() => onAnswer('AI가 결정')} className="px-4 py-2 text-sm border flex items-center gap-1.5 transition-all" style={{ borderRadius: "var(--aui-radius-sm)", borderStyle: 'dashed', ...(isSelected('AI가 결정') ? { backgroundColor: 'var(--aui-primary-soft)', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}>
                 <Sparkles size={12} /> AI가 결정
               </button>
             )}
             {question.hasExplore && (
-              <button onClick={() => onAnswer('다양하게 보기')} className="px-4 py-2 text-sm border transition-all" style={{ borderRadius: '8px', borderStyle: 'dashed', ...(isSelected('다양하게 보기') ? { backgroundColor: '#EAF2FE', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}>
+              <button onClick={() => onAnswer('다양하게 보기')} className="px-4 py-2 text-sm border transition-all" style={{ borderRadius: "var(--aui-radius-sm)", borderStyle: 'dashed', ...(isSelected('다양하게 보기') ? { backgroundColor: 'var(--aui-primary-soft)', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}>
                 ✦ 다양하게 보기
               </button>
             )}
@@ -5251,12 +5452,12 @@ function QuestionCard({ index, question, answer, onAnswer }: {
             type="text"
             value={customDomainText}
             onChange={e => onAnswer(e.target.value ? `기타: ${e.target.value}` : '기타')}
-            className="mt-2 w-full bg-[rgba(112,115,124,0.08)] border px-3 py-2 text-sm text-[#171719] placeholder:text-[rgba(55,56,60,0.61)]"
-            style={{ borderRadius: '8px', outline: 'none', borderColor: 'rgba(0,0,0,0.09)' }}
+            className="mt-2 w-full bg-[var(--aui-border-subtle)] border px-3 py-2 text-sm text-[var(--aui-text)] placeholder:text-[var(--aui-text-muted)]"
+            style={{ borderRadius: "var(--aui-radius-sm)", outline: 'none', borderColor: 'var(--aui-shadow-soft)' }}
             placeholder="예: 부동산, 물류, 교육 등..."
             autoFocus
-            onFocus={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.35)' }}
-            onBlur={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.09)' }}
+            onFocus={e => { e.currentTarget.style.borderColor = 'var(--aui-scrim)' }}
+            onBlur={e => { e.currentTarget.style.borderColor = 'var(--aui-shadow-soft)' }}
           />
         )}
         {isHero3DManual && (
@@ -5265,22 +5466,22 @@ function QuestionCard({ index, question, answer, onAnswer }: {
               type="text"
               value={hero3DKeyword}
               onChange={e => onAnswer(e.target.value ? `직접 입력: ${e.target.value}` : '직접 입력')}
-              className="w-full bg-[rgba(112,115,124,0.08)] border px-3 py-2 text-sm text-[#171719] placeholder:text-[rgba(55,56,60,0.61)]"
-              style={{ borderRadius: '8px', outline: 'none', borderColor: 'rgba(0,0,0,0.09)' }}
+              className="w-full bg-[var(--aui-border-subtle)] border px-3 py-2 text-sm text-[var(--aui-text)] placeholder:text-[var(--aui-text-muted)]"
+              style={{ borderRadius: "var(--aui-radius-sm)", outline: 'none', borderColor: 'var(--aui-shadow-soft)' }}
               placeholder="예: 귀여운 로봇, 스마트폰 캐릭터, 달리는 강아지..."
               autoFocus
-              onFocus={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.35)' }}
-              onBlur={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.09)' }}
+              onFocus={e => { e.currentTarget.style.borderColor = 'var(--aui-scrim)' }}
+              onBlur={e => { e.currentTarget.style.borderColor = 'var(--aui-shadow-soft)' }}
             />
-            <p className="text-[11px] text-[rgba(55,56,60,0.61)] mt-1">한국어로 입력해도 돼요. Creon 3D 스타일로 생성됩니다.</p>
+            <p className="text-[11px] text-[var(--aui-text-muted)] mt-1">한국어로 입력해도 돼요. Creon 3D 스타일로 생성됩니다.</p>
           </div>
         )}
-        {question.type === 'multi' && <p className="text-[13px] text-[rgba(55,56,60,0.61)] mt-2">복수 선택 가능</p>}
+        {question.type === 'multi' && <p className="text-[13px] text-[var(--aui-text-muted)] mt-2">복수 선택 가능</p>}
       </div>
     </div>
   )
 }
 
 function Spinner() {
-  return <div className="size-4 rounded-full animate-spin" style={{ border: '2px solid rgba(0,0,0,0.15)', borderTopColor: 'rgba(0,0,0,0.6)' }} />
+  return <div className="size-4 rounded-full animate-spin" style={{ border: '2px solid var(--aui-shadow-medium)', borderTopColor: 'var(--aui-scrim-strong)' }} />
 }

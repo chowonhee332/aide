@@ -44,7 +44,9 @@ brief
 
 ## Design rules
 
-- 앱 UI는 `src/app/globals.css`의 `--aide-*` 토큰을 사용하고 `src/lib/design-systems/aide.md`와 동기화한다.
+- Aide 서비스 UI는 `src/lib/design-systems/aide-product-ui.md`와 `src/app/globals.css`의 `--aui-*` 토큰을 사용한다.
+- `src/lib/design-systems/aide.md`는 DESIGN.md를 선택하지 않았을 때 AI 생성 결과물에 적용되는 기본값이다. Aide 서비스 크롬에 적용하지 말라.
+- 화면 컴포넌트에 새 hex 색을 추가하지 말고 `--aui-*` 또는 `AIDE_UI`를 사용한다.
 - `#ff385c`는 생성 시안의 기본 브랜드 색이다. Aide 앱 UI 색으로 치환하지 말라.
 - KTDS 생성물은 `src/lib/ktds-tokens.ts`와 `src/lib/design-systems/ktds.md`를 따른다.
 
