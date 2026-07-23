@@ -57,6 +57,11 @@ brief
 - `src/lib/design-intelligence.ts`: deterministic generation plan.
 - `src/lib/structure-lint.ts`: contract validation and correction.
 
+## Docs
+
+- `docs/archive/`: 과거 구현 계획·스펙. **현재 상태가 아니다.** 히스토리 참고용이며 현행 규칙과 충돌하면 이 파일이 우선한다.
+- `src/lib/design-systems/*.md`: 생성에 쓰이는 런타임 데이터. `-test` 접미사 파일은 UI 선택지에서 자동 제외된다.
+
 ## Local artifacts
 
 두 디렉토리 모두 gitignored이며 런타임에 생성된다. 커밋하지 말라.
