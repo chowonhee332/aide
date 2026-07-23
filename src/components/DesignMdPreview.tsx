@@ -160,10 +160,10 @@ function ColorSwatch({ colorKey, value }: { colorKey: string; value: string }) {
         border: isVeryLight(value) ? '1px solid var(--aui-border)' : 'none',
         flexShrink: 0,
       }} />
-      <span style={{ color: 'var(--aui-text-muted)', fontSize: '9px', lineHeight: "var(--aui-leading-snug)", maxWidth: '54px', wordBreak: 'break-all' }}>
+      <span style={{ color: 'var(--aui-text-muted)', fontSize: "var(--aui-type-meta-size)", lineHeight: "var(--aui-leading-snug)", maxWidth: '54px', wordBreak: 'break-all' }}>
         {colorKey}
       </span>
-      <span style={{ color: 'var(--aui-text-assistive)', fontSize: '8px', letterSpacing: '0.02em', fontFamily: 'monospace' }}>
+      <span style={{ color: 'var(--aui-text-assistive)', fontSize: "var(--aui-type-nano-size)", letterSpacing: "var(--aui-tracking-slight)", fontFamily: 'monospace' }}>
         {value.toLowerCase()}
       </span>
     </div>
@@ -173,7 +173,7 @@ function ColorSwatch({ colorKey, value }: { colorKey: string; value: string }) {
 function DocSection({ label, children, noBorder }: { label: string; children: React.ReactNode; noBorder?: boolean }) {
   return (
     <div style={{ padding: `var(--aui-space-5) var(--aui-space-6)`, borderBottom: noBorder ? 'none' : '1px solid var(--aui-border-subtle)' }}>
-      <p style={{ color: 'var(--aui-text-assistive)', fontSize: '9px', fontWeight: "var(--aui-weight-bold)", letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '16px' }}>
+      <p style={{ color: 'var(--aui-text-assistive)', fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", letterSpacing: "var(--aui-tracking-wider)", textTransform: 'uppercase', marginBottom: '16px' }}>
         {label}
       </p>
       {children}
@@ -218,7 +218,7 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant 
             display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", flexShrink: 0,
             background: 'none', border: 'none', cursor: 'pointer',
             color: isDark ? 'var(--aui-on-dark-subtle)' : 'rgba(0,0,0,0.4)',
-            fontSize: '12px', padding: `var(--aui-space-1) 0`,
+            fontSize: "var(--aui-type-caption-size)", padding: `var(--aui-space-1) 0`,
           }}
         >
           <ArrowLeft size={12} />
@@ -237,7 +237,7 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant 
               onClick={() => setTab(t)}
               style={{
                 flex: 1, padding: `var(--aui-space-1) 0`, borderRadius: "var(--aui-radius-sm)", border: 'none',
-                cursor: 'pointer', fontSize: '11px', fontWeight: "var(--aui-weight-semibold)",
+                cursor: 'pointer', fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)",
                 fontFamily: 'inherit', transition: 'all 0.15s',
                 backgroundColor: tab === t
                   ? (isDark ? 'var(--aui-on-dark-faint)' : 'var(--aui-surface)')
@@ -245,7 +245,7 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant 
                 color: tab === t
                   ? (isDark ? 'var(--aui-surface)' : 'var(--aui-text)')
                   : (isDark ? 'var(--aui-on-dark-subtle)' : 'rgba(0,0,0,0.35)'),
-                boxShadow: tab === t && !isDark ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                boxShadow: tab === t && !isDark ? "var(--aui-shadow-subtle)" : 'none',
               }}
             >
               {t === 'preview' ? '미리보기' : 'MD 소스'}
@@ -261,7 +261,7 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant 
             border: 'none', cursor: 'pointer',
             backgroundColor: isDark ? 'var(--aui-on-dark-strong)' : 'var(--aui-text)',
             color: isDark ? 'var(--aui-text)' : 'var(--aui-surface)',
-            fontSize: '12px', fontWeight: "var(--aui-weight-semibold)", letterSpacing: '-0.12px',
+            fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", letterSpacing: "var(--aui-tracking-tight)",
           }}
         >
           <Check size={12} strokeWidth={2.5} />
@@ -283,7 +283,7 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant 
         {tab === 'source' ? (
           <pre style={{
             margin: 0, padding: "var(--aui-space-5)",
-            fontSize: '11px', lineHeight: "var(--aui-leading-relaxed)",
+            fontSize: "var(--aui-type-micro-size)", lineHeight: "var(--aui-leading-relaxed)",
             color: 'var(--aui-text-muted)', fontFamily: 'ui-monospace, Menlo, monospace',
             whiteSpace: 'pre-wrap', wordBreak: 'break-word',
           }}>
@@ -299,28 +299,28 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant 
             }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{
-                  color: 'var(--aui-text-assistive)', fontSize: '9px', fontWeight: "var(--aui-weight-bold)",
-                  letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px',
+                  color: 'var(--aui-text-assistive)', fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)",
+                  letterSpacing: "var(--aui-tracking-wider)", textTransform: 'uppercase', marginBottom: '8px',
                 }}>
                   Design System
                 </p>
                 <h2 style={{
-                  color: 'var(--aui-text)', fontSize: '18px', fontWeight: "var(--aui-weight-bold)",
-                  letterSpacing: '-0.6px', lineHeight: "var(--aui-leading-tight)", marginBottom: '10px',
+                  color: 'var(--aui-text)', fontSize: "var(--aui-type-section-title-size)", fontWeight: "var(--aui-weight-bold)",
+                  letterSpacing: "var(--aui-tracking-tighter)", lineHeight: "var(--aui-leading-tight)", marginBottom: '10px',
                 }}>
                   {d.name}
                 </h2>
                 {d.overviewText && (
                   <p style={{
-                    color: 'var(--aui-text-muted)', fontSize: '11px', lineHeight: "var(--aui-leading-relaxed)",
-                    letterSpacing: '-0.11px', marginBottom: '10px',
+                    color: 'var(--aui-text-muted)', fontSize: "var(--aui-type-micro-size)", lineHeight: "var(--aui-leading-relaxed)",
+                    letterSpacing: "var(--aui-tracking-tight)", marginBottom: '10px',
                     display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
                     overflow: 'hidden',
                   } as React.CSSProperties}>
                     {d.overviewText}
                   </p>
                 )}
-                <p style={{ color: 'var(--aui-text-assistive)', fontSize: '10px', letterSpacing: '-0.1px' }}>
+                <p style={{ color: 'var(--aui-text-assistive)', fontSize: "var(--aui-type-meta-size)", letterSpacing: "var(--aui-tracking-tight)" }}>
                   {domainLabel}
                 </p>
               </div>
@@ -343,15 +343,15 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant 
               <DocSection label="Colors">
                 {d.colorsHeadline && (
                   <p style={{
-                    color: 'var(--aui-text-neutral)', fontSize: '13px', fontWeight: "var(--aui-weight-semibold)",
-                    letterSpacing: '-0.4px', marginBottom: '16px', lineHeight: "var(--aui-leading-snug)",
+                    color: 'var(--aui-text-neutral)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)",
+                    letterSpacing: "var(--aui-tracking-tighter)", marginBottom: '16px', lineHeight: "var(--aui-leading-snug)",
                   }}>
                     {d.colorsHeadline}
                   </p>
                 )}
                 {brandColors.length > 0 && (
                   <>
-                    <p style={{ color: 'var(--aui-text-assistive)', fontSize: '9px', fontWeight: "var(--aui-weight-semibold)", letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '10px' }}>
+                    <p style={{ color: 'var(--aui-text-assistive)', fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)", letterSpacing: "var(--aui-tracking-wide)", textTransform: 'uppercase', marginBottom: '10px' }}>
                       Brand &amp; Accent
                     </p>
                     <div style={{ display: 'flex', gap: "var(--aui-space-3)", flexWrap: 'wrap', marginBottom: '18px' }}>
@@ -361,7 +361,7 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant 
                 )}
                 {categorized.surface.length > 0 && (
                   <>
-                    <p style={{ color: 'var(--aui-text-assistive)', fontSize: '9px', fontWeight: "var(--aui-weight-semibold)", letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '10px' }}>
+                    <p style={{ color: 'var(--aui-text-assistive)', fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)", letterSpacing: "var(--aui-tracking-wide)", textTransform: 'uppercase', marginBottom: '10px' }}>
                       Surface
                     </p>
                     <div style={{ display: 'flex', gap: "var(--aui-space-3)", flexWrap: 'wrap', marginBottom: '18px' }}>
@@ -371,7 +371,7 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant 
                 )}
                 {categorized.text.length > 0 && (
                   <>
-                    <p style={{ color: 'var(--aui-text-assistive)', fontSize: '9px', fontWeight: "var(--aui-weight-semibold)", letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '10px' }}>
+                    <p style={{ color: 'var(--aui-text-assistive)', fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)", letterSpacing: "var(--aui-tracking-wide)", textTransform: 'uppercase', marginBottom: '10px' }}>
                       Text &amp; Hairlines
                     </p>
                     <div style={{ display: 'flex', gap: "var(--aui-space-3)", flexWrap: 'wrap' }}>
@@ -386,13 +386,13 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant 
             {hasTypography && (
               <DocSection label="Typography">
                 <p style={{
-                  color: 'var(--aui-text-neutral)', fontSize: '13px', fontWeight: "var(--aui-weight-semibold)",
-                  letterSpacing: '-0.4px', marginBottom: '4px',
+                  color: 'var(--aui-text-neutral)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)",
+                  letterSpacing: "var(--aui-tracking-tighter)", marginBottom: '4px',
                 }}>
                   {fontName}
                 </p>
                 {d.typographyNote && (
-                  <p style={{ color: 'var(--aui-text-muted)', fontSize: '11px', marginBottom: '18px', lineHeight: "var(--aui-leading-normal)" }}>
+                  <p style={{ color: 'var(--aui-text-muted)', fontSize: "var(--aui-type-micro-size)", marginBottom: '18px', lineHeight: "var(--aui-leading-normal)" }}>
                     {d.typographyNote}
                   </p>
                 )}
@@ -410,8 +410,8 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant 
                       }}
                     >
                       <span style={{
-                        color: 'var(--aui-text-assistive)', fontSize: '8px', fontWeight: "var(--aui-weight-bold)",
-                        letterSpacing: '0.06em', textTransform: 'uppercase',
+                        color: 'var(--aui-text-assistive)', fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-bold)",
+                        letterSpacing: "var(--aui-tracking-wide)", textTransform: 'uppercase',
                       }}>
                         {t.name}
                       </span>
@@ -422,7 +422,7 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant 
                       }}>
                         {TYPE_SAMPLES[t.name] ?? t.name}
                       </span>
-                      <span style={{ color: 'var(--aui-text-assistive)', fontSize: '9px', textAlign: 'right', fontFamily: 'monospace' }}>
+                      <span style={{ color: 'var(--aui-text-assistive)', fontSize: "var(--aui-type-meta-size)", textAlign: 'right', fontFamily: 'monospace' }}>
                         {t.fontSize}
                       </span>
                     </div>
@@ -446,7 +446,7 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant 
                           border: '1.5px solid var(--aui-border)',
                           backgroundColor: 'var(--aui-surface-muted)',
                         }} />
-                        <span style={{ color: 'var(--aui-text-assistive)', fontSize: '8px', textAlign: 'center', fontFamily: 'monospace' }}>
+                        <span style={{ color: 'var(--aui-text-assistive)', fontSize: "var(--aui-type-nano-size)", textAlign: 'center', fontFamily: 'monospace' }}>
                           {r.value}
                         </span>
                       </div>
@@ -465,9 +465,9 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant 
                       borderRadius: d.buttonPrimary.radius || '8px',
                       backgroundColor: d.buttonPrimary.bg,
                       color: d.buttonPrimary.text || '#ffffff',
-                      fontSize: '13px', fontWeight: "var(--aui-weight-semibold)",
+                      fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)",
                       fontFamily: `"${fontName}", sans-serif`,
-                      letterSpacing: '-0.13px',
+                      letterSpacing: "var(--aui-tracking-tight)",
                     }}>
                       Primary Button
                     </div>
@@ -478,9 +478,9 @@ export function DesignMdPreview({ md, url, screenshot, onApply, onBack, variant 
                       borderRadius: d.buttonSecondary.radius || '8px',
                       backgroundColor: d.buttonSecondary.bg || 'transparent',
                       color: d.buttonSecondary.text || d.buttonPrimary?.bg || '#111',
-                      fontSize: '13px', fontWeight: "var(--aui-weight-semibold)",
+                      fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)",
                       fontFamily: `"${fontName}", sans-serif`,
-                      letterSpacing: '-0.13px',
+                      letterSpacing: "var(--aui-tracking-tight)",
                       border: `1.5px solid ${d.buttonSecondary.text || d.buttonPrimary?.bg || '#ddd'}`,
                     }}>
                       Secondary Button

@@ -832,7 +832,7 @@ export default function Home() {
             style={{
               width: '100%', maxWidth: '640px',
               backgroundColor: 'var(--aui-on-dark)', borderRadius: "var(--aui-radius-overlay)",
-              boxShadow: '0 32px 80px var(--aui-scrim-soft)',
+              boxShadow: "var(--aui-shadow-modal)",
               overflow: 'hidden', display: 'flex', flexDirection: 'column',
               maxHeight: 'calc(100vh - 48px)',
             }}
@@ -845,11 +845,11 @@ export default function Home() {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", marginBottom: '2px' }}>
                   <FileText size={16} color={F.primary} />
-                  <span style={{ fontWeight: "var(--aui-weight-bold)", fontSize: "var(--aui-type-body-size)", color: F.ink, letterSpacing: '-0.5px' }}>
+                  <span style={{ fontWeight: "var(--aui-weight-bold)", fontSize: "var(--aui-type-body-size)", color: F.ink, letterSpacing: "var(--aui-tracking-tighter)" }}>
                     design.md 자동 생성
                   </span>
                 </div>
-                <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", margin: 0, letterSpacing: '-0.13px' }}>
+                <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", margin: 0, letterSpacing: "var(--aui-tracking-tight)" }}>
                   서비스 URL만 넣으면 AI가 디자인 시스템 파일을 만들어드려요
                 </p>
               </div>
@@ -883,7 +883,7 @@ export default function Home() {
                         border: genMdError ? '1.5px solid color-mix(in srgb, var(--aui-negative) 50%, transparent)' : `1.5px solid ${F.hairline}`,
                         backgroundColor: F.surface1, color: F.ink,
                         fontSize: "var(--aui-type-label-size)", fontFamily: 'inherit', outline: 'none',
-                        letterSpacing: '-0.14px',
+                        letterSpacing: "var(--aui-tracking-tight)",
                       }}
                     />
                     <button
@@ -895,7 +895,7 @@ export default function Home() {
                         cursor: genMdUrl.trim() && !genMdAnalyzing ? 'pointer' : 'default',
                         backgroundColor: genMdUrl.trim() && !genMdAnalyzing ? F.ink : F.surface2,
                         color: genMdUrl.trim() && !genMdAnalyzing ? 'var(--aui-on-dark)' : 'var(--aui-scrim-soft)',
-                        fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)", letterSpacing: '-0.14px',
+                        fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)", letterSpacing: "var(--aui-tracking-tight)",
                         transition: 'all 0.15s', whiteSpace: 'nowrap',
                       }}
                     >
@@ -904,7 +904,7 @@ export default function Home() {
                   </div>
 
                   {genMdError && (
-                    <p style={{ color: 'var(--aui-negative)', fontSize: "var(--aui-type-caption-size)", margin: `var(--aui-space-2) 0 0`, letterSpacing: '-0.12px' }}>
+                    <p style={{ color: 'var(--aui-negative)', fontSize: "var(--aui-type-caption-size)", margin: `var(--aui-space-2) 0 0`, letterSpacing: "var(--aui-tracking-tight)" }}>
                       {genMdError}
                     </p>
                   )}
@@ -923,10 +923,10 @@ export default function Home() {
                         animation: 'spin 0.9s linear infinite',
                       }} />
                       <div style={{ textAlign: 'center' }}>
-                        <p style={{ color: F.ink, fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)", margin: `0 0 var(--aui-space-1)`, letterSpacing: '-0.14px' }}>
+                        <p style={{ color: F.ink, fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)", margin: `0 0 var(--aui-space-1)`, letterSpacing: "var(--aui-tracking-tight)" }}>
                           웹사이트를 분석하고 있어요
                         </p>
-                        <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", margin: 0, letterSpacing: '-0.13px' }}>
+                        <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", margin: 0, letterSpacing: "var(--aui-tracking-tight)" }}>
                           색상, 타이포그래피, 레이아웃을 읽는 중입니다
                         </p>
                       </div>
@@ -939,7 +939,7 @@ export default function Home() {
                       marginTop: '16px', padding: "var(--aui-space-4)", borderRadius: "var(--aui-radius-control)",
                       backgroundColor: `${F.primary}08`, border: `1px solid ${F.primary}15`,
                     }}>
-                      <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-caption-size)", margin: 0, lineHeight: "var(--aui-leading-relaxed)", letterSpacing: '-0.12px' }}>
+                      <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-caption-size)", margin: 0, lineHeight: "var(--aui-leading-relaxed)", letterSpacing: "var(--aui-tracking-tight)" }}>
                         AI가 사이트를 스크린샷하고 색상·폰트·컴포넌트 패턴을 추출해<br />
                         Google Stitch 규격의 design.md 파일을 생성합니다.
                       </p>
@@ -957,10 +957,10 @@ export default function Home() {
                     }}>
                       <span style={{ fontSize: "var(--aui-icon-sm)", lineHeight: "var(--aui-leading-none)", flexShrink: 0 }}>⚠️</span>
                       <div>
-                        <p style={{ margin: `0 0 var(--aui-space-1) 0`, fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-caution-text)', letterSpacing: '-0.12px' }}>
+                        <p style={{ margin: `0 0 var(--aui-space-1) 0`, fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-caution-text)', letterSpacing: "var(--aui-tracking-tight)" }}>
                           보안으로 인해 사이트 직접 확인 불가
                         </p>
-                        <p style={{ margin: 0, fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-caution-text)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: '-0.1px' }}>
+                        <p style={{ margin: 0, fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-caution-text)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: "var(--aui-tracking-tight)" }}>
                           Cloudflare 또는 봇 차단으로 실제 디자인을 캡처하지 못했습니다.
                           로고에서 추출된 브랜드 컬러와 범용 디자인시스템을 기반으로 생성했습니다.
                         </p>
@@ -974,7 +974,7 @@ export default function Home() {
                       display: 'flex', gap: "var(--aui-space-2)", alignItems: 'center',
                     }}>
                       <span style={{ fontSize: "var(--aui-type-label-size)", flexShrink: 0 }}>ℹ️</span>
-                      <p style={{ margin: 0, fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-primary-strong)', lineHeight: "var(--aui-leading-normal)", letterSpacing: '-0.1px' }}>
+                      <p style={{ margin: 0, fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-primary-strong)', lineHeight: "var(--aui-leading-normal)", letterSpacing: "var(--aui-tracking-tight)" }}>
                         CSS 소스 추출이 제한되어 스크린샷 기반으로 분석했습니다.
                       </p>
                     </div>
@@ -1004,7 +1004,7 @@ export default function Home() {
                     padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)",
                     border: `1px solid ${F.hairline}`, backgroundColor: 'var(--aui-on-dark)',
                     color: F.ink, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
-                    letterSpacing: '-0.13px', display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)",
+                    letterSpacing: "var(--aui-tracking-tight)", display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)",
                   }}
                 >
                   <Download size={13} />
@@ -1016,7 +1016,7 @@ export default function Home() {
                     padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)",
                     border: `1px solid ${F.hairline}`, backgroundColor: 'var(--aui-on-dark)',
                     color: genMdCopied ? 'var(--aui-positive)' : F.ink, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
-                    letterSpacing: '-0.13px', display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)",
+                    letterSpacing: "var(--aui-tracking-tight)", display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)",
                     transition: 'color 0.15s',
                   }}
                 >
@@ -1055,7 +1055,7 @@ export default function Home() {
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: `var(--aui-space-3) var(--aui-space-4)`, borderBottom: `1px solid ${F.hairlineSoft}`, flexShrink: 0,
             }}>
-              <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", letterSpacing: '-0.13px' }}>
+              <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", letterSpacing: "var(--aui-tracking-tight)" }}>
                 현재 페이지 레퍼런스
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
@@ -1064,7 +1064,7 @@ export default function Home() {
                   style={{
                     padding: `var(--aui-space-2) var(--aui-space-3)`, borderRadius: "var(--aui-radius-sm)", border: `1px solid ${F.hairline}`,
                     backgroundColor: F.canvas, color: F.ink,
-                    fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer', letterSpacing: '-0.12px',
+                    fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)",
                     fontFamily: 'inherit',
                   }}
                 >
@@ -1075,7 +1075,7 @@ export default function Home() {
                   style={{
                     padding: `var(--aui-space-2) var(--aui-space-3)`, borderRadius: "var(--aui-radius-sm)", border: '1px solid var(--aui-negative-border)',
                     backgroundColor: 'var(--aui-negative-soft)', color: 'var(--aui-negative)',
-                    fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer', letterSpacing: '-0.12px',
+                    fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)",
                     fontFamily: 'inherit',
                   }}
                 >
@@ -1159,7 +1159,7 @@ export default function Home() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            boxShadow: scrolled ? '0 8px 32px var(--aui-border-subtle)' : 'none',
+            boxShadow: scrolled ? "var(--aui-shadow-floating)" : 'none',
             transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           }}>
             {/* 좌측: 로고 */}
@@ -1219,7 +1219,7 @@ export default function Home() {
                   fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)", padding: `0 var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)",
                   border: `1px solid ${F.hairline}`,
                   cursor: 'pointer', transition: 'all 0.15s',
-                  letterSpacing: '-0.14px',
+                  letterSpacing: "var(--aui-tracking-tight)",
                   backdropFilter: 'blur(8px)',
                 }}
               >
@@ -1239,8 +1239,8 @@ export default function Home() {
                   height: 40, backgroundColor: F.primary, color: 'var(--aui-on-primary)',
                   fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)", padding: `0 var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)",
                   border: 'none', cursor: 'pointer', transition: 'all 0.15s',
-                  letterSpacing: '-0.14px',
-                  boxShadow: '0 4px 12px var(--aui-border-subtle)',
+                  letterSpacing: "var(--aui-tracking-tight)",
+                  boxShadow: "var(--aui-shadow-raised)",
                 }}
               >
                 <span style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
@@ -1258,7 +1258,7 @@ export default function Home() {
             border: '1px solid var(--aui-on-dark-subtle)', color: 'var(--aui-on-dark)',
             fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", padding: `var(--aui-space-2) var(--aui-space-4)`, borderRadius: "var(--aui-radius-pill)",
             backgroundColor: 'var(--aui-on-dark-faint)', backdropFilter: 'blur(8px)',
-            marginBottom: '24px', letterSpacing: '-0.13px',
+            marginBottom: '24px', letterSpacing: "var(--aui-tracking-tight)",
           }}>
             <span style={{ backgroundColor: 'var(--aui-on-dark)', color: 'var(--aui-text)', padding: `var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-sm)", fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-extrabold)", marginRight: '4px' }}>NEW</span>
             Just shipped v2.0
@@ -1266,7 +1266,7 @@ export default function Home() {
 
           <h1 style={{
             fontSize: 'clamp(40px, 6.5vw, 72px)', fontWeight: "var(--aui-weight-extrabold)", color: 'var(--aui-on-dark)',
-            textAlign: 'center', lineHeight: "var(--aui-leading-tight)", letterSpacing: '-2px',
+            textAlign: 'center', lineHeight: "var(--aui-leading-tight)", letterSpacing: "var(--aui-tracking-tighter)",
             fontFamily: 'inherit',
             marginBottom: '24px', maxWidth: '860px',
             textShadow: '0 2px 20px var(--aui-shadow-medium)',
@@ -1290,7 +1290,7 @@ export default function Home() {
             backdropFilter: 'blur(20px)',
             border: '1px solid var(--aui-on-dark-subtle)',
             padding: `var(--aui-space-6) var(--aui-space-6) var(--aui-space-4)`,
-            boxShadow: '0 8px 32px var(--aui-border-subtle)',
+            boxShadow: "var(--aui-shadow-floating)",
           }}>
             {(designPreset !== 'none' || designButtonLabel) && (() => {
               const isUrl = !!designButtonLabel && (designButtonLabel.startsWith('http://') || designButtonLabel.startsWith('https://'))
@@ -1320,7 +1320,7 @@ export default function Home() {
             })()}
             <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-3)" }}>
               <div>
-                <div style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.primary, marginBottom: '4px', letterSpacing: '-0.1px' }}>
+                <div style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.primary, marginBottom: '4px', letterSpacing: "var(--aui-tracking-tight)" }}>
                   ㅇ 서비스 설명
                 </div>
                 <textarea
@@ -1332,13 +1332,13 @@ export default function Home() {
                   style={{
                     width: '100%', background: 'none', border: 'none', outline: 'none',
                     color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-label-size)", lineHeight: "var(--aui-leading-normal)",
-                    letterSpacing: '-0.13px', resize: 'none', fontFamily: 'inherit',
+                    letterSpacing: "var(--aui-tracking-tight)", resize: 'none', fontFamily: 'inherit',
                     caretColor: F.primary,
                   }}
                 />
               </div>
               <div style={{ borderTop: '1px solid var(--aui-shadow-line)', paddingTop: '12px' }}>
-                <div style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.primary, marginBottom: '4px', letterSpacing: '-0.1px' }}>
+                <div style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.primary, marginBottom: '4px', letterSpacing: "var(--aui-tracking-tight)" }}>
                   ㅇ 핵심 기능
                 </div>
                 <textarea
@@ -1350,7 +1350,7 @@ export default function Home() {
                   style={{
                     width: '100%', background: 'none', border: 'none', outline: 'none',
                     color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-label-size)", lineHeight: "var(--aui-leading-normal)",
-                    letterSpacing: '-0.13px', resize: 'none', fontFamily: 'inherit',
+                    letterSpacing: "var(--aui-tracking-tight)", resize: 'none', fontFamily: 'inherit',
                     caretColor: F.primary,
                   }}
                 />
@@ -1388,7 +1388,7 @@ export default function Home() {
                         padding: `0 var(--aui-space-3)`, height: '38px', borderRadius: "var(--aui-radius-pill)",
                         border: 'none', backgroundColor: 'var(--aui-border-subtle)',
                         color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)",
-                        cursor: 'pointer', letterSpacing: '-0.13px',
+                        cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)",
                       }}
                     >
                       <Link2 size={12} />
@@ -1419,7 +1419,7 @@ export default function Home() {
                         padding: `var(--aui-space-1) var(--aui-space-3) var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-pill)",
                         border: '1px solid var(--aui-shadow-medium)', backgroundColor: 'var(--aui-on-dark)',
                         color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)",
-                        cursor: 'pointer', letterSpacing: '-0.13px',
+                        cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)",
                       }}
                     >
                       <img
@@ -1451,7 +1451,7 @@ export default function Home() {
                         padding: `0 var(--aui-space-3)`, height: '38px', borderRadius: "var(--aui-radius-pill)",
                         border: 'none', backgroundColor: 'var(--aui-border-subtle)',
                         color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)",
-                        cursor: 'pointer', letterSpacing: '-0.13px',
+                        cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)",
                       }}
                     >
                       {brandLogo ? (
@@ -1490,7 +1490,7 @@ export default function Home() {
                         padding: `0 var(--aui-space-3)`, height: '38px', borderRadius: "var(--aui-radius-pill)",
                         border: 'none', backgroundColor: `${F.primary}18`,
                         color: F.primary, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)",
-                        cursor: 'pointer', letterSpacing: '-0.13px',
+                        cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)",
                       }}
                     >
                       <FileText size={11} />
@@ -1531,7 +1531,7 @@ export default function Home() {
                     border: 'none',
                     backgroundColor: 'var(--aui-border-subtle)',
                     color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)",
-                    cursor: 'pointer', letterSpacing: '-0.13px', transition: 'all 0.15s',
+                    cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)", transition: 'all 0.15s',
                   }}
                 >
                   <FileText size={11} />
@@ -1550,7 +1550,7 @@ export default function Home() {
                       padding: `0 var(--aui-space-3) 0 var(--aui-space-3)`, height: '38px', borderRadius: "var(--aui-radius-pill)",
                       border: 'none', backgroundColor: 'var(--aui-border-subtle)',
                       color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)",
-                      cursor: 'pointer', letterSpacing: '-0.1px', transition: 'all 0.15s',
+                      cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)", transition: 'all 0.15s',
                       whiteSpace: 'nowrap',
                     }}
                   >
@@ -1562,7 +1562,7 @@ export default function Home() {
                     <div style={{
                       position: 'absolute', bottom: 'calc(100% + 6px)', right: 0,
                       backgroundColor: 'var(--aui-on-dark)', border: `1px solid ${F.hairline}`,
-                      borderRadius: "var(--aui-radius-control)", boxShadow: '0 8px 24px var(--aui-shadow-medium)',
+                      borderRadius: "var(--aui-radius-control)", boxShadow: "var(--aui-shadow-raised)",
                       overflow: 'hidden', zIndex: 100, minWidth: '180px',
                     }}>
                       {([
@@ -1584,7 +1584,7 @@ export default function Home() {
                           }}
                         >
                           <div>
-                            <div style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", color: F.ink, letterSpacing: '-0.13px' }}>{opt.label}</div>
+                            <div style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", color: F.ink, letterSpacing: "var(--aui-tracking-tight)" }}>{opt.label}</div>
                             <div style={{ fontSize: "var(--aui-type-micro-size)", color: F.inkMuted, marginTop: '1px' }}>{opt.desc}</div>
                           </div>
                           {modelId === opt.id && <Check size={13} color={F.primary} />}
@@ -1636,7 +1636,7 @@ export default function Home() {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
                         <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: preset.color, flexShrink: 0 }} />
-                        <span style={{ color: isActive ? preset.color : F.ink, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", letterSpacing: '-0.5px' }}>
+                        <span style={{ color: isActive ? preset.color : F.ink, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", letterSpacing: "var(--aui-tracking-tighter)" }}>
                           {preset.label}
                         </span>
                       </div>
@@ -1647,7 +1647,7 @@ export default function Home() {
 
               <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", margin: `var(--aui-space-4) 0` }}>
                 <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
-                <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-micro-size)", letterSpacing: '-0.11px' }}>또는 직접 입력</span>
+                <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-micro-size)", letterSpacing: "var(--aui-tracking-tight)" }}>또는 직접 입력</span>
                 <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
               </div>
 
@@ -1658,7 +1658,7 @@ export default function Home() {
                   border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
                   color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
-                  marginBottom: '10px', letterSpacing: '-0.13px',
+                  marginBottom: '10px', letterSpacing: "var(--aui-tracking-tight)",
                 }}
               >
                 <Upload size={13} />
@@ -1688,7 +1688,7 @@ export default function Home() {
                         border: urlError ? '1px solid color-mix(in srgb, var(--aui-negative) 50%, transparent)' : urlAnalyzing ? `1px solid ${F.primary}` : `1px solid ${F.hairline}`,
                         backgroundColor: urlAnalyzing ? 'var(--aui-primary-tint)' : F.surface2, color: F.ink,
                         fontSize: "var(--aui-type-compact-size)", fontFamily: 'inherit', outline: 'none',
-                        letterSpacing: '-0.13px', transition: 'all 0.2s',
+                        letterSpacing: "var(--aui-tracking-tight)", transition: 'all 0.2s',
                       }}
                     />
                     <button
@@ -1700,7 +1700,7 @@ export default function Home() {
                         border: 'none', cursor: urlInput.trim() && !urlAnalyzing ? 'pointer' : 'default',
                         backgroundColor: urlInput.trim() && !urlAnalyzing ? F.ink : F.surface2,
                         color: urlInput.trim() && !urlAnalyzing ? F.canvas : 'var(--aui-scrim-soft)',
-                        fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", letterSpacing: '-0.13px',
+                        fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", letterSpacing: "var(--aui-tracking-tight)",
                         transition: 'all 0.15s', whiteSpace: 'nowrap',
                       }}
                     >
@@ -1714,12 +1714,12 @@ export default function Home() {
                     </button>
                   </div>
                   {urlAnalyzing && (
-                    <p style={{ fontSize: "var(--aui-type-micro-size)", color: F.primary, marginTop: '6px', letterSpacing: '-0.11px', opacity: 0.7 }}>
+                    <p style={{ fontSize: "var(--aui-type-micro-size)", color: F.primary, marginTop: '6px', letterSpacing: "var(--aui-tracking-tight)", opacity: 0.7 }}>
                       페이지를 열고 디자인 토큰을 추출하고 있습니다 (10~30초)
                     </p>
                   )}
                   {urlError && (
-                    <p style={{ color: 'var(--aui-negative)', fontSize: "var(--aui-type-caption-size)", marginTop: '6px', letterSpacing: '-0.12px' }}>
+                    <p style={{ color: 'var(--aui-negative)', fontSize: "var(--aui-type-caption-size)", marginTop: '6px', letterSpacing: "var(--aui-tracking-tight)" }}>
                       {urlError}
                     </p>
                   )}
@@ -1737,7 +1737,7 @@ export default function Home() {
               <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
 
               {/* Logo section */}
-              <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.inkMuted, marginBottom: '8px', letterSpacing: '-0.12px' }}>로고</p>
+              <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.inkMuted, marginBottom: '8px', letterSpacing: "var(--aui-tracking-tight)" }}>로고</p>
               {brandLogo ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)", backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, marginBottom: '14px' }}>
                   <img src={brandLogo} alt="logo" style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: "var(--aui-radius-sm)" }} />
@@ -1754,7 +1754,7 @@ export default function Home() {
                     border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
                     color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
-                    letterSpacing: '-0.13px',
+                    letterSpacing: "var(--aui-tracking-tight)",
                   }}
                 >
                   <Upload size={13} />
@@ -1764,7 +1764,7 @@ export default function Home() {
 
               {/* Colors section */}
               <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", marginBottom: '8px' }}>
-                <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.inkMuted, letterSpacing: '-0.12px', margin: 0 }}>브랜드 컬러</p>
+                <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.inkMuted, letterSpacing: "var(--aui-tracking-tight)", margin: 0 }}>브랜드 컬러</p>
                 {extractingColors && (
                   <span style={{ fontSize: "var(--aui-type-micro-size)", color: F.inkMuted, display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}>
                     <svg width="10" height="10" viewBox="0 0 10 10" style={{ animation: 'spin 0.8s linear infinite' }}>
@@ -1871,7 +1871,7 @@ export default function Home() {
                       borderRadius: "var(--aui-radius-sm)",
                       backgroundColor: sourceTab === key ? F.canvas : 'transparent',
                       color: sourceTab === key ? F.ink : F.inkMuted,
-                      boxShadow: sourceTab === key ? '0 1px 3px var(--aui-border-subtle)' : 'none',
+                      boxShadow: sourceTab === key ? "var(--aui-shadow-subtle)" : 'none',
                       fontSize: "var(--aui-type-caption-size)",
                       fontWeight: "var(--aui-weight-bold)",
                       cursor: 'pointer',
@@ -1883,7 +1883,7 @@ export default function Home() {
               </div>
 
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-bold)", color: F.ink, letterSpacing: '-0.13px' }}>
+                <div style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-bold)", color: F.ink, letterSpacing: "var(--aui-tracking-tight)" }}>
                   {sourceTab === 'planning' ? '기획/화면 설계 자료'
                     : sourceTab === 'asis' ? '리디자인할 기존 화면'
                     : sourceTab === 'wireframe' ? '구조로 사용할 와이어프레임'
@@ -1906,7 +1906,7 @@ export default function Home() {
 
                   {/* PRD 문서 */}
                   <div style={{ marginBottom: 10 }}>
-                    <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)", color: F.inkMuted, marginBottom: '8px', letterSpacing: '-0.12px' }}>기획 문서 / HTML 화면기획서</p>
+                    <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)", color: F.inkMuted, marginBottom: '8px', letterSpacing: "var(--aui-tracking-tight)" }}>기획 문서 / HTML 화면기획서</p>
                     {prdDoc ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)", backgroundColor: F.surface2, border: `1px solid ${F.hairline}` }}>
                         <FileText size={16} color={F.primary} style={{ flexShrink: 0 }} />
@@ -1926,7 +1926,7 @@ export default function Home() {
                           border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
                           color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
-                          letterSpacing: '-0.13px',
+                          letterSpacing: "var(--aui-tracking-tight)",
                         }}
                       >
                         <Upload size={13} />
@@ -1936,7 +1936,7 @@ export default function Home() {
                   </div>
 
                   <div style={{ marginBottom: 10 }}>
-                    <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)", color: F.inkMuted, marginBottom: '8px', letterSpacing: '-0.12px' }}>HTML 화면기획서 링크</p>
+                    <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)", color: F.inkMuted, marginBottom: '8px', letterSpacing: "var(--aui-tracking-tight)" }}>HTML 화면기획서 링크</p>
                     <div style={{ display: 'flex', gap: "var(--aui-space-2)" }}>
                       <input
                         type="text"
@@ -1949,7 +1949,7 @@ export default function Home() {
                           border: refError ? '1px solid color-mix(in srgb, var(--aui-negative) 50%, transparent)' : `1px solid ${F.hairline}`,
                           backgroundColor: F.surface2, color: F.ink,
                           fontSize: "var(--aui-type-compact-size)", fontFamily: 'inherit', outline: 'none',
-                          letterSpacing: '-0.13px',
+                          letterSpacing: "var(--aui-tracking-tight)",
                         }}
                       />
                       <button
@@ -1960,7 +1960,7 @@ export default function Home() {
                           border: 'none', cursor: htmlSourceUrlInput.trim() && !htmlSourceLoading ? 'pointer' : 'default',
                           backgroundColor: htmlSourceUrlInput.trim() && !htmlSourceLoading ? F.ink : F.surface2,
                           color: htmlSourceUrlInput.trim() && !htmlSourceLoading ? F.canvas : 'var(--aui-scrim-soft)',
-                          fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", letterSpacing: '-0.13px',
+                          fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", letterSpacing: "var(--aui-tracking-tight)",
                           transition: 'all 0.15s', whiteSpace: 'nowrap',
                           display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)",
                         }}
@@ -1973,7 +1973,7 @@ export default function Home() {
 
                   {/* IA 메뉴구조도 */}
                   <div>
-                    <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)", color: F.inkMuted, marginBottom: '8px', letterSpacing: '-0.12px' }}>IA 메뉴구조도 / 와이어프레임</p>
+                    <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)", color: F.inkMuted, marginBottom: '8px', letterSpacing: "var(--aui-tracking-tight)" }}>IA 메뉴구조도 / 와이어프레임</p>
                     {iaText ? (
                       <div style={{ position: 'relative', borderRadius: "var(--aui-radius-control)", border: `1px solid ${F.hairline}`, backgroundColor: F.surface2, padding: `var(--aui-space-3) var(--aui-space-4)` }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
@@ -2009,7 +2009,7 @@ export default function Home() {
                           border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
                           color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
-                          letterSpacing: '-0.13px',
+                          letterSpacing: "var(--aui-tracking-tight)",
                         }}
                       >
                         <Upload size={13} />
@@ -2050,7 +2050,7 @@ export default function Home() {
                     border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
                     color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
-                    marginBottom: '14px', letterSpacing: '-0.13px',
+                    marginBottom: '14px', letterSpacing: "var(--aui-tracking-tight)",
                   }}
                 >
                   <Upload size={13} />
@@ -2062,7 +2062,7 @@ export default function Home() {
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", marginBottom: '12px' }}>
                     <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
-                    <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-micro-size)", letterSpacing: '-0.11px' }}>또는 드리블·앱스토어 검색</span>
+                    <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-micro-size)", letterSpacing: "var(--aui-tracking-tight)" }}>또는 드리블·앱스토어 검색</span>
                     <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
                   </div>
                   <div style={{ display: 'flex', gap: "var(--aui-space-2)", marginBottom: '10px' }}>
@@ -2076,7 +2076,7 @@ export default function Home() {
                         flex: 1, padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)",
                         border: `1px solid ${F.hairline}`, backgroundColor: F.surface2,
                         color: F.ink, fontSize: "var(--aui-type-compact-size)", fontFamily: 'inherit', outline: 'none',
-                        letterSpacing: '-0.13px',
+                        letterSpacing: "var(--aui-tracking-tight)",
                       }}
                     />
                     <button
@@ -2087,7 +2087,7 @@ export default function Home() {
                         border: 'none', cursor: refSearchQuery.trim() && !refSearching ? 'pointer' : 'default',
                         backgroundColor: refSearchQuery.trim() && !refSearching ? F.ink : F.surface2,
                         color: refSearchQuery.trim() && !refSearching ? F.canvas : 'var(--aui-scrim-soft)',
-                        fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", letterSpacing: '-0.13px',
+                        fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", letterSpacing: "var(--aui-tracking-tight)",
                         transition: 'all 0.15s', whiteSpace: 'nowrap',
                       }}
                     >
@@ -2135,7 +2135,7 @@ export default function Home() {
 
               {sourceTab === 'brand' && (
                 <>
-                  <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.inkMuted, marginBottom: '8px', letterSpacing: '-0.12px' }}>로고</p>
+                  <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.inkMuted, marginBottom: '8px', letterSpacing: "var(--aui-tracking-tight)" }}>로고</p>
                   {brandLogo ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)", backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, marginBottom: '14px' }}>
                       <img src={brandLogo} alt="logo" style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: "var(--aui-radius-sm)" }} />
@@ -2152,7 +2152,7 @@ export default function Home() {
                         border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
                         color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
-                        letterSpacing: '-0.13px',
+                        letterSpacing: "var(--aui-tracking-tight)",
                       }}
                     >
                       <Upload size={13} />
@@ -2161,7 +2161,7 @@ export default function Home() {
                   )}
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", marginBottom: '8px' }}>
-                    <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.inkMuted, letterSpacing: '-0.12px', margin: 0 }}>브랜드 컬러</p>
+                    <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.inkMuted, letterSpacing: "var(--aui-tracking-tight)", margin: 0 }}>브랜드 컬러</p>
                     {extractingColors && <span style={{ fontSize: "var(--aui-type-micro-size)", color: F.inkMuted }}>로고에서 추출 중...</span>}
                     {brandColors.length > 0 && !extractingColors && <span style={{ fontSize: "var(--aui-type-micro-size)", color: F.primary, fontWeight: "var(--aui-weight-semibold)" }}>적용됨</span>}
                   </div>
@@ -2237,14 +2237,14 @@ export default function Home() {
               {sourceTab === 'reference' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", marginBottom: '14px' }}>
                   <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
-                  <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-micro-size)", letterSpacing: '-0.11px' }}>또는 URL로 캡처</span>
+                  <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-micro-size)", letterSpacing: "var(--aui-tracking-tight)" }}>또는 URL로 캡처</span>
                   <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
                 </div>
               )}
               {sourceTab === 'asis' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", marginBottom: '14px' }}>
                 <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
-                <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-micro-size)", letterSpacing: '-0.11px' }}>URL 입력</span>
+                <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-micro-size)", letterSpacing: "var(--aui-tracking-tight)" }}>URL 입력</span>
                 <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
               </div>
               )}
@@ -2261,7 +2261,7 @@ export default function Home() {
                     border: refError ? '1px solid color-mix(in srgb, var(--aui-negative) 50%, transparent)' : `1px solid ${F.hairline}`,
                     backgroundColor: F.surface2, color: F.ink,
                     fontSize: "var(--aui-type-compact-size)", fontFamily: 'inherit', outline: 'none',
-                    letterSpacing: '-0.13px',
+                    letterSpacing: "var(--aui-tracking-tight)",
                   }}
                 />
                 <button
@@ -2272,7 +2272,7 @@ export default function Home() {
                     border: 'none', cursor: refPageUrlInput.trim() && !refCapturing ? 'pointer' : 'default',
                     backgroundColor: refPageUrlInput.trim() && !refCapturing ? F.ink : F.surface2,
                     color: refPageUrlInput.trim() && !refCapturing ? F.canvas : 'var(--aui-scrim-soft)',
-                    fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", letterSpacing: '-0.13px',
+                    fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", letterSpacing: "var(--aui-tracking-tight)",
                     transition: 'all 0.15s', whiteSpace: 'nowrap',
                     display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)",
                   }}
@@ -2284,7 +2284,7 @@ export default function Home() {
                 </>
               )}
               {refError && (
-                <p style={{ color: 'var(--aui-negative)', fontSize: "var(--aui-type-caption-size)", marginTop: '6px', letterSpacing: '-0.12px' }}>
+                <p style={{ color: 'var(--aui-negative)', fontSize: "var(--aui-type-caption-size)", marginTop: '6px', letterSpacing: "var(--aui-tracking-tight)" }}>
                   {refError}
                 </p>
               )}
@@ -2292,7 +2292,7 @@ export default function Home() {
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-4)", marginTop: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <p style={{ color: 'var(--aui-on-dark-muted)', fontSize: "var(--aui-type-compact-size)", letterSpacing: '-0.13px', margin: 0 }}>
+            <p style={{ color: 'var(--aui-on-dark-muted)', fontSize: "var(--aui-type-compact-size)", letterSpacing: "var(--aui-tracking-tight)", margin: 0 }}>
               Enter로 전송 · Shift+Enter로 줄바꿈
             </p>
             <div style={{ width: '1px', height: '12px', backgroundColor: 'var(--aui-on-dark-faint)' }} />
@@ -2300,7 +2300,7 @@ export default function Home() {
               onClick={() => setGenMdModalOpen(true)}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--aui-on-dark-strong)', fontSize: "var(--aui-type-compact-size)", letterSpacing: '-0.13px',
+                color: 'var(--aui-on-dark-strong)', fontSize: "var(--aui-type-compact-size)", letterSpacing: "var(--aui-tracking-tight)",
                 display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", padding: 0,
                 fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: '3px',
                 textDecorationColor: 'var(--aui-on-dark-subtle)',
@@ -2330,7 +2330,7 @@ export default function Home() {
               justifyContent: 'center',
               paddingTop: '10px',
               cursor: 'pointer',
-              boxShadow: '0 10px 32px var(--aui-border-subtle)',
+              boxShadow: "var(--aui-shadow-floating)",
             }}
           >
             <span
@@ -2369,7 +2369,7 @@ export default function Home() {
               fontSize: 'clamp(38px, 5.5vw, 72px)',
               lineHeight: "var(--aui-leading-tight)",
               color: 'var(--aui-on-dark)',
-              letterSpacing: '-0.03em',
+              letterSpacing: "var(--aui-tracking-tighter)",
               margin: '0 auto 18px',
               maxWidth: '900px',
             }}>
@@ -2410,7 +2410,7 @@ export default function Home() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: F.canvas, borderRadius: "var(--aui-radius-overlay)", padding: "var(--aui-space-8)", width: '520px', maxWidth: 'calc(100vw - 32px)', boxShadow: '0 24px 64px var(--aui-shadow-medium)' }}
+            style={{ background: F.canvas, borderRadius: "var(--aui-radius-overlay)", padding: "var(--aui-space-8)", width: '520px', maxWidth: 'calc(100vw - 32px)', boxShadow: "var(--aui-shadow-modal)" }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", marginBottom: '8px' }}>
               <KeyRound size={20} color={F.primary} />
@@ -2436,7 +2436,7 @@ export default function Home() {
                       padding: `var(--aui-space-2) var(--aui-space-2)`,
                       background: active ? F.canvas : 'transparent',
                       color: active ? F.ink : F.inkMuted,
-                      boxShadow: active ? '0 1px 4px var(--aui-border-subtle)' : 'none',
+                      boxShadow: active ? "var(--aui-shadow-subtle)" : 'none',
                       fontSize: "var(--aui-type-compact-size)",
                       fontWeight: active ? 700 : 600,
                       cursor: 'pointer',
@@ -2534,7 +2534,7 @@ export default function Home() {
               width: '100%', maxWidth: '680px', maxHeight: '80vh',
               borderRadius: "var(--aui-radius-overlay)", backgroundColor: F.canvas,
               border: `1px solid ${F.hairline}`,
-              boxShadow: '0 24px 64px var(--aui-shadow-medium)',
+              boxShadow: "var(--aui-shadow-modal)",
               display: 'flex', flexDirection: 'column', overflow: 'hidden',
             }}
           >
@@ -2545,7 +2545,7 @@ export default function Home() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
                   <Clock size={16} color={F.inkMuted} />
-                  <span style={{ color: F.ink, fontSize: "var(--aui-type-body-size)", fontWeight: "var(--aui-weight-semibold)", letterSpacing: '-0.3px' }}>히스토리</span>
+                  <span style={{ color: F.ink, fontSize: "var(--aui-type-body-size)", fontWeight: "var(--aui-weight-semibold)", letterSpacing: "var(--aui-tracking-tighter)" }}>히스토리</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)" }}>
                   {historyItems.filter(h => historyMatchesTab(h, historyModalTab)).length > 0 && (
@@ -2560,7 +2560,7 @@ export default function Home() {
                         background: 'none', border: 'none', cursor: 'pointer',
                         color: 'var(--aui-negative)', fontSize: "var(--aui-type-caption-size)",
                         display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)",
-                        letterSpacing: '-0.12px', padding: `var(--aui-space-1) 0`, fontFamily: 'inherit',
+                        letterSpacing: "var(--aui-tracking-tight)", padding: `var(--aui-space-1) 0`, fontFamily: 'inherit',
                       }}
                     >
                       <Trash2 size={11} />
@@ -2595,7 +2595,7 @@ export default function Home() {
                         color: isActive ? F.ink : F.inkMuted,
                         padding: `var(--aui-space-2) var(--aui-space-3)`, borderRadius: `var(--aui-radius-sm) var(--aui-radius-sm) 0 0`,
                         borderBottom: isActive ? `2px solid ${F.ink}` : '2px solid transparent',
-                        letterSpacing: '-0.13px', fontFamily: 'inherit',
+                        letterSpacing: "var(--aui-tracking-tight)", fontFamily: 'inherit',
                         display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)",
                         transition: 'all 0.15s',
                       }}
@@ -2628,7 +2628,7 @@ export default function Home() {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: "var(--aui-space-3)",
                 }}>
                   <Clock size={28} color={F.inkMuted} />
-                  <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-label-size)", letterSpacing: '-0.14px', margin: 0 }}>
+                  <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-label-size)", letterSpacing: "var(--aui-tracking-tight)", margin: 0 }}>
                     {emptyLabel}
                   </p>
                 </div>
@@ -2641,7 +2641,7 @@ export default function Home() {
                         borderRadius: "var(--aui-radius-card)", overflow: 'hidden',
                         backgroundColor: F.surface1, border: `1px solid ${F.hairline}`,
                         display: 'flex', flexDirection: 'column',
-                        boxShadow: 'var(--aui-shadow-line) 0 2px 6px',
+                        boxShadow: "var(--aui-shadow-subtle)",
                       }}
                     >
                       <div style={{ position: 'relative', aspectRatio: '16/10', overflow: 'hidden', flexShrink: 0, backgroundColor: F.surface2 }}>
@@ -2664,7 +2664,7 @@ export default function Home() {
                       <div style={{ padding: `var(--aui-space-3) var(--aui-space-4)`, flex: 1, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
                         <p style={{
                           color: 'var(--aui-text-neutral)', fontSize: "var(--aui-type-compact-size)", lineHeight: "var(--aui-leading-snug)",
-                          letterSpacing: '-0.13px', margin: 0,
+                          letterSpacing: "var(--aui-tracking-tight)", margin: 0,
                           overflow: 'hidden', display: '-webkit-box',
                           WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                         } as React.CSSProperties}>
@@ -2685,7 +2685,7 @@ export default function Home() {
                             <div style={{ display: 'flex', gap: "var(--aui-space-1)", flexWrap: 'wrap' }}>
                               {tags.map(({ label, accent, muted }) => (
                                 <span key={label} style={{
-                                  fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)", borderRadius: "var(--aui-radius-pill)", padding: `var(--aui-space-1) var(--aui-space-2)`, letterSpacing: '-0.1px',
+                                  fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)", borderRadius: "var(--aui-radius-pill)", padding: `var(--aui-space-1) var(--aui-space-2)`, letterSpacing: "var(--aui-tracking-tight)",
                                   color: accent ? 'var(--aui-primary)' : muted ? 'var(--aui-scrim)' : 'var(--aui-scrim-strong)',
                                   backgroundColor: accent ? 'var(--aui-primary-tint)' : 'var(--aui-fill)',
                                 }}>
@@ -2704,12 +2704,12 @@ export default function Home() {
                                 backgroundColor: `${DESIGN_PRESETS[item.preset as DesignPreset].color}18`,
                                 borderRadius: "var(--aui-radius-pill)", padding: `var(--aui-space-1) var(--aui-space-2)`,
                                 border: `1px solid ${DESIGN_PRESETS[item.preset as DesignPreset].color}30`,
-                                letterSpacing: '-0.1px',
+                                letterSpacing: "var(--aui-tracking-tight)",
                               }}>
                                 {DESIGN_PRESETS[item.preset as DesignPreset].label}
                               </span>
                             )}
-                            <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-meta-size)", letterSpacing: '-0.1px' }}>
+                            <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-meta-size)", letterSpacing: "var(--aui-tracking-tight)" }}>
                               {relativeTime(item.createdAt)}
                             </span>
                           </div>

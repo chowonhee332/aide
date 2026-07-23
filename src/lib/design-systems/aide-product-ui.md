@@ -236,6 +236,13 @@ contract:
       card: { $value: "0px 2px 4px -2px rgba(23, 23, 23, 0.06), 0px 4px 6px -1px rgba(23, 23, 23, 0.06)", $description: "Floating card only" }
       elevated: { $value: "0px 4px 6px -2px rgba(23, 23, 23, 0.07), 0px 10px 15px -3px rgba(23, 23, 23, 0.07)", $description: "Popover, menu, dialog" }
       focus: { $value: "0 0 0 2px var(--aui-primary-tint)", $description: "Visible keyboard focus ring" }
+      # Elevation ramp — full shadow values, bucketed by blur radius.
+      subtle: { $value: "0 1px 3px rgba(0, 0, 0, 0.25)", $description: "Resting chip and inline control" }
+      raised: { $value: "0 4px 12px rgba(0, 0, 0, 0.15)", $description: "Card and hovering surface" }
+      floating: { $value: "0 8px 40px rgba(0, 0, 0, 0.15)", $description: "Dropdown, popover, drag preview" }
+      modal: { $value: "0 24px 64px rgba(0, 0, 0, 0.15)", $description: "Dialog and sheet" }
+      ring: { $value: "0 0 0 1px rgba(112, 115, 124, 0.08)", $description: "Hairline outline instead of border" }
+      glow: { $value: "0 0 8px #DCEAFF", $description: "Focus or active emphasis halo" }
       line: { $value: "rgba(0, 0, 0, 0.07)", $description: "Hairline shadow color" }
       soft: { $value: "rgba(0, 0, 0, 0.09)", $description: "Soft shadow color" }
       medium: { $value: "rgba(0, 0, 0, 0.15)", $description: "Medium shadow color" }
@@ -255,6 +262,16 @@ contract:
       semibold: { $value: "600", $description: "Labels, controls, list titles" }
       bold: { $value: "700", $description: "Headings and primary emphasis" }
       extrabold: { $value: "800", $description: "Hero display only" }
+
+    tracking:
+      $type: dimension
+      # em-based so tracking scales with font size; px letter-spacing does not.
+      tighter: { $value: "-0.03em", $description: "Hero display and large headings" }
+      tight: { $value: "-0.01em", $description: "Default UI text and headings" }
+      normal: { $value: "0em", $description: "Monospace and neutral text" }
+      slight: { $value: "0.03em", $description: "Small caps-ish labels" }
+      wide: { $value: "0.06em", $description: "Uppercase label and badge" }
+      wider: { $value: "0.09em", $description: "Eyebrow and section kicker" }
 
     leading:
       $type: number

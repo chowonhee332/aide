@@ -665,7 +665,7 @@ function ExpandingOverlay({ image, platform, variantLabel }: { image?: string; p
               width: W, height: H,
               borderRadius: isMob ? 10 : 6,
               overflow: 'hidden',
-              boxShadow: '0 6px 24px rgba(0,0,0,0.18)',
+              boxShadow: "var(--aui-shadow-raised)",
               border: '2.5px solid var(--aui-text)',
               flexShrink: 0,
             }}>
@@ -673,7 +673,7 @@ function ExpandingOverlay({ image, platform, variantLabel }: { image?: string; p
                 ? <img src={image} alt={`${variantLabel ?? '선택된 시안'} 미리보기`} style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'top center', display: 'block', background: 'var(--aui-surface)' }} />
                 : <div style={{ width: '100%', height: '100%', background: 'rgba(112,115,124,0.16)' }} />}
             </div>
-            <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', letterSpacing: '-0.01em' }}>{variantLabel ?? '선택된 시안'}</span>
+            <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', letterSpacing: "var(--aui-tracking-tight)" }}>{variantLabel ?? '선택된 시안'}</span>
           </div>
 
           {/* Arrow 1 */}
@@ -729,7 +729,7 @@ function ExpandingOverlay({ image, platform, variantLabel }: { image?: string; p
 
         {/* ── Text ── */}
         <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
-          <h2 style={{ fontSize: "var(--aui-type-section-title-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', letterSpacing: '-0.03em', margin: 0 }}>
+          <h2 style={{ fontSize: "var(--aui-type-section-title-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', letterSpacing: "var(--aui-tracking-tighter)", margin: 0 }}>
             선택한 시안으로 프로토타입을 완성하고 있습니다
           </h2>
           <p key={stageIdx} className="ep-stage" style={{ fontSize: "var(--aui-type-compact-size)", color: 'rgba(55,56,60,0.61)', margin: 0 }}>
@@ -2406,23 +2406,23 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--aui-text-muted)" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                           </div>
                         )}
-                        <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', letterSpacing: '-0.3px', lineHeight: "var(--aui-leading-tight)" }}>{sidebarLabel}</span>
+                        <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', letterSpacing: "var(--aui-tracking-tighter)", lineHeight: "var(--aui-leading-tight)" }}>{sidebarLabel}</span>
                       </div>
-                      <p style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-muted)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: '-0.1px' }}>{customDesignMd ? 'custom design.md' : preset.description}</p>
+                      <p style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-muted)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: "var(--aui-tracking-tight)" }}>{customDesignMd ? 'custom design.md' : preset.description}</p>
                     </div>
 
                     <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-5)" }}>
                       {/* Color palette */}
                       {sidebarPalette && sidebarPalette.length > 0 && (
                         <div>
-                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>컬러 팔레트</p>
+                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wider)", marginBottom: 10 }}>컬러 팔레트</p>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
                             {sidebarPalette.map(swatch => (
                               <div key={swatch.hex} style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)" }}>
                                 <div style={{ width: 22, height: 22, borderRadius: "var(--aui-radius-sm)", backgroundColor: swatch.hex, border: '1px solid var(--aui-border-subtle)', flexShrink: 0 }} />
                                 <div>
                                   <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text-neutral)', margin: 0, lineHeight: "var(--aui-leading-tight)" }}>{swatch.name}</p>
-                                  <p style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-assistive)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.03em' }}>{swatch.hex}</p>
+                                  <p style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-assistive)', margin: 0, fontFamily: 'monospace', letterSpacing: "var(--aui-tracking-slight)" }}>{swatch.hex}</p>
                                 </div>
                               </div>
                             ))}
@@ -2433,7 +2433,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Fonts */}
                       {sidebarFonts && (
                         <div>
-                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>타이포그래피</p>
+                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wider)", marginBottom: 10 }}>타이포그래피</p>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-assistive)' }}>Headline</span>
@@ -2450,7 +2450,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Traits */}
                       {preset.traits && preset.traits.length > 0 && (
                         <div>
-                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>디자인 특성</p>
+                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wider)", marginBottom: 10 }}>디자인 특성</p>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-2)" }}>
                             {preset.traits.map(trait => (
                               <span key={trait} style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-medium)", color: 'var(--aui-text-muted)', backgroundColor: 'var(--aui-surface-muted)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-1) var(--aui-space-2)`, lineHeight: "var(--aui-leading-tight)" }}>{trait}</span>
@@ -2462,7 +2462,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Typography Scale */}
                       {preset.typographyScale && preset.typographyScale.length > 0 && (
                         <div>
-                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>타이포그래피 스케일</p>
+                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wider)", marginBottom: 10 }}>타이포그래피 스케일</p>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
                             {preset.typographyScale.map(step => (
                               <div key={step.name} style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
@@ -2470,7 +2470,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                                   <span style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', fontFamily: 'monospace' }}>{step.size}</span>
                                 </div>
                                 <div style={{ width: 1, height: 14, backgroundColor: 'var(--aui-border)', flexShrink: 0 }} />
-                                <span style={{ fontSize: parseInt(step.size) > 20 ? "var(--aui-type-label-size)" : "var(--aui-type-caption-size)", fontWeight: step.weight >= 600 ? 600 : step.weight >= 500 ? 500 : 400, color: 'var(--aui-text)', lineHeight: "var(--aui-leading-none)", letterSpacing: '-0.1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>{step.name}</span>
+                                <span style={{ fontSize: parseInt(step.size) > 20 ? "var(--aui-type-label-size)" : "var(--aui-type-caption-size)", fontWeight: step.weight >= 600 ? 600 : step.weight >= 500 ? 500 : 400, color: 'var(--aui-text)', lineHeight: "var(--aui-leading-none)", letterSpacing: "var(--aui-tracking-tight)", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>{step.name}</span>
                                 <span style={{ marginLeft: 'auto', fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-disabled)', fontFamily: 'monospace' }}>{step.weight}</span>
                               </div>
                             ))}
@@ -2481,7 +2481,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Status Colors */}
                       {preset.statusColors && preset.statusColors.length > 0 && (
                         <div>
-                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>상태 색상</p>
+                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wider)", marginBottom: 10 }}>상태 색상</p>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: `var(--aui-space-2) var(--aui-space-3)` }}>
                             {preset.statusColors.map(s => (
                               <div key={s.hex} style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
@@ -2499,7 +2499,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Radius Tokens */}
                       {preset.radiusTokens && preset.radiusTokens.length > 0 && (
                         <div>
-                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>Border Radius</p>
+                          <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wider)", marginBottom: 10 }}>Border Radius</p>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: `var(--aui-space-2) var(--aui-space-2)`, alignItems: 'flex-end' }}>
                             {preset.radiusTokens.map(r => {
                               const px = parseInt(r.value)
@@ -2559,7 +2559,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         <div style={{ width: 24, height: 24, borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Sparkles size={13} />
                         </div>
-                        <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', letterSpacing: '-0.25px' }}>생성 진행</span>
+                        <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', letterSpacing: "var(--aui-tracking-tighter)" }}>생성 진행</span>
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-2)" }}>
                         <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-primary)', backgroundColor: 'var(--aui-primary-tint)', borderRadius: "var(--aui-radius-pill)", padding: `var(--aui-space-1) var(--aui-space-2)`, lineHeight: "var(--aui-leading-none)" }}>{designSystemDisplayName}</span>
@@ -2582,11 +2582,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                               </div>
                               <div style={{ paddingBottom: isSummary ? 16 : 14 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", marginTop: 1 }}>
-                                  <p style={{ fontSize: isSummary ? "var(--aui-type-compact-size)" : "var(--aui-type-caption-size)", fontWeight: isSummary ? 750 : 600, color: event.status === 'error' ? 'var(--aui-negative)' : 'var(--aui-text-neutral)', letterSpacing: '-0.18px', lineHeight: "var(--aui-leading-snug)", margin: 0 }}>{event.title}</p>
+                                  <p style={{ fontSize: isSummary ? "var(--aui-type-compact-size)" : "var(--aui-type-caption-size)", fontWeight: isSummary ? 750 : 600, color: event.status === 'error' ? 'var(--aui-negative)' : 'var(--aui-text-neutral)', letterSpacing: "var(--aui-tracking-tight)", lineHeight: "var(--aui-leading-snug)", margin: 0 }}>{event.title}</p>
                                   {event.variant && <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-muted)', backgroundColor: 'var(--aui-surface-muted)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-1) var(--aui-space-1)`, lineHeight: "var(--aui-leading-tight)" }}>{event.variant}</span>}
                                 </div>
                                 {event.detail && (
-                                  <p style={{ whiteSpace: 'pre-line', fontSize: isSummary ? "var(--aui-type-caption-size)" : "var(--aui-type-micro-size)", color: isSummary ? 'var(--aui-text-neutral)' : 'var(--aui-text-muted)', lineHeight: isSummary ? 1.72 : 1.55, letterSpacing: '-0.08px', margin: `var(--aui-space-1) 0 0` }}>{event.detail}</p>
+                                  <p style={{ whiteSpace: 'pre-line', fontSize: isSummary ? "var(--aui-type-caption-size)" : "var(--aui-type-micro-size)", color: isSummary ? 'var(--aui-text-neutral)' : 'var(--aui-text-muted)', lineHeight: isSummary ? 1.72 : 1.55, letterSpacing: "var(--aui-tracking-tight)", margin: `var(--aui-space-1) 0 0` }}>{event.detail}</p>
                                 )}
                               </div>
                             </div>
@@ -2602,7 +2602,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     </div>
 
                     <div style={{ paddingTop: 12, borderTop: '1px solid var(--aui-shadow-line)', marginTop: 12 }}>
-                      <p style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-muted)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: '-0.06px', margin: 0 }}>
+                      <p style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-muted)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: "var(--aui-tracking-tight)", margin: 0 }}>
                         생성이 끝난 뒤 시안 카드를 클릭하면 각 방향의 UX 전략과 설계 포인트를 볼 수 있습니다.
                       </p>
                     </div>
@@ -2618,24 +2618,24 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         <div style={{ width: 26, height: 26, borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-extrabold)", color: 'var(--aui-on-dark)', lineHeight: "var(--aui-leading-none)" }}>{selectedVariant}</span>
                         </div>
-                        <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', letterSpacing: '-0.3px', lineHeight: "var(--aui-leading-tight)" }}>{info.name}</span>
+                        <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', letterSpacing: "var(--aui-tracking-tighter)", lineHeight: "var(--aui-leading-tight)" }}>{info.name}</span>
                       </div>
                       {/* Strategy badge */}
-                      <span style={{ display: 'inline-block', fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-primary)', backgroundColor: 'var(--aui-primary-tint)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-1) var(--aui-space-2)`, letterSpacing: '0.02em', marginBottom: 8 }}>{info.strategy}</span>
-                      <p style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-muted)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: '-0.1px', margin: 0 }}>{info.tagline}</p>
+                      <span style={{ display: 'inline-block', fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-primary)', backgroundColor: 'var(--aui-primary-tint)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-1) var(--aui-space-2)`, letterSpacing: "var(--aui-tracking-slight)", marginBottom: 8 }}>{info.strategy}</span>
+                      <p style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-muted)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: "var(--aui-tracking-tight)", margin: 0 }}>{info.tagline}</p>
                     </div>
 
                     {/* Analysis */}
                     <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-4)" }}>
                       {/* Rationale */}
                       <div style={{ backgroundColor: 'var(--aui-page)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-3) var(--aui-space-3)` }}>
-                        <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>UX 전략 근거</p>
-                        <p style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-neutral)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: '-0.1px', margin: 0 }}>{info.rationale}</p>
+                        <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wider)", marginBottom: 5 }}>UX 전략 근거</p>
+                        <p style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-neutral)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: "var(--aui-tracking-tight)", margin: 0 }}>{info.rationale}</p>
                       </div>
 
                       {/* Key Points */}
                       <div>
-                        <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>설계 포인트</p>
+                        <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wider)", marginBottom: 10 }}>설계 포인트</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-3)" }}>
                           {info.points.map((point, i) => {
                             const [before, after] = point.split(' → ')
@@ -2644,7 +2644,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                                 <div style={{ width: 17, height: 17, borderRadius: '50%', backgroundColor: 'var(--aui-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1.5 }}>
                                   <span style={{ fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-extrabold)", color: 'var(--aui-on-dark)' }}>{i + 1}</span>
                                 </div>
-                                <p style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-neutral)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: '-0.1px', margin: 0 }}>
+                                <p style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-text-neutral)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: "var(--aui-tracking-tight)", margin: 0 }}>
                                   {after ? (
                                     <>{before} <span style={{ color: 'var(--aui-text-assistive)', fontWeight: "var(--aui-weight-regular)" }}>→</span> <span style={{ color: 'var(--aui-primary)', fontWeight: "var(--aui-weight-medium)" }}>{after}</span></>
                                   ) : point}
@@ -2658,13 +2658,13 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {/* Best for */}
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: "var(--aui-space-2)", paddingTop: 2 }}>
                         <svg style={{ marginTop: 1, flexShrink: 0 }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--aui-text-assistive)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-                        <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-muted)', letterSpacing: '-0.05px', lineHeight: "var(--aui-leading-relaxed)" }}><span style={{ fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text-muted)' }}>적합한 컨텍스트</span>  {info.bestFor}</span>
+                        <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-muted)', letterSpacing: "var(--aui-tracking-tight)", lineHeight: "var(--aui-leading-relaxed)" }}><span style={{ fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text-muted)' }}>적합한 컨텍스트</span>  {info.bestFor}</span>
                       </div>
 
                       {/* Expected effect */}
                       <div style={{ backgroundColor: 'var(--aui-primary-tint)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-2) var(--aui-space-3)`, display: 'flex', alignItems: 'flex-start', gap: "var(--aui-space-2)" }}>
                         <svg style={{ marginTop: 1.5, flexShrink: 0 }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--aui-primary)" strokeWidth="2.2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-                        <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-neutral)', letterSpacing: '-0.05px', lineHeight: "var(--aui-leading-relaxed)" }}><span style={{ fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-primary)' }}>기대 효과</span>  {info.expectedEffect}</span>
+                        <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-neutral)', letterSpacing: "var(--aui-tracking-tight)", lineHeight: "var(--aui-leading-relaxed)" }}><span style={{ fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-primary)' }}>기대 효과</span>  {info.expectedEffect}</span>
                       </div>
                     </div>
 
@@ -2673,13 +2673,13 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       <button
                         onClick={() => handlePickVariant(variantIdx as 0|1|2)}
                         className="hover:!bg-[var(--aui-text-neutral)]"
-                        style={{ marginTop: 16, width: '100%', padding: `var(--aui-space-3) 0`, borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", border: 'none', cursor: 'pointer', letterSpacing: '-0.2px', transition: 'background 0.15s' }}
+                        style={{ marginTop: 16, width: '100%', padding: `var(--aui-space-3) 0`, borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", border: 'none', cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)", transition: 'background 0.15s' }}
                       >
                         이 시안으로 진행
                       </button>
                     )}
                     {!variant && (
-                      <div style={{ marginTop: 16, width: '100%', padding: `var(--aui-space-3) 0`, borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-surface-muted)', color: 'var(--aui-text-disabled)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", textAlign: 'center', letterSpacing: '-0.2px' }}>
+                      <div style={{ marginTop: 16, width: '100%', padding: `var(--aui-space-3) 0`, borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-surface-muted)', color: 'var(--aui-text-disabled)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", textAlign: 'center', letterSpacing: "var(--aui-tracking-tight)" }}>
                         생성 중...
                       </div>
                     )}
@@ -2768,7 +2768,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     if (seg.t === 'h1')    return <p key={k} style={{ fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', margin: `var(--aui-space-4) 0 var(--aui-space-1)`, lineHeight: "var(--aui-leading-snug)" }}>{parseMdInline(seg.text)}</p>
                     if (seg.t === 'h2')    return <p key={k} style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text)', margin: `var(--aui-space-3) 0 var(--aui-space-1)`, lineHeight: "var(--aui-leading-snug)" }}>{parseMdInline(seg.text)}</p>
                     if (seg.t === 'h3')    return <p key={k} style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text-neutral)', margin: `var(--aui-space-2) 0 var(--aui-space-1)` }}>{parseMdInline(seg.text)}</p>
-                    if (seg.t === 'h4')    return <p key={k} style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text-muted)', margin: `var(--aui-space-2) 0 var(--aui-space-1)`, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{parseMdInline(seg.text)}</p>
+                    if (seg.t === 'h4')    return <p key={k} style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text-muted)', margin: `var(--aui-space-2) 0 var(--aui-space-1)`, textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-slight)" }}>{parseMdInline(seg.text)}</p>
                     if (seg.t === 'bullet') return <p key={k} style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-neutral)', margin: `var(--aui-space-1) 0 var(--aui-space-1) var(--aui-space-2)`, lineHeight: "var(--aui-leading-normal)" }}>{'• '}{parseMdInline(seg.text)}</p>
                     if (seg.t === 'code')  return (
                       <pre key={k} style={{ fontSize: "var(--aui-type-meta-size)", fontFamily: 'monospace', backgroundColor: 'var(--aui-surface-muted)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-2) var(--aui-space-3)`, margin: `var(--aui-space-1) 0`, overflowX: 'auto', color: 'var(--aui-text-neutral)', lineHeight: "var(--aui-leading-relaxed)", whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
@@ -2918,13 +2918,13 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     {typoRows.map(({ label, font, size, weight, actualSize }, i) => (
                       <div key={i} style={{ backgroundColor: cellBg, padding: `var(--aui-space-2) var(--aui-space-3)`, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: "var(--aui-space-1)", overflow: 'hidden' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: "var(--aui-space-1)" }}>
-                          <span style={{ fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-semibold)", color: muted, textTransform: 'uppercase', letterSpacing: '0.07em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 70 }}>{label}</span>
+                          <span style={{ fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-semibold)", color: muted, textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wide)", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 70 }}>{label}</span>
                           <span style={{ fontSize: "var(--aui-type-nano-size)", color: isDark ? 'var(--aui-text-neutral)' : 'var(--aui-text-assistive)', flexShrink: 0 }}>{font.split(',')[0].trim()}</span>
                         </div>
                         {actualSize && (
                           <span style={{ fontSize: "var(--aui-type-nano-size)", color: isDark ? 'var(--aui-text-neutral)' : 'var(--aui-text-disabled)', fontFamily: 'monospace', lineHeight: "var(--aui-leading-none)" }}>{actualSize} · {weight}</span>
                         )}
-                        <div style={{ fontSize: size, fontWeight: weight, color: ink, lineHeight: "var(--aui-leading-none)", fontFamily: font, letterSpacing: '-0.02em', overflow: 'hidden', marginTop: 'auto' }}>Aa</div>
+                        <div style={{ fontSize: size, fontWeight: weight, color: ink, lineHeight: "var(--aui-leading-none)", fontFamily: font, letterSpacing: "var(--aui-tracking-tight)", overflow: 'hidden', marginTop: 'auto' }}>Aa</div>
                       </div>
                     ))}
                   </div>
@@ -3019,7 +3019,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             )
           })() : (
             /* No design system: simple spinner card */
-            <div className="shrink-0 flex flex-col items-center justify-center gap-4" style={{ width: 280, padding: `var(--aui-space-8) var(--aui-space-6)`, borderRadius: "var(--aui-radius-card)", backgroundColor: 'var(--aui-on-dark-strong)', border: `1px solid ${F.hairlineSoft}`, boxShadow: '0 8px 40px var(--aui-shadow-medium)' }}>
+            <div className="shrink-0 flex flex-col items-center justify-center gap-4" style={{ width: 280, padding: `var(--aui-space-8) var(--aui-space-6)`, borderRadius: "var(--aui-radius-card)", backgroundColor: 'var(--aui-on-dark-strong)', border: `1px solid ${F.hairlineSoft}`, boxShadow: "var(--aui-shadow-floating)" }}>
               <div className="size-10 rounded-full animate-spin" style={{ border: '2px solid var(--aui-border-subtle)', borderTopColor: 'var(--aui-primary)' }} />
               <p style={{ fontSize: "var(--aui-type-compact-size)", color: 'var(--aui-text-muted)', textAlign: 'center', lineHeight: "var(--aui-leading-relaxed)" }}>AI가 최적의 디자인을<br />설계하고 있습니다</p>
               <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
@@ -3090,14 +3090,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       <div className="ml-auto flex items-center" style={{ gap: "var(--aui-space-1)", padding: "var(--aui-space-1)", borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-border-subtle)' }}>
                         <button
                           onClick={e => { e.stopPropagation(); setBHeroStyle('object') }}
-                          style={{ padding: `var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-sm)", fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-medium)", border: 'none', cursor: 'pointer', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'object' ? 'var(--aui-on-dark)' : 'transparent', color: bHeroStyle === 'object' ? 'var(--aui-text)' : 'var(--aui-text-muted)', boxShadow: bHeroStyle === 'object' ? '0 1px 3px var(--aui-shadow-medium)' : 'none' }}
+                          style={{ padding: `var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-sm)", fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-medium)", border: 'none', cursor: 'pointer', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'object' ? 'var(--aui-on-dark)' : 'transparent', color: bHeroStyle === 'object' ? 'var(--aui-text)' : 'var(--aui-text-muted)', boxShadow: bHeroStyle === 'object' ? "var(--aui-shadow-subtle)" : 'none' }}
                         >
                           오브젝트
                         </button>
                         <button
                           onClick={e => { e.stopPropagation(); if (bSceneImage) setBHeroStyle('scene') }}
                           disabled={!bSceneImage && !isGeneratingBScene}
-                          style={{ padding: `var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-sm)", fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-medium)", border: 'none', cursor: bSceneImage ? 'pointer' : 'not-allowed', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'scene' ? 'var(--aui-on-dark)' : 'transparent', color: bHeroStyle === 'scene' ? 'var(--aui-text)' : bSceneImage ? 'var(--aui-text-muted)' : 'var(--aui-text-disabled)', boxShadow: bHeroStyle === 'scene' ? '0 1px 3px var(--aui-shadow-medium)' : 'none', display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}
+                          style={{ padding: `var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-sm)", fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-medium)", border: 'none', cursor: bSceneImage ? 'pointer' : 'not-allowed', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'scene' ? 'var(--aui-on-dark)' : 'transparent', color: bHeroStyle === 'scene' ? 'var(--aui-text)' : bSceneImage ? 'var(--aui-text-muted)' : 'var(--aui-text-disabled)', boxShadow: bHeroStyle === 'scene' ? "var(--aui-shadow-subtle)" : 'none', display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}
                         >
                           {isGeneratingBScene && bHeroStyle !== 'scene' && (
                             <svg className="animate-spin" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -3136,7 +3136,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     {isExpandingPrototype && pickedVariantIdx === idx && (
                       <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'var(--aui-on-dark-strong)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-3)" }}>
                         <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid var(--aui-primary-muted)', borderTopColor: 'var(--aui-primary)', animation: 'spin 0.85s linear infinite' }} />
-                        <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-primary)', letterSpacing: '-0.1px' }}>프로토타입 생성 중...</span>
+                        <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-primary)', letterSpacing: "var(--aui-tracking-tight)" }}>프로토타입 생성 중...</span>
                       </div>
                     )}
                     {variant ? (
@@ -3191,13 +3191,13 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         {streamingHtml[idx] ? (
                           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 72%, color-mix(in srgb, var(--aui-page) 78%, transparent) 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 14, pointerEvents: 'none' }}>
                             {/* Stitch 스타일 "그리는 중" 버블 — AI가 화면을 실시간으로 그리는 느낌 */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", padding: `var(--aui-space-2) var(--aui-space-3)`, borderRadius: "var(--aui-radius-pill)", background: 'var(--aui-primary)', boxShadow: '0 4px 12px var(--aui-primary-muted)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", padding: `var(--aui-space-2) var(--aui-space-3)`, borderRadius: "var(--aui-radius-pill)", background: 'var(--aui-primary)', boxShadow: "var(--aui-shadow-raised)" }}>
                               <span style={{ display: 'inline-flex', gap: "var(--aui-space-1)" }}>
                                 {[0, 1, 2].map(d => (
                                   <span key={d} className="animate-bounce" style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--aui-on-dark)', animationDelay: `${d * 0.15}s`, animationDuration: '0.9s' }} />
                                 ))}
                               </span>
-                              <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-on-dark)', letterSpacing: '-0.2px' }}>AI가 그리는 중</span>
+                              <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-on-dark)', letterSpacing: "var(--aui-tracking-tight)" }}>AI가 그리는 중</span>
                             </div>
                           </div>
                         ) : (
@@ -3304,7 +3304,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     {isExpandingPrototype ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
                         <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid var(--aui-primary-muted)', borderTopColor: 'var(--aui-primary)', animation: 'spin 0.85s linear infinite' }} />
-                        <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-muted)', letterSpacing: '-0.1px' }}>멀티스크린 확장 중</span>
+                        <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-muted)', letterSpacing: "var(--aui-tracking-tight)" }}>멀티스크린 확장 중</span>
                       </div>
                     ) : result ? (
                       <iframe
@@ -3435,7 +3435,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 공유 <ChevronDown size={11} />
               </button>
               {shareOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-52 bg-white overflow-hidden z-50" style={{ borderRadius: "var(--aui-radius-sm)", boxShadow: '0 8px 40px var(--aui-shadow-medium)', border: `1px solid ${F.hairlineSoft}` }}>
+                <div className="absolute right-0 top-full mt-1.5 w-52 bg-white overflow-hidden z-50" style={{ borderRadius: "var(--aui-radius-sm)", boxShadow: "var(--aui-shadow-floating)", border: `1px solid ${F.hairlineSoft}` }}>
                   <button onClick={handleCopyLink} className="w-full flex items-start gap-2.5 px-4 py-2.5 hover:bg-[var(--aui-border-subtle)] transition-colors text-left">
                     {copyLinkDone
                       ? <><span className="text-[var(--aui-positive)] mt-0.5">✓</span><span className="text-[13px] text-[var(--aui-positive)]">복사됨!</span></>
@@ -3543,7 +3543,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 <ChevronDown size={11} />
               </button>
               {zoomOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-28 bg-white overflow-hidden z-50" style={{ borderRadius: "var(--aui-radius-sm)", boxShadow: '0 8px 40px var(--aui-shadow-medium)', border: `1px solid ${F.hairlineSoft}` }}>
+                <div className="absolute right-0 top-full mt-1.5 w-28 bg-white overflow-hidden z-50" style={{ borderRadius: "var(--aui-radius-sm)", boxShadow: "var(--aui-shadow-floating)", border: `1px solid ${F.hairlineSoft}` }}>
                   {[50, 60, 75, 100].map(z => (
                     <button
                       key={z}
@@ -3690,14 +3690,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     {/* 헤더 */}
                     <div style={{ padding: `var(--aui-space-3) var(--aui-space-3)`, borderBottom: p4Border, display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", backgroundColor: p4Dark ? 'var(--aui-inverse-surface)' : 'var(--aui-page)' }}>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={p4Color} strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                      <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-bold)", color: p4Ink, letterSpacing: '-0.1px' }}>DESIGN.md</span>
+                      <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-bold)", color: p4Ink, letterSpacing: "var(--aui-tracking-tight)" }}>DESIGN.md</span>
                     </div>
                     <div style={{ padding: `var(--aui-space-3) var(--aui-space-3) var(--aui-space-4)`, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-3)" }}>
                       {/* 디자인 시스템 이름 */}
-                      <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-bold)", color: p4Ink, letterSpacing: '-0.3px' }}>{designSystemDisplayName}</span>
+                      <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-bold)", color: p4Ink, letterSpacing: "var(--aui-tracking-tighter)" }}>{designSystemDisplayName}</span>
                       {/* 팔레트 */}
                       <div>
-                        <span style={{ fontSize: "var(--aui-type-meta-size)", color: p4Muted, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: "var(--aui-weight-semibold)" }}>Colors</span>
+                        <span style={{ fontSize: "var(--aui-type-meta-size)", color: p4Muted, textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wide)", fontWeight: "var(--aui-weight-semibold)" }}>Colors</span>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-1)", marginTop: 5 }}>
                           {p4Palette.slice(0, 5).map((sw: { name: string; hex: string }) => (
                             <div key={sw.name} title={`${sw.name} ${sw.hex}`} style={{ width: 20, height: 20, borderRadius: "var(--aui-radius-sm)", backgroundColor: sw.hex, border: '1px solid var(--aui-shadow-medium)', flexShrink: 0 }} />
@@ -3706,8 +3706,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       </div>
                       {/* 폰트 */}
                       <div>
-                        <span style={{ fontSize: "var(--aui-type-meta-size)", color: p4Muted, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: "var(--aui-weight-semibold)" }}>Typography</span>
-                        <p style={{ fontSize: "var(--aui-type-micro-size)", color: p4Ink, margin: `var(--aui-space-1) 0 0`, lineHeight: "var(--aui-leading-normal)", letterSpacing: '-0.1px' }}>
+                        <span style={{ fontSize: "var(--aui-type-meta-size)", color: p4Muted, textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wide)", fontWeight: "var(--aui-weight-semibold)" }}>Typography</span>
+                        <p style={{ fontSize: "var(--aui-type-micro-size)", color: p4Ink, margin: `var(--aui-space-1) 0 0`, lineHeight: "var(--aui-leading-normal)", letterSpacing: "var(--aui-tracking-tight)" }}>
                           {p4Fonts.headline !== p4Fonts.body
                             ? <><span style={{ fontWeight: "var(--aui-weight-bold)" }}>{p4Fonts.headline}</span><br/><span style={{ opacity: 0.7 }}>{p4Fonts.body}</span></>
                             : <span style={{ fontWeight: "var(--aui-weight-semibold)" }}>{p4Fonts.headline}</span>
@@ -3733,7 +3733,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     return (
                       <div key={letter} style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", width: thumbW }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
-                          <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: isPicked ? 'var(--aui-primary)' : 'var(--aui-text-muted)', letterSpacing: '-0.1px' }}>시안 {letter}</span>
+                          <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: isPicked ? 'var(--aui-primary)' : 'var(--aui-text-muted)', letterSpacing: "var(--aui-tracking-tight)" }}>시안 {letter}</span>
                           {isPicked && <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-primary)', fontWeight: "var(--aui-weight-bold)", background: 'var(--aui-primary-tint)', padding: `var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-sm)" }}>선택됨</span>}
                         </div>
                         <div style={{
@@ -3769,7 +3769,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M5 12h14M13 6l6 6-6 6"/>
                   </svg>
-                  <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-disabled)', letterSpacing: '-0.1px', whiteSpace: 'nowrap' }}>프로토타입</span>
+                  <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-disabled)', letterSpacing: "var(--aui-tracking-tight)", whiteSpace: 'nowrap' }}>프로토타입</span>
                 </div>
               )}
 
@@ -3783,7 +3783,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: "var(--aui-space-3)" }}
                       onClick={e => { e.stopPropagation(); setFocusedScreenId(screen.id); setActiveScreenId(screen.id) }}
                     >
-                      <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: isFocused ? 'var(--aui-text)' : 'var(--aui-text-muted)', letterSpacing: '-0.1px', userSelect: 'none' }}>
+                      <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: isFocused ? 'var(--aui-text)' : 'var(--aui-text-muted)', letterSpacing: "var(--aui-tracking-tight)", userSelect: 'none' }}>
                         {screen.label}
                       </span>
                       <div style={{ outline: isFocused ? '2px solid var(--aui-primary)' : '2px solid transparent', outlineOffset: 4, borderRadius: platform === 'mobile' ? 12 : 8, transition: 'outline-color 0.15s' }}>
@@ -3811,7 +3811,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 })
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: "var(--aui-space-3)" }}>
-                  <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text)', letterSpacing: '-0.1px', userSelect: 'none' }}>프로토타입</span>
+                  <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text)', letterSpacing: "var(--aui-tracking-tight)", userSelect: 'none' }}>프로토타입</span>
                   <ResponsiveFrame previewWidth={previewWidth} onWidthChange={setPreviewWidth} zoom={zoom} platform={platform}>
                     <iframe
                       ref={iframeRef}
@@ -3984,7 +3984,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
         {figmaExportOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'var(--aui-scrim)', backdropFilter: 'blur(6px)' }}>
-            <div className="bg-white w-full max-w-md mx-4 overflow-hidden" style={{ borderRadius: "var(--aui-radius-card)", boxShadow: '0 8px 40px var(--aui-shadow-medium)', border: `1px solid ${F.hairlineSoft}` }}>
+            <div className="bg-white w-full max-w-md mx-4 overflow-hidden" style={{ borderRadius: "var(--aui-radius-card)", boxShadow: "var(--aui-shadow-floating)", border: `1px solid ${F.hairlineSoft}` }}>
               {figmaExportError ? (
                 <div className="flex flex-col items-center gap-5 px-8 py-10">
                   <div className="size-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'var(--aui-negative-soft)', border: '1.5px solid var(--aui-negative-border)' }}>
@@ -4210,7 +4210,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               {/* Right: info + steps */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-6)" }}>
                 <div>
-                  <h2 style={{ fontSize: "var(--aui-type-page-title-size)", fontWeight: "var(--aui-weight-bold)", letterSpacing: '-0.04em', color: 'var(--aui-text)', marginBottom: 6 }}>
+                  <h2 style={{ fontSize: "var(--aui-type-page-title-size)", fontWeight: "var(--aui-weight-bold)", letterSpacing: "var(--aui-tracking-tighter)", color: 'var(--aui-text)', marginBottom: 6 }}>
                     {analyzeError ? '질문지 생성에 실패했습니다' : '정확한 시안을 위해 분석 중입니다'}
                   </h2>
                   <p style={{ fontSize: "var(--aui-type-label-size)", color: 'var(--aui-text-muted)', lineHeight: "var(--aui-leading-relaxed)" }}>
@@ -4223,13 +4223,13 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   <div style={{ display: 'flex', gap: "var(--aui-space-3)" }}>
                     {logoDataUrl && (
                       <div style={{ padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)", backgroundColor: 'var(--aui-page)', border: '1px solid var(--aui-border)', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", minWidth: 80 }}>
-                        <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>Logo</p>
+                        <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wider)" }}>Logo</p>
                         <img src={logoDataUrl} alt="logo" style={{ height: 28, maxWidth: 72, objectFit: 'contain', borderRadius: "var(--aui-radius-sm)" }} />
                       </div>
                     )}
                     {!!effectiveDesignMd && (
                       <div style={{ flex: 1, padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)", backgroundColor: 'var(--aui-page)', border: '1px solid var(--aui-border)' }}>
-                        <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>Design System</p>
+                        <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wider)", marginBottom: 8 }}>Design System</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", flexWrap: 'wrap' }}>
                           <div style={{ width: 12, height: 12, borderRadius: "var(--aui-radius-sm)", backgroundColor: customDesignMd ? 'var(--aui-primary)' : (visualizedDesignPreset.color ?? 'var(--aui-text-muted)'), flexShrink: 0 }} />
                           <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text)' }}>{designSystemDisplayName}</span>
@@ -4242,7 +4242,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
                 {/* Brief preview */}
                 <div style={{ padding: `var(--aui-space-4) var(--aui-space-5)`, borderRadius: "var(--aui-radius-control)", backgroundColor: 'var(--aui-page)', border: '1px solid var(--aui-border)' }}>
-                  <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>기획서</p>
+                  <p style={{ fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)", color: 'var(--aui-text-assistive)', textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wider)", marginBottom: 8 }}>기획서</p>
                   <p style={{ fontSize: "var(--aui-type-compact-size)", color: 'var(--aui-text-neutral)', lineHeight: "var(--aui-leading-relaxed)", maxHeight: 72, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const }}>{brief}</p>
                 </div>
 
@@ -4259,7 +4259,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         {item.done && <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="2,5.5 4,7.5 8,3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                         {item.active && <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid var(--aui-text-assistive)', borderTopColor: 'var(--aui-text)', animation: 'wf-spin 0.75s linear infinite' }} />}
                       </div>
-                      <span style={{ fontSize: "var(--aui-type-compact-size)", color: item.done ? 'var(--aui-text)' : 'var(--aui-text-muted)', fontWeight: item.active ? 500 : 400, letterSpacing: '-0.1px' }}>{item.label}</span>
+                      <span style={{ fontSize: "var(--aui-type-compact-size)", color: item.done ? 'var(--aui-text)' : 'var(--aui-text-muted)', fontWeight: item.active ? 500 : 400, letterSpacing: "var(--aui-tracking-tight)" }}>{item.label}</span>
                     </div>
                   ))}
                 </div>
@@ -4294,7 +4294,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
         {step === 1 && !isAnalyzing && !startedFromLanding && (
           <div className="max-w-5xl mx-auto w-full px-8 py-12">
             <div className="mb-10">
-              <h1 className="text-[28px] font-bold mb-2" style={{ letterSpacing: '-0.05em', color: F.ink }}>UI 시안 만들기</h1>
+              <h1 className="text-[28px] font-bold mb-2" style={{ letterSpacing: "var(--aui-tracking-tighter)", color: F.ink }}>UI 시안 만들기</h1>
               <p className="text-[16px] leading-[1.6]" style={{ color: F.inkMuted }}>
                 디자인 시스템과 기획서를 입력하면 AI가 맞춤형 질문을 생성합니다
               </p>
@@ -4472,7 +4472,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           <div className="max-w-3xl mx-auto w-full px-8 py-12">
             <div className="flex items-start justify-between mb-8">
               <div>
-                <h1 className="text-[22px] font-bold mb-1" style={{ letterSpacing: '-0.05em' }}>이 기준으로 만들게요</h1>
+                <h1 className="text-[22px] font-bold mb-1" style={{ letterSpacing: "var(--aui-tracking-tighter)" }}>이 기준으로 만들게요</h1>
                 <p className="text-[14px] text-[var(--aui-text-muted)]">{questionnaire.projectSummary}</p>
               </div>
               <button onClick={() => { clearGeneratedBoard(); setStartedFromLanding(false); setStep(1) }} className="flex items-center gap-1.5 text-sm text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors mt-1">
@@ -4724,7 +4724,7 @@ function ResponsiveFrame({
             borderRadius: "var(--aui-radius-control)",
             overflow: 'hidden',
             border: '0.5px solid var(--aui-shadow-medium)',
-            boxShadow: '0 4px 24px var(--aui-border-subtle)',
+            boxShadow: "var(--aui-shadow-raised)",
             background: 'var(--aui-on-dark)',
           }}
         >
@@ -4818,7 +4818,7 @@ function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange, share
             <div style={{
               position: 'absolute', top: 2, left: syncAllScreens ? 16 : 2,
               width: 14, height: 14, borderRadius: '50%', backgroundColor: 'var(--aui-on-dark)',
-              transition: 'left 0.2s', boxShadow: '0 1px 3px var(--aui-scrim-soft)',
+              transition: 'left 0.2s', boxShadow: "var(--aui-shadow-subtle)",
             }} />
           </div>
         </div>
@@ -4990,7 +4990,7 @@ function IconPickerPanel({ pickedIcon, onPick, onApply, onCancel }: {
   return (
     <div
       className="fixed right-4 top-[60px] bottom-4 z-30 flex flex-col overflow-hidden bg-white w-72"
-      style={{ borderRadius: "var(--aui-radius-card)", boxShadow: '0 8px 40px var(--aui-shadow-medium)', border: `1px solid ${F.hairlineSoft}` }}
+      style={{ borderRadius: "var(--aui-radius-card)", boxShadow: "var(--aui-shadow-floating)", border: `1px solid ${F.hairlineSoft}` }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--aui-shadow-line)] shrink-0">
@@ -5083,7 +5083,7 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-end p-6 pointer-events-none">
-      <div className="pointer-events-auto bg-white w-72 overflow-y-auto max-h-[90vh]" style={{ borderRadius: "var(--aui-radius-card)", boxShadow: '0 8px 40px var(--aui-shadow-medium)', border: `1px solid ${F.hairlineSoft}` }}>
+      <div className="pointer-events-auto bg-white w-72 overflow-y-auto max-h-[90vh]" style={{ borderRadius: "var(--aui-radius-card)", boxShadow: "var(--aui-shadow-floating)", border: `1px solid ${F.hairlineSoft}` }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--aui-shadow-line)]">
           <span className="text-[14px] font-semibold text-[var(--aui-text)]">Tweaks</span>
           <button onClick={onClose} className="text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors">
@@ -5173,7 +5173,7 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
             <div className="flex items-center gap-2">
               <span className="text-[13px] text-[var(--aui-text-muted)] font-mono">{brandColor}</span>
               <label className="cursor-pointer">
-                <div className="size-7 border-2 cursor-pointer" style={{ borderRadius: "var(--aui-radius-pill)", backgroundColor: brandColor, borderColor: 'var(--aui-shadow-medium)', boxShadow: '0 0 0 1px var(--aui-border-subtle)' }} />
+                <div className="size-7 border-2 cursor-pointer" style={{ borderRadius: "var(--aui-radius-pill)", backgroundColor: brandColor, borderColor: 'var(--aui-shadow-medium)', boxShadow: "var(--aui-shadow-ring)" }} />
                 <input type="color" value={brandColor} onChange={e => onBrandColor(e.target.value)} className="sr-only" />
               </label>
             </div>

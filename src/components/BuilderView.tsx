@@ -341,7 +341,7 @@ function PaletteDropSlot({ frameId, index, device }: { frameId: string; index: n
           height: isOver ? 4 : 2,
           borderRadius: "var(--aui-radius-sm)",
           background: isOver ? AIDE.primary : 'var(--aui-primary-muted)',
-          boxShadow: isOver ? '0 0 0 4px var(--aui-primary-muted)' : 'none',
+          boxShadow: isOver ? "var(--aui-shadow-ring)" : 'none',
           transition: 'height 0.1s, background 0.1s, box-shadow 0.1s',
         }}
       />
@@ -412,7 +412,7 @@ function SortableItem({
             background: AIDE.primary,
             borderRadius: "var(--aui-radius-sm)",
             zIndex: 30,
-            boxShadow: '0 0 8px var(--aui-primary-muted)',
+            boxShadow: "var(--aui-shadow-glow)",
           }}
         />
       )}
@@ -594,7 +594,7 @@ function ComponentLibraryPanel({
                     fontSize: "var(--aui-type-meta-size)",
                     fontWeight: "var(--aui-weight-bold)",
                     color: AIDE.textSubtle,
-                    letterSpacing: '0.08em',
+                    letterSpacing: "var(--aui-tracking-wider)",
                     textTransform: 'uppercase',
                   }}
                 >
@@ -977,7 +977,7 @@ function PropInput({
                 borderRadius: "var(--aui-radius-sm)",
                 background: active ? AIDE.surface : 'transparent',
                 color: active ? AIDE.primary : AIDE.textMuted,
-                boxShadow: active ? '0 1px 3px var(--aui-shadow-medium)' : 'none',
+                boxShadow: active ? "var(--aui-shadow-subtle)" : 'none',
                 fontSize: "var(--aui-type-micro-size)",
                 fontWeight: active ? 700 : 500,
                 cursor: 'pointer',
@@ -1104,7 +1104,7 @@ function DragPreview({ html }: { html: string }) {
       style={{
         width: 375,
         background: 'var(--aui-on-dark)',
-        boxShadow: '0 16px 48px var(--aui-shadow-medium)',
+        boxShadow: "var(--aui-shadow-floating)",
         borderRadius: "var(--aui-radius-sm)",
         overflow: 'hidden',
         opacity: 0.92,
@@ -1177,7 +1177,7 @@ function StructureTemplatePicker({
         border: `1px solid ${AIDE.border}`,
         borderRadius: "var(--aui-radius-sm)",
         background: AIDE.surface,
-        boxShadow: '0 16px 40px var(--aui-shadow-medium)',
+        boxShadow: "var(--aui-shadow-floating)",
         zIndex: 120,
       }}
     >
@@ -1681,7 +1681,7 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
             const active = activeFrame?.device === device;
             const Icon = device === 'mobile' ? Smartphone : Monitor;
             return (
-              <button key={device} type="button" onClick={() => selectFrameDevice(device)} title={`${config.label} ${config.width} × ${config.height}`} style={{ minWidth: 104, height: 30, padding: `0 var(--aui-space-3)`, border: 'none', borderRadius: "var(--aui-radius-sm)", background: active ? AIDE.surface : 'transparent', color: active ? AIDE.primary : AIDE.textMuted, boxShadow: active ? '0 1px 3px var(--aui-shadow-medium)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)", cursor: 'pointer', fontFamily: 'inherit' }}>
+              <button key={device} type="button" onClick={() => selectFrameDevice(device)} title={`${config.label} ${config.width} × ${config.height}`} style={{ minWidth: 104, height: 30, padding: `0 var(--aui-space-3)`, border: 'none', borderRadius: "var(--aui-radius-sm)", background: active ? AIDE.surface : 'transparent', color: active ? AIDE.primary : AIDE.textMuted, boxShadow: active ? "var(--aui-shadow-subtle)" : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)", cursor: 'pointer', fontFamily: 'inherit' }}>
                 <Icon size={14} />
                 <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: active ? 750 : 550 }}>{config.label}</span>
                 <span style={{ fontSize: "var(--aui-type-meta-size)", color: active ? 'var(--aui-primary-disabled)' : AIDE.textSubtle }}>{config.width}</span>
@@ -1921,7 +1921,7 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
               )}
             </div>
 
-            <div style={{ position: 'absolute', left: '50%', bottom: 16, transform: 'translateX(-50%)', height: 36, padding: "var(--aui-space-1)", display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", border: `1px solid ${AIDE.border}`, borderRadius: "var(--aui-radius-sm)", background: 'var(--aui-on-dark-strong)', boxShadow: '0 6px 18px var(--aui-shadow-medium)' }} onClick={(event) => event.stopPropagation()}>
+            <div style={{ position: 'absolute', left: '50%', bottom: 16, transform: 'translateX(-50%)', height: 36, padding: "var(--aui-space-1)", display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", border: `1px solid ${AIDE.border}`, borderRadius: "var(--aui-radius-sm)", background: 'var(--aui-on-dark-strong)', boxShadow: "var(--aui-shadow-raised)" }} onClick={(event) => event.stopPropagation()}>
               <button type="button" onClick={() => zoomCanvas(-1)} title="축소" aria-label="축소" style={{ width: 30, height: 30, border: 'none', borderRadius: "var(--aui-radius-sm)", background: 'transparent', color: AIDE.textMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                 <ZoomOut size={14} />
               </button>

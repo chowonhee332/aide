@@ -31,6 +31,7 @@ const GROUP_PREFIX: Record<string, string> = {
   duration: 'motion-',
   weight: 'weight-',
   leading: 'leading-',
+  tracking: 'tracking-',
 }
 
 /** typography sub-key → CSS suffix. */
@@ -98,20 +99,26 @@ function buildEntries(tokens: Record<string, unknown>): TokenEntry[] {
 
 export const AUI_TOKEN_ENTRIES: TokenEntry[] = buildEntries(extractContract(md))
 
+/** cssVar prefix → showcase group. First match wins; anything else is a colour. */
+const GROUP_OF: Array<[string, string]> = [
+  ['--aui-type-', 'typography'],
+  ['--aui-radius-', 'radius'],
+  ['--aui-shadow-', 'shadow'],
+  ['--aui-motion-', 'motion'],
+  ['--aui-space-', 'space'],
+  ['--aui-weight-', 'weight'],
+  ['--aui-leading-', 'leading'],
+  ['--aui-tracking-', 'tracking'],
+]
+
+/** Dimension keys that are layout measures rather than colours. */
+const MEASURE_KEYS = /^(icon|control|target|toolbar|panel|content)-/
+
 /** Contract groups kept for the /aide-ui showcase, so it never re-lists tokens by hand. */
 export const AUI_TOKEN_GROUPS: Record<string, TokenEntry[]> = AUI_TOKEN_ENTRIES.reduce(
   (acc, entry) => {
-    const group = entry.cssVar.startsWith('--aui-type-')
-      ? 'typography'
-      : entry.cssVar.startsWith('--aui-radius-')
-        ? 'radius'
-        : entry.cssVar.startsWith('--aui-shadow-')
-          ? 'shadow'
-          : entry.cssVar.startsWith('--aui-motion-')
-            ? 'motion'
-            : entry.cssVar.startsWith('--aui-space-')
-              ? 'space'
-              : 'color'
+    const matched = GROUP_OF.find(([prefix]) => entry.cssVar.startsWith(prefix))
+    const group = matched ? matched[1] : MEASURE_KEYS.test(entry.key) ? 'dimension' : 'color'
     ;(acc[group] ??= []).push(entry)
     return acc
   },
