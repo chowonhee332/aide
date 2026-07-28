@@ -1245,30 +1245,32 @@ contract:
       - "state and meaning never rely on color alone"
 
   validation:
-    errors:
-      - "missing required section or required component field"
-      - "unsupported token group"
-      - "unresolved token alias"
-      - "duplicate token, component, layout, or visualization id"
-      - "visualization section without renderer"
-      - "renderer without visualization manifest entry"
-      - "component visual literal that bypasses --aui-*"
-      - "normal text contrast below 4.5:1"
+    # `enforced` runs automatically. `planned` is intent with no checker yet, and
+    # a reader MUST NOT assume it is verified. Moving a line up requires code.
+    enforced:
+      errors:
+        - { rule: "missing required section or required component field", by: "design:lint" }
+        - { rule: "unsupported token group", by: "aide-product-tokens.ts" }
+        - { rule: "unresolved or circular token alias", by: "design-token-alias.mjs" }
+        - { rule: "duplicate token, component, or visualization id", by: "design:lint, aide-product-tokens.ts" }
+        - { rule: "visualization section without renderer", by: "aide-ui/page.tsx" }
+        - { rule: "renderer without visualization manifest entry", by: "aide-ui/page.tsx" }
+        - { rule: "component visual literal that bypasses --aui-*", by: "design:lint" }
+        - { rule: "normal text contrast below 4.5:1", by: "design:lint" }
+        - { rule: "token group renamed or dropped from the base contract", by: "design:lint" }
+        - { rule: "playground catalog parity", by: "wonhee-playground-components.ts" }
+      warnings:
+        - { rule: "token has no product or showcase consumer", by: "design:lint" }
+        - { rule: "component without anatomy or slots", by: "design:lint" }
+        - { rule: "rule without a normative keyword", by: "design:lint" }
+    planned:
       - "interactive state without visible focus or accessible name"
-    warnings:
-      - "token has no product or showcase consumer"
       - "component contract has no rendered state example"
       - "responsive behavior is inherited but not visually verified"
       - "component token duplicates a semantic token without component-specific reason"
     completion_gate:
-      - schema-valid
-      - aliases-resolved
-      - token-consumer-coverage
-      - component-state-coverage
-      - showcase-renderer-parity
-      - playground-catalog-parity
-      - accessibility-pass
-      - responsive-visual-regression-pass
+      automated: [schema-valid, aliases-resolved, token-consumer-coverage, showcase-renderer-parity, playground-catalog-parity, contrast-pass]
+      manual: [component-state-coverage, accessibility-pass, responsive-visual-regression-pass]
 
   visualization:
     route: "/aide-ui"

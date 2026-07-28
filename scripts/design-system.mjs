@@ -103,6 +103,61 @@ function lintComponents(document, base, errors, warnings) {
   }
 }
 
+/**
+ * `validation.errors`: "component visual literal that bypasses --aui-*".
+ * A contract entry must name a token, never carry a raw colour or shadow value.
+ */
+function lintVisualLiterals(document, errors) {
+  const LITERAL = /(#[0-9a-fA-F]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\()/
+  const walk = (node, trail) => {
+    if (typeof node === 'string') {
+      if (LITERAL.test(node)) errors.push(`${trail}: visual literal bypasses --aui-* — "${node.slice(0, 40)}"`)
+      return
+    }
+    if (Array.isArray(node)) return node.forEach((item, index) => walk(item, `${trail}[${index}]`))
+    if (node && typeof node === 'object') {
+      for (const [key, value] of Object.entries(node)) walk(value, `${trail}.${key}`)
+    }
+  }
+  walk(document.contract.components ?? {}, 'components')
+  walk(document.contract.component_tokens ?? {}, 'component_tokens')
+}
+
+/** `validation.warnings`: "token has no product or showcase consumer". */
+function lintTokenConsumers(document, warnings) {
+  const roots = ['src/app', 'src/components', 'src/lib']
+  const used = new Set()
+  const visit = (dir) => {
+    for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, item.name)
+      if (item.isDirectory()) {
+        if (item.name !== 'generated' && item.name !== 'design-systems') visit(full)
+        continue
+      }
+      if (!/\.(ts|tsx|css|mjs)$/.test(item.name)) continue
+      for (const match of fs.readFileSync(full, 'utf8').matchAll(/--aui-[a-z0-9-]+/g)) used.add(match[0])
+    }
+  }
+  for (const dir of roots) if (fs.existsSync(path.join(ROOT, dir))) visit(path.join(ROOT, dir))
+
+  const emitted = []
+  for (const [group, members] of Object.entries(document.contract.tokens ?? {})) {
+    for (const { path: tokenPath, leaf } of tokenLeaves(members)) {
+      if (!leaf) continue
+      if (group === 'typography') {
+        for (const suffix of ['family', 'size', 'weight', 'leading', 'tracking']) {
+          emitted.push(`--aui-type-${tokenPath}-${suffix}`)
+        }
+        continue
+      }
+      emitted.push(cssName(group, tokenPath))
+    }
+  }
+  for (const name of new Set(emitted)) {
+    if (!used.has(name)) warnings.push(`${name}: no product or showcase consumer`)
+  }
+}
+
 function lintDocument(document, base) {
   const errors = []
   const warnings = []
@@ -141,6 +196,8 @@ function lintDocument(document, base) {
   }
 
   lintComponents(document, base, errors, warnings)
+  lintVisualLiterals(document, errors)
+  if (document.contract.identity?.product === 'Aide') lintTokenConsumers(document, warnings)
 
   // `inheritance.token_vocabulary`: a product may add groups, never rename one.
   if (base) {
