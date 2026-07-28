@@ -550,7 +550,7 @@ function ComponentLibraryPanel({
   return (
     <div
       style={{
-        width: 280,
+        width: 'var(--aui-panel-min)',
         flexShrink: 0,
         background: AIDE.surface,
         borderRight: `1px solid ${AIDE.border}`,
@@ -1019,8 +1019,8 @@ function PropInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           style={{
-            width: 32,
-            height: 32,
+            width: 'var(--aui-control-compact)',
+            height: 'var(--aui-control-compact)',
             border: 'none',
             borderRadius: "var(--aui-radius-sm)",
             cursor: 'pointer',
@@ -1032,7 +1032,7 @@ function PropInput({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          style={{ ...base, flex: 1, height: 32, padding: `0 var(--aui-space-3)` }}
+          style={{ ...base, flex: 1, height: 'var(--aui-control-compact)', padding: `0 var(--aui-space-3)` }}
         />
       </div>
     );
@@ -1043,7 +1043,7 @@ function PropInput({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        style={{ ...base, height: 32, padding: `0 var(--aui-space-2)`, cursor: 'pointer' }}
+        style={{ ...base, height: 'var(--aui-control-compact)', padding: `0 var(--aui-space-2)`, cursor: 'pointer' }}
       >
         {options.map((o) => (
           <option key={o} value={o}>

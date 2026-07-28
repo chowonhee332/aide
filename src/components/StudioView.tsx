@@ -4085,7 +4085,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       {isExpandingPrototype && <ExpandingOverlay image={pickedVariantIdx !== null ? (mainVariants[pickedVariantIdx]?.image ?? undefined) : undefined} platform={platform} variantLabel={pickedVariantIdx !== null ? ['시안 A','시안 B','시안 C'][pickedVariantIdx] : undefined} />}
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-10 px-8 flex items-center" style={{ height: '56px', backgroundColor: F.surface, borderBottom: `1px solid ${F.hairlineSoft}` }}>
+      <header className="sticky top-0 z-10 px-8 flex items-center" style={{ height: 'var(--aui-toolbar-height)', backgroundColor: F.surface, borderBottom: `1px solid ${F.hairlineSoft}` }}>
         <button onClick={onBack} aria-label="Aide 홈으로 이동" className="transition-colors" style={{ border: 'none', background: 'transparent', padding: 0, textDecoration: 'none' }}>
           <img src="/logo_aide.png" alt="Aide" className="h-14 w-auto object-contain" />
         </button>

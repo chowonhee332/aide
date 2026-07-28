@@ -1261,6 +1261,10 @@ contract:
         - { rule: "playground catalog parity", by: "wonhee-playground-components.ts" }
       warnings:
         - { rule: "token has no product or showcase consumer", by: "design:lint" }
+        # A typography scale emits family/size/weight/leading/tracking, but screens
+        # pick weight, leading, and tracking from the standalone ramps. Only the
+        # size of a scale is expected to have a consumer.
+        - { exempt: "typography sub-properties other than size", reason: "standalone weight, leading, and tracking ramps carry those decisions" }
         - { rule: "component without anatomy or slots", by: "design:lint" }
         - { rule: "rule without a normative keyword", by: "design:lint" }
     planned:

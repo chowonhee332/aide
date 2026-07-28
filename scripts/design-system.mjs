@@ -123,10 +123,17 @@ function lintVisualLiterals(document, errors) {
   walk(document.contract.component_tokens ?? {}, 'component_tokens')
 }
 
-/** `validation.warnings`: "token has no product or showcase consumer". */
+/**
+ * `validation.warnings`: "token has no product or showcase consumer".
+ *
+ * A token reaches product code two ways: as a `--aui-*` custom property, or as a
+ * value through the `AUI_TOKEN_VALUE` bridge for renderers that cannot read CSS
+ * variables. Both count, so both are collected here.
+ */
 function lintTokenConsumers(document, warnings) {
   const roots = ['src/app', 'src/components', 'src/lib']
   const used = new Set()
+  const bridged = new Set()
   const visit = (dir) => {
     for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, item.name)
@@ -135,7 +142,11 @@ function lintTokenConsumers(document, warnings) {
         continue
       }
       if (!/\.(ts|tsx|css|mjs)$/.test(item.name)) continue
-      for (const match of fs.readFileSync(full, 'utf8').matchAll(/--aui-[a-z0-9-]+/g)) used.add(match[0])
+      const source = fs.readFileSync(full, 'utf8')
+      for (const match of source.matchAll(/--aui-[a-z0-9-]+/g)) used.add(match[0])
+      for (const match of source.matchAll(/AUI_TOKEN_VALUE(?:\[['"]([a-zA-Z0-9._-]+)['"]\]|\.([a-zA-Z0-9_-]+))/g)) {
+        bridged.add(match[1] ?? match[2])
+      }
     }
   }
   for (const dir of roots) if (fs.existsSync(path.join(ROOT, dir))) visit(path.join(ROOT, dir))
@@ -145,16 +156,19 @@ function lintTokenConsumers(document, warnings) {
     for (const { path: tokenPath, leaf } of tokenLeaves(members)) {
       if (!leaf) continue
       if (group === 'typography') {
-        for (const suffix of ['family', 'size', 'weight', 'leading', 'tracking']) {
-          emitted.push(`--aui-type-${tokenPath}-${suffix}`)
-        }
+        // Only `-size` is expected to have a consumer; screens take weight,
+        // leading, and tracking from the standalone ramps instead.
+        emitted.push({ name: `--aui-type-${tokenPath}-size`, key: tokenPath })
         continue
       }
-      emitted.push(cssName(group, tokenPath))
+      emitted.push({ name: cssName(group, tokenPath), key: tokenPath })
     }
   }
-  for (const name of new Set(emitted)) {
-    if (!used.has(name)) warnings.push(`${name}: no product or showcase consumer`)
+  const seen = new Set()
+  for (const { name, key } of emitted) {
+    if (seen.has(name)) continue
+    seen.add(name)
+    if (!used.has(name) && !bridged.has(key)) warnings.push(`${name}: no product or showcase consumer`)
   }
 }
 
