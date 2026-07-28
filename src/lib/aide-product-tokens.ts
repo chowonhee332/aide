@@ -1,8 +1,9 @@
 import { parse as parseYaml } from 'yaml'
-import md from './design-systems/aide-product-ui.md'
+import md from './design-systems/wonhee-product-ui.md'
+import { isLeaf, resolveAliases, type TokenLeaf } from './design-token-alias.mjs'
 
 /**
- * aide-product-ui.md is the source of truth for Aide product chrome tokens.
+ * wonhee-product-ui.md is the source of truth for Aide product chrome tokens.
  * This module parses its machine-readable contract into `--aui-*` custom properties
  * that `layout.tsx` injects at :root, so editing the md restyles the product.
  *
@@ -10,8 +11,37 @@ import md from './design-systems/aide-product-ui.md'
  * `excluded_consumers`.
  */
 
-type TokenLeaf = { $value?: unknown; $description?: string }
 type TokenGroup = Record<string, TokenLeaf | unknown>
+
+export interface AuiShowcaseSection {
+  id: string
+  navigation: string
+  eyebrow: string
+  title: string
+  description: string
+}
+
+export interface AuiDocumentationPage {
+  title: string
+  items?: string[]
+  categories?: string[]
+  page_template?: string[]
+}
+
+export interface AuiDocumentation {
+  route: string
+  title: string
+  description: string
+  navigation: string[]
+  pages: Record<string, AuiDocumentationPage>
+  layout?: {
+    wide?: Record<string, unknown>
+    medium?: Record<string, unknown>
+    compact?: Record<string, unknown>
+    'left-navigation'?: Record<string, unknown>
+    'on-this-page'?: Record<string, unknown>
+  }
+}
 
 export interface TokenEntry {
   /** Contract key, e.g. `primary-strong` */
@@ -32,6 +62,8 @@ const GROUP_PREFIX: Record<string, string> = {
   weight: 'weight-',
   leading: 'leading-',
   tracking: 'tracking-',
+  gradient: 'gradient-',
+  blur: 'blur-',
 }
 
 /** typography sub-key → CSS suffix. */
@@ -45,15 +77,10 @@ const TYPE_SUFFIX: Record<string, string> = {
 
 function extractContract(source: string): Record<string, unknown> {
   const fenced = source.match(/```yaml\n([\s\S]*?)\n```/)
-  if (!fenced) throw new Error('aide-product-ui.md: machine-readable yaml block not found')
-  const parsed = parseYaml(fenced[1]) as { contract?: { tokens?: Record<string, TokenGroup> } }
-  const tokens = parsed?.contract?.tokens
-  if (!tokens) throw new Error('aide-product-ui.md: contract.tokens missing')
-  return tokens
-}
-
-function isLeaf(node: unknown): node is TokenLeaf {
-  return typeof node === 'object' && node !== null && '$value' in node
+  if (!fenced) throw new Error('wonhee-product-ui.md: machine-readable yaml block not found')
+  const parsed = parseYaml(fenced[1]) as { contract?: Record<string, unknown> }
+  if (!parsed?.contract) throw new Error('wonhee-product-ui.md: contract missing')
+  return parsed.contract
 }
 
 function buildEntries(tokens: Record<string, unknown>): TokenEntry[] {
@@ -97,10 +124,81 @@ function buildEntries(tokens: Record<string, unknown>): TokenEntry[] {
   return entries
 }
 
-export const AUI_TOKEN_ENTRIES: TokenEntry[] = buildEntries(extractContract(md))
+function buildComponentEntries(groups: Record<string, unknown>): TokenEntry[] {
+  const entries: TokenEntry[] = []
+  for (const [component, members] of Object.entries(groups)) {
+    if (typeof members !== 'object' || members === null) continue
+    for (const [key, leaf] of Object.entries(members as TokenGroup)) {
+      if (!isLeaf(leaf)) throw new Error(`wonhee-product-ui.md: component_tokens.${component}.${key} must use $value`)
+      entries.push({
+        key: `${component}.${key}`,
+        cssVar: `--aui-component-${component}-${key}`,
+        value: String(leaf.$value),
+        description: leaf.$description,
+      })
+    }
+  }
+  return entries
+}
+
+const productContract = extractContract(md)
+export const AUI_PRODUCT_CONTRACT = productContract
+const rawProductTokens = productContract.tokens as Record<string, unknown> | undefined
+if (!rawProductTokens) throw new Error('wonhee-product-ui.md: contract.tokens missing')
+const rawComponentTokens = productContract.component_tokens as Record<string, unknown> | undefined
+if (!rawComponentTokens) throw new Error('wonhee-product-ui.md: contract.component_tokens missing')
+const aliasRoots = { ...rawProductTokens, tokens: rawProductTokens, component_tokens: rawComponentTokens }
+const aliasOptions = { label: 'wonhee-product-ui.md' }
+const productTokens = resolveAliases(rawProductTokens, aliasRoots, aliasOptions) as Record<string, unknown>
+const componentTokens = resolveAliases(rawComponentTokens, aliasRoots, aliasOptions) as Record<string, unknown>
+
+const supportedTokenGroups = new Set([...Object.keys(GROUP_PREFIX), 'typography'])
+const unknownTokenGroups = Object.keys(productTokens).filter((group) => !supportedTokenGroups.has(group))
+if (unknownTokenGroups.length) throw new Error(`wonhee-product-ui.md: unsupported token groups: ${unknownTokenGroups.join(', ')}`)
+
+export const AUI_TOKEN_ENTRIES: TokenEntry[] = [...buildEntries(productTokens), ...buildComponentEntries(componentTokens)]
+export const AUI_TOKEN_VALUE = Object.fromEntries(AUI_TOKEN_ENTRIES.map((entry) => [entry.key, entry.value])) as Record<string, string>
+
+const visualization = productContract.visualization as { sections?: AuiShowcaseSection[] } | undefined
+if (!visualization?.sections?.length) throw new Error('wonhee-product-ui.md: contract.visualization.sections missing')
+
+export const AUI_SHOWCASE_SECTIONS: AuiShowcaseSection[] = visualization.sections.map((section) => ({
+  id: String(section.id),
+  navigation: String(section.navigation),
+  eyebrow: String(section.eyebrow),
+  title: String(section.title),
+  description: String(section.description),
+}))
+
+const documentation = productContract.documentation as AuiDocumentation | undefined
+if (!documentation?.navigation?.length || !documentation.pages) throw new Error('wonhee-product-ui.md: contract.documentation missing')
+for (const id of documentation.navigation) {
+  if (!documentation.pages[id]) throw new Error(`wonhee-product-ui.md: documentation.navigation references missing page group: ${id}`)
+}
+export const AUI_DOCUMENTATION: AuiDocumentation = documentation
+
+const develop = productContract.develop as { commands?: Record<string, string | string[]> } | undefined
+const ai = productContract.ai as { skill?: { id?: string; purpose?: string; workflow?: string[] }; llms_txt?: { route?: string; contents?: string[] }; future_integrations?: string[] } | undefined
+export const AUI_DEVELOP_COMMANDS = develop?.commands ?? {}
+export const AUI_AI_GUIDE = {
+  skill: ai?.skill ?? {},
+  llmsTxt: ai?.llms_txt ?? {},
+  futureIntegrations: ai?.future_integrations ?? [],
+}
+const componentRegistry = productContract.component_registry as { categories?: Record<string, string[]> } | undefined
+export const AUI_COMPONENT_CATEGORIES = componentRegistry?.categories ?? {}
+export const AUI_COMPONENTS = (productContract.components ?? {}) as Record<string, Record<string, unknown>>
+const componentRecipes = (productContract.component_recipes ?? {}) as Record<string, unknown>
+export const AUI_COMPONENT_RECIPE_MODES = (componentRecipes.viewport_modes ?? {}) as Record<string, Record<string, unknown>>
+export const AUI_COMPONENT_RECIPE_FAMILIES = (componentRecipes.families ?? {}) as Record<string, Record<string, unknown>>
+export const AUI_COMPONENT_RECIPES = (componentRecipes.items ?? {}) as Record<string, Record<string, unknown>>
+
+const duplicateShowcaseIds = AUI_SHOWCASE_SECTIONS.filter((section, index, all) => all.findIndex((candidate) => candidate.id === section.id) !== index)
+if (duplicateShowcaseIds.length) throw new Error(`wonhee-product-ui.md: duplicate visualization section ids: ${duplicateShowcaseIds.map((section) => section.id).join(', ')}`)
 
 /** cssVar prefix → showcase group. First match wins; anything else is a colour. */
 const GROUP_OF: Array<[string, string]> = [
+  ['--aui-component-', 'component'],
   ['--aui-type-', 'typography'],
   ['--aui-radius-', 'radius'],
   ['--aui-shadow-', 'shadow'],
@@ -109,10 +207,12 @@ const GROUP_OF: Array<[string, string]> = [
   ['--aui-weight-', 'weight'],
   ['--aui-leading-', 'leading'],
   ['--aui-tracking-', 'tracking'],
+  ['--aui-gradient-', 'gradient'],
+  ['--aui-blur-', 'blur'],
 ]
 
 /** Dimension keys that are layout measures rather than colours. */
-const MEASURE_KEYS = /^(icon|control|target|toolbar|panel|content)-/
+const MEASURE_KEYS = /^(icon|control|target|toolbar|panel|content|hero|header)-/
 
 /** Contract groups kept for the /aide-ui showcase, so it never re-lists tokens by hand. */
 export const AUI_TOKEN_GROUPS: Record<string, TokenEntry[]> = AUI_TOKEN_ENTRIES.reduce(

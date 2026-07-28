@@ -1,0 +1,4 @@
+import * as React from "react"
+import { cn } from "@/lib/utils"
+function Result({className,figure,title,description,action,...props}:React.ComponentProps<"section">&{figure?:React.ReactNode;title:React.ReactNode;description?:React.ReactNode;action?:React.ReactNode}){return <section data-slot="result" className={cn("grid justify-items-center px-[var(--aui-component-result-padding-inline)] py-[var(--aui-component-result-padding-block)] text-center",className)} {...props}>{figure&&<div className="mb-[var(--aui-component-result-figure-gap)]">{figure}</div>}<h2 className="m-0 text-xl font-bold text-[var(--aui-text)]">{title}</h2>{description&&<p className="mt-[var(--aui-component-result-description-gap)] max-w-md text-sm leading-6 text-[var(--aui-text-muted)]">{description}</p>}{action&&<div className="mt-[var(--aui-component-result-action-gap)]">{action}</div>}</section>}
+export { Result }

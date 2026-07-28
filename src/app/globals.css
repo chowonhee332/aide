@@ -14,7 +14,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Aide Product UI typography */
+  /* Wonhee Product UI typography */
   --font-sans: var(--font-pretendard);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-pretendard);
@@ -40,49 +40,54 @@
   --radius-xl: calc(var(--radius) * 1.333);
 }
 
-/* ── Aide Product UI tokens ────────────────────────────────────────────
-   Contract: src/lib/design-systems/aide-product-ui.md
+/* ── Wonhee Product UI tokens ──────────────────────────────────────────
+   Contract: src/lib/design-systems/wonhee-product-ui.md
    Product chrome must use --aui-*; generated artifacts use their DESIGN.md. */
 :root {
-  --aui-primary: #0066FF;
-  --aui-primary-strong: #005EEB;
-  --aui-primary-heavy: #0054D1;
-  --aui-primary-soft: #EAF2FE;
-  --aui-primary-tint: rgba(0, 102, 255, 0.08);
+  --aui-primary: #2F6BFF;
+  --aui-primary-strong: #2458DB;
+  --aui-primary-heavy: #1C46B4;
+  --aui-primary-soft: #EDF3FF;
+  --aui-primary-tint: rgba(47, 107, 255, 0.10);
   --aui-canvas: #FFFFFF;
-  --aui-page: #F7F7F8;
+  --aui-page: #F7F8FA;
   --aui-surface: #FFFFFF;
-  --aui-surface-muted: #F4F4F5;
-  --aui-text: #171719;
+  --aui-surface-muted: #F2F4F7;
+  --aui-surface-sunken: #F7F8FA;
+  --aui-surface-raised: rgba(255, 255, 255, 0.96);
+  --aui-glass-surface: rgba(255, 255, 255, 0.72);
+  --aui-glass-surface-strong: rgba(255, 255, 255, 0.90);
+  --aui-glass-border: rgba(255, 255, 255, 0.34);
+  --aui-text: #1B1D22;
   --aui-text-strong: #000000;
-  --aui-text-neutral: rgba(46, 47, 51, 0.88);
-  --aui-text-muted: rgba(55, 56, 60, 0.61);
-  --aui-text-assistive: rgba(55, 56, 60, 0.28);
-  --aui-text-disabled: rgba(55, 56, 60, 0.16);
+  --aui-text-neutral: #505866;
+  --aui-text-muted: #687282;
+  --aui-text-assistive: #8992A1;
+  --aui-text-disabled: #B5BBC5;
   --aui-on-primary: #FFFFFF;
   --aui-on-dark: #FFFFFF;
   --aui-on-dark-strong: rgba(255, 255, 255, 0.90);
   --aui-on-dark-muted: rgba(255, 255, 255, 0.72);
   --aui-on-dark-subtle: rgba(255, 255, 255, 0.30);
   --aui-on-dark-faint: rgba(255, 255, 255, 0.15);
-  --aui-inverse-surface: #1A1A1A;
-  --aui-inverse-surface-raised: #2A2A2A;
-  --aui-border: rgba(112, 115, 124, 0.16);
-  --aui-border-subtle: rgba(112, 115, 124, 0.08);
-  --aui-fill: rgba(112, 115, 124, 0.08);
-  --aui-fill-strong: rgba(112, 115, 124, 0.16);
-  --aui-primary-muted: #DCEAFF;
-  --aui-primary-disabled: #7AAEFF;
+  --aui-inverse-surface: #333D4B;
+  --aui-inverse-surface-raised: #505866;
+  --aui-border: #D8DDE5;
+  --aui-border-subtle: #E9ECF0;
+  --aui-fill: #F2F4F6;
+  --aui-fill-strong: #E5E8EB;
+  --aui-primary-muted: #C9E2FF;
+  --aui-primary-disabled: #90C2FF;
   --aui-scrim-soft: rgba(0, 0, 0, 0.25);
   --aui-scrim: rgba(0, 0, 0, 0.45);
   --aui-scrim-strong: rgba(0, 0, 0, 0.65);
   --aui-shadow-line: rgba(0, 0, 0, 0.07);
   --aui-shadow-soft: rgba(0, 0, 0, 0.09);
   --aui-shadow-medium: rgba(0, 0, 0, 0.15);
-  --aui-positive: #00BF40;
-  --aui-caution: #FF9200;
-  --aui-negative: #FF4242;
-  --aui-negative-soft: rgba(255, 66, 66, 0.08);
+  --aui-positive: #158A4A;
+  --aui-caution: #C66A05;
+  --aui-negative: #D9363E;
+  --aui-negative-soft: #FFEEEE;
   --aui-negative-border: rgba(255, 66, 66, 0.25);
   --aui-caution-soft: #FFF7ED;
   --aui-caution-border: #FED7AA;
@@ -98,7 +103,7 @@
   --aui-radius-sm: 8px;
   --aui-radius-control: 12px;
   --aui-radius-card: 16px;
-  --aui-radius-overlay: 20px;
+  --aui-radius-overlay: 24px;
   --aui-radius-pill: 9999px;
   --aui-shadow-card: 0px 2px 4px -2px rgba(23, 23, 23, 0.06), 0px 4px 6px -1px rgba(23, 23, 23, 0.06);
   --aui-shadow-elevated: 0px 4px 6px -2px rgba(23, 23, 23, 0.07), 0px 10px 15px -3px rgba(23, 23, 23, 0.07);
@@ -106,9 +111,26 @@
   --aui-motion-base: 200ms;
   --aui-motion-slow: 300ms;
   --aui-motion-easing: cubic-bezier(0.2, 0, 0, 1);
+  --aui-content-narrow: 700px;
+  --aui-hero-copy-max: 560px;
+  --aui-hero-title-max: 860px;
+  --aui-header-height: 64px;
+  --aui-gradient-brand-hero: linear-gradient(180deg, #FFFFFF 0%, #F5F8FF 100%);
+  --aui-gradient-brand-hero-soft: linear-gradient(180deg, #FFFFFF 0%, #EDF3FF 100%);
+  --aui-gradient-brand-accent: linear-gradient(90deg, #7AA2FF 0%, #2F6BFF 100%);
+  --aui-blur-glass: 16px;
+  --aui-blur-glass-strong: 24px;
 
   /* Typography scale. Named --aui-type-* to avoid collision with --aui-text-* colors.
-     Scale keys mirror `contract.tokens.typography` in aide-product-ui.md. */
+     Scale keys mirror `contract.tokens.typography` in wonhee-product-ui.md. */
+  --aui-type-display-hero-size: 72px;
+  --aui-type-display-hero-leading: 1.2;
+  --aui-type-display-hero-weight: 800;
+  --aui-type-display-hero-tracking: -0.03em;
+  --aui-type-display-large-size: 48px;
+  --aui-type-display-large-leading: 1.2;
+  --aui-type-display-large-weight: 700;
+  --aui-type-display-large-tracking: -0.025em;
   --aui-type-display-size: 32px;
   --aui-type-display-leading: 44px;
   --aui-type-display-weight: 700;
@@ -195,7 +217,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Aide Product UI typography */
+    /* Wonhee Product UI typography */
     font-family: var(--font-pretendard);
     letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;

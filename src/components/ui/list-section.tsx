@@ -1,0 +1,8 @@
+import * as React from "react"
+import { cn } from "@/lib/utils"
+
+function ListSection({ className, ...props }: React.ComponentProps<"section">) { return <section data-slot="list-section" className={cn("overflow-hidden rounded-[var(--aui-radius-card)] border border-[var(--aui-border-subtle)] bg-[var(--aui-surface)]", className)} {...props}/> }
+function ListSectionHeader({ className, title, description, action, ...props }: React.ComponentProps<"header"> & { title: React.ReactNode; description?: React.ReactNode; action?: React.ReactNode }) { return <header className={cn("flex min-h-[var(--aui-component-list-section-header-height)] items-center gap-[var(--aui-component-list-section-header-gap)] border-b border-[var(--aui-border-subtle)] px-[var(--aui-component-list-section-inset)] py-[var(--aui-component-list-section-block-padding)]", className)} {...props}><div className="min-w-0 flex-1"><h3 className="m-0 text-sm font-bold text-[var(--aui-text)]">{title}</h3>{description&&<p className="m-0 mt-1 text-xs text-[var(--aui-text-muted)]">{description}</p>}</div>{action&&<div className="shrink-0">{action}</div>}</header> }
+function ListSectionContent({ className, ...props }: React.ComponentProps<"div">) { return <div className={cn("px-[var(--aui-component-list-section-inset)]", className)} {...props}/> }
+function ListSectionFooter({ className, ...props }: React.ComponentProps<"footer">) { return <footer className={cn("border-t border-[var(--aui-border-subtle)] px-[var(--aui-component-list-section-inset)] py-[var(--aui-component-list-section-block-padding)] text-xs text-[var(--aui-text-muted)]", className)} {...props}/> }
+export { ListSection, ListSectionHeader, ListSectionContent, ListSectionFooter }

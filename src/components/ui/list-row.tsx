@@ -1,0 +1,6 @@
+import * as React from "react"
+import { cn } from "@/lib/utils"
+
+function ListRow({className,leading,contents,metadata,trailing,...props}:React.ComponentProps<"div">&{leading?:React.ReactNode;contents:React.ReactNode;metadata?:React.ReactNode;trailing?:React.ReactNode}){return <div data-slot="list-row" className={cn("flex min-h-[var(--aui-component-data-display-row-touch-height)] items-center gap-[var(--aui-component-control-gap)] border-b border-[var(--aui-border-subtle)] py-[var(--aui-component-data-display-row-padding-block)] last:border-b-0 md:min-h-[var(--aui-component-data-display-row-height)]",className)} {...props}>{leading&&<div className="shrink-0">{leading}</div>}<div className="min-w-0 flex-1">{contents}</div>{metadata&&<div className="shrink-0 text-xs text-[var(--aui-text-muted)]">{metadata}</div>}{trailing&&<div className="shrink-0">{trailing}</div>}</div>}
+function ListRowText({className,title,description,...props}:React.ComponentProps<"div">&{title:React.ReactNode;description?:React.ReactNode}){return <div className={cn("grid min-w-0 gap-[var(--aui-component-data-display-row-content-gap)]",className)} {...props}><div className="truncate text-sm font-semibold text-[var(--aui-text)]">{title}</div>{description&&<div className="truncate text-xs text-[var(--aui-text-muted)]">{description}</div>}</div>}
+export { ListRow, ListRowText }

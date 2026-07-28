@@ -41,7 +41,7 @@ import {
   X,
   ZoomIn,
   ZoomOut,
-} from 'lucide-react';
+} from '@/components/ui/material-icon';
 import {
   COMPONENT_DEFINITIONS,
   CATEGORY_LABELS,
@@ -53,6 +53,10 @@ import {
   PropType,
 } from '@/lib/builder-components';
 import { AIDE_UI, AIDE_UI_RAW } from '@/lib/aide-ui';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { ComponentPreview } from '@/components/aide-docs/ComponentPreview';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -111,13 +115,12 @@ const STRUCTURE_TEMPLATES: StructureTemplate[] = [
     id: 'mobile-basic',
     device: 'mobile',
     name: '기본 앱 화면',
-    description: '상태바와 앱바가 있는 기본 구조',
+    description: '내비게이션, 상세 헤더와 카드가 있는 기본 구조',
     kind: 'mobile-basic',
     items: [
-      { componentId: 'status-bar' },
-      { componentId: 'app-bar', props: { title: '페이지 제목', showBack: 'false' } },
-      { componentId: 'section-header', props: { title: '주요 콘텐츠', subtitle: '화면에 필요한 정보를 구성하세요.' } },
-      { componentId: 'card', props: { title: '콘텐츠 영역', body: '왼쪽 패널에서 컴포넌트를 추가해 화면을 완성하세요.' } },
+      { componentId: 'top-navigation', props: { type: 'root', title: '서비스 홈' } },
+      { componentId: 'page-header', props: { title: '페이지 제목', description: '화면에 필요한 정보를 구성하세요.', label: '주요 작업' } },
+      { componentId: 'card', props: { title: '콘텐츠 영역', description: '왼쪽 패널에서 컴포넌트를 추가해 화면을 완성하세요.' } },
     ],
   },
   {
@@ -127,12 +130,10 @@ const STRUCTURE_TEMPLATES: StructureTemplate[] = [
     description: '주요 메뉴 3개를 빠르게 전환하는 앱 구조',
     kind: 'mobile-nav',
     items: [
-      { componentId: 'status-bar' },
-      { componentId: 'app-bar', props: { title: '홈', showBack: 'false' } },
-      { componentId: 'hero-banner', props: { title: '서비스 시작하기', subtitle: '오늘 필요한 업무를 확인하세요.', height: '180' } },
-      { componentId: 'section-header', props: { title: '빠른 메뉴', showMore: 'true' } },
-      { componentId: 'card', props: { title: '최근 활동', body: '최근 처리한 업무와 알림을 확인할 수 있습니다.' } },
-      { componentId: 'bottom-tab-bar' },
+      { componentId: 'top-navigation', props: { type: 'root', title: '서비스 홈' } },
+      { componentId: 'page-header', props: { title: '서비스 시작하기', description: '오늘 필요한 업무를 확인하세요.', label: '시작하기' } },
+      { componentId: 'responsive-grid', props: { options: '빠른 메뉴\n최근 활동\n알림' } },
+      { componentId: 'bottom-app-bar', props: { options: '홈\n업무\n내 정보', 'item-count': '3', position: 'fixed' } },
     ],
   },
   {
@@ -142,14 +143,11 @@ const STRUCTURE_TEMPLATES: StructureTemplate[] = [
     description: '검색, 필터와 결과 목록이 있는 업무 화면',
     kind: 'mobile-list',
     items: [
-      { componentId: 'status-bar' },
-      { componentId: 'app-bar', props: { title: '요청 관리', showBack: 'false' } },
-      { componentId: 'search-bar', props: { placeholder: '요청을 검색하세요' } },
-      { componentId: 'ktds-chip-group', props: { options: '전체\n진행 중\n완료', selected: '1' } },
-      { componentId: 'list-item', props: { label: '디자인 검토 요청', description: '오늘 14:30 접수' } },
-      { componentId: 'list-item', props: { label: '컴포넌트 등록', description: '어제 접수' } },
-      { componentId: 'list-item', props: { label: '화면 기획서 확인', description: '2026.07.20 접수' } },
-      { componentId: 'bottom-tab-bar', props: { tab1: '홈', tab2: '업무', tab3: '내정보', activeTab: '2' } },
+      { componentId: 'top-navigation', props: { type: 'standard', title: '요청 관리' } },
+      { componentId: 'search', props: { label: '검색', placeholder: '요청을 검색하세요' } },
+      { componentId: 'chip', props: { options: '전체\n진행 중\n완료' } },
+      { componentId: 'list-section', props: { title: '요청 목록', options: '디자인 검토 요청\n컴포넌트 등록\n화면 기획서 확인' } },
+      { componentId: 'bottom-app-bar', props: { options: '홈\n업무\n내정보', 'item-count': '3', position: 'fixed' } },
     ],
   },
   {
@@ -159,8 +157,9 @@ const STRUCTURE_TEMPLATES: StructureTemplate[] = [
     description: '메뉴가 적고 정보 구조가 얕은 포털형',
     kind: 'gnb',
     items: [
-      { componentId: 'pc-global-nav' },
-      { componentId: 'pc-workspace', props: { navigation: 'none', content: 'dashboard', title: '통합 대시보드' } },
+      { componentId: 'app-header', props: { title: 'Wonhee', options: '대시보드\n프로젝트\n설정', position: 'sticky' } },
+      { componentId: 'page-header', props: { title: '대시보드', description: '핵심 지표와 최근 활동을 확인합니다.', label: '새 프로젝트' } },
+      { componentId: 'responsive-grid', props: { options: '오늘의 지표\n최근 활동\n진행 상태' } },
     ],
   },
   {
@@ -170,7 +169,7 @@ const STRUCTURE_TEMPLATES: StructureTemplate[] = [
     description: '업무 메뉴가 많고 전환이 잦은 관리형',
     kind: 'lnb',
     items: [
-      { componentId: 'pc-workspace', props: { navigation: 'lnb', content: 'dashboard', title: '업무 대시보드' } },
+      { componentId: 'workspace-shell', props: { title: '업무 대시보드', description: '업무 상태를 확인하고 속성을 편집합니다.', options: '업무 홈\n요청 관리\n통계', navigation: 'side', inspector: 'none' } },
     ],
   },
   {
@@ -180,8 +179,7 @@ const STRUCTURE_TEMPLATES: StructureTemplate[] = [
     description: '전역 영역과 로컬 업무를 함께 탐색',
     kind: 'hybrid',
     items: [
-      { componentId: 'pc-global-nav', props: { activeMenu: '2' } },
-      { componentId: 'pc-workspace', props: { navigation: 'lnb', content: 'list', title: '요청 관리', description: '접수된 요청을 검색하고 처리 상태를 관리합니다.' } },
+      { componentId: 'workspace-shell', props: { title: '요청 관리', description: '접수된 요청을 검색하고 처리 상태를 관리합니다.', options: '홈\n요청\n보고서', navigation: 'side', inspector: 'right' } },
     ],
   },
   {
@@ -191,7 +189,10 @@ const STRUCTURE_TEMPLATES: StructureTemplate[] = [
     description: '등록·수정처럼 한 가지 작업에 집중',
     kind: 'focus',
     items: [
-      { componentId: 'pc-workspace', props: { navigation: 'none', content: 'form', title: '새 요청 등록', description: '필수 정보를 입력한 후 요청을 등록하세요.' } },
+      { componentId: 'top-navigation', props: { type: 'standard', title: '새 요청 등록' } },
+      { componentId: 'page-header', props: { title: '요청 정보', description: '필수 정보를 입력한 후 요청을 등록하세요.', label: '도움말' } },
+      { componentId: 'field-group', props: { title: '요청 정보', label: '요청 제목', placeholder: '제목을 입력하세요' } },
+      { componentId: 'action-bar', props: { label: '요청 등록' } },
     ],
   },
 ];
@@ -253,8 +254,9 @@ function GridPaletteItem({ def, device }: { def: ComponentDefinition; device: Fr
             pointerEvents: 'none',
             background: 'var(--aui-on-dark)',
           }}
-          dangerouslySetInnerHTML={{ __html: def.renderHTML(getComponentPropsForDevice(def, device)) }}
-        />
+        >
+          <ComponentPreview id={def.id} props={getComponentPropsForDevice(def, device)} device={device} context="playground" />
+        </div>
       </div>
       {/* Name label */}
       <div
@@ -371,12 +373,14 @@ function PaletteDropSlot({ frameId, index, device }: { frameId: string; index: n
 
 function SortableItem({
   item,
+  device,
   isSelected,
   showInsertBefore,
   onSelect,
   onRemove,
 }: {
   item: CanvasItem;
+  device: FrameDevice;
   isSelected: boolean;
   showInsertBefore: boolean;
   onSelect: () => void;
@@ -387,13 +391,18 @@ function SortableItem({
     id: item.instanceId,
   });
 
-  const isOverlay = def?.canvasBehavior === 'fixed-bottom' || def?.canvasBehavior === 'modal';
+  const isFixedBottom = def?.canvasBehavior === 'fixed-bottom';
+  const isModal = def?.canvasBehavior === 'modal';
+  const isOverlay = isFixedBottom || isModal;
+  const isStack = def?.canvasBehavior === 'stack' || !def?.canvasBehavior;
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.35 : 1,
     position: isOverlay ? 'absolute' : 'relative',
-    ...(isOverlay ? { inset: 0, zIndex: 40 } : {}),
+    ...(isFixedBottom ? { left: 0, right: 0, bottom: 0, zIndex: 40 } : {}),
+    ...(isModal ? { inset: 0, zIndex: 50 } : {}),
+    ...(isStack ? { margin: 'var(--aui-space-4)' } : {}),
   };
 
   if (!def) return null;
@@ -485,29 +494,37 @@ function SortableItem({
         </div>
       )}
 
-      {/* Rendered component HTML */}
+      {/* Canonical React component shared with /aide-ui. */}
       <div
-        dangerouslySetInnerHTML={{ __html: def.renderHTML(item.props) }}
         onClick={(e) => {
           e.stopPropagation();
           onSelect();
         }}
-        style={{ userSelect: 'none', height: isOverlay ? '100%' : undefined }}
-      />
+        style={{ userSelect: 'none', height: isModal ? '100%' : undefined }}
+      >
+        <ComponentPreview id={def.id} props={item.props} device={device} context="playground" />
+      </div>
     </div>
   );
 }
 
-function StaticCanvasItem({ item }: { item: CanvasItem }) {
+function StaticCanvasItem({ item, device }: { item: CanvasItem; device: FrameDevice }) {
   const def = getComponentById(item.componentId);
   if (!def) return null;
-  const isOverlay = def.canvasBehavior === 'fixed-bottom' || def.canvasBehavior === 'modal';
+  const isFixedBottom = def.canvasBehavior === 'fixed-bottom';
+  const isModal = def.canvasBehavior === 'modal';
+  const isStack = def.canvasBehavior === 'stack' || !def.canvasBehavior;
 
   return (
     <div
-      style={isOverlay ? { position: 'absolute', inset: 0, zIndex: 40 } : undefined}
-      dangerouslySetInnerHTML={{ __html: def.renderHTML(item.props) }}
-    />
+      style={{
+        ...(isFixedBottom ? { position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 40 } as React.CSSProperties : {}),
+        ...(isModal ? { position: 'absolute', inset: 0, zIndex: 50 } as React.CSSProperties : {}),
+        ...(isStack ? { margin: 'var(--aui-space-4)' } : {}),
+      }}
+    >
+      <ComponentPreview id={def.id} props={item.props} device={device} context="playground" />
+    </div>
   );
 }
 
@@ -636,7 +653,7 @@ function ComponentLibraryPanel({
                 lineHeight: "var(--aui-leading-relaxed)",
               }}
             >
-              KTDS 컴포넌트와 Playground 카탈로그를 기준으로 시안을 생성할 영역입니다.
+              wonhee-design.md와 wonhee-product-ui.md의 컴포넌트 카탈로그를 기준으로 시안을 생성합니다.
             </p>
           </div>
           <textarea
@@ -1098,7 +1115,7 @@ function buildExportHTML(frame: CanvasFrame): string {
 
 // ─── Drag Overlay Content ─────────────────────────────────────────────────────
 
-function DragPreview({ html }: { html: string }) {
+function DragPreview({ componentId, props, device }: { componentId: string; props: Record<string, string>; device: FrameDevice }) {
   return (
     <div
       style={{
@@ -1112,8 +1129,9 @@ function DragPreview({ html }: { html: string }) {
         transformOrigin: 'top left',
         pointerEvents: 'none',
       }}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    >
+      <ComponentPreview id={componentId} props={props} device={device} context="playground" />
+    </div>
   );
 }
 
@@ -1235,19 +1253,18 @@ function StructureTemplatePicker({
 
 let instanceCounter = 0;
 let frameCounter = 2;
-const PLAYGROUND_STORAGE_KEY = 'aide:ktds-playground:v1';
+const PLAYGROUND_STORAGE_KEY = 'aide:wonhee-playground:v3';
+const LEGACY_PLAYGROUND_STORAGE_KEY = 'aide:wonhee-playground:v2';
 
 const TEMPLATE_COMPONENT_MIGRATION: Record<string, string> = {
-  'status-bar': 'ktds-admonition',
-  'app-bar': 'ktds-tab-list',
-  'hero-banner': 'ktds-admonition',
-  'section-header': 'ktds-admonition',
-  card: 'ktds-admonition',
-  'list-item': 'ktds-table',
-  'search-bar': 'ktds-textarea',
-  'bottom-tab-bar': 'ktds-tab-list',
-  'pc-global-nav': 'ktds-tab-list',
-  'pc-workspace': 'ktds-table',
+  'status-bar': 'alert', 'app-bar': 'navigation', 'hero-banner': 'detail-header',
+  'section-header': 'detail-header', 'list-item': 'list-cell', 'search-bar': 'search',
+  'bottom-tab-bar': 'tabs', 'pc-global-nav': 'navigation', 'pc-workspace': 'panel',
+  'ktds-button': 'button', 'ktds-textarea': 'textarea', 'ktds-select': 'select',
+  'ktds-checkbox-group': 'checkbox', 'ktds-radio-group': 'radio', 'ktds-switch': 'switch',
+  'ktds-chip-group': 'chip', 'ktds-tab-list': 'tabs', 'ktds-table': 'table',
+  'ktds-pagination': 'navigation', 'ktds-admonition': 'alert', 'ktds-toast': 'toast',
+  'ktds-dialog': 'dialog', 'ktds-bottom-sheet': 'sheet',
 };
 
 function newInstanceId() {
@@ -1278,7 +1295,7 @@ function createTemplateItems(template: StructureTemplate): CanvasItem[] {
   });
 }
 
-function restoreFrames(value: string | null): CanvasFrame[] | null {
+function restoreFrames(value: string | null, refreshTemplates = false): CanvasFrame[] | null {
   if (!value) return null;
   try {
     const parsed: unknown = JSON.parse(value);
@@ -1288,15 +1305,18 @@ function restoreFrames(value: string | null): CanvasFrame[] | null {
       const frame = candidate as Partial<CanvasFrame>;
       if (typeof frame.id !== 'string' || typeof frame.name !== 'string') return [];
       if (frame.device !== 'mobile' && frame.device !== 'desktop') return [];
+      const currentTemplate = refreshTemplates && typeof frame.templateId === 'string'
+        ? STRUCTURE_TEMPLATES.find((template) => template.id === frame.templateId)
+        : undefined;
+      if (currentTemplate) {
+        return [{ ...frame, id: frame.id, name: `${FRAME_DIMENSIONS[currentTemplate.device].label} · ${currentTemplate.name}`, device: currentTemplate.device, items: createTemplateItems(currentTemplate), templateId: currentTemplate.id }];
+      }
       const items = Array.isArray(frame.items)
-        ? frame.items.filter((item): item is CanvasItem => Boolean(
-          item
-          && typeof item.instanceId === 'string'
-          && typeof item.componentId === 'string'
-          && getComponentById(item.componentId)
-          && item.props
-          && typeof item.props === 'object',
-        ))
+        ? frame.items.flatMap((item): CanvasItem[] => {
+          if (!item || typeof item.instanceId !== 'string' || typeof item.componentId !== 'string' || !item.props || typeof item.props !== 'object') return []
+          const componentId = TEMPLATE_COMPONENT_MIGRATION[item.componentId] ?? item.componentId
+          return getComponentById(componentId) ? [{ ...item, componentId }] : []
+        })
         : [];
       return [{ ...frame, id: frame.id, name: frame.name, device: frame.device, items }];
     });
@@ -1331,7 +1351,8 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
   const items = activeFrame?.items ?? [];
 
   useEffect(() => {
-    const restored = restoreFrames(window.localStorage.getItem(PLAYGROUND_STORAGE_KEY));
+    const currentValue = window.localStorage.getItem(PLAYGROUND_STORAGE_KEY);
+    const restored = restoreFrames(currentValue ?? window.localStorage.getItem(LEGACY_PLAYGROUND_STORAGE_KEY), !currentValue);
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
@@ -1620,17 +1641,17 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
     : null;
 
   // Overlay content
-  const overlayHtml: string | null = (() => {
+  const overlayComponent: { componentId: string; props: Record<string, string> } | null = (() => {
     if (!activeDragId) return null;
     if (isPaletteDrag) {
       const cid = activeDragId.replace('palette-', '');
       const def = getComponentById(cid);
-      return def ? def.renderHTML(getComponentPropsForDevice(def, activeDevice)) : null;
+      return def ? { componentId: def.id, props: getComponentPropsForDevice(def, activeDevice) } : null;
     }
     const item = items.find((i) => i.instanceId === activeDragId);
     if (!item) return null;
     const def = getComponentById(item.componentId);
-    return def ? def.renderHTML(item.props) : null;
+    return def ? { componentId: def.id, props: item.props } : null;
   })();
 
   const selectedItem = items.find((i) => i.instanceId === selectedId) ?? null;
@@ -1662,54 +1683,50 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
     >
       {/* ── Top Bar ─────────────────────────────────────────────────────── */}
       <div style={{ height: 58, padding: `0 var(--aui-space-4)`, flexShrink: 0, display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", background: AIDE.surface, borderBottom: `1px solid ${AIDE.border}`, position: 'relative' }}>
-        <button type="button" onClick={onBack} title="돌아가기" aria-label="돌아가기" style={{ width: 34, height: 34, border: `1px solid ${AIDE.border}`, borderRadius: "var(--aui-radius-sm)", background: AIDE.surface, color: AIDE.textMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+        <Button type="button" onClick={onBack} title="돌아가기" aria-label="돌아가기" variant="outline" size="icon">
           <ArrowLeft size={16} />
-        </button>
+        </Button>
         <div style={{ minWidth: 180, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
             <span style={{ fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-bold)", color: AIDE.text }}>Playground</span>
-            <span style={{ minHeight: 20, padding: `var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-sm)", background: AIDE.primarySoft, color: AIDE.primary, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-bold)" }}>KTDS</span>
+            <Badge variant="info">WONHEE UI</Badge>
           </div>
           <div style={{ marginTop: 2, fontSize: "var(--aui-type-meta-size)", color: AIDE.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {activeFrame ? `${activeFrame.name} · ${items.length}개 컴포넌트${persistenceReady ? ' · 자동 저장' : ''}` : '새 프레임을 추가하세요'}
           </div>
         </div>
 
-        <div style={{ height: 38, padding: "var(--aui-space-1)", display: 'flex', gap: "var(--aui-space-1)", border: `1px solid ${AIDE.border}`, borderRadius: "var(--aui-radius-sm)", background: AIDE.surfaceHover }}>
-          {(['mobile', 'desktop'] as FrameDevice[]).map((device) => {
-            const config = FRAME_DIMENSIONS[device];
-            const active = activeFrame?.device === device;
-            const Icon = device === 'mobile' ? Smartphone : Monitor;
-            return (
-              <button key={device} type="button" onClick={() => selectFrameDevice(device)} title={`${config.label} ${config.width} × ${config.height}`} style={{ minWidth: 104, height: 30, padding: `0 var(--aui-space-3)`, border: 'none', borderRadius: "var(--aui-radius-sm)", background: active ? AIDE.surface : 'transparent', color: active ? AIDE.primary : AIDE.textMuted, boxShadow: active ? "var(--aui-shadow-subtle)" : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)", cursor: 'pointer', fontFamily: 'inherit' }}>
-                <Icon size={14} />
-                <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: active ? 750 : 550 }}>{config.label}</span>
-                <span style={{ fontSize: "var(--aui-type-meta-size)", color: active ? 'var(--aui-primary-disabled)' : AIDE.textSubtle }}>{config.width}</span>
-              </button>
-            );
-          })}
-        </div>
+        <SegmentedControl
+          label="프레임 기기"
+          value={activeFrame?.device ?? activeDevice}
+          onValueChange={(device) => selectFrameDevice(device as FrameDevice)}
+          className="min-w-[220px]"
+          options={([
+            { value: 'mobile', label: <span className="inline-flex items-center gap-1.5"><Smartphone size={14}/>Mobile <small>{FRAME_DIMENSIONS.mobile.width}</small></span> },
+            { value: 'desktop', label: <span className="inline-flex items-center gap-1.5"><Monitor size={14}/>Desktop <small>{FRAME_DIMENSIONS.desktop.width}</small></span> },
+          ])}
+        />
 
-        <button type="button" onClick={() => setTemplatePickerOpen((open) => !open)} aria-expanded={templatePickerOpen} style={{ height: 38, padding: `0 var(--aui-space-3)`, border: `1px solid ${templatePickerOpen ? AIDE.primary : AIDE.border}`, borderRadius: "var(--aui-radius-sm)", background: templatePickerOpen ? AIDE.primarySoft : AIDE.surface, color: templatePickerOpen ? AIDE.primary : AIDE.text, display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-bold)", cursor: 'pointer', fontFamily: 'inherit' }}>
+        <Button type="button" onClick={() => setTemplatePickerOpen((open) => !open)} aria-expanded={templatePickerOpen} variant={templatePickerOpen ? 'secondary' : 'outline'} size="touch">
           <LayoutTemplate size={14} />
           구조 템플릿
           <ChevronDown size={13} />
-        </button>
+        </Button>
 
         <div style={{ width: 1, height: 24, background: AIDE.border }} />
-        <button type="button" onClick={() => addFrame()} title="같은 크기의 프레임 추가" aria-label="프레임 추가" style={{ width: 34, height: 34, border: `1px solid ${AIDE.border}`, borderRadius: "var(--aui-radius-sm)", background: AIDE.surface, color: AIDE.textMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+        <Button type="button" onClick={() => addFrame()} title="같은 크기의 프레임 추가" aria-label="프레임 추가" variant="outline" size="icon">
           <Plus size={15} />
-        </button>
-        <button type="button" onClick={deleteActiveFrame} disabled={!activeFrame} title="선택한 프레임 삭제" aria-label="프레임 삭제" style={{ width: 34, height: 34, border: `1px solid ${AIDE.border}`, borderRadius: "var(--aui-radius-sm)", background: AIDE.surface, color: activeFrame ? AIDE.textMuted : AIDE.textSubtle, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: activeFrame ? 'pointer' : 'not-allowed', opacity: activeFrame ? 1 : 0.5 }}>
+        </Button>
+        <Button type="button" onClick={deleteActiveFrame} disabled={!activeFrame} title="선택한 프레임 삭제" aria-label="프레임 삭제" variant="outline" size="icon">
           <Trash2 size={14} />
-        </button>
-        <button type="button" onClick={() => { if (items.length === 0 || window.confirm('선택한 프레임의 컴포넌트를 모두 지울까요?')) { setItems([]); setSelectedId(null); } }} disabled={items.length === 0} style={{ height: 34, padding: `0 var(--aui-space-3)`, border: 'none', borderRadius: "var(--aui-radius-sm)", background: 'transparent', color: AIDE.textMuted, fontSize: "var(--aui-type-micro-size)", cursor: items.length === 0 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: items.length === 0 ? 0.45 : 1 }}>
+        </Button>
+        <Button type="button" onClick={() => { if (items.length === 0 || window.confirm('선택한 프레임의 컴포넌트를 모두 지울까요?')) { setItems([]); setSelectedId(null); } }} disabled={items.length === 0} variant="ghost" size="dense">
           초기화
-        </button>
-        <button type="button" onClick={handleExport} disabled={items.length === 0} style={{ height: 36, padding: `0 var(--aui-space-3)`, border: 'none', borderRadius: "var(--aui-radius-sm)", background: items.length === 0 ? 'var(--aui-primary-muted)' : AIDE.primary, color: items.length === 0 ? 'var(--aui-primary-disabled)' : 'var(--aui-on-dark)', display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-bold)", cursor: items.length === 0 ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
+        </Button>
+        <Button type="button" onClick={handleExport} disabled={items.length === 0} size="touch">
           <Download size={14} />
           HTML
-        </button>
+        </Button>
 
         {templatePickerOpen ? (
           <StructureTemplatePicker
@@ -1878,6 +1895,7 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
                                       ) : null}
                                       <SortableItem
                                         item={item}
+                                        device={frame.device}
                                         isSelected={selectedId === item.instanceId}
                                         showInsertBefore={isPaletteDrag && dragOverCanvasId === item.instanceId}
                                         onSelect={() => setSelectedId(item.instanceId)}
@@ -1902,7 +1920,7 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
                                       {canAcceptPalette ? (
                                         <PaletteDropSlot frameId={frame.id} index={index} device={frame.device} />
                                       ) : null}
-                                      <StaticCanvasItem item={item} />
+                                      <StaticCanvasItem item={item} device={frame.device} />
                                     </React.Fragment>
                                   ))}
                                   {canAcceptPalette ? (
@@ -1951,7 +1969,7 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
 
         {/* Drag Overlay */}
         <DragOverlay dropAnimation={null}>
-          {overlayHtml ? <DragPreview html={overlayHtml} /> : null}
+          {overlayComponent ? <DragPreview componentId={overlayComponent.componentId} props={overlayComponent.props} device={activeDevice} /> : null}
         </DragOverlay>
       </DndContext>
     </div>

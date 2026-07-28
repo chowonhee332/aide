@@ -33,15 +33,16 @@ export interface ComponentDefinition {
   id: string;
   name: string;
   icon: string;
-  designSystem?: 'ktds';
+  designSystem?: string;
   category: ComponentCategory;
   description?: string;
   source?: ComponentSource;
-  canvasBehavior?: 'stack' | 'fixed-bottom' | 'modal';
+  canvasBehavior?: 'stack' | 'full-width' | 'fixed-bottom' | 'modal';
   supportedDevices?: BuilderDevice[];
   deviceDefaults?: Partial<Record<BuilderDevice, Record<string, string>>>;
   responsiveMapping?: Partial<Record<BuilderDevice, string>>;
   defaultProps: Record<string, string>;
   propSchema: PropSchema[];
+  /** Export-only serializer. Interactive previews use the canonical React registry. */
   renderHTML: (props: Record<string, string>) => string;
 }

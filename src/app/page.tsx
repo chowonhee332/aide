@@ -6,7 +6,7 @@ import {
   Check, ChevronDown, Zap, Palette, Share2,
   Clock, Trash2, ExternalLink, Link2, KeyRound,
   Download, Eye, EyeOff,
-} from 'lucide-react'
+} from '@/components/ui/material-icon'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import Grainient from '@/components/Grainient'
 import { DesignMdPreview } from '@/components/DesignMdPreview'
@@ -16,6 +16,7 @@ import Link from 'next/link'
 import StudioView from '@/components/StudioView'
 import BuilderView from '@/components/BuilderView'
 import { AIDE_UI, AIDE_UI_RAW } from '@/lib/aide-ui'
+import { Button } from '@/components/ui/button'
 
 const CircularGallery = dynamic(() => import('@/components/CircularGallery'), { ssr: false })
 
@@ -1151,7 +1152,7 @@ export default function Home() {
         }}>
           <div style={{
             backgroundColor: scrolled ? 'var(--aui-on-dark-subtle)' : 'transparent',
-            backdropFilter: scrolled ? 'blur(16px)' : 'none',
+            backdropFilter: scrolled ? 'blur(var(--aui-blur-glass))' : 'none',
             borderBottom: !scrolled ? '1px solid var(--aui-on-dark-faint)' : '1px solid transparent',
             border: scrolled ? '1px solid var(--aui-on-dark-subtle)' : undefined,
             borderRadius: scrolled ? '20px' : '0',
@@ -1164,45 +1165,40 @@ export default function Home() {
           }}>
             {/* 좌측: 로고 */}
             <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
-              <button
+              <Button
                 type="button"
                 aria-label="Aide 홈으로 이동"
                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                variant="ghost"
+                className="h-auto p-0 hover:bg-transparent"
               >
                 <img src="/logo_aide.png" alt="Aide" style={{ height: 58, width: 'auto', display: 'block', objectFit: 'contain' }} />
-              </button>
+              </Button>
             </div>
 
 
             {/* 우측: 액션 */}
             <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: "var(--aui-space-3)" }}>
-              <button
+              <Button
                 onClick={openApiKeyModal}
                 aria-label="API Key 설정"
-                className="hover:!bg-[var(--aui-surface)] hover:!text-[var(--aui-primary)] hover:!border-[var(--aui-primary-muted)]"
-                style={{
-                  width: 40, height: 40, background: 'var(--aui-on-dark-strong)', border: `1px solid ${F.hairline}`,
-                  cursor: 'pointer', color: F.inkMuted, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: 0, borderRadius: "var(--aui-radius-control)", transition: 'all var(--aui-motion-fast)',
-                }}
+                variant="outline"
+                size="icon"
+                className="bg-[var(--aui-on-dark-strong)] text-[var(--aui-text-muted)] backdrop-blur-[var(--aui-blur-glass)]"
                 title="API Key 설정"
               >
                 <KeyRound size={18} />
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setHistoryModalOpen(true)}
                 aria-label="히스토리"
-                className="hover:!bg-[var(--aui-surface)] hover:!text-[var(--aui-primary)] hover:!border-[var(--aui-primary-muted)]"
-                style={{
-                  width: 40, height: 40, background: 'var(--aui-on-dark-strong)', border: `1px solid ${F.hairline}`,
-                  cursor: 'pointer', color: F.inkMuted, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: 0, borderRadius: "var(--aui-radius-control)", transition: 'all var(--aui-motion-fast)',
-                }}
+                variant="outline"
+                size="icon"
+                className="bg-[var(--aui-on-dark-strong)] text-[var(--aui-text-muted)] backdrop-blur-[var(--aui-blur-glass)]"
                 title="히스토리"
               >
                 <Clock size={18} />
-              </button>
+              </Button>
               <Link
                 href="/aide-ui"
                 aria-label="Aide UI 컴포넌트"
@@ -1211,42 +1207,24 @@ export default function Home() {
               >
                 <Palette size={18} />
               </Link>
-              <button
+              <Button
                 onClick={() => setBuilderOpen(true)}
-                className="hover:!bg-[var(--aui-primary-soft)] hover:!text-[var(--aui-primary)] hover:!border-[var(--aui-primary-muted)]"
-                style={{
-                  height: 40, backgroundColor: 'var(--aui-on-dark-strong)', color: F.ink,
-                  fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)", padding: `0 var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)",
-                  border: `1px solid ${F.hairline}`,
-                  cursor: 'pointer', transition: 'all 0.15s',
-                  letterSpacing: "var(--aui-tracking-tight)",
-                  backdropFilter: 'blur(8px)',
-                }}
+                variant="outline"
+                className="bg-[var(--aui-on-dark-strong)] backdrop-blur-[var(--aui-blur-glass)]"
               >
-                <span style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
-                  Playground
-                </span>
-              </button>
-              <button
+                Playground
+              </Button>
+              <Button
                 onClick={async () => {
                   const items = await loadHistory()
                   if (items.length > 0) {
                     setStudioTrigger({ brief: '', historyId: items[0].id })
                   }
                 }}
-                className="hover:!bg-[var(--aui-primary-strong)] hover:!shadow-[var(--aui-shadow-card)]"
-                style={{
-                  height: 40, backgroundColor: F.primary, color: 'var(--aui-on-primary)',
-                  fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)", padding: `0 var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)",
-                  border: 'none', cursor: 'pointer', transition: 'all 0.15s',
-                  letterSpacing: "var(--aui-tracking-tight)",
-                  boxShadow: "var(--aui-shadow-raised)",
-                }}
+                className="shadow-[var(--aui-shadow-raised)]"
               >
-                <span style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
-                  Studio <ArrowRight size={14} strokeWidth={2.5} />
-                </span>
-              </button>
+                Studio <ArrowRight size={14} strokeWidth={2.5} />
+              </Button>
             </div>
           </div>
         </header>
@@ -1265,10 +1243,10 @@ export default function Home() {
           </div>
 
           <h1 style={{
-            fontSize: 'clamp(40px, 6.5vw, 72px)', fontWeight: "var(--aui-weight-extrabold)", color: 'var(--aui-on-dark)',
-            textAlign: 'center', lineHeight: "var(--aui-leading-tight)", letterSpacing: "var(--aui-tracking-tighter)",
+            fontSize: 'clamp(40px, 6.5vw, var(--aui-type-display-hero-size))', fontWeight: "var(--aui-type-display-hero-weight)", color: 'var(--aui-on-dark)',
+            textAlign: 'center', lineHeight: "var(--aui-type-display-hero-leading)", letterSpacing: "var(--aui-type-display-hero-tracking)",
             fontFamily: 'inherit',
-            marginBottom: '24px', maxWidth: '860px',
+            marginBottom: '24px', maxWidth: 'var(--aui-hero-title-max)',
             textShadow: '0 2px 20px var(--aui-shadow-medium)',
             textWrap: 'balance',
           } as React.CSSProperties}>
@@ -1276,7 +1254,7 @@ export default function Home() {
           </h1>
           <p style={{
             fontSize: 'clamp(15px, 1.5vw, 18px)', color: 'var(--aui-on-dark-muted)',
-            textAlign: 'center', lineHeight: "var(--aui-leading-relaxed)", maxWidth: '560px',
+            textAlign: 'center', lineHeight: "var(--aui-leading-relaxed)", maxWidth: 'var(--aui-hero-copy-max)',
             marginBottom: '52px',
           }}>
             Aide turns your brief and design system into UI prototypes — generate, compare, and refine through conversation.
@@ -1285,9 +1263,9 @@ export default function Home() {
 
           {/* Input card */}
           <div style={{
-            width: '100%', maxWidth: '700px', borderRadius: "var(--aui-radius-overlay)",
+            width: '100%', maxWidth: 'var(--aui-content-narrow)', borderRadius: "var(--aui-radius-overlay)",
             backgroundColor: 'var(--aui-on-dark-strong)',
-            backdropFilter: 'blur(20px)',
+            backdropFilter: 'blur(var(--aui-blur-glass-strong))',
             border: '1px solid var(--aui-on-dark-subtle)',
             padding: `var(--aui-space-6) var(--aui-space-6) var(--aui-space-4)`,
             boxShadow: "var(--aui-shadow-floating)",

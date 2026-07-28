@@ -5,7 +5,7 @@ import {
   Sparkles, Upload, Download, RefreshCw, ArrowLeft, Check,
   SlidersHorizontal, X, Moon, Sun, Pencil, Send, ChevronDown,
   CornerUpLeft, CornerUpRight, Image as ImageIcon, Shapes, Zap,
-} from 'lucide-react'
+} from '@/components/ui/material-icon'
 import { cn } from '@/lib/utils'
 import DotField from '@/components/DotField'
 import type { Question, QuestionnaireResponse, TweakSpec, TweakVariable, AppDomain } from '@/lib/gemini'
@@ -2325,9 +2325,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       >
         {/* Header */}
         <div className="border-b border-[var(--aui-shadow-soft)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
-          <button onClick={onBack} aria-label="Aide 홈으로 이동" className="flex items-center px-4 border-r border-[var(--aui-shadow-soft)] hover:bg-[var(--aui-border)] transition-colors shrink-0">
+          <Button onClick={onBack} aria-label="Aide 홈으로 이동" variant="ghost" className="h-full rounded-none border-r border-[var(--aui-shadow-soft)] px-4 shrink-0">
             <img src="/logo_aide.png" alt="Aide" className="h-14 w-auto object-contain" />
-          </button>
+          </Button>
           <div className="px-5 text-[13px] flex items-center gap-2 text-[var(--aui-text-muted)]">
             {isAnyGenerating ? (
               <>
@@ -2343,27 +2343,27 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           <div className="flex-1" />
           <div className="flex items-center gap-3 px-4">
             {mainVariants.every(v => !v) && !isAnyGenerating && (
-              <button
+              <Button
                 onClick={handleGenerate}
                 disabled={isAnyGenerating}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-semibold text-white transition-colors disabled:opacity-50"
-                style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-primary)' }}
+                size="dense"
               >
                 <Sparkles size={13} /> 시안 A/B/C 생성
-              </button>
+              </Button>
             )}
             {mainVariants.some(v => !!v) && (
-              <button
+              <Button
                 onClick={() => handleGenerate()}
                 disabled={isAnyGenerating}
-                className="flex items-center gap-1.5 text-[13px] text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors disabled:opacity-40"
+                variant="ghost"
+                size="dense"
               >
                 <RefreshCw size={13} /> 다시 생성
-              </button>
+              </Button>
             )}
-            <button onClick={() => { clearGeneratedBoard(); setStep(2) }} disabled={isAnyGenerating} className="flex items-center gap-1.5 text-[13px] text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            <Button onClick={() => { clearGeneratedBoard(); setStep(2) }} disabled={isAnyGenerating} variant="ghost" size="dense">
               <ArrowLeft size={14} /> 설문
-            </button>
+            </Button>
           </div>
         </div>
 

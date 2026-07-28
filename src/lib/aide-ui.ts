@@ -1,5 +1,7 @@
+import { AUI_TOKEN_VALUE } from './aide-product-tokens'
+
 /**
- * TypeScript bridge to the Aide Product UI CSS tokens.
+ * TypeScript bridge to the Wonhee Product UI CSS tokens.
  * Static component styling should prefer Tailwind semantic classes; use these
  * references for dynamic inline styles that depend on runtime state.
  */
@@ -53,13 +55,13 @@ export const AIDE_UI = {
   shadowElevated: 'var(--aui-shadow-elevated)',
 } as const;
 
-/** Concrete values for renderers that cannot resolve CSS custom properties. */
+/** Concrete values compiled from the MD for renderers that cannot resolve CSS variables. */
 export const AIDE_UI_RAW = {
-  page: '#F7F7F8',
-  surface: '#FFFFFF',
-  heroGradientStart: '#95C7CD',
-  heroGradientMiddle: '#0066FF',
-  heroGradientEnd: '#B497CF',
+  page: AUI_TOKEN_VALUE.page,
+  surface: AUI_TOKEN_VALUE.surface,
+  heroGradientStart: AUI_TOKEN_VALUE['hero-gradient-start'],
+  heroGradientMiddle: AUI_TOKEN_VALUE['hero-gradient-middle'],
+  heroGradientEnd: AUI_TOKEN_VALUE['hero-gradient-end'],
 } as const;
 
 /** This belongs to generated artifacts, not Aide product chrome. */

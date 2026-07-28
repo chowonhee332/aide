@@ -19,6 +19,11 @@ const badgeVariants = cva(
         ghost:
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
+        info: "bg-[var(--aui-primary-soft)] text-[var(--aui-primary-heavy)]",
+        success: "bg-[color-mix(in_srgb,var(--aui-positive)_12%,var(--aui-surface))] text-[var(--aui-positive)]",
+        warning: "bg-[var(--aui-caution-soft)] text-[var(--aui-caution-text)]",
+        error: "bg-[var(--aui-negative-soft)] text-[var(--aui-negative)]",
+        neutral: "bg-[var(--aui-fill)] text-[var(--aui-text-neutral)]",
       },
     },
     defaultVariants: {
