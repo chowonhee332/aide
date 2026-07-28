@@ -757,15 +757,15 @@ contract:
     checkbox:
       anatomy: [control, label, optional-description]
       states: [unchecked, checked, indeterminate, focus-visible, disabled]
-      purpose: "independent multi-selection"
+      purpose: "select any number of independent options"
     radio:
       anatomy: [control, label, optional-description]
       states: [unselected, selected, focus-visible, disabled]
-      purpose: "one choice in a group"
+      purpose: "select exactly one option in a group"
     switch:
       anatomy: [track, thumb, label, optional-description]
       states: [off, on, focus-visible, disabled]
-      purpose: "immediately effective setting"
+      purpose: "toggle a setting that applies immediately"
     tabs:
       anatomy: [tablist, tab, active-indicator, panel]
       purpose: "navigate peer content destinations"
@@ -782,7 +782,7 @@ contract:
       radius: pill
     badge:
       anatomy: [optional-status-icon, label]
-      purpose: "compact metadata or status"
+      purpose: "show compact metadata or status"
       radius: pill
     avatar:
       purpose: represent a person or entity with an image, initials, or fallback icon
@@ -795,10 +795,10 @@ contract:
         - "MUST group one related concept"
         - "MUST NOT wrap every section in a card"
         - "MUST NOT nest cards except for selectable preview artifacts"
-        - "plain is the default on page backgrounds; border is opt-in when the boundary has functional meaning"
+        - "plain SHOULD be the default on page backgrounds; border is opt-in when the boundary has functional meaning"
         - "raised uses one subtle elevation and MUST NOT add a border at the same time"
     panel:
-      purpose: "persistent workspace region"
+      purpose: "define a persistent workspace region"
       separation: "surface contrast first; use one shared divider only when adjacent regions would otherwise merge"
     list-cell:
       purpose: present one row of repeated data
@@ -881,7 +881,7 @@ contract:
       purpose: "select an approximate value from a continuous or stepped range"
       anatomy: [label, value-output, track, thumb]
       states: [default, focus-visible, disabled]
-      rules: ["MUST expose min, max, step, and current value", "use number-field when precise entry is essential"]
+      rules: ["MUST expose min, max, step, and current value", "number-field SHOULD be used instead when precise entry is essential"]
     keypad:
       purpose: "provide an explicit touch-first alphabetic or numeric input surface"
       anatomy: [label, key-grid, keys, optional-backspace]
@@ -897,7 +897,7 @@ contract:
       anatomy: [ordered-list, step-indicator, label, optional-description, connector]
       variants: [horizontal, vertical]
       states: [upcoming, current, complete, error]
-      rules: ["current step MUST use aria-current", "step labels remain visible on compact screens"]
+      rules: ["current step MUST use aria-current", "step labels SHOULD remain visible on compact screens"]
     navigation:
       purpose: "move among primary or secondary product destinations"
       anatomy: [navigation-landmark, items, active-item, optional-menu-action]
@@ -909,12 +909,12 @@ contract:
       anatomy: [optional-left-action, title, optional-subtitle, right-actions]
       variants: [root, standard]
       responsive: { compact: "sticky app bar", medium: "sticky app bar or part of app header", wide: "use for screen context, not as a substitute for global navigation" }
-      rules: ["root is for first-depth screens", "standard distinguishes back from close", "right actions SHOULD remain at three or fewer"]
+      rules: ["root variant MUST be used for first-depth screens", "standard variant MUST distinguish back from close", "right actions SHOULD remain at three or fewer"]
     side-navigation:
       purpose: "provide persistent or collapsible navigation for medium and wide workspaces"
       anatomy: [optional-title, items, active-item, optional-collapse-action]
       responsive: { compact: "replace with drawer or sheet", medium: "collapsible rail", wide: "persistent labeled navigation" }
-      rules: ["collapsed items retain accessible names", "active state exposes aria-current"]
+      rules: ["collapsed items MUST retain accessible names", "active state MUST expose aria-current"]
     app-header:
       purpose: "provide persistent product identity, global navigation, and utility actions"
       anatomy: [header-landmark, brand, optional-menu-action, global-navigation, utility-actions]
@@ -923,7 +923,7 @@ contract:
     global-navigation:
       purpose: "move between top-level product destinations"
       anatomy: [navigation-landmark, items, active-item]
-      rules: ["use only for top-level destinations", "active state MUST expose aria-current"]
+      rules: ["MUST be used only for top-level destinations", "active state MUST expose aria-current"]
     local-navigation:
       purpose: "move within the currently selected product area"
       anatomy: [optional-title, navigation-landmark, items, active-item]
@@ -933,25 +933,25 @@ contract:
       purpose: "provide thumb-reachable access to three to five primary mobile destinations"
       anatomy: [navigation-landmark, items, icons, labels, active-item, safe-area]
       responsive: { compact: "visible when selected by IA", medium: "replace with top or side navigation", wide: "not used" }
-      rules: ["MUST contain three to five destinations", "MUST respect safe-area inset", "labels remain visible"]
+      rules: ["MUST contain three to five destinations", "MUST respect safe-area inset", "labels MUST remain visible"]
     app-footer:
       purpose: "close a page with product identity, supporting links, and legal information"
       anatomy: [footer-landmark, brand, optional-description, link-navigation, optional-legal]
       responsive: { compact: "stack content and links", medium: "stack or split", wide: "split brand and link groups" }
-      rules: ["MUST not duplicate primary navigation without a clear reason", "link groups use descriptive navigation labels"]
+      rules: ["MUST not duplicate primary navigation without a clear reason", "link groups MUST use descriptive navigation labels"]
     breadcrumb:
       purpose: "show hierarchy and provide navigation to ancestor levels"
       anatomy: [navigation-landmark, ordered-items, separators, current-page]
-      rules: ["current page MUST use aria-current", "separators are hidden from assistive technology"]
+      rules: ["current page MUST use aria-current", "separators MUST be hidden from assistive technology"]
     list-section:
       purpose: "group a titled set of related list rows"
       anatomy: [optional-header, list-content, optional-footer]
-      rules: ["use one outer boundary only when grouping needs emphasis", "row separation uses quiet dividers"]
+      rules: ["one outer boundary SHOULD be used only when grouping needs emphasis", "row separation SHOULD use quiet dividers"]
     table:
       purpose: "compare structured values across shared columns"
       anatomy: [caption, header, body, rows, cells, optional-actions]
       responsive: { compact: "prioritized list conversion or explicit horizontal scroll", medium: "hide only columns with declared priority", wide: "full comparison table" }
-      rules: ["MUST provide a caption", "numeric values use tabular figures", "sortable headers expose direction"]
+      rules: ["MUST provide a caption", "numeric values SHOULD use tabular figures", "sortable headers MUST expose direction"]
     bar-chart:
       purpose: "compare a small set of categorical numeric values"
       anatomy: [figure, caption, plot, bars, value-labels, category-labels]
@@ -959,7 +959,7 @@ contract:
     prose:
       purpose: "render long-form product guidance with controlled reading width"
       anatomy: [article, headings, paragraphs, optional-highlight]
-      rules: ["MUST preserve semantic heading order", "line length remains within the readable measure"]
+      rules: ["MUST preserve semantic heading order", "line length SHOULD remain within the readable measure"]
     responsive-grid:
       purpose: "arrange peer items by available container width"
       anatomy: [grid, items]
@@ -975,33 +975,33 @@ contract:
     section-header:
       purpose: "introduce a content section and optionally expose one trailing action"
       anatomy: [title, optional-description, optional-trailing]
-      rules: ["heading level follows document hierarchy", "trailing action remains secondary to the section title"]
+      rules: ["heading level MUST follow document hierarchy", "trailing action SHOULD remain secondary to the section title"]
     side-panel:
       purpose: "show contextual tools, properties, or supporting information beside a workspace"
       anatomy: [header, content, optional-footer]
       responsive: { compact: "sheet or route", medium: "overlay panel", wide: "persistent or resizable panel" }
-      rules: ["panel state MUST not remove access to primary content", "resizable implementations define min and max width"]
+      rules: ["panel state MUST not remove access to primary content", "resizable implementations MUST define min and max width"]
     workspace-shell:
       purpose: "compose header, navigation, primary canvas, and optional inspector into a responsive tool workspace"
       anatomy: [app-header, optional-side-navigation, main-content, optional-side-panel]
       responsive: { compact: "header plus one active route or sheet", medium: "one persistent panel and one overlay panel", wide: "persistent navigation, canvas, and optional inspector" }
-      rules: ["main content remains the primary landmark", "keyboard focus order follows visual reading order"]
+      rules: ["main content MUST remain the primary landmark", "keyboard focus order MUST follow visual reading order"]
     fixed-bottom-cta:
       purpose: "keep one or two task-completion actions reachable at the bottom edge"
       anatomy: [optional-secondary-action, primary-action, safe-area]
       responsive: { compact: "fixed and safe-area aware", medium: "fixed only for task flows", wide: "prefer inline action area unless persistence is required" }
-      rules: ["MUST not be used as primary navigation", "content reserves enough bottom space to remain visible"]
+      rules: ["MUST not be used as primary navigation", "content MUST reserve enough bottom space to remain visible"]
     result:
       purpose: "explain an empty, success, or terminal state and offer a useful next action"
       anatomy: [optional-figure, title, optional-description, optional-action]
       variants: [empty, success, error]
-      rules: ["title states the outcome", "action provides a relevant recovery or continuation"]
+      rules: ["title MUST state the outcome", "action SHOULD provide a relevant recovery or continuation"]
     sheet:
       purpose: "show contextual or blocking content from a screen edge"
       anatomy: [scrim, surface, title, optional-description, content, close-action]
       variants: [bottom, right]
       responsive: { compact: "bottom or full-height sheet", medium: "bottom or right sheet", wide: "right sheet for inspectors and bottom sheet for short tasks" }
-      rules: ["MUST trap and restore focus", "MUST close with Escape", "bottom sheet respects safe area"]
+      rules: ["MUST trap and restore focus", "MUST close with Escape", "bottom sheet MUST respect safe area"]
 
   component_registry:
     categories:

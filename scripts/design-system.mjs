@@ -49,6 +49,60 @@ function contrast(a, b) {
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
 }
 
+/**
+ * Enforce `contract.component_schema` against `contract.components`, so the
+ * declared entry shape and the real entries cannot drift apart.
+ * A product entry may inherit `purpose` from the base document.
+ */
+function lintComponents(document, base, errors, warnings) {
+  const schema = document.contract.component_schema ?? base?.contract.component_schema
+  const components = document.contract.components
+  if (!schema || !components) return
+
+  const baseComponents = base?.contract.components ?? {}
+  const keywords = schema.normative_keywords ?? []
+  const keywordPattern = keywords.length
+    ? new RegExp(`\\b(${keywords.map((word) => word.replace(/ /g, '\\s+')).join('|')})\\b`)
+    : null
+
+  for (const [id, entry] of Object.entries(components)) {
+    if (!/^[a-z][a-z0-9-]*$/.test(id)) errors.push(`components.${id}: id must be kebab-case`)
+    if (!entry || typeof entry !== 'object') {
+      errors.push(`components.${id}: entry must be a mapping`)
+      continue
+    }
+
+    // A family entry groups other components instead of describing one.
+    if (entry.members) {
+      if (!Array.isArray(entry.members) || !entry.members.length) {
+        errors.push(`components.${id}: family entry needs a non-empty members list`)
+      }
+      continue
+    }
+
+    const purpose = entry.purpose ?? baseComponents[id]?.purpose
+    if (!purpose) {
+      errors.push(`components.${id}: purpose is required`)
+    } else if (typeof purpose !== 'string' || /^[A-Z]/.test(purpose) || /[.]$/.test(purpose)) {
+      errors.push(`components.${id}: purpose must be a lowercase phrase with no trailing period`)
+    }
+
+    // `anatomy` and `slots` both describe structure; either satisfies the schema.
+    const described = entry.anatomy ?? entry.slots ?? baseComponents[id]?.anatomy ?? baseComponents[id]?.slots
+    if (!described && !entry.inherits) {
+      warnings.push(`components.${id}: no anatomy or slots`)
+    }
+
+    if (keywordPattern) {
+      for (const rule of entry.rules ?? []) {
+        if (!keywordPattern.test(String(rule))) {
+          warnings.push(`components.${id}: rule without a normative keyword — "${String(rule).slice(0, 48)}"`)
+        }
+      }
+    }
+  }
+}
+
 function lintDocument(document, base) {
   const errors = []
   const warnings = []
@@ -85,6 +139,8 @@ function lintDocument(document, base) {
       for (const id of members) if (!(id in components)) errors.push(`component_registry.categories.${category} references missing component: ${id}`)
     }
   }
+
+  lintComponents(document, base, errors, warnings)
 
   if (document.contract.identity?.product === 'Aide') {
     const colors = Object.fromEntries(tokenLeaves(groups.color ?? {}).map(({ path: tokenPath, leaf }) => [tokenPath, leaf?.$value]))

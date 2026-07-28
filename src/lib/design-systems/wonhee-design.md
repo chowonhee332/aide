@@ -287,22 +287,35 @@ contract:
       - "every optional slot has an omission behavior"
 
   component_schema:
-    identity: [id, name, category, status]
-    guidance: [purpose, use_when, avoid_when]
-    structure: [anatomy, slots, composition]
-    api: [props, variants, sizes, defaults]
-    behavior: [states, interactions, keyboard, responsive]
-    quality: [accessibility, content, prohibited]
-    implementation: [token_bindings, dependencies, renderer]
-    documentation: [examples, code, related]
+    rule: "a component entry is a portable behavior contract; a product document supplies final token bindings and renderer"
+    entry_kinds: [component, family]
+    component_entry:
+      required: [purpose]
+      expected: [anatomy, rules]
+      optional: [variants, states, sizes, responsive, slots, inherits]
+      extension: "a component MAY add contract-bearing keys of its own, such as min-height, radius, max-options, or fallback-order"
+    family_entry:
+      required: [members]
+      optional: [rules, responsive]
+      note: "an abstract grouping such as overlay or feedback; it has members instead of purpose and anatomy"
+    style:
+      key: kebab-case
+      purpose: "lowercase verb phrase, no trailing period, one sentence"
+      rules: "each entry begins with or contains a normative keyword"
+    normative_keywords: [MUST, MUST NOT, SHOULD, SHOULD NOT, MAY]
+    # The remaining component facts are intentionally not stored on the entry.
+    # A product document keeps them where they can be validated against code.
+    delegated_fields:
+      category: contract.component_registry.categories
+      props: contract.component_recipes.items
+      defaults: contract.component_recipes.items
+      preview_size: contract.component_registry.preview_sizes
+      renderer: contract.component_registry.source_overrides
+      token_bindings: contract.component_registry.token_bindings
     status_values: [planned, experimental, stable, deprecated]
     prop_schema:
       required: [type, required, description]
       optional: [default, values]
-    example_schema:
-      required: [id, title, scenario]
-      optional: [props, viewport, state, code]
-    rule: "a component entry is a portable behavior contract; a product document supplies final token bindings and renderer"
 
   components:
     button:
@@ -337,11 +350,12 @@ contract:
       members: [checkbox, radio, switch]
       anatomy: [control, label, optional-description]
       rules:
-        - "checkbox is independent multi-selection"
-        - "radio is one choice in a group"
-        - "switch is an immediately effective setting"
+        - "checkbox MUST be used for independent multi-selection"
+        - "radio MUST be used for one choice in a group"
+        - "switch MUST be used for an immediately effective setting"
 
     tabs:
+      purpose: navigate peer content destinations
       anatomy: [tablist, tab, optional-badge, active-indicator, panel]
       variants: [line, contained, scrollable]
       rules:
@@ -388,6 +402,7 @@ contract:
       rules: ["MUST group one concept", "MUST NOT wrap every section in a card", "MUST NOT nest decorative cards"]
 
     table:
+      purpose: compare structured values across shared columns
       anatomy: [caption, header, row, cell, optional-selection, optional-row-action]
       responsive:
         compact: "convert to prioritized list rows or horizontal scroll only when comparison must remain tabular"
@@ -396,12 +411,13 @@ contract:
       rules: ["MUST define column priority", "MUST label sortable state", "numeric columns SHOULD use tabular figures"]
 
     navigation:
+      purpose: move among primary or secondary product destinations
       variants: [top-bar, side-navigation, bottom-navigation, breadcrumb]
       responsive:
         compact: "top bar plus bottom navigation or menu sheet"
         medium: "top bar plus collapsible rail"
         wide: "top bar or persistent side navigation chosen by information architecture"
-      rules: ["active state MUST not rely on color alone", "navigation pattern is chosen by IA, not viewport alone"]
+      rules: ["active state MUST not rely on color alone", "navigation pattern SHOULD be chosen by IA, not viewport alone"]
 
     app-shell-navigation:
       members: [app-header, top-navigation, global-navigation, local-navigation, side-navigation, bottom-app-bar, app-footer]
@@ -410,10 +426,10 @@ contract:
         medium: "app header plus collapsible local navigation; footer stacks or splits"
         wide: "app header with global navigation plus optional persistent local navigation; footer splits"
       rules:
-        - "global navigation contains top-level destinations only"
-        - "local navigation contains destinations from the selected global area only"
-        - "bottom app bar contains three to five destinations and respects safe area"
-        - "collapsed navigation preserves labels for assistive technology"
+        - "global navigation MUST contain top-level destinations only"
+        - "local navigation MUST contain destinations from the selected global area only"
+        - "bottom app bar MUST contain three to five destinations and respect safe area"
+        - "collapsed navigation MUST preserve labels for assistive technology"
 
     responsive-workspace-shell:
       members: [workspace-shell, page-header, section-header, side-panel, fixed-bottom-cta]
@@ -422,16 +438,16 @@ contract:
         medium: "one persistent side region and one overlay side region"
         wide: "persistent navigation, primary canvas, and optional resizable inspector"
       rules:
-        - "main content remains the primary landmark"
-        - "persistent panels define minimum and maximum widths"
-        - "fixed bottom CTA reserves safe-area and content clearance"
+        - "main content MUST remain the primary landmark"
+        - "persistent panels MUST define minimum and maximum widths"
+        - "fixed bottom CTA MUST reserve safe-area and content clearance"
 
     feedback:
       members: [inline-message, banner, toast, progress, skeleton, result]
       rules:
         - "toast is transient and MUST NOT be the only place for critical errors"
         - "skeleton SHOULD mirror final structure"
-        - "result contains optional visual, title, description, and one useful next action"
+        - "result MUST contain a title, a description, and one useful next action"
 
     overlay:
       members: [tooltip, popover, menu, dialog, sheet]
@@ -467,7 +483,7 @@ contract:
     agreement:
       purpose: "collect required and optional consent as a related set"
       anatomy: [legend, optional-select-all, agreement-items, optional-detail-actions]
-      rules: ["required and optional status MUST be explicit text", "individual controls remain programmatically available"]
+      rules: ["required and optional status MUST be explicit text", "individual controls MUST remain programmatically available"]
 
     stepper:
       purpose: "orient the user inside a finite multi-step task"
