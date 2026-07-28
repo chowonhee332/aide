@@ -142,6 +142,16 @@ function lintDocument(document, base) {
 
   lintComponents(document, base, errors, warnings)
 
+  // `inheritance.token_vocabulary`: a product may add groups, never rename one.
+  if (base) {
+    const baseGroups = Object.keys(base.contract.tokens ?? {})
+    const productGroups = new Set(Object.keys(groups))
+    const missing = baseGroups.filter((group) => !productGroups.has(group))
+    if (missing.length) {
+      errors.push(`token groups renamed or dropped from the base contract: ${missing.join(', ')}`)
+    }
+  }
+
   if (document.contract.identity?.product === 'Aide') {
     const colors = Object.fromEntries(tokenLeaves(groups.color ?? {}).map(({ path: tokenPath, leaf }) => [tokenPath, leaf?.$value]))
     for (const [foreground, background, minimum] of [['text', 'canvas', 4.5], ['text', 'surface', 4.5], ['text-muted', 'surface', 4.5]]) {

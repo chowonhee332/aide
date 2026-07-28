@@ -114,7 +114,8 @@ contract:
     order: [design-token, color, typography, iconography, elevation, gradient, inclusive-design, international-design, layout, motion, radius, spacing, state, voice-and-tone, writing]
     design-token:
       purpose: "모든 시각 결정을 플랫폼과 컴포넌트가 공유하는 이름 있는 값으로 관리한다"
-      layers: [primitive, semantic, component, state, mode]
+      layers: [semantic, component]
+      layer_rule: "semantic tokens name a role; component tokens name a part of one component. this system has no primitive palette layer — a role token holds its literal value"
       rule: "implementation consumes semantic or component tokens; primitive values remain inside the token contract"
     color:
       purpose: "역할과 상태의 시각적 위계를 전달한다"
@@ -160,10 +161,31 @@ contract:
       rules: ["lead with the user outcome", "use verb-first action labels", "name the problem and recovery action", "avoid internal implementation terms"]
 
   tokens:
+    dimension:
+      $type: dimension
+      space-1: { $value: "4px", $description: "Micro separation" }
+      space-2: { $value: "8px", $description: "Tightly related content" }
+      space-3: { $value: "12px", $description: "Compact component gap" }
+      space-4: { $value: "16px", $description: "Default component inset" }
+      space-5: { $value: "20px", $description: "Comfortable component inset" }
+      space-6: { $value: "24px", $description: "Section inset" }
+      space-8: { $value: "32px", $description: "Related section separation" }
+      space-10: { $value: "40px", $description: "Major section rhythm" }
+      space-12: { $value: "48px", $description: "Page-region separation" }
+      space-16: { $value: "64px", $description: "Large page-region separation" }
+      control-compact: { $value: "32px", $description: "Pointer-first dense control" }
+      control-default: { $value: "40px", $description: "Default product control" }
+      control-touch: { $value: "44px", $description: "Touch-first minimum product control" }
+      control-prominent: { $value: "48px", $description: "Primary CTA and prominent input" }
+      content-narrow: { $value: "680px", $description: "Form and focused reading measure" }
+      content-default: { $value: "1120px", $description: "Default page content width" }
+      content-wide: { $value: "1440px", $description: "Wide workspace content width" }
+      side-panel: { $value: "280px", $description: "Default workspace side panel" }
+
     color:
       $type: color
       primary: { $value: "#2F6BFF", $description: "Primary action, selection, focus, and progress" }
-      primary-hover: { $value: "#2458DB", $description: "Primary hover" }
+      primary-strong: { $value: "#2458DB", $description: "Primary hover" }
       primary-pressed: { $value: "#1C46B4", $description: "Primary pressed" }
       primary-soft: { $value: "#EDF3FF", $description: "Selected and informative surface" }
       on-primary: { $value: "#FFFFFF", $description: "Content on primary" }
@@ -172,11 +194,11 @@ contract:
       surface-muted: { $value: "#F2F4F7", $description: "Secondary grouped region" }
       surface-raised: { $value: "#FFFFFF", $description: "Floating surface" }
       text: { $value: "#1B1D22", $description: "Primary text" }
-      text-secondary: { $value: "#505866", $description: "Description and metadata" }
-      text-tertiary: { $value: "#8992A1", $description: "Placeholder and assistive text" }
+      text-muted: { $value: "#505866", $description: "Description and metadata" }
+      text-assistive: { $value: "#8992A1", $description: "Placeholder and assistive text" }
       text-disabled: { $value: "#B5BBC5", $description: "Disabled content" }
       border: { $value: "#D8DDE5", $description: "Control boundary" }
-      divider: { $value: "#E9ECF0", $description: "Quiet separation" }
+      border-subtle: { $value: "#E9ECF0", $description: "Quiet separation" }
       positive: { $value: "#158A4A", $description: "Success" }
       caution: { $value: "#C66A05", $description: "Warning" }
       negative: { $value: "#D9363E", $description: "Error and destructive action" }
@@ -185,52 +207,48 @@ contract:
     typography:
       $type: typography
       display: { $value: { fontFamily: "Pretendard, Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif", fontSize: "48px", fontWeight: 750, lineHeight: 1.15, letterSpacing: "-0.025em" }, $description: "Hero and high-emphasis display" }
-      title-1: { $value: { fontFamily: "Pretendard, Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif", fontSize: "32px", fontWeight: 700, lineHeight: 1.25, letterSpacing: "-0.02em" }, $description: "Page title" }
-      title-2: { $value: { fontFamily: "Pretendard, Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif", fontSize: "24px", fontWeight: 700, lineHeight: 1.3, letterSpacing: "-0.015em" }, $description: "Section title" }
+      page-title: { $value: { fontFamily: "Pretendard, Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif", fontSize: "32px", fontWeight: 700, lineHeight: 1.25, letterSpacing: "-0.02em" }, $description: "Page title" }
+      section-title: { $value: { fontFamily: "Pretendard, Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif", fontSize: "24px", fontWeight: 700, lineHeight: 1.3, letterSpacing: "-0.015em" }, $description: "Section title" }
       heading: { $value: { fontFamily: "Pretendard, Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif", fontSize: "20px", fontWeight: 700, lineHeight: 1.4, letterSpacing: "-0.01em" }, $description: "Component heading" }
       body: { $value: { fontFamily: "Pretendard, Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif", fontSize: "16px", fontWeight: 400, lineHeight: 1.55, letterSpacing: "0em" }, $description: "Default body" }
       body-small: { $value: { fontFamily: "Pretendard, Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif", fontSize: "14px", fontWeight: 400, lineHeight: 1.5, letterSpacing: "0em" }, $description: "Compact body" }
       label: { $value: { fontFamily: "Pretendard, Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif", fontSize: "14px", fontWeight: 600, lineHeight: 1.4, letterSpacing: "0em" }, $description: "Control label" }
       caption: { $value: { fontFamily: "Pretendard, Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif", fontSize: "12px", fontWeight: 500, lineHeight: 1.4, letterSpacing: "0.01em" }, $description: "Caption and metadata" }
 
-    space:
-      $type: dimension
-      1: { $value: "4px", $description: "Micro separation" }
-      2: { $value: "8px", $description: "Tightly related content" }
-      3: { $value: "12px", $description: "Compact component gap" }
-      4: { $value: "16px", $description: "Default component inset" }
-      5: { $value: "20px", $description: "Comfortable component inset" }
-      6: { $value: "24px", $description: "Section inset" }
-      8: { $value: "32px", $description: "Related section separation" }
-      10: { $value: "40px", $description: "Major section rhythm" }
-      12: { $value: "48px", $description: "Page-region separation" }
-      16: { $value: "64px", $description: "Large page-region separation" }
+      space-1: { $value: "4px", $description: "Micro separation" }
+      space-2: { $value: "8px", $description: "Tightly related content" }
+      space-3: { $value: "12px", $description: "Compact component gap" }
+      space-4: { $value: "16px", $description: "Default component inset" }
+      space-5: { $value: "20px", $description: "Comfortable component inset" }
+      space-6: { $value: "24px", $description: "Section inset" }
+      space-8: { $value: "32px", $description: "Related section separation" }
+      space-10: { $value: "40px", $description: "Major section rhythm" }
+      space-12: { $value: "48px", $description: "Page-region separation" }
+      space-16: { $value: "64px", $description: "Large page-region separation" }
 
     radius:
       $type: dimension
-      small: { $value: "8px", $description: "Compact control and nested surface" }
+      sm: { $value: "8px", $description: "Compact control and nested surface" }
       control: { $value: "12px", $description: "Default interactive control" }
       card: { $value: "16px", $description: "Card and grouped surface" }
       overlay: { $value: "20px", $description: "Dialog and sheet" }
       pill: { $value: "9999px", $description: "Badge, chip, avatar, and status only" }
 
-    elevation:
+    shadow:
       $type: shadow
       resting: { $value: "0 1px 2px rgba(16,24,40,.05)", $description: "Subtle resting separation" }
       raised: { $value: "0 4px 12px rgba(16,24,40,.10)", $description: "Raised card" }
       floating: { $value: "0 12px 32px rgba(16,24,40,.14)", $description: "Menu and popover" }
       modal: { $value: "0 24px 64px rgba(16,24,40,.18)", $description: "Dialog and blocking overlay" }
 
-    motion:
+    duration:
       $type: duration
       fast: { $value: "120ms", $description: "Hover, press, and small state feedback" }
       base: { $value: "200ms", $description: "Default component transition" }
       slow: { $value: "300ms", $description: "Overlay and region transition" }
       easing: { $value: "cubic-bezier(.2,0,0,1)", $type: cubicBezier, $description: "Shared productive easing" }
 
-    size:
-      $type: dimension
-      control-dense: { $value: "32px", $description: "Pointer-first dense control" }
+      control-compact: { $value: "32px", $description: "Pointer-first dense control" }
       control-default: { $value: "40px", $description: "Default product control" }
       control-touch: { $value: "44px", $description: "Touch-first minimum product control" }
       control-prominent: { $value: "48px", $description: "Primary CTA and prominent input" }

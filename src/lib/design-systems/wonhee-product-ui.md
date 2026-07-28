@@ -102,6 +102,13 @@ contract:
     strategy: "deep-merge-by-key"
     base: "./wonhee-design.md"
     array_strategy: "replace unless $merge is append"
+    # Structure is inherited; token values are not. The base is a portable
+    # template with its own palette, so `contract.tokens` is re-declared here in
+    # full. Both documents use the same group and key vocabulary, which is what
+    # makes the two readable as one system.
+    inherited: [component_schema, component_defaults, foundations, patterns, responsive, accessibility, prohibited]
+    redeclared: [tokens, components]
+    token_vocabulary: "group names MUST match the base; a product MAY add groups and keys the base does not have"
     protected_from_override: [accessibility.minimum_contrast, accessibility.semantic_requirements]
     precedence:
       - runtime-safety
