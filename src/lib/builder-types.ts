@@ -1,6 +1,6 @@
 export type BuilderDevice = 'mobile' | 'desktop';
 
-export type PropType = 'text' | 'color' | 'select' | 'textarea';
+export type PropType = 'text' | 'number' | 'color' | 'select' | 'textarea';
 
 export type ComponentCategory =
   | 'layout'

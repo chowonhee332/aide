@@ -52,13 +52,13 @@ export function getComponentPropsForDevice(
 }
 
 export const CATEGORY_LABELS: Record<string, string> = {
-  layout: '레이아웃',
-  navigation: '내비게이션',
-  action: '버튼/액션',
-  input: '입력',
-  selection: '선택',
-  content: '콘텐츠',
-  data: '데이터',
-  feedback: '안내/상태',
-  overlay: '오버레이',
+  layout: '레이아웃',
+  navigation: '내비게이션',
+  action: '버튼/액션',
+  input: '입력',
+  selection: '선택',
+  content: '콘텐츠',
+  data: '데이터',
+  feedback: '안내/상태',
+  overlay: '오버레이',
 };

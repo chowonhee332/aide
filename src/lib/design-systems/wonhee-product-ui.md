@@ -1025,9 +1025,66 @@ contract:
       documentation: "documentation.pages.components"
       preview-size: control
     preview_sizes:
-      compact: [icon-button, badge, avatar, metric, progress, alert, toast, loading, dialog, sheet, popover, tooltip, dropdown-menu]
-      control: [button, field, field-group, textarea, number-field, select, search, slider, keypad, checkbox, radio, switch, tabs, segmented-control, chip, stepper, empty-state, result]
-      wide: [action-bar, agreement, navigation, app-header, global-navigation, local-navigation, bottom-app-bar, app-footer, breadcrumb, card, panel, list-cell, list-section, table, bar-chart, prose, responsive-grid, detail-header]
+      # Measured against the palette thumbnail: a banner cannot read at badge scale.
+      compact:
+        - icon-button
+        - badge
+        - avatar
+        - dialog
+        - sheet
+        - popover
+        - tooltip
+        - dropdown-menu
+      control:
+        - button
+        - field
+        - field-group
+        - textarea
+        - number-field
+        - select
+        - search
+        - slider
+        - checkbox
+        - radio
+        - switch
+        - tabs
+        - segmented-control
+        - chip
+        - stepper
+        - metric
+        - progress
+      wide:
+        - action-bar
+        - fixed-bottom-cta
+        - agreement
+        - keypad
+        - navigation
+        - app-header
+        - global-navigation
+        - local-navigation
+        - top-navigation
+        - side-navigation
+        - bottom-app-bar
+        - app-footer
+        - breadcrumb
+        - card
+        - panel
+        - list-cell
+        - list-section
+        - table
+        - bar-chart
+        - prose
+        - responsive-grid
+        - detail-header
+        - page-header
+        - section-header
+        - side-panel
+        - workspace-shell
+        - alert
+        - toast
+        - loading
+        - empty-state
+        - result
     source_overrides:
       icon-button: "src/components/ui/button.tsx#Button"
       action-bar: "src/components/ui/responsive-action-bar.tsx#ResponsiveActionBar"
