@@ -54,3 +54,7 @@ next-env.d.ts
 
 # personal Claude Code settings (launch.json is shared)
 /.claude/settings.local.json
+
+# superseded KTDS playground catalog (replaced by wonhee-playground-components)
+/src/lib/ktds-playground-components.ts
+/src/lib/ktds-tokens.ts

@@ -36,7 +36,9 @@ const requiredJudgmentContracts = [
   'C안은 가능한 경우 Bold Editorial Hero를 백단 기본 패턴으로 우선 고려하세요',
   '사용자가 프롬프트에 과감한 히어로를 명시하지 않아도 Aide가 서비스 성격을 판단해 자동 적용합니다',
   '큰 실사/scene hero card',
-  'readable scrim/gradient',
+  // 60eb144에서 Bold Editorial Hero 문단이 재작성되며 표현이 바뀌었다.
+  // 요구(이미지 위 텍스트 가독성 확보)는 히어로 안전 영역 규칙으로 유지된다.
+  'readable scrim',
   'B2B/관리자/업무형 서비스라면 Bold Editorial Hero를 과하게 쓰지 말고 신뢰형 visual panel로 톤다운하세요',
 ]
 
@@ -87,10 +89,10 @@ for (const phrase of requiredLogoContracts) {
 
 const requiredCreonContracts = [
   "const files = ['reference_1.png', 'reference_2.png', 'reference_3.png']",
-  'Subject must occupy 78-90% of the image canvas height',
-  'minimal transparent padding only',
+  'CRITICAL COMPOSITION: The main subject',
+  'CRITICAL BOTTOM ZONE: The lower 35% of the image must transition naturally to darker tones',
   'B안 HERO_3D는 작은 floating sticker가 아니라 히어로 카드의 명확한 visual zone입니다',
-  'HERO_3D visible object must read at 190px or larger on a 390px mobile viewport',
+  'This image IS the full-bleed background of a mobile card',
 ]
 
 for (const phrase of requiredCreonContracts) {
@@ -103,8 +105,8 @@ for (const phrase of requiredCreonContracts) {
 
 const requiredRhythmAndDensityContracts = [
   'Layout Rhythm Guard — 콘텐츠 종류는 자유롭게, 간격 리듬은 고정',
-  'section gap은 var(--aide-section-gap)을 사용하고, 모바일 주요 섹션 간 실제 간격은 14~20px 범위로 유지하세요',
-  'card padding은 var(--aide-card-padding)을 사용하고, 모바일 주요 카드 내부 padding은 14~20px 범위로 유지하세요',
+  'section gap: 반드시 var(--aide-section-gap) 사용',
+  'card padding: 반드시 var(--aide-card-padding) 사용',
   '시안 하나의 첫 화면에는 실제 데이터 포인트 10~16개가 보여야 합니다',
   '데이터 포인트란 가격, 시간, 수량, 등급, 상태, 할인율, 적립 수, 쿠폰 수, 거리, 예상 결과, 비교 기준, 배지, 날짜 같은 판단 재료입니다',
   'A/B/C 모두 첫 화면 하단에 다음 섹션의 제목 또는 카드 일부가 보여야 합니다',

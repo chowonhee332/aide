@@ -7,6 +7,7 @@
 		"prebuild": "npm run design:export",
 		"build": "next build --webpack",
 		"start": "next start",
+		"test": "node test/verify_prompt_contracts.mjs",
 		"lint": "eslint",
 		"design:lint": "node scripts/design-system.mjs lint",
 		"design:export": "node scripts/design-system.mjs export",
