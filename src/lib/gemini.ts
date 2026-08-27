@@ -3344,11 +3344,7 @@ ${domainBlock}
      fill: true, backgroundColor: areaGradient, borderColor: primaryColor, tension: 0.4, pointRadius: 0, pointHoverRadius: 6
      \`\`\`
 
-7.5. **하단 탭바 position:fixed 필수 (모바일 앱 전용)**
-   하단 탭바가 있는 모든 모바일 화면에서 반드시 지킬 규칙:
-   - 하단 탭바 CSS: \`position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;\`
-   - 메인 콘텐츠(스크롤 영역)에 반드시 \`padding-bottom: 72px;\` 이상을 추가해 탭바에 콘텐츠가 가려지지 않게 할 것
-   - ❌ 실패 조건: 탭바가 static/relative/absolute이거나, 스크롤 시 탭바가 사라지거나, 마지막 카드가 탭바에 가려지는 경우
+7.5. **하단 탭바** — 탭 5개 이하. \`.mobile-tabbar\` 또는 \`.bottom-nav\` 클래스만 붙이면 Aide가 position:fixed·z-index·safe-area·본문 padding-bottom·데스크탑 숨김을 결정론적으로 주입합니다. 탭바 위치/겹침 CSS를 직접 쓰지 마세요.
 
 8. **반응형 레이아웃 — CSS @media 쿼리 (MANDATORY)**
    **이 HTML은 반응형 뷰어(iframe)에서 렌더링됩니다. iframe 너비가 실시간으로 변하므로, CSS @media 쿼리 없이는 반응형이 절대 동작하지 않습니다.**
@@ -3405,40 +3401,16 @@ ${domainBlock}
 
 이 UI는 Figma 목업이나 데모가 아닌, **실제 서비스로 출시 가능한 Product UI**여야 합니다.
 
-### 8px 그리드 시스템
-- 모든 간격(margin, padding, gap)은 **8의 배수**여야 합니다: 8, 16, 24, 32, 40, 48, 64px
-- DESIGN.md spacing 토큰이 8의 배수가 아닌 경우에도 레이아웃 간격만큼은 8의 배수에 가장 가까운 값을 사용
-- 예외: 보더, 아이콘 stroke, 텍스트 자간은 제외
-- 체크: 인접한 요소 간 gap이 5px, 7px, 11px 같은 임의 값이면 실패
+### 간격
+- 모든 margin/padding/gap은 DESIGN.md spacing 토큰(var(--spacing-*)) 또는 rhythm 변수(var(--aide-*))만 사용. 임의 px 금지.
+- 인접 요소 간격이 토큰에 없는 값(5px, 7px, 11px 등)이면 실패.
 
-### 인터랙션 상태 (Interactive States)
-모든 인터랙티브 요소는 반드시 상태별 스타일을 가져야 합니다:
-\`\`\`css
-/* 버튼 상태 */
-.btn-primary { background: var(--color-primary); transition: all 0.15s ease; }
-.btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
-.btn-primary:active { opacity: 0.75; transform: translateY(0); }
-.btn-primary:disabled { opacity: 0.38; cursor: not-allowed; pointer-events: none; }
+### 인터랙션 상태
+- 버튼·카드·칩·입력의 hover/active/focus/disabled 트랜지션 CSS는 Aide가 결정론적으로 주입합니다(aide-base-transitions). 상태 CSS를 직접 쓰지 마세요.
+- 너는 상태별 클래스(btn-primary 등)와 비활성 요소의 disabled 속성만 정확히 달아라. :focus-visible outline도 주입됩니다.
 
-/* 카드/리스트 항목 */
-.card, .list-item { transition: box-shadow 0.15s ease, transform 0.15s ease; }
-.card:hover { box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.1)); transform: translateY(-2px); }
-
-/* 입력 필드 */
-.input:focus { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-\`\`\`
-- hover/active/disabled/focus 상태가 없는 버튼·카드·입력은 실패
-- transition 없이 상태가 갑자기 바뀌는 것도 실패
-
-### 로딩·빈 상태·에러 상태 (Empty/Loading/Error States)
-- 데이터 목록이 있는 화면은 반드시 **스켈레톤 로딩** 또는 **로딩 스피너** 처리 영역을 포함
-- 빈 상태(empty state): 데이터가 없을 때 보여줄 일러스트 + 안내 텍스트 + CTA
-- 에러 상태: 네트워크 오류 시 재시도 버튼 포함
-\`\`\`html
-<!-- 스켈레톤 예시 -->
-<div class="skeleton-card" style="background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:var(--rounded-md);height:80px;"></div>
-<style>@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>
-\`\`\`
+### 빈 상태 (Empty State)
+- 데이터가 없을 수 있는 목록은 빈 상태 문구 + CTA를 실제 카피로 넣어라. 스켈레톤·로딩 스피너·회색 placeholder 블록은 비교 시안에 넣지 않는다 (위 "와이어프레임처럼 보이는 회색 박스, 빈 카드, skeleton block은 실패" 규칙과 동일).
 
 ### 접근성 (Accessibility — WCAG AA)
 - 모든 이미지에 의미 있는 \`alt\` 속성 (장식 이미지는 \`alt=""\`)
@@ -4451,32 +4423,7 @@ ${componentSnippets}
 
 ## Contract-Based Generation Rules (CRITICAL)
 - 위 Design System Contract는 현재 선택된 design.md에서 컴파일된 규칙입니다. KTDS 전용 규칙이 아니라 현재 선택된 시스템의 계약입니다.
-- 최종 CSS는 반드시 아래 semantic rhythm variables를 선언하고, 모든 반복 컴포넌트에서 재사용하십시오:
-  \`\`\`css
-  :root {
-    --aide-page-padding: /* contract.layoutRhythm.pagePadding */;
-    --aide-section-gap: /* contract.layoutRhythm.sectionGap */;
-    --aide-card-padding: /* contract.layoutRhythm.cardPadding */;
-    --aide-card-gap: /* contract.layoutRhythm.cardGap */;
-    --aide-card-radius: /* contract.layoutRhythm.cardRadius */;
-  }
-  /* 메인 콘텐츠 컨테이너는 반드시 aide-page 클래스를 붙이고 flex column + gap으로 섹션 간격을 제어 */
-  .aide-page {
-    padding: 0 var(--aide-page-padding);
-    display: flex;
-    flex-direction: column;
-    gap: var(--aide-section-gap);
-  }
-  /* aide-page 직속 자식 section/div의 margin을 0으로 리셋 — flex gap이 단일 간격 source */
-  .aide-page > section,
-  .aide-page > div.aide-section {
-    margin-top: 0;
-    margin-bottom: 0;
-  }
-  /* 카드 내부 리듬 */
-  .aide-section { display: flex; flex-direction: column; gap: var(--aide-card-gap); }
-  .aide-card { padding: var(--aide-card-padding); border-radius: var(--aide-card-radius); }
-  \`\`\`
+- rhythm CSS(:root의 --aide-page-padding / --aide-section-gap / --aide-card-padding / --aide-card-gap / --aide-card-radius / --aide-card-border / --aide-card-shadow / --aide-button-height, .aide-page flex column+gap+padding, .aide-page > section margin 리셋, .aide-section 세로 flex+gap, .aide-card padding/radius/border/shadow, .section-header 간격)는 Aide가 생성 후 style[data-aide-contract]로 결정론적으로 주입합니다. **이 CSS를 직접 다시 선언하지 마세요.** 아래 클래스만 정확히 붙이면 리듬은 자동으로 적용됩니다.
 - **[MANDATORY] aide-page 클래스 사용**: 스크롤 가능한 메인 콘텐츠 wrapper(<main>, <div class="content"> 등)에 반드시 aide-page 클래스를 추가하십시오.
 - **[MANDATORY] aide-section 클래스 사용**: 메인 영역 안의 모든 <section> 또는 주요 콘텐츠 블록에 반드시 aide-section 클래스를 추가하십시오.
 - **[MANDATORY] 섹션 타이틀 행에 section-header 클래스 사용**: "제목 + 전체보기" 형태의 행에는 반드시 class="section-header"를 붙이십시오. section-header가 .aide-section의 첫 번째 자식이면 CSS baseline이 타이틀↔콘텐츠 간격을 자동으로 --aide-section-label-gap(8px)으로 좁혀줍니다. **section-header에 별도 margin/padding-bottom을 추가하지 마십시오.**
