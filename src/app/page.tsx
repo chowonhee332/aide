@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect, startTransition } from 'react'
 import {
-  ArrowUp, ArrowRight, FileText, Upload, X,
+  ArrowUp, FileText, Upload, X,
   Check, ChevronDown, Palette, Share2,
   Clock, Trash2, ExternalLink, Link2, KeyRound,
   Download, Eye, EyeOff, Coins,
@@ -1526,7 +1526,7 @@ export default function Home() {
                 variant="ghost"
                 className="h-auto p-0 hover:bg-transparent"
               >
-                <img src="/logo_aide.png" alt="Aide" style={{ height: 32, width: 'auto', display: 'block', objectFit: 'contain' }} />
+                <img src="/logo_aide_wh.png" alt="Aide" style={{ height: 32, width: 'auto', display: 'block', objectFit: 'contain' }} />
               </Button>
             </div>
 
@@ -1576,7 +1576,7 @@ export default function Home() {
                 onClick={() => setBuilderOpen(true)}
                 variant="ghost"
               >
-                Playground <ArrowRight size={14} strokeWidth={2.5} />
+                Playground
               </Button>
               <Button
                 onClick={async () => {
@@ -1585,9 +1585,9 @@ export default function Home() {
                     setStudioTrigger({ brief: '', historyId: items[0].id })
                   }
                 }}
-                className="shadow-[var(--aui-shadow-raised)]"
+                className="rounded-[var(--aui-radius-pill)] bg-white text-[var(--aui-text-strong)] shadow-[var(--aui-shadow-raised)] hover:bg-white/90"
               >
-                Studio <ArrowRight size={14} strokeWidth={2.5} />
+                Studio
               </Button>
             </div>
           </div>
