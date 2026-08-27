@@ -188,7 +188,7 @@ const STRUCTURE_TEMPLATES: StructureTemplate[] = [
     description: '메뉴가 적고 정보 구조가 얕은 포털형',
     kind: 'gnb',
     items: [
-      { componentId: 'app-header', props: { title: 'Wonhee', options: '대시보드\n프로젝트\n설정', position: 'sticky' } },
+      { componentId: 'app-header', props: { title: 'Aide', options: '대시보드\n프로젝트\n설정', position: 'sticky' } },
       { componentId: 'page-header', props: { title: '대시보드', description: '핵심 지표와 최근 활동을 확인합니다.', label: '새 프로젝트' } },
       { componentId: 'responsive-grid', props: { options: '오늘의 지표\n최근 활동\n진행 상태' } },
     ],
@@ -1447,8 +1447,8 @@ function StructureTemplatePicker({
 
 let instanceCounter = 0;
 let frameCounter = 2;
-const PLAYGROUND_STORAGE_KEY = 'aide:wonhee-playground:v5';
-const LEGACY_PLAYGROUND_STORAGE_KEYS = ['aide:wonhee-playground:v4', 'aide:wonhee-playground:v3', 'aide:wonhee-playground:v2'];
+const PLAYGROUND_STORAGE_KEY = 'aide:playground:v6';
+const LEGACY_PLAYGROUND_STORAGE_KEYS = ['aide:wonhee-playground:v5', 'aide:wonhee-playground:v4', 'aide:wonhee-playground:v3', 'aide:wonhee-playground:v2'];
 
 const TEMPLATE_COMPONENT_MIGRATION: Record<string, string> = {
   'status-bar': 'alert', 'app-bar': 'navigation', 'hero-banner': 'detail-header',
@@ -2103,7 +2103,7 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
         <div style={{ minWidth: 180, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
             <span style={{ fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-bold)", color: AIDE.text }}>Playground</span>
-            <Badge variant="info">WONHEE UI</Badge>
+            <Badge variant="info">AIDE UI</Badge>
           </div>
           <div style={{ marginTop: 2, fontSize: "var(--aui-type-meta-size)", color: AIDE.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {activeFrame ? `${activeFrame.name} · ${items.length}개 컴포넌트${persistenceReady ? ' · 자동 저장' : ''}` : '새 프레임을 추가하세요'}
@@ -2160,7 +2160,7 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
           <Download size={14} />
           HTML
         </Button>
-        <Button type="button" onClick={togglePreviewMode} variant={previewMode ? 'default' : 'outline'} size="touch">
+        <Button type="button" onClick={togglePreviewMode} variant={previewMode ? 'primary' : 'outline'} size="touch">
           {previewMode ? '편집으로 돌아가기' : '미리보기'}
         </Button>
 

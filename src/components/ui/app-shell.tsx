@@ -12,7 +12,7 @@ const defaultItems: NavigationItem[] = [
   { id: "settings", label: "설정" },
 ]
 
-function AppHeader({ brand = "Wonhee", items = defaultItems, activeId = "home", actions, showActions = true, position = "static", className }: { brand?: React.ReactNode; items?: NavigationItem[]; activeId?: string; actions?: React.ReactNode; showActions?: boolean; position?: "static" | "sticky"; className?: string }) {
+function AppHeader({ brand = "Aide", items = defaultItems, activeId = "home", actions, showActions = true, position = "static", className }: { brand?: React.ReactNode; items?: NavigationItem[]; activeId?: string; actions?: React.ReactNode; showActions?: boolean; position?: "static" | "sticky"; className?: string }) {
   return <header data-slot="app-header" data-position={position} className={cn("flex min-h-[var(--aui-header-height)] w-full items-center gap-[var(--aui-space-4)] bg-[var(--aui-surface)] px-[var(--aui-space-4)] md:px-[var(--aui-space-6)]", position === "sticky" && "sticky top-0 z-30 shadow-[var(--aui-shadow-subtle)]", className)}>
     <Button variant="ghost" size="icon-touch" aria-label="메뉴 열기" className="md:hidden"><Menu /></Button>
     <strong className="shrink-0 text-base font-bold text-[var(--aui-text)]">{brand}</strong>
@@ -33,7 +33,7 @@ function BottomAppBar({ items = defaultItems, activeId = "home", itemCount = 3, 
   return <div data-slot="bottom-app-bar" data-position={position} className={cn("w-full bg-[var(--aui-surface)] pb-[env(safe-area-inset-bottom)]", position === "fixed" && "sticky bottom-0 z-30 shadow-[0_-1px_8px_var(--aui-shadow-line)]", className)}><Navigation items={items.slice(0, Math.min(5, Math.max(3, itemCount)))} activeId={activeId} variant="bottom" label="하단 앱 탐색" /></div>
 }
 
-function AppFooter({ brand = "Wonhee", description = "일관된 제품 경험을 만드는 디자인 시스템", links = ["이용약관", "개인정보처리방침", "문의"], layout = "split", emphasis = "muted", className }: { brand?: React.ReactNode; description?: React.ReactNode; links?: string[]; layout?: "stack" | "split"; emphasis?: "plain" | "muted"; className?: string }) {
+function AppFooter({ brand = "Aide", description = "일관된 제품 경험을 만드는 디자인 시스템", links = ["이용약관", "개인정보처리방침", "문의"], layout = "split", emphasis = "muted", className }: { brand?: React.ReactNode; description?: React.ReactNode; links?: string[]; layout?: "stack" | "split"; emphasis?: "plain" | "muted"; className?: string }) {
   return <footer data-slot="app-footer" data-layout={layout} className={cn("grid w-full gap-[var(--aui-space-4)] px-[var(--aui-space-5)] py-[var(--aui-space-6)] text-sm text-[var(--aui-text-muted)]", emphasis === "muted" ? "bg-[var(--aui-surface-muted)]" : "bg-[var(--aui-surface)]", layout === "split" && "md:grid-cols-[1fr_auto] md:items-end", className)}><div><strong className="block text-[var(--aui-text)]">{brand}</strong><p className="mt-[var(--aui-space-2)]">{description}</p></div><nav aria-label="푸터 탐색" className="flex flex-wrap gap-x-[var(--aui-space-4)] gap-y-[var(--aui-space-2)]">{links.map((link)=><a key={link} href="#" className="rounded-[var(--aui-radius-sm)] outline-none hover:text-[var(--aui-text)] focus-visible:shadow-[var(--aui-shadow-focus)]">{link}</a>)}</nav></footer>
 }
 

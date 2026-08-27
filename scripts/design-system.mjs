@@ -8,8 +8,7 @@ import { isLeaf, resolveAliases } from '../src/lib/design-token-alias.mjs'
 const ALIAS_OPTIONS = { skipAliases: ["group.token"], label: "design contract" }
 
 const ROOT = process.cwd()
-const CORE = path.join(ROOT, 'src/lib/design-systems/wonhee-design.md')
-const PRODUCT = path.join(ROOT, 'src/lib/design-systems/wonhee-product-ui.md')
+const AIDE = path.join(ROOT, 'src/lib/design-systems/aide.md')
 
 function readContract(file) {
   const source = fs.readFileSync(file, 'utf8')
@@ -54,6 +53,9 @@ function contrast(a, b) {
  * declared entry shape and the real entries cannot drift apart.
  * A product entry may inherit `purpose` from the base document.
  */
+/** 사용자가 직접 조작하거나 열고 닫는 컴포넌트 — 상태 선언이 필수다. */
+const INTERACTIVE_COMPONENT = /button|field|input|select|checkbox|radio|switch|chip|tabs|slider|menu|search|textarea|toggle|stepper|keypad|number|segmented|navigation|dialog|sheet|popover|dropdown/i
+
 function lintComponents(document, base, errors, warnings) {
   const schema = document.contract.component_schema ?? base?.contract.component_schema
   const components = document.contract.components
@@ -91,6 +93,14 @@ function lintComponents(document, base, errors, warnings) {
     const described = entry.anatomy ?? entry.slots ?? baseComponents[id]?.anatomy ?? baseComponents[id]?.slots
     if (!described && !entry.inherits) {
       warnings.push(`components.${id}: no anatomy or slots`)
+    }
+
+    // `validation.errors`: "component missing required anatomy or interactive state".
+    // 상호작용 컴포넌트가 상태를 선언하지 않으면 생성 결과에 hover/focus/disabled가
+    // 빠진 채로 나온다. inherits로 상위 계약을 물려받는 경우는 제외한다.
+    const states = entry.states ?? baseComponents[id]?.states
+    if (INTERACTIVE_COMPONENT.test(id) && !states && !entry.inherits) {
+      errors.push(`components.${id}: interactive component must declare states`)
     }
 
     if (keywordPattern) {
@@ -175,6 +185,9 @@ function lintTokenConsumers(document, warnings) {
 function lintDocument(document, base) {
   const errors = []
   const warnings = []
+  if (document.metadata.tokens) {
+    errors.push('front matter tokens are prohibited; contract.tokens is the only canonical token source')
+  }
   const required = document.contract.schema?.required_sections ?? []
   for (const section of required) if (!(section in document.contract)) errors.push(`missing contract.${section}`)
   if (String(document.metadata.schema_version) !== String(document.contract.schema?.version)) {
@@ -234,18 +247,13 @@ function lintDocument(document, base) {
 }
 
 function commandLint() {
-  const core = readContract(CORE)
-  const product = readContract(PRODUCT)
-  let failed = false
-  for (const [document, base] of [[core, null], [product, core]]) {
-    const result = lintDocument(document, base)
-    console.log(`\n${path.relative(ROOT, document.file)}`)
-    for (const warning of result.warnings) console.log(`  WARN  ${warning}`)
-    for (const error of result.errors) console.error(`  ERROR ${error}`)
-    console.log(`  ${result.errors.length} errors, ${result.warnings.length} warnings`)
-    failed ||= result.errors.length > 0
-  }
-  if (failed) process.exitCode = 1
+  const document = readContract(AIDE)
+  const result = lintDocument(document, null)
+  console.log(`\n${path.relative(ROOT, document.file)}`)
+  for (const warning of result.warnings) console.log(`  WARN  ${warning}`)
+  for (const error of result.errors) console.error(`  ERROR ${error}`)
+  console.log(`  ${result.errors.length} errors, ${result.warnings.length} warnings`)
+  if (result.errors.length > 0) process.exitCode = 1
 }
 
 function cssName(group, key) {
@@ -254,14 +262,14 @@ function cssName(group, key) {
 }
 
 function commandExport() {
-  const product = readContract(PRODUCT)
-  const tokens = product.contract.tokens
-  const componentTokens = product.contract.component_tokens
+  const document = readContract(AIDE)
+  const tokens = document.contract.tokens
+  const componentTokens = document.contract.component_tokens
   const roots = { ...tokens, tokens, component_tokens: componentTokens }
   const outputDir = path.join(ROOT, 'src/lib/design-systems/generated')
   fs.mkdirSync(outputDir, { recursive: true })
   const resolved = resolveAliases({ tokens, component_tokens: componentTokens }, roots, ALIAS_OPTIONS)
-  fs.writeFileSync(path.join(outputDir, 'wonhee-product-ui.tokens.json'), `${JSON.stringify(resolved, null, 2)}\n`)
+  fs.writeFileSync(path.join(outputDir, 'aide.tokens.json'), `${JSON.stringify(resolved, null, 2)}\n`)
 
   const declarations = []
   for (const [group, members] of Object.entries(tokens)) {
@@ -285,7 +293,7 @@ function commandExport() {
     if (typeof value === 'object') continue
     declarations.push(`  --aui-component-${tokenPath.replaceAll('.', '-')}: ${value};`)
   }
-  fs.writeFileSync(path.join(outputDir, 'wonhee-product-ui.css'), `/* Generated from wonhee-product-ui.md. Do not edit. */\n:root {\n${declarations.join('\n')}\n}\n`)
+  fs.writeFileSync(path.join(outputDir, 'aide.css'), `/* Generated from aide.md. Do not edit. */\n:root {\n${declarations.join('\n')}\n}\n`)
   console.log(`exported ${declarations.length} CSS variables and DTCG-style JSON to ${path.relative(ROOT, outputDir)}`)
 }
 

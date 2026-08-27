@@ -15,6 +15,9 @@ Aide는 기획서를 분석해 A/B/C 디자인 시안을 생성하고, 사용자
 3. 구조는 `UIStructureIR`, 콘텐츠는 `contentSeed`를 생성 전에 결정한다.
 4. `structure-lint`는 severe 위반만 핀포인트 수정한다. 재생성 루프를 만들지 말라.
 5. 같은 위반이 반복되면 lint를 늘리지 말고 결정론 또는 사전 계약으로 옮긴다.
+6. 생성 중·비교·히스토리에 최종 산출물과 관계없는 가짜 UI를 노출하지 말라. 하드코딩된 데모 카드·임시 문구·임의 팔레트를 생성 결과처럼 보여주지 말고, 실제 모델 출력이나 동일한 구조화 소스만 렌더링한다.
+7. 생성 UI의 아이콘은 Google Material Symbols Rounded만 사용한다. 이모지·외부 아이콘 라이브러리·임의 SVG를 생성 결과에 혼용하지 않는다.
+8. Node Graph 생성 경로가 기존 HTML 기준 품질을 넘기 전까지 `/api/generate` 자유 HTML 경로를 삭제하거나 Node Graph로 강제 전환하지 말라. Studio의 생성 엔진 롤백 스위치는 운영 안전장치다.
 
 ## Generation pipeline
 

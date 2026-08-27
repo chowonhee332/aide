@@ -1,5 +1,5 @@
 import type { BuilderDevice, ComponentDefinition } from './builder-types';
-import { WONHEE_PLAYGROUND_COMPONENTS } from './wonhee-playground-components';
+import { AIDE_PLAYGROUND_COMPONENTS } from './aide-playground-components';
 
 export type {
   ComponentCategory,
@@ -11,7 +11,7 @@ export type {
 } from './builder-types';
 
 /**
- * Playground renders the same Wonhee component registry documented by /aide-ui.
+ * Playground renders the same Aide component registry documented by /aide-ui.
  * A future DESIGN.md adapter can replace this catalog without changing BuilderView.
  */
 export interface BuilderDesignSystemCatalog {
@@ -22,15 +22,15 @@ export interface BuilderDesignSystemCatalog {
 }
 
 export const BUILDER_DESIGN_SYSTEM_CATALOGS: Record<string, BuilderDesignSystemCatalog> = {
-  wonhee: {
-    id: 'wonhee',
-    name: 'Wonhee UI',
-    contractFiles: ['wonhee-design.md', 'wonhee-product-ui.md'],
-    components: WONHEE_PLAYGROUND_COMPONENTS,
+  aide: {
+    id: 'aide',
+    name: 'Aide UI',
+    contractFiles: ['aide.md'],
+    components: AIDE_PLAYGROUND_COMPONENTS,
   },
 };
 
-export const ACTIVE_DESIGN_SYSTEM = BUILDER_DESIGN_SYSTEM_CATALOGS.wonhee;
+export const ACTIVE_DESIGN_SYSTEM = BUILDER_DESIGN_SYSTEM_CATALOGS.aide;
 export const COMPONENT_DEFINITIONS: ComponentDefinition[] = ACTIVE_DESIGN_SYSTEM.components;
 
 export function getComponentById(id: string): ComponentDefinition | undefined {

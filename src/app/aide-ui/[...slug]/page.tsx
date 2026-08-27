@@ -3,7 +3,6 @@ import {
   ComponentDetailPage,
   ComponentsOverviewPage,
   GenericSectionPage,
-  ProgressBoardPage,
 } from '@/components/aide-docs/DocsPage'
 import { allComponents, DOCS_SECTION_IDS, sectionNavigation } from '@/lib/aide-docs'
 
@@ -11,7 +10,6 @@ export function generateStaticParams() {
   const genericSections = DOCS_SECTION_IDS.filter((id) => id !== 'components')
   return [
     { slug: ['components'] },
-    { slug: ['components', 'progress-board'] },
     ...allComponents().map((component) => ({ slug: ['components', component.id] })),
     ...genericSections.flatMap((sectionId) => [
       { slug: [sectionId] },
@@ -28,7 +26,6 @@ export default async function AideDocsRoute({ params }: { params: Promise<{ slug
 
   if (sectionId === 'components') {
     if (!pageId) return <ComponentsOverviewPage/>
-    if (pageId === 'progress-board') return <ProgressBoardPage/>
     if (allComponents().some((component) => component.id === pageId)) return <ComponentDetailPage componentId={pageId}/>
     notFound()
   }

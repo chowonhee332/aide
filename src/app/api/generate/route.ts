@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import type { Browser, Page } from 'puppeteer'
-import { generateUI, resolveImagePlaceholders, extractDesignPaletteHint } from '@/lib/gemini'
+import { generateUI, resolveImagePlaceholders, extractDesignPaletteHint, generateProWithImage } from '@/lib/gemini'
+import { injectVisualReviewCss, reviewDesignScreenshot } from '@/lib/design-visual-review'
+import { GEMINI_DESIGN_MODEL, GEMINI_ECONOMY_MODEL, GEMINI_ECONOMY_IMAGE_MODEL } from '@/lib/gemini-model-policy'
 import fs from 'fs'
 import path from 'path'
 
@@ -64,11 +66,10 @@ export async function POST(req: NextRequest) {
       const resolvedLogoDataUrl = (!rawLogo || !rawLogo.startsWith('data:'))
         ? getDefaultAideLogoBase64()
         : rawLogo
-      const isDraftRequest = params.qualityMode === 'draft'
       const normalizedParams = {
         ...params,
         logoDataUrl: resolvedLogoDataUrl,
-        modelId: isDraftRequest ? 'gemini-3.1-pro-preview' : params.modelId,
+        modelId: params.modelId || GEMINI_DESIGN_MODEL,
       }
       const apiKey = req.headers.get('x-gemini-key') ?? undefined
       const unsplashKey = req.headers.get('x-unsplash-key') ?? undefined
@@ -77,7 +78,6 @@ export async function POST(req: NextRequest) {
 
       const { html: rawHtml, variantDescription } = await generateUI({
         ...normalizedParams,
-        criticalReview: false,
         onStep: (label: string) => emit('step', { label }),
         onHtmlChunk: (partialHtml: string) => emit('html_chunk', { html: partialHtml }),
       }, apiKey)
@@ -103,16 +103,16 @@ export async function POST(req: NextRequest) {
         ? (normalizedParams.sharedVisualSubject || normalizedParams.heroSubject || normalizedParams.heroImagePrompt || undefined)
         : (normalizedParams.heroSubject || normalizedParams.heroImagePrompt || undefined)
       const imageWarnings: string[] = []
-      const finalHtml = await resolveImagePlaceholders(rawHtml, {
+      let finalHtml = await resolveImagePlaceholders(rawHtml, {
         heroImagePrompt: heroPrompt,
         apiKey,
         unsplashKey,
         imageWarnings,
         paletteHint: extractDesignPaletteHint(normalizedParams.designMd),
         sceneImageModel: (normalizedParams.visualPolicy === 'scene-3d' || normalizedParams.visualPolicy === 'scene-3d-card-cover')
-          ? 'gemini-2.5-flash-image'
+          ? GEMINI_ECONOMY_IMAGE_MODEL
           : undefined,
-        heroImageModel: normalizedParams.visualPolicy === 'creon-object-3d' ? 'gemini-2.5-flash-image' : undefined,
+        heroImageModel: normalizedParams.visualPolicy === 'creon-object-3d' ? GEMINI_ECONOMY_IMAGE_MODEL : undefined,
         sceneCardCover: normalizedParams.visualPolicy === 'scene-3d-card-cover',
         onImageEvent: (label: string) => emit('step', { label }),
       })
@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
       console.log('[generate] step3: browser launched, setting viewport', vpWidth, vpHeight)
       await page.setViewport({ width: vpWidth, height: vpHeight, deviceScaleFactor: isDraft ? 1 : 2 })
       const baseTag = '<base href="http://localhost:3000">'
-      const htmlWithBase = finalHtml.includes('<base ') ? finalHtml : finalHtml.replace(/(<head[^>]*>)/i, `$1\n${baseTag}`)
+      let htmlWithBase = finalHtml.includes('<base ') ? finalHtml : finalHtml.replace(/(<head[^>]*>)/i, `$1\n${baseTag}`)
       await page.setContent(htmlWithBase, { waitUntil: isDraft ? 'domcontentloaded' : 'networkidle0', timeout: isDraft ? 20000 : 45000 })
       console.log('[generate] step4: content loaded, waiting for fonts')
       await new Promise(r => setTimeout(r, isDraft ? 300 : 1500))
@@ -140,12 +140,39 @@ export async function POST(req: NextRequest) {
       ])
       console.log('[generate] step5: fonts ready, taking screenshot')
 
-      const screenshot = await page.screenshot({
+      let screenshot = await page.screenshot({
         type: 'png',
         encoding: 'base64',
         fullPage: true,
         optimizeForSpeed: isDraft,
       })
+
+      let visualReview: Awaited<ReturnType<typeof reviewDesignScreenshot>> | undefined
+      // A/B/C 초안은 빠른 비교용이다. 스크린샷 Vision 검수는 최종 품질 모드에서만 실행해
+      // draft 시안 3개에 대한 추가 모델 호출과 스크린샷 입력 비용을 제거한다.
+      if (!isDraft && normalizedParams.criticalReview && normalizedParams.precomputedDesignIntentPlan) {
+        emit('step', { label: '시각 밸런스 검수 중...' })
+        visualReview = await reviewDesignScreenshot({
+          screenshotBase64: screenshot,
+          html: finalHtml,
+          directionPlan: normalizedParams.precomputedDesignIntentPlan,
+          platform: isWeb ? 'web' : 'mobile',
+          generateVision: (prompt, imageBase64) => generateProWithImage(prompt, imageBase64, 'image/png', apiKey, GEMINI_ECONOMY_MODEL),
+        })
+        if (visualReview.needsPatch) {
+          finalHtml = injectVisualReviewCss(finalHtml, visualReview)
+          htmlWithBase = finalHtml.includes('<base ') ? finalHtml : finalHtml.replace(/(<head[^>]*>)/i, `$1\n${baseTag}`)
+          await page.setContent(htmlWithBase, { waitUntil: 'domcontentloaded', timeout: 20000 })
+          await new Promise(r => setTimeout(r, 300))
+          await page.evaluate(() => document.fonts.ready.then(() => null)).catch(() => null)
+          screenshot = await page.screenshot({
+            type: 'png',
+            encoding: 'base64',
+            fullPage: true,
+            optimizeForSpeed: true,
+          })
+        }
+      }
 
       console.log('[generate] step6: screenshot done')
       emit('done', {
@@ -154,6 +181,7 @@ export async function POST(req: NextRequest) {
         has3dHero: has3dPlaceholder,
         imageWarnings,
         variantDescription,
+        visualReview,
       })
     } catch (err) {
       const name = err instanceof Error ? err.name : 'unknown'

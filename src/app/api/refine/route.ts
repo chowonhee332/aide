@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { refineUI, resolveImagePlaceholders } from '@/lib/gemini'
+import { GEMINI_ECONOMY_MODEL } from '@/lib/gemini-model-policy'
 import fs from 'fs'
 import path from 'path'
 
@@ -23,7 +24,9 @@ export async function POST(req: NextRequest) {
     const effectiveLogoDataUrl = (!logoDataUrl || !logoDataUrl.startsWith('data:'))
       ? getDefaultAideLogoBase64()
       : logoDataUrl
-    let text = await refineUI(html, message, brief, designMd, apiKey, effectiveLogoDataUrl)
+    // Conversational edits modify an existing composition rather than inventing
+    // the first visual direction, so keep them on the economy model by default.
+    let text = await refineUI(html, message, brief, designMd, apiKey, effectiveLogoDataUrl, undefined, GEMINI_ECONOMY_MODEL)
     const imageWarnings: string[] = []
     text = await resolveImagePlaceholders(text, { apiKey, unsplashKey, imageWarnings })
 

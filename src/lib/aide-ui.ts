@@ -1,7 +1,7 @@
 import { AUI_TOKEN_VALUE } from './aide-product-tokens'
 
 /**
- * TypeScript bridge to the Wonhee Product UI CSS tokens.
+ * TypeScript bridge to the Aide Design System CSS tokens.
  * Static component styling should prefer Tailwind semantic classes; use these
  * references for dynamic inline styles that depend on runtime state.
  */

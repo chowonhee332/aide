@@ -3,12 +3,11 @@ import 'server-only'
 import fs from 'node:fs'
 import path from 'node:path'
 import { AUI_COMPONENT_CATEGORIES, AUI_COMPONENTS, AUI_COMPONENT_RECIPES, AUI_COMPONENT_RECIPE_FAMILIES, AUI_PRODUCT_CONTRACT } from './aide-product-tokens'
-import { WONHEE_DESIGN_CONTRACT } from './wonhee-design-contract'
-import { WONHEE_REFERENCE_CATALOG } from './wonhee-design-contract'
-import { WONHEE_PLAYGROUND_COMPONENT_IDS } from './wonhee-playground-components'
+import { AIDE_DESIGN_CONTRACT, AIDE_REFERENCE_CATALOG } from './aide-design-contract'
+import { AIDE_PLAYGROUND_COMPONENT_IDS } from './aide-playground-components'
 
 export type ImplementationState = 'implemented' | 'excluded'
-const EXCLUDED = new Set(WONHEE_REFERENCE_CATALOG.filter((item) => item.status === 'excluded').map((item) => item.id))
+const EXCLUDED = new Set(AIDE_REFERENCE_CATALOG.filter((item) => item.status === 'excluded').map((item) => item.id))
 export function componentImplementationState(id: string): ImplementationState { return EXCLUDED.has(id) ? 'excluded' : 'implemented' }
 export const IMPLEMENTATION_STATE_LABELS: Record<ImplementationState, string> = { implemented: 'implemented', excluded: 'excluded' }
 
@@ -83,10 +82,10 @@ function tokenCheck(id: string, renderer: string | null): CoverageCheck {
 }
 
 export function componentCoverage(): { rows: ComponentCoverage[]; summary: CoverageSummary } {
-  const portable = dictionary(WONHEE_DESIGN_CONTRACT.components)
+  const portable = dictionary(AIDE_DESIGN_CONTRACT.components)
   const registered = registryOccurrences()
   const previews = previewIds()
-  const playgroundOccurrences = WONHEE_PLAYGROUND_COMPONENT_IDS.reduce((map, id) => map.set(id, (map.get(id) ?? 0) + 1), new Map<string, number>())
+  const playgroundOccurrences = AIDE_PLAYGROUND_COMPONENT_IDS.reduce((map, id) => map.set(id, (map.get(id) ?? 0) + 1), new Map<string, number>())
   // Portable `components` also contains abstract families such as `feedback` and
   // `asset`; the product board tracks only concrete product definitions/registry IDs.
   const ids = [...new Set([...registered.keys(), ...Object.keys(AUI_COMPONENTS)])].sort()
@@ -126,7 +125,42 @@ export function componentCoverage(): { rows: ComponentCoverage[]; summary: Cover
   return { rows, summary }
 }
 
+/**
+ * ComponentPreview 의 `case '<id>':` 블록이 실제로 읽는 prop 이름.
+ *
+ * 조작 패널을 계약의 props 로만 만들면, family 가 선언했지만 그 컴포넌트에는 해당하지 않는
+ * 옵션까지 라디오로 올라온다(navigation family 의 `orientation` 이 app-header 에,
+ * data-display 의 `emphasis` 가 badge 에 붙는 식). 눌러도 그림이 그대로라 고장으로 읽힌다.
+ * 소스를 직접 읽어 case 별로 걸러 낸다.
+ */
+const DERIVED_PROP_SOURCES: Record<string, string[]> = {
+  buttonVariant: ['variant'], buttonSize: ['size'], disabled: ['state', 'disabled'],
+  options: ['options'], label: ['label', 'title'], title: ['title'], description: ['description'],
+  navigationItems: ['options'], chartData: ['options'],
+}
+
+let previewCasePropsCache: Map<string, Set<string>> | null = null
+
+export function previewCaseProps(): Map<string, Set<string>> {
+  if (previewCasePropsCache) return previewCasePropsCache
+  const source = readProjectFile(PREVIEW_SOURCE) ?? ''
+  const body = source.slice(source.indexOf('switch (id)'))
+  const map = new Map<string, Set<string>>()
+  for (const match of body.matchAll(/case '([a-z0-9-]+)':([\s\S]*?)(?=\n    case '|\n    default:)/g)) {
+    const [, id, block] = match
+    const used = new Set<string>()
+    for (const hit of block.matchAll(/props\.([a-zA-Z]+)/g)) used.add(hit[1])
+    for (const hit of block.matchAll(/props\['([a-z-]+)'\]/g)) used.add(hit[1])
+    for (const [variable, sources] of Object.entries(DERIVED_PROP_SOURCES)) {
+      if (new RegExp(`\\b${variable}\\b`).test(block)) sources.forEach((name) => used.add(name))
+    }
+    map.set(id, used)
+  }
+  previewCasePropsCache = map
+  return map
+}
+
 export function assertComponentCoverageIntegrity() {
   const broken = componentCoverage().rows.filter((row) => row.definition.state !== 'pass' || row.registry.state !== 'pass' || row.preview.state !== 'pass' || (row.source.state !== 'pass' && row.source.state !== 'not-applicable') || (row.tokens.state !== 'pass' && row.tokens.state !== 'not-applicable') || row.recipe.state !== 'pass' || row.playground.state !== 'pass')
-  if (broken.length) throw new Error(`Wonhee component parity failed: ${broken.map((row) => row.id).join(', ')}`)
+  if (broken.length) throw new Error(`Aide component parity failed: ${broken.map((row) => row.id).join(', ')}`)
 }

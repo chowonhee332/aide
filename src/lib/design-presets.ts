@@ -240,7 +240,7 @@ const sortedIds = Object.keys(MD_FILES).sort((a, b) => {
 
 // Presets that exist as MD files but should not appear in the UI selector.
 // `-test` 접미사는 실험용 규약 — design-systems/ 에 스크래치 md를 넣어도 UI에 노출되지 않는다.
-const HIDDEN_PRESETS = new Set(['aide', 'wonhee-product-ui'])
+const HIDDEN_PRESETS = new Set(['aide'])
 const isHiddenPreset = (id: string) => HIDDEN_PRESETS.has(id) || id.endsWith('-test')
 
 // Build DESIGN_PRESETS: 'none' + all auto-discovered .md files (enriched with RICH_META)

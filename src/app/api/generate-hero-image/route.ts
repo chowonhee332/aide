@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateHeroImage, extractDesignPaletteHint } from '@/lib/gemini'
+import { GEMINI_IMAGE_MODEL } from '@/lib/gemini-model-policy'
 
 export const maxDuration = 120
 
@@ -11,7 +12,7 @@ export async function POST(req: NextRequest) {
     if (!subject) return NextResponse.json({ error: 'subject required' }, { status: 400 })
 
     const paletteHint = designMd ? extractDesignPaletteHint(designMd) : undefined
-    const result = await generateHeroImage(subject, apiKey, 'scene-card-cover', paletteHint)
+    const result = await generateHeroImage(subject, apiKey, 'scene-card-cover', paletteHint, GEMINI_IMAGE_MODEL)
     if (!result) return NextResponse.json({ error: 'image generation failed' }, { status: 500 })
 
     return NextResponse.json({ base64: result.base64, mimeType: result.mimeType })

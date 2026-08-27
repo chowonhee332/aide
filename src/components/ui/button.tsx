@@ -4,11 +4,11 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-[var(--aui-radius-control)] border border-transparent bg-clip-padding text-sm font-semibold whitespace-nowrap transition-[background-color,border-color,color,box-shadow,transform] duration-[var(--aui-motion-fast)] outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/35 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:bg-[var(--aui-fill)] disabled:text-[var(--aui-text-disabled)] aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-[var(--aui-component-button-radius)] border border-transparent bg-clip-padding text-[length:var(--aui-type-body-size)] font-medium leading-[var(--aui-type-body-leading)] tracking-[var(--aui-type-body-tracking)] whitespace-nowrap transition-[background-color,border-color,color,box-shadow,transform] duration-[var(--aui-motion-fast)] outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/35 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:bg-[var(--aui-primary-disabled)] disabled:text-[var(--aui-text-disabled)] aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-[var(--aui-primary-strong)]",
+        primary: "bg-primary text-primary-foreground hover:bg-[var(--aui-primary-strong)]",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
@@ -21,7 +21,7 @@ const buttonVariants = cva(
       },
       size: {
         default:
-          "h-[var(--aui-component-button-default-height)] gap-[var(--aui-space-2)] px-[var(--aui-component-button-default-padding-x)]",
+          "h-[var(--aui-component-button-default-height)] gap-[var(--aui-component-button-gap)] px-[var(--aui-component-button-default-padding-x)]",
         xs: "h-[var(--aui-component-button-compact-height)] gap-[var(--aui-space-1)] rounded-[var(--aui-radius-sm)] px-[var(--aui-space-2)] text-xs [&_svg:not([class*='size-'])]:size-[var(--aui-icon-sm)]",
         sm: "h-[var(--aui-component-button-compact-height)] gap-[var(--aui-space-2)] px-[var(--aui-component-button-compact-padding-x)] text-xs [&_svg:not([class*='size-'])]:size-[var(--aui-icon-sm)]",
         lg: "h-[var(--aui-component-button-prominent-height)] gap-[var(--aui-space-2)] px-[var(--aui-component-button-prominent-padding-x)] text-base",
@@ -38,7 +38,7 @@ const buttonVariants = cva(
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: "primary",
       size: "default",
     },
   }
@@ -46,7 +46,7 @@ const buttonVariants = cva(
 
 function Button({
   className,
-  variant = "default",
+  variant = "primary",
   size = "default",
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {

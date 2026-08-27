@@ -1,14 +1,14 @@
 import { parse as parseYaml } from 'yaml'
-import md from './design-systems/wonhee-product-ui.md'
+import md from './design-systems/aide.md'
 import { isLeaf, resolveAliases, type TokenLeaf } from './design-token-alias.mjs'
 
 /**
- * wonhee-product-ui.md is the source of truth for Aide product chrome tokens.
+ * aide.md is the source of truth for Aide product chrome, /aide-ui, and the
+ * default generated customer UI.
  * This module parses its machine-readable contract into `--aui-*` custom properties
  * that `layout.tsx` injects at :root, so editing the md restyles the product.
  *
- * Generated artifacts and user DESIGN.md are out of scope — see the md's
- * `excluded_consumers`.
+ * An uploaded DESIGN.md overrides generated customer screens only.
  */
 
 type TokenGroup = Record<string, TokenLeaf | unknown>
@@ -77,9 +77,9 @@ const TYPE_SUFFIX: Record<string, string> = {
 
 function extractContract(source: string): Record<string, unknown> {
   const fenced = source.match(/```yaml\n([\s\S]*?)\n```/)
-  if (!fenced) throw new Error('wonhee-product-ui.md: machine-readable yaml block not found')
+  if (!fenced) throw new Error('aide.md: machine-readable yaml block not found')
   const parsed = parseYaml(fenced[1]) as { contract?: Record<string, unknown> }
-  if (!parsed?.contract) throw new Error('wonhee-product-ui.md: contract missing')
+  if (!parsed?.contract) throw new Error('aide.md: contract missing')
   return parsed.contract
 }
 
@@ -129,7 +129,7 @@ function buildComponentEntries(groups: Record<string, unknown>): TokenEntry[] {
   for (const [component, members] of Object.entries(groups)) {
     if (typeof members !== 'object' || members === null) continue
     for (const [key, leaf] of Object.entries(members as TokenGroup)) {
-      if (!isLeaf(leaf)) throw new Error(`wonhee-product-ui.md: component_tokens.${component}.${key} must use $value`)
+      if (!isLeaf(leaf)) throw new Error(`aide.md: component_tokens.${component}.${key} must use $value`)
       entries.push({
         key: `${component}.${key}`,
         cssVar: `--aui-component-${component}-${key}`,
@@ -144,23 +144,25 @@ function buildComponentEntries(groups: Record<string, unknown>): TokenEntry[] {
 const productContract = extractContract(md)
 export const AUI_PRODUCT_CONTRACT = productContract
 const rawProductTokens = productContract.tokens as Record<string, unknown> | undefined
-if (!rawProductTokens) throw new Error('wonhee-product-ui.md: contract.tokens missing')
+if (!rawProductTokens) throw new Error('aide.md: contract.tokens missing')
 const rawComponentTokens = productContract.component_tokens as Record<string, unknown> | undefined
-if (!rawComponentTokens) throw new Error('wonhee-product-ui.md: contract.component_tokens missing')
+if (!rawComponentTokens) throw new Error('aide.md: contract.component_tokens missing')
 const aliasRoots = { ...rawProductTokens, tokens: rawProductTokens, component_tokens: rawComponentTokens }
-const aliasOptions = { label: 'wonhee-product-ui.md' }
+const aliasOptions = { label: 'aide.md' }
 const productTokens = resolveAliases(rawProductTokens, aliasRoots, aliasOptions) as Record<string, unknown>
 const componentTokens = resolveAliases(rawComponentTokens, aliasRoots, aliasOptions) as Record<string, unknown>
 
 const supportedTokenGroups = new Set([...Object.keys(GROUP_PREFIX), 'typography'])
 const unknownTokenGroups = Object.keys(productTokens).filter((group) => !supportedTokenGroups.has(group))
-if (unknownTokenGroups.length) throw new Error(`wonhee-product-ui.md: unsupported token groups: ${unknownTokenGroups.join(', ')}`)
+if (unknownTokenGroups.length) throw new Error(`aide.md: unsupported token groups: ${unknownTokenGroups.join(', ')}`)
 
 export const AUI_TOKEN_ENTRIES: TokenEntry[] = [...buildEntries(productTokens), ...buildComponentEntries(componentTokens)]
+/** `contract.component_tokens`의 그룹 이름 — 컴포넌트별 크기 표를 파생할 때 쓴다. */
+export const AUI_COMPONENT_TOKEN_GROUPS = new Set(Object.keys(componentTokens))
 export const AUI_TOKEN_VALUE = Object.fromEntries(AUI_TOKEN_ENTRIES.map((entry) => [entry.key, entry.value])) as Record<string, string>
 
 const visualization = productContract.visualization as { sections?: AuiShowcaseSection[] } | undefined
-if (!visualization?.sections?.length) throw new Error('wonhee-product-ui.md: contract.visualization.sections missing')
+if (!visualization?.sections?.length) throw new Error('aide.md: contract.visualization.sections missing')
 
 export const AUI_SHOWCASE_SECTIONS: AuiShowcaseSection[] = visualization.sections.map((section) => ({
   id: String(section.id),
@@ -171,9 +173,9 @@ export const AUI_SHOWCASE_SECTIONS: AuiShowcaseSection[] = visualization.section
 }))
 
 const documentation = productContract.documentation as AuiDocumentation | undefined
-if (!documentation?.navigation?.length || !documentation.pages) throw new Error('wonhee-product-ui.md: contract.documentation missing')
+if (!documentation?.navigation?.length || !documentation.pages) throw new Error('aide.md: contract.documentation missing')
 for (const id of documentation.navigation) {
-  if (!documentation.pages[id]) throw new Error(`wonhee-product-ui.md: documentation.navigation references missing page group: ${id}`)
+  if (!documentation.pages[id]) throw new Error(`aide.md: documentation.navigation references missing page group: ${id}`)
 }
 export const AUI_DOCUMENTATION: AuiDocumentation = documentation
 
@@ -187,14 +189,20 @@ export const AUI_AI_GUIDE = {
 }
 const componentRegistry = productContract.component_registry as { categories?: Record<string, string[]> } | undefined
 export const AUI_COMPONENT_CATEGORIES = componentRegistry?.categories ?? {}
-export const AUI_COMPONENTS = (productContract.components ?? {}) as Record<string, Record<string, unknown>>
+const allComponents = (productContract.components ?? {}) as Record<string, Record<string, unknown>>
+const registeredComponentIds = new Set(Object.values(AUI_COMPONENT_CATEGORIES).flat())
+// The unified contract also contains portable abstract families. Product docs,
+// previews, and Playground expose only concrete registry members.
+export const AUI_COMPONENTS = Object.fromEntries(
+  Object.entries(allComponents).filter(([id]) => registeredComponentIds.has(id)),
+) as Record<string, Record<string, unknown>>
 const componentRecipes = (productContract.component_recipes ?? {}) as Record<string, unknown>
 export const AUI_COMPONENT_RECIPE_MODES = (componentRecipes.viewport_modes ?? {}) as Record<string, Record<string, unknown>>
 export const AUI_COMPONENT_RECIPE_FAMILIES = (componentRecipes.families ?? {}) as Record<string, Record<string, unknown>>
 export const AUI_COMPONENT_RECIPES = (componentRecipes.items ?? {}) as Record<string, Record<string, unknown>>
 
 const duplicateShowcaseIds = AUI_SHOWCASE_SECTIONS.filter((section, index, all) => all.findIndex((candidate) => candidate.id === section.id) !== index)
-if (duplicateShowcaseIds.length) throw new Error(`wonhee-product-ui.md: duplicate visualization section ids: ${duplicateShowcaseIds.map((section) => section.id).join(', ')}`)
+if (duplicateShowcaseIds.length) throw new Error(`aide.md: duplicate visualization section ids: ${duplicateShowcaseIds.map((section) => section.id).join(', ')}`)
 
 /** cssVar prefix → showcase group. First match wins; anything else is a colour. */
 const GROUP_OF: Array<[string, string]> = [

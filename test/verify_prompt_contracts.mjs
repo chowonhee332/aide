@@ -105,8 +105,8 @@ for (const phrase of requiredCreonContracts) {
 
 const requiredRhythmAndDensityContracts = [
   'Layout Rhythm Guard — 콘텐츠 종류는 자유롭게, 간격 리듬은 고정',
-  'section gap: 반드시 var(--aide-section-gap) 사용',
-  'card padding: 반드시 var(--aide-card-padding) 사용',
+  'section-gap/card-padding/card-gap/border-radius에 var() 대신 임의 px를 쓰지 말라는 규칙은 위 "Contract-Based Generation Rules"와 동일합니다',
+  'button: 높이는 반드시 var(--aide-button-height) 사용. 버튼에 py-2/py-3/py-4 같은 임의 패딩 금지.',
   '시안 하나의 첫 화면에는 실제 데이터 포인트 10~16개가 보여야 합니다',
   '데이터 포인트란 가격, 시간, 수량, 등급, 상태, 할인율, 적립 수, 쿠폰 수, 거리, 예상 결과, 비교 기준, 배지, 날짜 같은 판단 재료입니다',
   'A/B/C 모두 첫 화면 하단에 다음 섹션의 제목 또는 카드 일부가 보여야 합니다',

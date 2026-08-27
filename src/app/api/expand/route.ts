@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { Browser, Page } from 'puppeteer'
-import { expandToPrototype, resolveImagePlaceholders, type GenerateParams } from '@/lib/gemini'
+import { expandToPrototype, generateProWithImage, resolveImagePlaceholders, type GenerateParams } from '@/lib/gemini'
+import { injectVisualReviewCss, reviewDesignScreenshot } from '@/lib/design-visual-review'
+import { GEMINI_ECONOMY_MODEL } from '@/lib/gemini-model-policy'
 import fs from 'fs'
 import path from 'path'
 
@@ -41,6 +43,23 @@ async function waitForPageImages(page: Page) {
   }).catch(() => null)
 }
 
+function extractPrototypeScreens(html: string): Array<{ id: string; label: string }> {
+  const screens: Array<{ id: string; label: string }> = []
+  const seen = new Set<string>()
+  for (const match of html.matchAll(/<div\b[^>]*>/gi)) {
+    const tag = match[0]
+    const className = tag.match(/\bclass=["']([^"']*)["']/i)?.[1] ?? ''
+    if (!className.split(/\s+/).includes('aide-screen')) continue
+    const id = tag.match(/\bid=["']([^"']+)["']/i)?.[1]
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    const label = tag.match(/\bdata-label=["']([^"']+)["']/i)?.[1]
+      ?? (id === 'screen-home' ? '홈' : id.replace(/^screen-/, ''))
+    screens.push({ id, label })
+  }
+  return screens.length > 0 ? screens : [{ id: 'screen-home', label: '홈' }]
+}
+
 export async function POST(req: NextRequest) {
   let browser: Browser | null = null
   try {
@@ -48,6 +67,9 @@ export async function POST(req: NextRequest) {
     const rawLogo = params.logoDataUrl
     const normalizedParams: GenerateParams = {
       ...params,
+      // The selected home HTML is preserved verbatim. Lite only creates the
+      // subordinate screens and is sufficient for this structured expansion.
+      modelId: GEMINI_ECONOMY_MODEL,
       logoDataUrl: (!rawLogo || !rawLogo.startsWith('data:')) ? getDefaultAideLogoBase64() : rawLogo,
     }
     const apiKey = req.headers.get('x-gemini-key') ?? undefined
@@ -82,7 +104,7 @@ export async function POST(req: NextRequest) {
     console.log('[expand] step3: browser launched, viewport', vpWidth, vpHeight)
     await page.setViewport({ width: vpWidth, height: vpHeight, deviceScaleFactor: 2 })
     const baseTag = '<base href="http://localhost:3000">'
-    const htmlWithBase = html.includes('<base ') ? html : html.replace(/(<head[^>]*>)/i, `$1\n${baseTag}`)
+    let htmlWithBase = html.includes('<base ') ? html : html.replace(/(<head[^>]*>)/i, `$1\n${baseTag}`)
     await page.setContent(htmlWithBase, { waitUntil: 'networkidle0', timeout: 45000 })
     console.log('[expand] step4: content loaded, waiting for fonts')
     await new Promise(r => setTimeout(r, 1500))
@@ -90,15 +112,39 @@ export async function POST(req: NextRequest) {
     await waitForPageImages(page)
     console.log('[expand] step5: taking screenshot')
 
-    const screenshot = await page.screenshot({
+    let screenshot = await page.screenshot({
       type: 'png',
       encoding: 'base64',
       fullPage: false,
       optimizeForSpeed: false,
     })
 
+    let visualReview: Awaited<ReturnType<typeof reviewDesignScreenshot>> | undefined
+    if (normalizedParams.criticalReview && normalizedParams.precomputedDesignIntentPlan) {
+      visualReview = await reviewDesignScreenshot({
+        screenshotBase64: screenshot,
+        html,
+        directionPlan: normalizedParams.precomputedDesignIntentPlan,
+        platform: isWeb ? 'web' : 'mobile',
+        generateVision: (prompt, imageBase64) => generateProWithImage(prompt, imageBase64, 'image/png', apiKey, GEMINI_ECONOMY_MODEL),
+      })
+      if (visualReview.needsPatch) {
+        html = injectVisualReviewCss(html, visualReview)
+        htmlWithBase = html.includes('<base ') ? html : html.replace(/(<head[^>]*>)/i, `$1\n${baseTag}`)
+        await page.setContent(htmlWithBase, { waitUntil: 'domcontentloaded', timeout: 20_000 })
+        await page.evaluate(() => document.fonts.ready.then(() => null)).catch(() => null)
+        screenshot = await page.screenshot({ type: 'png', encoding: 'base64', fullPage: false, optimizeForSpeed: true })
+      }
+    }
+
     console.log('[expand] step6: done')
-    return NextResponse.json({ html, image: `data:image/png;base64,${screenshot}`, imageWarnings })
+    return NextResponse.json({
+      html,
+      image: `data:image/png;base64,${screenshot}`,
+      imageWarnings,
+      visualReview,
+      screens: extractPrototypeScreens(html),
+    })
   } catch (err) {
     const name = err instanceof Error ? err.name : 'unknown'
     const message = err instanceof Error ? err.message : String(err)

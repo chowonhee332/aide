@@ -8,35 +8,20 @@ import {
 } from '@/components/ui/material-icon'
 import { cn } from '@/lib/utils'
 import DotField from '@/components/DotField'
-import type { Question, QuestionnaireResponse, TweakSpec, TweakVariable, AppDomain } from '@/lib/gemini'
+import type { Question, QuestionnaireResponse, TweakSpec, TweakVariable, AppDomain, AsIsPageAnalysis } from '@/lib/gemini'
 import { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY, DOMAIN_HOME_EMPHASIS_OPTIONS } from '@/lib/domain-constants'
-import { getVariantStyles, getVariantInfo } from '@/lib/variant-refs'
+import { getVariantInfo } from '@/lib/variant-refs'
 import { buildDesignIntelligencePlan } from '@/lib/design-intelligence'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import { saveHistoryItem, updateHistoryItem, compressThumbnail, loadHistory, deleteHistoryItem, type HistoryItem } from '@/lib/history'
 import { AIDE_UI, DEFAULT_GENERATED_BRAND_COLOR } from '@/lib/aide-ui'
 import { Button } from '@/components/ui/button'
-
-async function fetchAutoReferenceImage(keyword: string): Promise<string | undefined> {
-  try {
-    const res = await fetch(`/api/reference-search?q=${encodeURIComponent(keyword)}&source=all`)
-    if (!res.ok) return undefined
-    const data = await res.json()
-    if (!data.images?.length) return undefined
-    const preferred = data.images.find((img: { source: string }) => img.source === 'dribbble') ?? data.images[0]
-    const imgRes = await fetch(preferred.url)
-    if (!imgRes.ok) return undefined
-    const blob = await imgRes.blob()
-    return new Promise<string | undefined>(resolve => {
-      const reader = new FileReader()
-      reader.onload = ev => resolve((ev.target?.result as string).split(',')[1] ?? undefined)
-      reader.onerror = () => resolve(undefined)
-      reader.readAsDataURL(blob)
-    })
-  } catch {
-    return undefined
-  }
-}
+import type { DesignCanvasIR, DesignDirection } from '@/lib/design-canvas-ir'
+import { GEMINI_DESIGN_MODEL, GEMINI_DESIGN_MODEL_PRO_EXPERIMENT } from '@/lib/gemini-model-policy'
+import { compileStudioDesignTheme, type StudioDesignTheme, type UIScreenIR, type UIScreenSection, type UIScreenVariant } from '@/lib/ui-screen-ir'
+import { serializeUIScreenToHtml } from '@/lib/ui-screen-serializer'
+import { screenIrToNodeGraph, validateNodeGraph } from '@/lib/ui-node-graph'
+import { UINodeGraphCanvas } from '@/components/UINodeGraphCanvas'
 
 // Aide product chrome tokens. Generated previews use their selected DESIGN.md separately.
 const F = {
@@ -72,6 +57,9 @@ interface GenerateResult {
     intent?: string
     layoutThesis?: string
   }
+  designDirection?: DesignDirection
+  designCanvas?: DesignCanvasIR
+  screenIr?: UIScreenIR
 }
 
 type GenerationEventStatus = 'active' | 'done' | 'error'
@@ -187,69 +175,70 @@ function platformFromIntent(value?: string): 'mobile' | 'web' | null {
   return null
 }
 
-async function readGenerateStream(
+async function readUIScreenStream(
   response: Response,
+  onPatch: (patch: { variant: UIScreenVariant; screen?: Omit<UIScreenIR, 'sections'>; section?: UIScreenSection }) => void,
   onStep?: (label: string) => void,
-  onHtmlChunk?: (partialHtml: string) => void,
-): Promise<GenerateResult> {
-  if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    throw new Error(text || `생성 요청에 실패했습니다. (${response.status})`)
-  }
-
-  const contentType = response.headers.get('content-type') ?? ''
-  if (!response.body || !contentType.includes('text/event-stream')) {
-    const json = await response.json()
-    if (json.error) throw new Error(json.error)
-    return json as GenerateResult
-  }
-
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let result: GenerateResult | null = null
-
+): Promise<{ variants: GenerateResult[]; theme: StudioDesignTheme }> {
+  if (!response.ok || !response.body) throw new Error(await response.text().catch(() => `생성 요청에 실패했습니다. (${response.status})`))
+  const reader = response.body.getReader(); const decoder = new TextDecoder()
+  let buffer = ''; let result: { variants: GenerateResult[]; theme: StudioDesignTheme } | null = null
   const handleBlock = (block: string) => {
-    const lines = block.split('\n')
-    let eventName = 'message'
-    const dataLines: string[] = []
-
-    for (const line of lines) {
+    let eventName = 'message'; const data: string[] = []
+    for (const line of block.split('\n')) {
       if (line.startsWith('event:')) eventName = line.slice(6).trim()
-      if (line.startsWith('data:')) dataLines.push(line.slice(5).trim())
+      if (line.startsWith('data:')) data.push(line.slice(5).trim())
     }
-
-    if (dataLines.length === 0) return
-    const payload = JSON.parse(dataLines.join('\n'))
-    if (eventName === 'step') {
-      if (typeof payload.label === 'string') onStep?.(payload.label)
-      return
-    }
-    if (eventName === 'html_chunk') {
-      if (typeof payload.html === 'string') onHtmlChunk?.(payload.html)
-      return
-    }
-    if (eventName === 'error') {
-      throw new Error(payload.error || '생성 중 오류가 발생했습니다')
-    }
-    if (eventName === 'done') result = payload as GenerateResult
+    if (!data.length) return
+    const payload = JSON.parse(data.join('\n'))
+    if (eventName === 'ui_patch') onPatch(payload)
+    else if (eventName === 'step') onStep?.(payload.label)
+    else if (eventName === 'error') throw new Error(payload.error || '구조화 UI 생성에 실패했습니다.')
+    else if (eventName === 'done') result = payload
   }
-
   while (true) {
-    const { value, done } = await reader.read()
-    if (done) break
+    const { value, done } = await reader.read(); if (done) break
     buffer += decoder.decode(value, { stream: true })
-    const blocks = buffer.split('\n\n')
-    buffer = blocks.pop() ?? ''
-    for (const block of blocks) {
-      if (block.trim()) handleBlock(block)
-    }
+    const blocks = buffer.split('\n\n'); buffer = blocks.pop() ?? ''
+    for (const block of blocks) if (block.trim()) handleBlock(block)
   }
-
-  buffer += decoder.decode()
-  if (buffer.trim()) handleBlock(buffer)
-  if (!result) throw new Error('생성 결과를 받지 못했습니다')
+  buffer += decoder.decode(); if (buffer.trim()) handleBlock(buffer)
+  if (!result) throw new Error('구조화 UI 결과를 받지 못했습니다.')
   return result
+}
+
+async function readLegacyGenerateStream(response: Response, onStep?: (label: string) => void): Promise<GenerateResult> {
+  if (!response.ok || !response.body) throw new Error(await response.text().catch(() => `생성 요청에 실패했습니다. (${response.status})`))
+  const reader = response.body.getReader(); const decoder = new TextDecoder()
+  let buffer = ''; let result: GenerateResult | null = null
+  const handleBlock = (block: string) => {
+    let eventName = 'message'; const data: string[] = []
+    for (const line of block.split('\n')) {
+      if (line.startsWith('event:')) eventName = line.slice(6).trim()
+      if (line.startsWith('data:')) data.push(line.slice(5).trim())
+    }
+    if (!data.length) return
+    const payload = JSON.parse(data.join('\n'))
+    if (eventName === 'step' && typeof payload.label === 'string') onStep?.(payload.label)
+    else if (eventName === 'error') throw new Error(payload.error || 'HTML UI 생성에 실패했습니다.')
+    else if (eventName === 'done') result = payload as GenerateResult
+  }
+  while (true) {
+    const { value, done } = await reader.read(); if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const blocks = buffer.split('\n\n'); buffer = blocks.pop() ?? ''
+    for (const block of blocks) if (block.trim()) handleBlock(block)
+  }
+  buffer += decoder.decode(); if (buffer.trim()) handleBlock(buffer)
+  if (!result) throw new Error('HTML UI 생성 결과를 받지 못했습니다.')
+  return result
+}
+
+function readStoredAsIsAnalysis(): AsIsPageAnalysis | undefined {
+  const raw = sessionStorage.getItem('asIsAnalysis')
+  if (!raw) return undefined
+  try { return JSON.parse(raw) as AsIsPageAnalysis }
+  catch { sessionStorage.removeItem('asIsAnalysis'); return undefined }
 }
 
 function defaultAnswersFromAnalysis(data: QuestionnaireResponse): Record<string, string> {
@@ -267,13 +256,13 @@ function defaultAnswersFromAnalysis(data: QuestionnaireResponse): Record<string,
     ? `직접 입력: ${data.heroImageDecision.heroSubject}`
     : 'AI가 자동 결정'
   // 제거된 질문들 — UI에는 안 나오지만 생성 코드가 여전히 사용하므로 스마트 기본값 유지
-  const primaryJourney = domain === 'health' || domain === 'entertainment' || domain === 'social'
+  const primaryJourney = data.serviceAnalysis?.primaryJourney || (domain === 'health' || domain === 'entertainment' || domain === 'social'
     ? '목표 달성/보상 수령'
     : domain === 'commerce' || domain === 'food'
     ? '신청/구매 전환'
     : domain === 'business'
     ? '데이터 확인'
-    : 'AI가 결정'
+    : 'AI가 결정')
   const firstScreenFocus = domain === 'business' ? '핵심 지표' : domain === 'commerce' || domain === 'food' ? '대표 CTA' : 'AI가 결정'
 
   // 새 질문들 기본값 — AI가 브리프에서 추론한 타겟 우선, 없으면 도메인 폴백
@@ -875,43 +864,16 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const [variantFailed, setVariantFailed] = useState<[boolean, boolean, boolean]>([false, false, false])
   const [isExpandingPrototype, setIsExpandingPrototype] = useState(false)
   const [mainVariants, setMainVariants] = useState<[GenerateResult|null, GenerateResult|null, GenerateResult|null]>([null, null, null])
-  const [streamingHtml, setStreamingHtml] = useState<[string|null, string|null, string|null]>([null, null, null])
+  const [generationEngine, setGenerationEngine] = useState<'node-graph' | 'legacy-html'>('legacy-html')
+  const [streamingScreens, setStreamingScreens] = useState<[UIScreenIR|null, UIScreenIR|null, UIScreenIR|null]>([null, null, null])
+  const [streamingActiveNodes, setStreamingActiveNodes] = useState<[string|null, string|null, string|null]>([null, null, null])
+  const [studioTheme, setStudioTheme] = useState<StudioDesignTheme>(() => compileStudioDesignTheme(''))
   const [pickedVariantIdx, setPickedVariantIdx] = useState<0|1|2|null>(null)
   const [generateError, setGenerateError] = useState('')
   const [generationEvents, setGenerationEvents] = useState<GenerationEvent[]>([])
   const generationIdRef = useRef(0)
   const bgFetchAbortRef = useRef<AbortController | null>(null)
   const tweakRequestHtmlRef = useRef<string | null>(null)
-  const streamingIframeRefs = useRef<[HTMLIFrameElement|null, HTMLIFrameElement|null, HTMLIFrameElement|null]>([null, null, null])
-  const streamingDocOpenedRef = useRef<[boolean, boolean, boolean]>([false, false, false])
-  // 스트리밍 시 이미 write한 누적 길이 — accumulated HTML에서 델타만 write해 중복 방지 (B1)
-  const streamingWrittenLenRef = useRef<[number, number, number]>([0, 0, 0])
-  // accumulated HTML을 받아 델타만 iframe에 흘려보내는 공통 헬퍼 — 매끄러운 "그려지는" 연출
-  const writeStreamDelta = useCallback((idx: 0 | 1 | 2, accumulatedHtml: string) => {
-    const iframe = streamingIframeRefs.current[idx]
-    const doc = iframe?.contentDocument
-    if (!doc) return
-    if (!streamingDocOpenedRef.current[idx]) {
-      doc.open()
-      streamingDocOpenedRef.current[idx] = true
-      streamingWrittenLenRef.current[idx] = 0
-      setStreamingHtml(prev => { const next = [...prev] as [string|null, string|null, string|null]; next[idx] = '1'; return next })
-    }
-    const written = streamingWrittenLenRef.current[idx]
-    if (accumulatedHtml.length > written) {
-      doc.write(accumulatedHtml.slice(written))
-      streamingWrittenLenRef.current[idx] = accumulatedHtml.length
-      // 새 콘텐츠가 그려지는 위치로 부드럽게 스크롤 — Stitch식 "그려지는" 느낌
-      try { doc.documentElement.scrollTop = doc.documentElement.scrollHeight } catch { /* noop */ }
-    }
-  }, [])
-  const closeStreamDoc = useCallback((idx: 0 | 1 | 2) => {
-    const doc = streamingIframeRefs.current[idx]?.contentDocument
-    if (doc && streamingDocOpenedRef.current[idx]) doc.close()
-    streamingDocOpenedRef.current[idx] = false
-    streamingWrittenLenRef.current[idx] = 0
-    setStreamingHtml(prev => { const next = [...prev] as [string|null, string|null, string|null]; next[idx] = null; return next })
-  }, [])
 
   // Screen navigation (step 4)
   const [screens, setScreens] = useState<Array<{ id: string; label: string }>>([])
@@ -971,6 +933,8 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const [historyIndexA, setHistoryIndexA] = useState(-1)
   const [historyB, setHistoryB] = useState<string[]>([])
   const [historyIndexB, setHistoryIndexB] = useState(-1)
+  const [irHistory, setIrHistory] = useState<UIScreenIR[]>([])
+  const [irHistoryIndex, setIrHistoryIndex] = useState(-1)
 
   // GNB history tabs
   const [gnbHistory, setGnbHistory] = useState<HistoryItem[]>([])
@@ -1006,8 +970,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
   const activeHistory = activeVariant === 0 ? historyA : historyB
   const activeHistoryIndex = activeVariant === 0 ? historyIndexA : historyIndexB
-  const canUndo = activeHistoryIndex > 0
-  const canRedo = activeHistoryIndex < activeHistory.length - 1
+  const hasActiveIr = Boolean(result?.screenIr)
+  const canUndo = hasActiveIr ? irHistoryIndex > 0 : activeHistoryIndex > 0
+  const canRedo = hasActiveIr ? irHistoryIndex >= 0 && irHistoryIndex < irHistory.length - 1 : activeHistoryIndex < activeHistory.length - 1
 
   // Computed HTML with state + variable replacements applied
   const displayHtml = useMemo(() => {
@@ -1022,6 +987,17 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
   }, [result, tweakSpec, activeStateId, varValues, debouncedBrandColor, editMode])
 
   // Auto-start from props (triggered by landing page submit)
+  useEffect(() => {
+    const savedEngine = localStorage.getItem('aide_generation_engine')
+    if (savedEngine === 'legacy-html' || savedEngine === 'node-graph') setGenerationEngine(savedEngine)
+  }, [])
+
+  const changeGenerationEngine = useCallback((engine: 'node-graph' | 'legacy-html') => {
+    setGenerationEngine(engine)
+    try { localStorage.setItem('aide_generation_engine', engine) }
+    catch { /* 저장공간이 가득 차도 현재 세션의 엔진 변경은 유지한다. */ }
+  }, [])
+
   useEffect(() => {
     // Load from history
     if (historyId) {
@@ -1252,6 +1228,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
   }, [])
 
   const handleUndo = useCallback(() => {
+    if (variants[activeVariant]?.screenIr && irHistoryIndex > 0) {
+      const idx = irHistoryIndex - 1; const screenIr = irHistory[idx]
+      setIrHistoryIndex(idx)
+      setVariants(prev => { const next = [...prev] as [GenerateResult|null,GenerateResult|null]; if (next[activeVariant]) next[activeVariant] = { ...next[activeVariant]!, screenIr, html: serializeUIScreenToHtml(screenIr, studioTheme) }; return next })
+      return
+    }
     if (activeVariant === 0) {
       if (historyIndexA <= 0) return
       const idx = historyIndexA - 1
@@ -1272,9 +1254,15 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       })
     }
     setSelectedStyles(null)
-  }, [activeVariant, historyIndexA, historyIndexB, historyA, historyB])
+  }, [activeVariant, historyIndexA, historyIndexB, historyA, historyB, irHistory, irHistoryIndex, studioTheme, variants])
 
   const handleRedo = useCallback(() => {
+    if (variants[activeVariant]?.screenIr && irHistoryIndex < irHistory.length - 1) {
+      const idx = irHistoryIndex + 1; const screenIr = irHistory[idx]
+      setIrHistoryIndex(idx)
+      setVariants(prev => { const next = [...prev] as [GenerateResult|null,GenerateResult|null]; if (next[activeVariant]) next[activeVariant] = { ...next[activeVariant]!, screenIr, html: serializeUIScreenToHtml(screenIr, studioTheme) }; return next })
+      return
+    }
     if (activeVariant === 0) {
       if (historyIndexA >= historyA.length - 1) return
       const idx = historyIndexA + 1
@@ -1295,7 +1283,26 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       })
     }
     setSelectedStyles(null)
-  }, [activeVariant, historyIndexA, historyIndexB, historyA, historyB])
+  }, [activeVariant, historyIndexA, historyIndexB, historyA, historyB, irHistory, irHistoryIndex, studioTheme, variants])
+
+  const commitScreenIr = useCallback((screenIr: UIScreenIR) => {
+    setVariants(prev => { const next = [...prev] as [GenerateResult|null,GenerateResult|null]; if (next[activeVariant]) next[activeVariant] = { ...next[activeVariant]!, screenIr, html: serializeUIScreenToHtml(screenIr, studioTheme) }; return next })
+    setIrHistory(prev => [...prev.slice(0, irHistoryIndex + 1), screenIr].slice(-30))
+    setIrHistoryIndex(prev => Math.min(29, prev + 1))
+  }, [activeVariant, irHistoryIndex, studioTheme])
+
+  const moveIrSection = useCallback((sectionId: string, offset: -1 | 1) => {
+    const current = variants[activeVariant]?.screenIr; if (!current) return
+    const index = current.sections.findIndex(section => section.id === sectionId); const target = index + offset
+    if (index < 0 || target < 0 || target >= current.sections.length) return
+    const sections = [...current.sections]; [sections[index], sections[target]] = [sections[target], sections[index]]
+    commitScreenIr({ ...current, sections })
+  }, [activeVariant, commitScreenIr, variants])
+
+  const removeIrSection = useCallback((sectionId: string) => {
+    const current = variants[activeVariant]?.screenIr; if (!current || current.sections.length <= 1) return
+    commitScreenIr({ ...current, sections: current.sections.filter(section => section.id !== sectionId) })
+  }, [activeVariant, commitScreenIr, variants])
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -1369,41 +1376,69 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     if (item.preset && item.preset in DESIGN_PRESETS) setDesignPreset(item.preset as DesignPreset)
     setPlatform(guessPlatform(item))
     if (item.board) {
-      const boardVariantList = (item.board.mainVariants ?? []).slice(0, 3).map(v => v ? {
+      if (item.board.designMd) setCustomDesignMd(item.board.designMd)
+      setLogoDataUrl(item.board.logoDataUrl ?? DEFAULT_AIDE_LOGO_SRC)
+      setBrandColors(item.board.brandColors ?? [])
+      if (item.board.generationEngine) changeGenerationEngine(item.board.generationEngine)
+      const restoredQuestionnaire = item.board.questionnaire as QuestionnaireResponse | null | undefined
+      setQuestionnaire(restoredQuestionnaire ?? null)
+      setAnswers(item.board.answers ?? (restoredQuestionnaire ? defaultAnswersFromAnalysis(restoredQuestionnaire) : {}))
+      const sourceContext = item.board.sourceContext
+      if (sourceContext) {
+        const restoreSessionValue = (key: string, value: string | undefined) => {
+          if (value) sessionStorage.setItem(key, value)
+          else sessionStorage.removeItem(key)
+        }
+        restoreSessionValue('prdDoc', sourceContext.prdDoc)
+        restoreSessionValue('iaImage', sourceContext.iaImage)
+        restoreSessionValue('iaText', sourceContext.iaText)
+        restoreSessionValue('referenceImage', sourceContext.referenceImage)
+        restoreSessionValue('referenceImageKind', sourceContext.referenceImageKind)
+        if (sourceContext.asIsAnalysis) sessionStorage.setItem('asIsAnalysis', JSON.stringify(sourceContext.asIsAnalysis))
+        else sessionStorage.removeItem('asIsAnalysis')
+      }
+      const boardVariantList = (item.board.mainVariants ?? []).slice(0, 3).map(v => v && !v.isCanvasPreview ? {
         html: v.html,
         image: v.image ?? item.thumbnail,
         imageWarnings: v.imageWarnings,
         variantDescription: v.variantDescription as GenerateResult['variantDescription'],
+        designDirection: v.designDirection as DesignDirection | undefined,
+        designCanvas: v.designCanvas as DesignCanvasIR | undefined,
+        screenIr: v.screenIr as UIScreenIR | undefined,
       } : null)
       const boardVariants: [GenerateResult | null, GenerateResult | null, GenerateResult | null] = [
         boardVariantList[0] ?? null,
         boardVariantList[1] ?? null,
         boardVariantList[2] ?? null,
       ]
-      const prototypeHtml = item.board.prototypeHtml ?? item.html
+      const firstRealVariant = boardVariants.find((variant): variant is GenerateResult => !!variant)
+      const savedPrototypeHtml = item.board.prototypeHtml ?? ''
+      const restoredStage = item.board.stage ?? (savedPrototypeHtml ? 'prototype-ready' : 'variants-ready')
+      const editorHtml = savedPrototypeHtml || firstRealVariant?.html || ''
       const prototypeImage = item.board.prototypeThumbnail ?? item.thumbnail
-      const loadedPrototype: GenerateResult = { html: prototypeHtml, image: prototypeImage }
       setMainVariants(boardVariants)
+      setStudioTheme(compileStudioDesignTheme(item.board.designMd ?? ''))
       setPickedVariantIdx(item.board.pickedVariantIdx ?? null)
-      setVariants([loadedPrototype, null])
+      setVariants(editorHtml ? [{ html: editorHtml, image: prototypeImage }, null] : [null, null])
       setActiveVariant(0)
-      setHistoryA([prototypeHtml]); setHistoryIndexA(0)
+      setHistoryA(editorHtml ? [editorHtml] : []); setHistoryIndexA(editorHtml ? 0 : -1)
       setHistoryB([]); setHistoryIndexB(-1)
       setScreens(item.board.prototypeScreens ?? [])
       setActiveScreenId(item.board.prototypeScreens?.[0]?.id ?? '')
-      const extractedColor = prototypeHtml.match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? 'var(--aui-primary)'
+      const extractedColor = editorHtml.match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? 'var(--aui-primary)'
       setBrandColor(extractedColor); setDebouncedBrandColor(extractedColor)
       setCurrentHistoryId(item.id)
       setCurrentBoardHistoryId(item.id)
       setBSceneImage(item.board.bSceneImage ?? null)
-      if (item.board.questionnaire) setQuestionnaire(item.board.questionnaire as QuestionnaireResponse)
       setBHeroStyle('object')
       setVariantGenerationStarted(boardVariants.some(Boolean))
       setEditMode(false)
       setSelectedStyles(null)
       setChatMessages([])
       setZoom(60)
-      setStep(item.board.prototypeHtml ? 4 : 3)
+      // Explicitly restore the user's next action. A/B/C-only histories return
+      // to the comparison board so "이 시안으로 진행" remains available.
+      setStep(restoredStage === 'prototype-ready' ? 4 : 3)
       return
     }
     const loaded: GenerateResult = { html: item.html, image: item.thumbnail }
@@ -1420,7 +1455,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     setChatMessages([])
     setZoom(60)
     setStep(4)
-  }, [])
+  }, [changeGenerationEngine])
 
   const commitIframeHtml = useCallback(() => {
     const doc = iframeRef.current?.contentDocument
@@ -1596,25 +1631,16 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     }
   }, [])
 
-  const readAsIsAnalysis = () => {
-    const raw = sessionStorage.getItem('asIsAnalysis')
-    if (!raw) return undefined
-    try {
-      return JSON.parse(raw)
-    } catch {
-      sessionStorage.removeItem('asIsAnalysis')
-      return undefined
-    }
-  }
-
-  const buildGenerationContext = useCallback(() => {
-    if (!questionnaire) return null
+  const buildGenerationContext = useCallback((questionnaireOverride = questionnaire, answersOverride = answers) => {
+    if (!questionnaireOverride) return null
+    const activeQuestionnaire = questionnaireOverride
+    const activeAnswers = answersOverride
 
     // hero_3d questionnaire answer takes priority
-    const hero3dAnswer = typeof answers['hero_3d'] === 'string' ? answers['hero_3d'] : ''
+    const hero3dAnswer = typeof activeAnswers['hero_3d'] === 'string' ? activeAnswers['hero_3d'] : ''
     // AI가 분석 단계에서 정한 히어로 소재(serviceAnalysis.heroVisualSubject)를 정규식 매핑보다 우선 사용
-    const aiHeroSubject = questionnaire.serviceAnalysis?.heroVisualSubject || undefined
-    const analyzeHeroSubject = questionnaire.heroImageDecision?.heroSubject || aiHeroSubject || questionnaire.heroImageDecision?.prompt || undefined
+    const aiHeroSubject = activeQuestionnaire.serviceAnalysis?.heroVisualSubject || undefined
+    const analyzeHeroSubject = activeQuestionnaire.heroImageDecision?.heroSubject || aiHeroSubject || activeQuestionnaire.heroImageDecision?.prompt || undefined
     let heroSubject: string | undefined
     if (hero3dAnswer.startsWith('직접 입력: ')) {
       heroSubject = hero3dAnswer.replace('직접 입력: ', '').trim() || undefined
@@ -1624,20 +1650,20 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     // "3D 생성 안 함" → heroSubject remains undefined, needsScene3d = false
     const wants3D = hero3dAnswer !== '3D 생성 안 함'
     // brief(한국어 전체)로 폴백하면 정규식이 깎아내므로, AI subject를 먼저 쓴다
-    const heroPrompt = heroSubject || aiHeroSubject || (wants3D && questionnaire.heroImageDecision?.generate ? brief : undefined)
-    const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
-    const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
-    const needsScene3d = wants3D && Boolean(heroSubject || questionnaire.heroImageDecision?.generate || questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt)
+    const heroPrompt = heroSubject || aiHeroSubject || (wants3D && activeQuestionnaire.heroImageDecision?.generate ? brief : undefined)
+    const domainFromAnswer = typeof activeAnswers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[activeAnswers['domain']] : undefined
+    const effectiveDomain = (domainFromAnswer ?? activeQuestionnaire.domain ?? 'other') as AppDomain
+    const needsScene3d = wants3D && Boolean(heroSubject || activeQuestionnaire.heroImageDecision?.generate || activeQuestionnaire.heroImageDecision?.heroSubject || activeQuestionnaire.heroImageDecision?.prompt)
     const { generationPlan, visualPolicies, sharedVisualSubject } = buildDesignIntelligencePlan({
       brief,
       domain: effectiveDomain,
       platform,
-      projectSummary: questionnaire.projectSummary,
-      answers,
+      projectSummary: activeQuestionnaire.projectSummary,
+      answers: activeAnswers,
       heroSubject,
       heroPrompt,
       needsScene3d,
-      serviceAnalysis: questionnaire.serviceAnalysis,
+      serviceAnalysis: activeQuestionnaire.serviceAnalysis,
     })
     return { heroSubject, heroPrompt, effectiveDomain, sharedVisualSubject, generationPlan, visualPolicies }
   }, [answers, brief, platform, questionnaire])
@@ -1662,20 +1688,38 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     if (!thumbnailSource || !html) return null
 
     const thumbnail = await compressThumbnail(thumbnailSource)
+    const storedVariants = await Promise.all(variantsSnapshot.map(async variant => variant ? {
+      html: variant.html,
+      image: variant.image ? await compressThumbnail(variant.image) : undefined,
+      imageWarnings: variant.imageWarnings,
+      variantDescription: variant.variantDescription,
+      designDirection: variant.designDirection,
+      designCanvas: variant.designCanvas,
+      screenIr: variant.screenIr,
+    } : null))
     const boardPayload: NonNullable<HistoryItem['board']> = {
+      stage: options?.prototypeHtml ? 'prototype-ready' : 'variants-ready',
       designSystemName: designSystemDisplayName,
       designMd: customDesignMd ?? DESIGN_PRESETS[designPreset].md,
-      mainVariants: variantsSnapshot.map(variant => variant ? {
-        html: variant.html,
-        image: variant.image,
-        imageWarnings: variant.imageWarnings,
-        variantDescription: variant.variantDescription,
-      } : null),
+      mainVariants: storedVariants,
       pickedVariantIdx: options?.pickedIdx ?? pickedVariantIdx,
       prototypeHtml: options?.prototypeHtml ?? null,
       prototypeThumbnail: options?.prototypeImage ? thumbnail : null,
       prototypeScreens: options?.prototypeScreens ?? screens,
       questionnaire,
+      answers,
+      generationEngine,
+      bSceneImage,
+      logoDataUrl,
+      brandColors,
+      sourceContext: {
+        asIsAnalysis: readStoredAsIsAnalysis(),
+        prdDoc: sessionStorage.getItem('prdDoc') ?? undefined,
+        iaImage: sessionStorage.getItem('iaImage') ?? undefined,
+        iaText: sessionStorage.getItem('iaText') ?? undefined,
+        referenceImage: sessionStorage.getItem('referenceImage') ?? undefined,
+        referenceImageKind: sessionStorage.getItem('referenceImageKind') ?? undefined,
+      },
     }
     const item = {
       brief,
@@ -1701,7 +1745,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       refreshBoardHistoryTabs()
     }
     return newId
-  }, [brief, currentBoardHistoryId, customDesignMd, designPreset, designSystemDisplayName, mainVariants, pickedVariantIdx, platform, questionnaire, refreshBoardHistoryTabs, screens])
+  }, [answers, bSceneImage, brandColors, brief, currentBoardHistoryId, customDesignMd, designPreset, designSystemDisplayName, generationEngine, logoDataUrl, mainVariants, pickedVariantIdx, platform, questionnaire, refreshBoardHistoryTabs, screens])
 
   const clearGeneratedBoard = useCallback(() => {
     setVariantGenerationStarted(false)
@@ -1719,6 +1763,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     setIsGeneratingC(false)
     setGenerateError('')
     setMainVariants([null, null, null])
+    setStreamingScreens([null, null, null])
+    setStreamingActiveNodes([null, null, null])
+    setStudioTheme(compileStudioDesignTheme(effectiveDesignMd))
     setBSceneImage(null)
     setBHeroStyle('object')
     setVariantContentHeights([null, null, null])
@@ -1748,186 +1795,161 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     setStep(3)
     const genId = ++generationIdRef.current
     try {
-      const asIsAnalysis = readAsIsAnalysis()
-      const modelId = sessionStorage.getItem('aide_model') ?? 'gemini-3.1-pro-preview'
-      const prdDocFromStorage = sessionStorage.getItem('prdDoc') ?? undefined
-      const iaImageFromStorage = sessionStorage.getItem('iaImage') ?? undefined
-      const iaTextFromStorage = sessionStorage.getItem('iaText') ?? undefined
       const generationContext = buildGenerationContext()
       if (!generationContext) return
-      const { heroSubject, heroPrompt, effectiveDomain, sharedVisualSubject, generationPlan, visualPolicies } = generationContext
-      let referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
-      const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
-      if (!referenceImageBase64 && generationPlan?.referenceSearchKeyword) {
-        referenceImageBase64 = await fetchAutoReferenceImage(generationPlan.referenceSearchKeyword)
-      }
-      const baseParams = { designMd: effectiveDesignMd, brief, answers, projectSummary: questionnaire.projectSummary, logoDataUrl, brandColors: brandColors.length > 0 ? brandColors : undefined, mainOnly: true, referenceImageBase64, referenceImageKind, asIsAnalysis, platform, modelId, heroSubject, sharedVisualSubject, generationPlan, qualityMode: 'draft' as const, criticalReview: false, prdDoc: prdDocFromStorage, iaImageBase64: iaImageFromStorage, iaText: iaTextFromStorage }
-      const variantStyles = getVariantStyles(effectiveDomain)
+      const { effectiveDomain } = generationContext
       const headers = apiHeaders()
-
-      // 시안 A, B, C를 순차 생성해 브라우저/이미지 생성 피크 사용량을 낮춘다.
-      bgFetchAbortRef.current?.abort()
-      const abort = new AbortController()
-      bgFetchAbortRef.current = abort
+      let selectedDirections: DesignDirection[] = []
+      try {
+        appendGenerationEvent({ kind: 'design', title: '서로 다른 6개 디자인 방향 탐색', status: 'done' })
+        const directionResponse = await fetch('/api/generate-directions', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            brief,
+            projectSummary: questionnaire.projectSummary,
+            platform,
+            domain: effectiveDomain,
+            targetAudience: questionnaire.serviceAnalysis?.targetAudience,
+            primaryJourney: questionnaire.serviceAnalysis?.primaryJourney,
+            coreObjects: questionnaire.serviceAnalysis?.coreObjects,
+            keyDataPoints: questionnaire.serviceAnalysis?.keyDataPoints,
+            contentSeed: questionnaire.serviceAnalysis?.contentSeed,
+            designSystemSummary: effectiveDesignMd.slice(0, 1600),
+            visualRoles: generationContext.visualPolicies.map(policy => policy === 'real-photo' ? 'photo' : policy === 'no-image' ? 'data' : '3d'),
+          }),
+        })
+        if (directionResponse.ok) {
+          const directionData = await directionResponse.json() as { selected?: DesignDirection[] }
+          selectedDirections = directionData.selected ?? []
+        }
+      } catch (error) {
+        console.warn('[design-directions]', error)
+      }
+      if (generationIdRef.current !== genId || selectedDirections.length < 3) {
+        throw new Error('디자인 방향을 준비하지 못했습니다.')
+      }
 
       const variantLetters = ['A', 'B', 'C'] as const
-      const setVariantLoading = (idx: 0 | 1 | 2, loading: boolean) => {
-        if (idx === 0) setIsGenerating(loading)
-        else if (idx === 1) setIsGeneratingB(loading)
-        else setIsGeneratingC(loading)
-      }
-      const fetchVariant = async (variantStyle: string, idx: 0 | 1 | 2): Promise<GenerateResult | null> => {
-        const variantLetter = variantLetters[idx]
-        const visualPolicy = visualPolicies[idx]
-        const sharedVisualMode = visualPolicy === 'scene-3d' || visualPolicy === 'creon-object-3d'
-          ? '3d' as const
-          : visualPolicy === 'real-photo'
-            ? 'photo' as const
-            : 'none' as const
-        // 어떤 policy든 씬/오브젝트 플레이스홀더가 HTML에 들어갈 수 있으므로 항상 full fallback 사용
-        const variantHeroPrompt = heroPrompt || sharedVisualSubject || brief
-        appendGenerationEvent({
-          kind: 'design',
-          title: `시안 ${variantLetter} 방향 설계 시작`,
-          detail: variantStyle,
-          status: 'done',
-          variant: variantLetter,
-        })
-        const bodyParams = { ...baseParams, domain: effectiveDomain, variantStyle, visualPolicy, sharedVisualMode, heroImagePrompt: variantHeroPrompt }
-        try {
-          const res = await fetch('/api/generate', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(bodyParams),
-            signal: abort.signal,
-          })
-          const json = await readGenerateStream(
-            res,
-            (label) => {
-              const kind: GenerationEventKind =
-                label.includes('이미지') ? 'image'
-                : label.includes('스크린샷') ? 'render'
-                : label.includes('검수') || label.includes('개선') ? 'review'
-                : label.includes('코드') ? 'artifact'
-                : label.includes('인텐트') || label.includes('구조') ? 'think'
-                : 'design'
-              appendGenerationEvent({
-                kind,
-                title: `시안 ${variantLetter} · ${label}`,
-                status: 'done',
-                variant: variantLetter,
-              })
-            },
-            (partialHtml) => writeStreamDelta(idx, partialHtml),
-          )
-          appendGenerationEvent({
-            kind: 'artifact',
-            title: `Created Design ${variantLetter}`,
-            detail: json.variantDescription?.layoutThesis ?? json.variantDescription?.intent ?? '메인 화면 시안 생성 완료',
-            status: 'done',
-            variant: variantLetter,
-          })
-          return json
-        } catch (err) {
-          if ((err as Error)?.name === 'AbortError') return null
-          const errMsg = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다'
-          const isRetryable = /429|rate|quota|overload|timeout/i.test(errMsg)
-          if (isRetryable) {
-            appendGenerationEvent({ kind: 'design', title: `시안 ${variantLetter} 재시도 중...`, status: 'done', variant: variantLetter })
-            await new Promise(r => setTimeout(r, 3000))
-            try {
-              return await (async () => {
-                const res2 = await fetch('/api/generate', {
-                  method: 'POST', headers,
-                  body: JSON.stringify(bodyParams),
-                  signal: abort.signal,
-                })
-                return await readGenerateStream(res2, () => {})
-              })()
-            } catch { /* fallthrough to null */ }
-          }
-          appendGenerationEvent({
-            kind: 'error',
-            title: `시안 ${variantLetter} 생성 실패`,
-            detail: errMsg,
-            status: 'error',
-            variant: variantLetter,
-          })
-          return null
-        }
-      }
-
-      const sequence: Array<[string, 0 | 1 | 2]> = [
-        [variantStyles[0], 0],
-        [variantStyles[1], 1],
-        [variantStyles[2], 2],
-      ]
       const boardVariants: [GenerateResult | null, GenerateResult | null, GenerateResult | null] = [null, null, null]
-      const completed: Array<{ letter: typeof variantLetters[number]; result: GenerateResult }> = []
+      const abort = new AbortController()
+      bgFetchAbortRef.current?.abort()
+      bgFetchAbortRef.current = abort
+      setIsGenerating(true); setIsGeneratingB(true); setIsGeneratingC(true)
 
-      const runVariant = async (variantStyle: string, idx: 0 | 1 | 2) => {
+      if (generationEngine === 'legacy-html') {
+        appendGenerationEvent({ kind: 'artifact', title: '기존 HTML 고품질 엔진으로 생성', detail: 'Node Graph 변환 없이 세 시안을 독립적으로 디자인합니다.', status: 'done' })
+        const asIsAnalysis = readStoredAsIsAnalysis()
+        const visualPolicies = generationContext.visualPolicies
+        const htmlResults = await Promise.allSettled(selectedDirections.slice(0, 3).map(async (direction, idx) => {
+          const letter = variantLetters[idx]
+          // 임시 실험: A안만 Pro로 생성해 flash 대비 품질 차이를 비교한다.
+          const modelId = idx === 0 ? GEMINI_DESIGN_MODEL_PRO_EXPERIMENT : GEMINI_DESIGN_MODEL
+          const response = await fetch('/api/generate', {
+            method: 'POST', headers, signal: abort.signal,
+            body: JSON.stringify({
+              designMd: effectiveDesignMd,
+              brief,
+              answers,
+              projectSummary: questionnaire.projectSummary,
+              logoDataUrl: logoDataUrl === DEFAULT_AIDE_LOGO_SRC ? undefined : logoDataUrl,
+              brandColors: brandColors.length ? brandColors : undefined,
+              mainOnly: true,
+              platform,
+              modelId,
+              domain: effectiveDomain,
+              generationPlan: generationContext.generationPlan,
+              heroSubject: generationContext.heroSubject,
+              heroImagePrompt: generationContext.heroPrompt,
+              sharedVisualSubject: generationContext.sharedVisualSubject,
+              visualPolicy: visualPolicies[idx],
+              qualityMode: 'draft',
+              criticalReview: false,
+              asIsAnalysis,
+              prdDoc: sessionStorage.getItem('prdDoc') ?? undefined,
+              iaImageBase64: sessionStorage.getItem('iaImage') ?? undefined,
+              iaText: sessionStorage.getItem('iaText') ?? undefined,
+              referenceImageBase64: sessionStorage.getItem('referenceImage') ?? undefined,
+              referenceImageKind: sessionStorage.getItem('referenceImageKind') ?? undefined,
+              variantStyle: `시안 ${letter} · ${direction.name}\n${direction.thesis}\n구도: ${direction.composition}\n서명 요소: ${direction.signatureMove}\n금지: ${direction.avoid.join(', ')}`,
+              precomputedDesignIntentPlan: JSON.stringify(direction),
+            }),
+          })
+          const result = await readLegacyGenerateStream(response, label => appendGenerationEvent({ kind: label.includes('이미지') ? 'image' : label.includes('스크린샷') ? 'render' : 'design', title: `시안 ${letter} · ${label}`, status: 'done', variant: letter }))
+          boardVariants[idx] = { ...result, designDirection: direction }
+          setMainVariants(previous => { const next = [...previous] as [GenerateResult|null, GenerateResult|null, GenerateResult|null]; next[idx] = boardVariants[idx]; return next })
+          if (idx === 0) setIsGenerating(false)
+          if (idx === 1) setIsGeneratingB(false)
+          if (idx === 2) setIsGeneratingC(false)
+          return result
+        }))
         if (generationIdRef.current !== genId || abort.signal.aborted) return
-        setVariantLoading(idx, true)
-        const json = await fetchVariant(variantStyle, idx)
-        setVariantLoading(idx, false)
-        if (!json) {
-          if (generationIdRef.current === genId && !abort.signal.aborted) {
-            setVariantFailed(prev => { const n: [boolean, boolean, boolean] = [prev[0], prev[1], prev[2]]; n[idx] = true; return n })
-          }
-          return
+        setIsGenerating(false); setIsGeneratingB(false); setIsGeneratingC(false)
+        const failedVariants = htmlResults.map(result => result.status === 'rejected') as [boolean, boolean, boolean]
+        setVariantFailed(failedVariants)
+        const completedCount = htmlResults.filter(result => result.status === 'fulfilled').length
+        if (completedCount > 0) {
+          persistBoardHistory({ mainVariantsOverride: boardVariants }).catch(() => {})
+          appendGenerationEvent({ kind: 'summary', title: `${questionnaire.projectSummary}의 HTML 디자인 시안 ${completedCount}개를 완성했습니다`, detail: selectedDirections.map((direction, idx) => boardVariants[idx] ? `시안 ${variantLetters[idx]}: ${direction.name}` : `시안 ${variantLetters[idx]}: 생성 실패`).join('\n'), status: 'done' })
+          if (completedCount < 3) setGenerateError('일부 시안 생성에 실패했습니다. 완성된 시안은 그대로 선택하거나 실패한 시안을 다시 생성할 수 있습니다.')
+        } else {
+          const firstFailure = htmlResults.find(result => result.status === 'rejected')
+          throw firstFailure?.status === 'rejected' ? firstFailure.reason : new Error('시안 생성에 실패했습니다.')
         }
-        if (generationIdRef.current !== genId || abort.signal.aborted) return
-        boardVariants[idx] = json
-        completed.push({ letter: variantLetters[idx], result: json })
-        setMainVariants(prev => {
-          const next = [...prev] as [GenerateResult | null, GenerateResult | null, GenerateResult | null]
-          next[idx] = json
+        return
+      }
+
+      appendGenerationEvent({ kind: 'artifact', title: '구조화 UI 데이터 생성 시작', detail: 'HTML 없이 화면 블록을 순서대로 설계합니다.', status: 'done' })
+      const response = await fetch('/api/generate-ui-ir', {
+        method: 'POST', headers, signal: abort.signal,
+        body: JSON.stringify({
+          brief, projectSummary: questionnaire.projectSummary, platform, designMd: effectiveDesignMd,
+          directions: selectedDirections, modelId: GEMINI_DESIGN_MODEL,
+          contentSeed: questionnaire.serviceAnalysis?.contentSeed,
+          coreObjects: questionnaire.serviceAnalysis?.coreObjects,
+          keyDataPoints: questionnaire.serviceAnalysis?.keyDataPoints,
+          shellContract: readStoredAsIsAnalysis()?.shellContract,
+        }),
+      })
+      const data = await readUIScreenStream(response, patch => {
+        const idx = ({ A: 0, B: 1, C: 2 } as const)[patch.variant]
+        setStreamingScreens(previous => {
+          const next = [...previous] as [UIScreenIR|null, UIScreenIR|null, UIScreenIR|null]
+          if (patch.screen) next[idx] = { ...patch.screen, sections: [] }
+          if (patch.section && next[idx]) next[idx] = { ...next[idx]!, sections: [...next[idx]!.sections, patch.section] }
           return next
         })
-        // 스트리밍 document 닫기
-        closeStreamDoc(idx)
-        // B 완료 직후 씬 이미지만 백그라운드 생성
-        if (idx === 1) {
-          const sceneSubject = heroPrompt || sharedVisualSubject || brief
-          setIsGeneratingBScene(true)
-          fetch('/api/generate-hero-image', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ subject: sceneSubject, designMd: effectiveDesignMd }),
-            signal: abort.signal,
-          })
-            .then(async r => {
-              const json = await r.json() as { base64?: string; mimeType?: string; error?: string }
-              if (json.error) { console.warn('[B scene image]', json.error); return }
-              if (json.base64 && json.mimeType && generationIdRef.current === genId && !abort.signal.aborted) {
-                const sceneImg = { base64: json.base64, mimeType: json.mimeType }
-                setBSceneImage(sceneImg)
-                if (currentBoardHistoryIdRef.current) {
-                  updateHistoryItem(currentBoardHistoryIdRef.current, { board: { bSceneImage: sceneImg } }).catch(() => {})
-                }
-              }
-            })
-            .catch(err => console.warn('[B scene image fetch]', err))
-            .finally(() => setIsGeneratingBScene(false))
-        }
-      }
+        setStreamingActiveNodes(previous => {
+          const next = [...previous] as [string|null, string|null, string|null]
+          next[idx] = patch.section?.id ?? (patch.screen ? 'root' : null)
+          return next
+        })
+        if (patch.section) appendGenerationEvent({ kind: 'artifact', title: `시안 ${patch.variant} · ${patch.section.title ?? patch.section.type}`, status: 'done', variant: patch.variant })
+      })
+      if (generationIdRef.current !== genId || abort.signal.aborted) return
+      setStudioTheme(data.theme)
+      data.variants.slice(0, 3).forEach((result, idx) => {
+        boardVariants[idx] = { ...result, designDirection: selectedDirections[idx] }
+      })
+      setMainVariants(boardVariants)
+      setStreamingScreens([null, null, null])
+      setStreamingActiveNodes([null, null, null])
+      setIsGenerating(false); setIsGeneratingB(false); setIsGeneratingC(false)
 
-      // 3개 시안을 병렬로 생성 — 각자 자기 iframe에 동시에 스트리밍 (Gemini 세마포어가 동시성 3으로 제한)
-      await Promise.all(sequence.map(([variantStyle, idx]) => runVariant(variantStyle, idx)))
-
-      if (generationIdRef.current === genId && !abort.signal.aborted && completed.length > 0) {
+      if (generationIdRef.current === genId && !abort.signal.aborted && boardVariants.some(Boolean)) {
         persistBoardHistory({ mainVariantsOverride: boardVariants }).catch(() => {})
         appendGenerationEvent({
           kind: 'summary',
-          title: `${questionnaire.projectSummary}의 ${completed.length}가지 디자인 시안을 완성했습니다`,
-          detail: completed
-            .map(item => `시안 ${item.letter}: ${item.result.variantDescription?.strategy ?? item.result.variantDescription?.intent ?? '서로 다른 UX 방향으로 구성'}`)
-            .join('\n'),
+          title: `${questionnaire.projectSummary}의 구조화 UI 시안을 완성했습니다`,
+          detail: boardVariants.map((variant, idx) => variant ? `시안 ${variantLetters[idx]}: ${variant.variantDescription?.strategy ?? selectedDirections[idx].name}` : '').filter(Boolean).join('\n'),
           status: 'done',
         })
       }
     } catch (err) {
       setGenerateError(err instanceof Error ? err.message : '오류가 발생했습니다')
+      setVariantFailed([true, true, true])
+      setStreamingScreens([null, null, null])
+      setStreamingActiveNodes([null, null, null])
     } finally {
       setIsGenerating(false)
       setIsGeneratingB(false)
@@ -1938,46 +1960,81 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
   const handlePickVariant = async (idx: 0|1|2) => {
     const baseChosen = mainVariants[idx]
-    const chosenHtml = idx === 1 && bHeroStyle === 'scene' && bSceneImage && baseChosen
-      ? patchHeroToScene(baseChosen.html, bSceneImage.base64, bSceneImage.mimeType)
-      : baseChosen?.html
-    const chosen = chosenHtml && baseChosen ? { ...baseChosen, html: chosenHtml } : baseChosen
-    if (!chosen || !questionnaire) return
+    if (!baseChosen) return
     bgFetchAbortRef.current?.abort()
     bgFetchAbortRef.current = null
     setIsGeneratingB(false); setIsGeneratingC(false)
-    const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
     setIsExpandingPrototype(true)
     setPickedVariantIdx(idx)
     setGenerateError('')
     try {
-      const asIsAnalysis = readAsIsAnalysis()
-      const heroSubjectExpand = questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || undefined
-      const heroPromptExpand = heroSubjectExpand || (questionnaire.heroImageDecision?.generate ? brief : undefined)
-      // expand 단계에도 generationPlan을 전달해야 expectedSubScreens(서비스 IA 기반 서브화면)가 작동한다 (Phase 3-B)
-      const generationContext = buildGenerationContext()
-      const res = await fetch('/api/expand', {
-        method: 'POST',
-        headers: apiHeaders(),
-        body: JSON.stringify({
-          mainHtml: chosen.html,
-          designMd: effectiveDesignMd,
-          brief,
-          answers,
-          projectSummary: questionnaire.projectSummary,
-          logoDataUrl,
-          brandColors: brandColors.length > 0 ? brandColors : undefined,
-          asIsAnalysis,
-          platform,
-          domain: generationContext?.effectiveDomain,
-          generationPlan: generationContext?.generationPlan,
-          modelId: sessionStorage.getItem('aide_model') ?? undefined,
-          heroImagePrompt: heroPromptExpand,
-          heroSubject: heroSubjectExpand,
-        }),
-      })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      let activeQuestionnaire = questionnaire
+      let activeAnswers = answers
+      if (!activeQuestionnaire) {
+        const recoveryResponse = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: apiHeaders(),
+          body: JSON.stringify({ designMd: effectiveDesignMd, brief, platform, prdDoc: sessionStorage.getItem('prdDoc') ?? undefined }),
+        })
+        const recovered = await recoveryResponse.json()
+        if (!recoveryResponse.ok || recovered.error) throw new Error(recovered.error || '이전 시안의 기획 문맥을 복구하지 못했습니다.')
+        activeQuestionnaire = recovered as QuestionnaireResponse
+        activeAnswers = defaultAnswersFromAnalysis(activeQuestionnaire)
+        setQuestionnaire(activeQuestionnaire)
+        setAnswers(activeAnswers)
+      }
+      let chosen: GenerateResult = baseChosen
+
+      if (idx === 1 && bHeroStyle === 'scene' && bSceneImage) {
+        chosen = { ...chosen, html: patchHeroToScene(chosen.html, bSceneImage.base64, bSceneImage.mimeType) }
+      }
+
+      const generationContext = buildGenerationContext(activeQuestionnaire, activeAnswers)
+      if (!generationContext) throw new Error('시안 확장에 필요한 기획 문맥이 없습니다.')
+      let data = chosen
+      let prototypeScreens: Array<{ id: string; label: string }> = [{ id: 'screen-home', label: '홈' }]
+      try {
+        const expandResponse = await fetch('/api/expand', {
+          method: 'POST',
+          headers: apiHeaders(),
+          body: JSON.stringify({
+            mainHtml: chosen.html,
+            designMd: effectiveDesignMd,
+            brief,
+            answers: activeAnswers,
+            projectSummary: activeQuestionnaire.projectSummary,
+            logoDataUrl: logoDataUrl === DEFAULT_AIDE_LOGO_SRC ? undefined : logoDataUrl,
+            brandColors: brandColors.length ? brandColors : undefined,
+            platform,
+            modelId: GEMINI_DESIGN_MODEL,
+            domain: generationContext.effectiveDomain,
+            generationPlan: generationContext.generationPlan,
+            heroSubject: generationContext.heroSubject,
+            heroImagePrompt: generationContext.heroPrompt,
+            sharedVisualSubject: generationContext.sharedVisualSubject,
+            criticalReview: true,
+            precomputedDesignIntentPlan: chosen.designDirection ? JSON.stringify(chosen.designDirection) : undefined,
+            asIsAnalysis: readStoredAsIsAnalysis(),
+            prdDoc: sessionStorage.getItem('prdDoc') ?? undefined,
+            iaImageBase64: sessionStorage.getItem('iaImage') ?? undefined,
+            iaText: sessionStorage.getItem('iaText') ?? undefined,
+            referenceImageBase64: sessionStorage.getItem('referenceImage') ?? undefined,
+            referenceImageKind: sessionStorage.getItem('referenceImageKind') ?? undefined,
+          }),
+        })
+        const expanded = await expandResponse.json()
+        if (!expandResponse.ok || expanded.error) throw new Error(expanded.error || '멀티스크린 확장에 실패했습니다.')
+        data = {
+          ...chosen,
+          html: expanded.html,
+          image: expanded.image ?? chosen.image,
+          imageWarnings: [...(chosen.imageWarnings ?? []), ...(expanded.imageWarnings ?? [])],
+          screenIr: undefined,
+        }
+        prototypeScreens = expanded.screens?.length ? expanded.screens : prototypeScreens
+      } catch (expandError) {
+        setGenerateError(`선택한 메인 시안은 보존했습니다. 추가 화면 확장만 실패했습니다: ${expandError instanceof Error ? expandError.message : '알 수 없는 오류'}`)
+      }
       setVariants([data, null])
       setActiveVariant(0)
       setSelectedStyles(null)
@@ -1985,22 +2042,23 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       setIsAnalyzingTweakA(false); setIsAnalyzingTweakB(false)
       setActiveStateId('typical')
       setVarValues({})
-      setScreens([]); setActiveScreenId(''); setFocusedScreenId('')
+      setScreens(prototypeScreens); setActiveScreenId(prototypeScreens[0]?.id ?? 'screen-home'); setFocusedScreenId('')
       screenIframeRefs.current.clear()
       const extractedColor = (data.html as string).match(/--color-primary:\s*(#[0-9a-fA-F]{3,8})/i)?.[1] ?? DEFAULT_GENERATED_BRAND_COLOR
       setBrandColor(extractedColor); setDebouncedBrandColor(extractedColor)
       setHistoryA([data.html]); setHistoryIndexA(0)
+      setIrHistory(data.screenIr ? [data.screenIr] : []); setIrHistoryIndex(data.screenIr ? 0 : -1)
       setHistoryB([]); setHistoryIndexB(-1)
       setZoom(isMobile ? 100 : isTablet ? 70 : 60)
       setPreviewWidth(isMobile ? 390 : isTablet ? 768 : 1440)
-      // Stay on step 3 canvas — prototype card appears inline
+      // Stay on step 3 canvas — completed design card appears inline
 
       if (data.image) {
         persistBoardHistory({
           prototypeHtml: data.html,
           prototypeImage: data.image,
           pickedIdx: idx,
-          prototypeScreens: [],
+          prototypeScreens,
         }).then(newId => {
           if (newId) {
             setCurrentHistoryId(newId)
@@ -2055,75 +2113,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     bgFetchAbortRef.current?.abort()
     bgFetchAbortRef.current = null
     ++generationIdRef.current
-  }
-
-  const handleRetryVariant = async (idx: 1 | 2) => {
-    if (!questionnaire) return
-    const effectiveDesignMd = customDesignMd ?? DESIGN_PRESETS[designPreset].md
-    const asIsAnalysis = readAsIsAnalysis()
-    const modelId = sessionStorage.getItem('aide_model') ?? 'gemini-3.1-pro-preview'
-    const prdDocFromStorage = sessionStorage.getItem('prdDoc') ?? undefined
-    const iaImageFromStorage = sessionStorage.getItem('iaImage') ?? undefined
-    const iaTextFromStorage = sessionStorage.getItem('iaText') ?? undefined
-    const domainFromAnswer = typeof answers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[answers['domain']] : undefined
-    const effectiveDomain = (domainFromAnswer ?? questionnaire.domain ?? 'other') as AppDomain
-    const variantStyles = getVariantStyles(effectiveDomain)
-    const heroSubjectRetry = questionnaire.heroImageDecision?.heroSubject || questionnaire.heroImageDecision?.prompt || undefined
-    const heroPromptRetry = heroSubjectRetry || (questionnaire.heroImageDecision?.generate ? brief : undefined)
-    let referenceImageBase64 = sessionStorage.getItem('referenceImage') ?? undefined
-    const referenceImageKind = sessionStorage.getItem('referenceImageKind') === 'wireframe' ? 'wireframe' : 'reference'
-    if (!referenceImageBase64) {
-      referenceImageBase64 = await fetchAutoReferenceImage(brief.slice(0, 50) + ' mobile app UI')
-    }
-    const baseParams = {
-      designMd: effectiveDesignMd,
-      brief,
-      answers,
-      projectSummary: questionnaire.projectSummary,
-      logoDataUrl,
-      brandColors: brandColors.length > 0 ? brandColors : undefined,
-      mainOnly: true,
-      referenceImageBase64,
-      referenceImageKind,
-      asIsAnalysis,
-      platform,
-      modelId,
-      heroImagePrompt: heroPromptRetry,
-      heroSubject: heroSubjectRetry,
-      domain: effectiveDomain,
-      variantStyle: variantStyles[idx],
-      prdDoc: prdDocFromStorage,
-      iaImageBase64: iaImageFromStorage,
-      iaText: iaTextFromStorage,
-    }
-    const headers = apiHeaders()
-    const genId = generationIdRef.current
-    if (idx === 1) {
-      bgFetchAbortRef.current?.abort()
-      const abort = new AbortController()
-      bgFetchAbortRef.current = abort
-      setVariantFailed(prev => [prev[0], false, prev[2]])
-      setIsGeneratingB(true)
-      try {
-        const res = await fetch('/api/generate', { method: 'POST', headers, body: JSON.stringify(baseParams), signal: abort.signal })
-        const json = await readGenerateStream(res)
-        if (generationIdRef.current === genId && !abort.signal.aborted)
-          setMainVariants(prev => [prev[0], json, prev[2]])
-      } catch (e) {
-        if ((e as Error)?.name === 'AbortError') return
-        setVariantFailed(prev => [prev[0], true, prev[2]])
-      } finally { setIsGeneratingB(false) }
-    } else {
-      setVariantFailed(prev => [prev[0], prev[1], false])
-      setIsGeneratingC(true)
-      try {
-        const res = await fetch('/api/generate', { method: 'POST', headers, body: JSON.stringify(baseParams) })
-        const json = await readGenerateStream(res)
-        if (generationIdRef.current === genId)
-          setMainVariants(prev => [prev[0], prev[1], json])
-      } catch { setVariantFailed(prev => [prev[0], prev[1], true]) }
-      finally { setIsGeneratingC(false) }
-    }
   }
 
   const handleRefine = async () => {
@@ -2813,9 +2802,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             const effectiveFonts = (customMeta?.fonts ?? preset.fonts) ?? { headline: 'sans-serif', body: 'sans-serif' }
             const effectiveColor = brandColors[0] ?? (customMeta?.color ?? preset.color) ?? 'var(--aui-primary)'
             const isDark = customMeta?.isDark ?? false
-            const outerBg = isDark ? 'var(--aui-text)' : 'var(--aui-border)'
+            const outerBg = isDark ? 'var(--aui-on-dark-faint)' : 'var(--aui-border-subtle)'
             const cellBg = isDark ? 'var(--aui-inverse-surface)' : 'var(--aui-on-dark)'
-            const gridLine = isDark ? 'var(--aui-inverse-surface-raised)' : 'var(--aui-border)'
+            const gridLine = isDark ? 'var(--aui-on-dark-faint)' : 'var(--aui-border-subtle)'
             const ink = isDark ? 'var(--aui-on-dark)' : 'var(--aui-text)'
             const muted = isDark ? 'var(--aui-text-muted)' : 'var(--aui-text-muted)'
             const subtle = isDark ? 'var(--aui-inverse-surface)' : 'var(--aui-surface-muted)'
@@ -2881,7 +2870,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 {/* Header */}
                 <div style={{ padding: `var(--aui-space-3) var(--aui-space-4)`, borderBottom: border, display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", backgroundColor: cellBg }}>
                   <Sparkles size={11} style={{ color: effectiveColor }} />
-                  <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: ink }}>{stylePlanLabel} Style Plan</span>
+                  <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: ink }}>{stylePlanLabel} Token Reference</span>
+                  <span style={{ fontSize: "var(--aui-type-nano-size)", color: muted }}>Preview only</span>
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: "var(--aui-space-1)", alignItems: 'center' }}>
                     {(['A', 'B', 'C'] as const).map((l, i) => {
                       const v = mainVariants[i]
@@ -2892,10 +2882,10 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 </div>
 
                 {/* 4-column grid */}
-                <div data-card-scroll="style-plan" style={{ display: 'grid', gridTemplateColumns: '175px 140px 1fr 1fr', gap: "var(--aui-space-1)", backgroundColor: gridLine, flex: 1, overflowY: 'auto' }}>
+                <div data-card-scroll="style-plan" style={{ display: 'grid', gridTemplateColumns: '175px 140px 1fr 1fr', gap: 1, backgroundColor: gridLine, flex: 1, overflowY: 'auto' }}>
 
                   {/* Col 1: Color swatches + tint strips */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {effectivePalette.map(swatch => {
                       const tints = genTints(swatch.hex)
                       const onSwatch = isLightHex(swatch.hex) ? 'var(--aui-text)' : 'var(--aui-on-dark)'
@@ -2914,7 +2904,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   </div>
 
                   {/* Col 2: Typography — reads from preset.typographyScale */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {typoRows.map(({ label, font, size, weight, actualSize }, i) => (
                       <div key={i} style={{ backgroundColor: cellBg, padding: `var(--aui-space-2) var(--aui-space-3)`, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: "var(--aui-space-1)", overflow: 'hidden' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: "var(--aui-space-1)" }}>
@@ -2929,8 +2919,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     ))}
                   </div>
 
-                  {/* Col 3: Components */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
+                  {/* Col 3: illustrative token samples, not runtime component instances */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {/* Buttons — radius from radiusTokens.md, negative from statusColors */}
                     <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: "var(--aui-space-1)" }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: "var(--aui-space-1)" }}>
@@ -2945,9 +2935,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     {/* Dividers */}
                     <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, display: 'flex', alignItems: 'center', flex: 1 }}>
                       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
-                        <div style={{ height: 1.5, borderRadius: "var(--aui-radius-sm)", backgroundColor: effectiveColor, width: '100%' }} />
-                        <div style={{ height: 1.5, borderRadius: "var(--aui-radius-sm)", backgroundColor: isDark ? 'var(--aui-inverse-surface-raised)' : 'var(--aui-border)', width: '75%' }} />
-                        <div style={{ height: 1.5, borderRadius: "var(--aui-radius-sm)", backgroundColor: isDark ? 'var(--aui-inverse-surface-raised)' : 'var(--aui-border)', width: '50%' }} />
+                        <div style={{ height: 1, backgroundColor: effectiveColor, width: '100%' }} />
+                        <div style={{ height: 1, backgroundColor: gridLine, width: '75%' }} />
+                        <div style={{ height: 1, backgroundColor: gridLine, width: '50%' }} />
                       </div>
                     </div>
 
@@ -2975,7 +2965,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   </div>
 
                   {/* Col 4: UI Patterns */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {/* Search */}
                     <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", backgroundColor: subtle, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-line)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-2) var(--aui-space-2)` }}>
@@ -3041,6 +3031,20 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               </div>
             </div>
           )}
+
+          <div className="shrink-0 flex flex-col gap-2" style={{ width: isMobile ? 340 : isTablet ? 520 : 420 }}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[12px] font-semibold" style={{ color: 'var(--aui-text)' }}>생성 엔진</p>
+                <p className="text-[11px]" style={{ color: 'var(--aui-text-muted)' }}>{generationEngine === 'legacy-html' ? '기존 품질의 자유도 높은 HTML 시안' : '편집·실시간 생성을 위한 Node Graph 실험'}</p>
+              </div>
+              <div className="flex items-center p-1" style={{ borderRadius: 'var(--aui-radius-control)', background: 'var(--aui-surface-muted)', border: '1px solid var(--aui-border-subtle)' }}>
+                <button type="button" disabled={isAnyGenerating} onClick={() => changeGenerationEngine('node-graph')} className="px-3 py-1.5 text-[11px] font-medium disabled:opacity-50" style={{ border: 0, borderRadius: 'var(--aui-radius-sm)', cursor: isAnyGenerating ? 'not-allowed' : 'pointer', background: generationEngine === 'node-graph' ? 'var(--aui-on-dark)' : 'transparent', color: generationEngine === 'node-graph' ? 'var(--aui-text)' : 'var(--aui-text-muted)', boxShadow: generationEngine === 'node-graph' ? 'var(--aui-shadow-subtle)' : 'none' }}>Node Graph</button>
+                <button type="button" disabled={isAnyGenerating} onClick={() => changeGenerationEngine('legacy-html')} className="px-3 py-1.5 text-[11px] font-medium disabled:opacity-50" style={{ border: 0, borderRadius: 'var(--aui-radius-sm)', cursor: isAnyGenerating ? 'not-allowed' : 'pointer', background: generationEngine === 'legacy-html' ? 'var(--aui-on-dark)' : 'transparent', color: generationEngine === 'legacy-html' ? 'var(--aui-text)' : 'var(--aui-text-muted)', boxShadow: generationEngine === 'legacy-html' ? 'var(--aui-shadow-subtle)' : 'none' }}>기존 HTML</button>
+              </div>
+            </div>
+            {generationEngine === 'node-graph' && <button type="button" disabled={isAnyGenerating} onClick={() => changeGenerationEngine('legacy-html')} className="self-start text-[11px] underline underline-offset-2 disabled:opacity-50" style={{ border: 0, padding: 0, background: 'transparent', color: 'var(--aui-text-muted)', cursor: isAnyGenerating ? 'not-allowed' : 'pointer' }}>품질이 낮으면 기존 HTML로 바로 돌아가기</button>}
+          </div>
 
           {mainVariants.every(v => !v) && !isAnyGenerating && (
             <div
@@ -3132,14 +3136,18 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       cursor: 'default',
                     }}
                   >
-                    {/* 프로토타입 생성 중 오버레이 */}
+                    {/* 선택 시안 완성 중 오버레이 */}
                     {isExpandingPrototype && pickedVariantIdx === idx && (
                       <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'var(--aui-on-dark-strong)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-3)" }}>
                         <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid var(--aui-primary-muted)', borderTopColor: 'var(--aui-primary)', animation: 'spin 0.85s linear infinite' }} />
-                        <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-primary)', letterSpacing: "var(--aui-tracking-tight)" }}>프로토타입 생성 중...</span>
+                        <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-primary)', letterSpacing: "var(--aui-tracking-tight)" }}>선택 시안 완성 중...</span>
                       </div>
                     )}
-                    {variant ? (
+                    {variant?.screenIr ? (
+                      <div style={{ width: previewNativeW, height: contentNativeH ?? previewNativeH, transform: `scale(${previewScale})`, transformOrigin: 'top left', position: 'relative', overflow: 'hidden', background: studioTheme.background }}>
+                        {(() => { const graph = screenIrToNodeGraph(variant.screenIr!, studioTheme); return validateNodeGraph(graph).valid ? <UINodeGraphCanvas graph={graph} theme={studioTheme}/> : null })()}
+                      </div>
+                    ) : variant ? (
                       <iframe
                         ref={el => { variantIframeRefs.current[idx] = el }}
                         srcDoc={letter === 'B' && bHeroStyle === 'scene' && bSceneImage ? patchHeroToScene(variant.html, bSceneImage.base64, bSceneImage.mimeType) : variant.html}
@@ -3170,46 +3178,20 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                           backgroundColor: 'var(--aui-on-dark)',
                         }}
                       />
+                    ) : isLoadingThis && streamingScreens[idx] ? (
+                      <div style={{ width: previewNativeW, height: previewNativeH, transform: `scale(${previewScale})`, transformOrigin: 'top left', position: 'relative', overflow: 'hidden', background: studioTheme.background, pointerEvents: 'none' }}>
+                        {(() => { const graph = screenIrToNodeGraph(streamingScreens[idx]!, studioTheme); return <UINodeGraphCanvas graph={graph} theme={studioTheme} activeNodeId={streamingActiveNodes[idx]}/> })()}
+                      </div>
                     ) : isLoadingThis ? (
                       <>
-                        <iframe
-                          ref={el => { streamingIframeRefs.current[idx] = el }}
-                          title={`시안 ${letter} 미리보기`}
-                          sandbox="allow-scripts allow-same-origin"
-                          scrolling="no"
-                          style={{
-                            width: previewNativeW,
-                            height: previewNativeH,
-                            border: 'none',
-                            display: 'block',
-                            transform: `scale(${previewScale})`,
-                            transformOrigin: 'top left',
-                            backgroundColor: 'var(--aui-on-dark)',
-                            pointerEvents: 'none',
-                          }}
-                        />
-                        {streamingHtml[idx] ? (
-                          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 72%, color-mix(in srgb, var(--aui-page) 78%, transparent) 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 14, pointerEvents: 'none' }}>
-                            {/* Stitch 스타일 "그리는 중" 버블 — AI가 화면을 실시간으로 그리는 느낌 */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", padding: `var(--aui-space-2) var(--aui-space-3)`, borderRadius: "var(--aui-radius-pill)", background: 'var(--aui-primary)', boxShadow: "var(--aui-shadow-raised)" }}>
-                              <span style={{ display: 'inline-flex', gap: "var(--aui-space-1)" }}>
-                                {[0, 1, 2].map(d => (
-                                  <span key={d} className="animate-bounce" style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--aui-on-dark)', animationDelay: `${d * 0.15}s`, animationDuration: '0.9s' }} />
-                                ))}
-                              </span>
-                              <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-on-dark)', letterSpacing: "var(--aui-tracking-tight)" }}>AI가 그리는 중</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="size-8 rounded-full animate-spin" style={{ border: '2px solid var(--aui-border-subtle)', borderTopColor: 'var(--aui-primary)' }} />
-                          </div>
-                        )}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="size-8 rounded-full animate-spin" style={{ border: '2px solid var(--aui-border-subtle)', borderTopColor: 'var(--aui-primary)' }} />
+                        </div>
                       </>
                     ) : isFailed ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
                         <span className="text-[13px] text-[var(--aui-text-muted)]">생성 실패</span>
-                        <button onClick={() => idx === 0 ? handleGenerate() : handleRetryVariant(idx as 1 | 2)} className="flex items-center gap-1 text-[13px] text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors">
+                        <button onClick={handleGenerate} className="flex items-center gap-1 text-[13px] text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors">
                           <RefreshCw size={11} /> 다시 시도
                         </button>
                       </div>
@@ -3253,7 +3235,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 <div className="flex flex-col gap-3 shrink-0" style={{ width: cardW }}>
                   {/* 헤더 */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-semibold" style={{ color: 'var(--aui-text)' }}>프로토타입 {pickedLabel}</span>
+                    <span className="text-[13px] font-semibold" style={{ color: 'var(--aui-text)' }}>완성 시안 {pickedLabel}</span>
                     {isExpandingPrototype && (
                       <div className="flex items-center gap-1.5 text-[13px]" style={{ color: 'var(--aui-primary)' }}>
                         <svg className="animate-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -3597,6 +3579,24 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 <p className="text-[13px] text-[var(--aui-text-muted)] leading-[1.6] mt-1">{questionnaire.projectSummary}</p>
               )}
             </div>
+            {result?.screenIr && (
+              <div className="px-3 py-3 border-b border-[var(--aui-shadow-line)] shrink-0 max-h-56 overflow-y-auto">
+                <div className="text-[11px] font-semibold text-[var(--aui-text-muted)] mb-2">화면 구조</div>
+                <div className="space-y-1">
+                  {result.screenIr.sections.map((section, index) => (
+                    <div key={section.id} className="flex items-center gap-1 rounded-lg px-2 py-1.5 bg-[var(--aui-border-subtle)]">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[12px] font-medium text-[var(--aui-text)] truncate">{section.title || section.type}</div>
+                        <div className="text-[10px] text-[var(--aui-text-muted)]">{section.type}</div>
+                      </div>
+                      <button disabled={index === 0} onClick={() => moveIrSection(section.id, -1)} className="size-6 text-[12px] disabled:opacity-20" title="위로 이동">↑</button>
+                      <button disabled={index === result.screenIr!.sections.length - 1} onClick={() => moveIrSection(section.id, 1)} className="size-6 text-[12px] disabled:opacity-20" title="아래로 이동">↓</button>
+                      <button disabled={result.screenIr!.sections.length <= 1} onClick={() => removeIrSection(section.id)} className="size-6 text-[12px] text-[var(--aui-negative)] disabled:opacity-20" title="삭제">×</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
               {chatMessages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center gap-2 py-8">

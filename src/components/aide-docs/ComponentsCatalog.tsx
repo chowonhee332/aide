@@ -1,9 +1,5 @@
-'use client'
-
-import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { SearchField } from '@/components/ui/search-field'
-import { ComponentPreview } from './ComponentPreview'
+import { ComponentHeroFrame } from './ComponentHeroFrame'
 import { humanizeId } from '@/lib/aide-docs'
 import type { ComponentPreviewSize } from '@/lib/aide-docs'
 
@@ -15,40 +11,26 @@ interface CatalogComponent {
 }
 
 export function ComponentsCatalog({ components, categories }: { components: CatalogComponent[]; categories: string[] }) {
-  const [query, setQuery] = useState('')
-  const [category, setCategory] = useState('all')
-  const filtered = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase()
-    return components.filter((component) =>
-      (category === 'all' || component.category === category)
-      && (!normalizedQuery || `${component.title} ${component.id} ${component.category}`.toLowerCase().includes(normalizedQuery)),
-    )
-  }, [category, components, query])
-
   return <>
-    <div className="docs-catalog-tools">
-      <SearchField value={query} onChange={(event)=>setQuery(event.target.value)} onClear={()=>setQuery('')} placeholder="컴포넌트 검색" aria-label="컴포넌트 검색"/>
-      <div className="docs-category-filter" role="group" aria-label="컴포넌트 카테고리">
-        {['all', ...categories].map((id)=><button key={id} type="button" aria-pressed={category === id} onClick={()=>setCategory(id)}>{id === 'all' ? 'All' : humanizeId(id)}</button>)}
-      </div>
-    </div>
     {categories.map((categoryId) => {
-      const categoryComponents = filtered.filter((component) => component.category === categoryId)
+      const categoryComponents = components.filter((component) => component.category === categoryId)
       if (!categoryComponents.length) return null
-      return <section className="docs-component-group docs-page-section" id={categoryId} key={categoryId}>
-        <h2>{humanizeId(categoryId)}</h2>
+      return <section className="docs-component-group" id={categoryId} key={categoryId}>
+        <h2 className="docs-component-group-title"><a href={`#${categoryId}`}>{humanizeId(categoryId)}</a></h2>
         <div className="docs-component-grid">
           {categoryComponents.map((component) => (
             <article className={`docs-component-card docs-component-card-${component.previewSize}`} key={component.id}>
-              <div className={`docs-component-preview docs-component-preview-${component.previewSize}`}><ComponentPreview id={component.id}/></div>
-              <h3><Link href={`/aide-ui/components/${component.id}`}>{component.title}</Link></h3>
-              <p>{humanizeId(component.category)}</p>
-              <span className="docs-component-status">Documented</span>
+              {/* 카드 전체를 링크로 만들되, 프리뷰가 자체적으로 <a>를 렌더링하는 컴포넌트(anchor 등)와
+                  중첩되지 않도록 별도 오버레이 링크로 감싼다. */}
+              <Link className="docs-component-card-link" href={`/aide-ui/components/${component.id}`} aria-label={component.title}/>
+              <figure className={`docs-component-preview docs-component-preview-${component.previewSize}`} aria-label={`${component.title} 미리보기`}>
+                <ComponentHeroFrame componentId={component.id} compact/>
+              </figure>
+              <h3>{component.title}</h3>
             </article>
           ))}
         </div>
       </section>
     })}
-    {!filtered.length ? <div className="docs-catalog-empty"><b>일치하는 컴포넌트가 없습니다.</b><span>검색어나 카테고리를 변경해 보세요.</span></div> : null}
   </>
 }

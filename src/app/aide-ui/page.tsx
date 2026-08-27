@@ -6,9 +6,9 @@ import {
 } from '@/components/ui/material-icon'
 import { AUI_AI_GUIDE, AUI_COMPONENT_CATEGORIES, AUI_DEVELOP_COMMANDS, AUI_DOCUMENTATION, AUI_SHOWCASE_SECTIONS, AUI_TOKEN_GROUPS, AUI_TOKEN_ENTRIES, AUI_SCHEMA_VERSION } from '@/lib/aide-product-tokens'
 import {
-  WONHEE_ACCESSIBILITY_REQUIREMENTS, WONHEE_ACCESSIBILITY_STANDARD,
-  WONHEE_REFERENCE_CATALOG,
-} from '@/lib/wonhee-design-contract'
+  AIDE_ACCESSIBILITY_REQUIREMENTS, AIDE_ACCESSIBILITY_STANDARD,
+  AIDE_REFERENCE_CATALOG,
+} from '@/lib/aide-design-contract'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Field as UIField, Input } from '@/components/ui/field'
@@ -48,10 +48,10 @@ import { Popover, PopoverCloseButton, PopoverContent, PopoverDescription, Popove
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Keypad } from '@/components/ui/keypad'
 import { Breadcrumb, Navigation, NavigationMenuButton } from '@/components/ui/navigation'
-import { componentImplementationState } from '@/lib/wonhee-component-coverage'
+import { componentImplementationState } from '@/lib/aide-component-coverage'
 import { GetStartedPage } from '@/components/aide-docs/DocsPage'
 
-/* Every list below is derived from wonhee-product-ui.md — never hand-listed here.
+/* Every list below is derived from aide.md — never hand-listed here.
    Editing the md contract updates this showcase and the product together. */
 
 const colors = (AUI_TOKEN_GROUPS.color ?? []).map((t) => [t.key, `var(${t.cssVar})`] as const)
@@ -72,8 +72,8 @@ const blurs = AUI_TOKEN_GROUPS.blur ?? []
 /** Full-value elevation tokens; the bare colour tokens are building blocks, not shadows. */
 const elevations = (AUI_TOKEN_GROUPS.shadow ?? []).filter((t) => t.value.includes(' '))
 
-const implementedCount = WONHEE_REFERENCE_CATALOG.filter((item) => componentImplementationState(item.id) === 'implemented').length
-const excludedCount = WONHEE_REFERENCE_CATALOG.length - implementedCount
+const implementedCount = AIDE_REFERENCE_CATALOG.filter((item) => componentImplementationState(item.id) === 'implemented').length
+const excludedCount = AIDE_REFERENCE_CATALOG.length - implementedCount
 const DOCUMENTATION_ANCHORS: Record<string, string> = {
   'get-started': 'get-started',
   foundations: 'foundations',
@@ -124,12 +124,12 @@ const showcaseSectionById = new Map(AUI_SHOWCASE_SECTIONS.map((section, index) =
 const missingRenderers = AUI_SHOWCASE_SECTIONS.filter((section) => !SHOWCASE_RENDERER_IDS.includes(section.id as typeof SHOWCASE_RENDERER_IDS[number]))
 const missingManifestEntries = SHOWCASE_RENDERER_IDS.filter((id) => !showcaseSectionById.has(id))
 if (missingRenderers.length || missingManifestEntries.length) {
-  throw new Error(`wonhee-product-ui.md visualization mismatch — unknown: ${missingRenderers.map((section) => section.id).join(', ') || 'none'}; missing: ${missingManifestEntries.join(', ') || 'none'}`)
+  throw new Error(`aide.md visualization mismatch — unknown: ${missingRenderers.map((section) => section.id).join(', ') || 'none'}; missing: ${missingManifestEntries.join(', ') || 'none'}`)
 }
 
 function Section({ id, children }: { id: string; eyebrow?: string; title?: string; description?: string; children: React.ReactNode }) {
   const section = showcaseSectionById.get(id)
-  if (!section) throw new Error(`wonhee-product-ui.md: visualization renderer metadata missing for ${id}`)
+  if (!section) throw new Error(`aide.md: visualization renderer metadata missing for ${id}`)
   return <section className="aui-section" id={id} style={{ order: 10 + section.index }}><div className="aui-section-head"><span>{section.eyebrow}</span><h2>{section.title}</h2><p>{section.description}</p></div>{children}{id === 'tokens' && <div className="component-token-board"><h3>Component tokens</h3><div>{(AUI_TOKEN_GROUPS.component ?? []).map((token)=><span key={token.cssVar}><b>{token.key}</b><code>{token.value}</code></span>)}</div></div>}</section>
 }
 
@@ -166,10 +166,10 @@ function LegacyAideProductUIShowcase() {
       @media(prefers-reduced-motion:reduce){.product-showcase *{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
     `}</style>
 
-    <nav className="showcase-nav" aria-label="Wonhee 디자인 시스템">
-      <a className="showcase-brand" href="#get-started" aria-label="Wonhee Design System 홈">
+    <nav className="showcase-nav" aria-label="Aide 디자인 시스템">
+      <a className="showcase-brand" href="#get-started" aria-label="Aide Design System 홈">
         <span className="showcase-brand-mark" aria-hidden>W</span>
-        <span className="showcase-brand-name">Wonhee Design System</span>
+        <span className="showcase-brand-name">Aide Design System</span>
       </a>
       <div className="showcase-menu">
         {AUI_DOCUMENTATION.navigation.map((id)=><a key={id} href={`#${DOCUMENTATION_ANCHORS[id]}`}>{AUI_DOCUMENTATION.pages[id].title}</a>)}
@@ -182,7 +182,7 @@ function LegacyAideProductUIShowcase() {
     </nav>
     <aside className="docs-side docs-side-left" aria-label="전체 문서 탐색"><h2>Documentation</h2>{AUI_DOCUMENTATION.navigation.map((group)=>{const page=AUI_DOCUMENTATION.pages[group];const items=group==='components'?Object.keys(AUI_COMPONENT_CATEGORIES):page.items;return <div className="docs-nav-group" key={group}><a href={`#${documentationAnchor(group)}`}>{page.title}</a>{items?.length?<ul>{items.map((item)=><li key={item}><a href={`#${documentationAnchor(group,item)}`}>{item.replaceAll('-',' ')}</a></li>)}</ul>:null}</div>})}</aside>
     <aside className="docs-side docs-side-right" aria-label="현재 페이지 목차"><h2>On this page</h2><ul className="docs-toc">{AUI_SHOWCASE_SECTIONS.map((section)=><li key={section.id}><a href={`#${section.id}`}>{section.title}</a></li>)}<li><a href="#develop">Develop</a></li><li><a href="#ai-and-tools">AI &amp; Tools</a></li></ul></aside>
-    <header className="showcase-hero" id="get-started"><div><span className="hero-kicker">WONHEE DESIGN SYSTEM</span><h1>{AUI_DOCUMENTATION.title}</h1><p>{AUI_DOCUMENTATION.description}</p></div><div className="principle-list">{[[AUI_TOKEN_ENTRIES.length,'Design tokens'],[implementedCount,'Implemented capabilities'],[excludedCount,'Security or deprecated exclusions'],['3 modes','Compact · Medium · Wide'],[WONHEE_ACCESSIBILITY_STANDARD,'Accessibility target']].map(([value,label])=><div key={String(label)}><b>{value}</b>{label}</div>)}</div></header>
+    <header className="showcase-hero" id="get-started"><div><span className="hero-kicker">AIDE DESIGN SYSTEM</span><h1>{AUI_DOCUMENTATION.title}</h1><p>{AUI_DOCUMENTATION.description}</p></div><div className="principle-list">{[[AUI_TOKEN_ENTRIES.length,'Design tokens'],[implementedCount,'Implemented capabilities'],[excludedCount,'Security or deprecated exclusions'],['3 modes','Compact · Medium · Wide'],[AIDE_ACCESSIBILITY_STANDARD,'Accessibility target']].map(([value,label])=><div key={String(label)}><b>{value}</b>{label}</div>)}</div></header>
     <nav className="portal-tabs" aria-label="디자인 시스템 가이드">{AUI_DOCUMENTATION.navigation.map((id)=><a key={id} href={`#${DOCUMENTATION_ANCHORS[id]}`}>{AUI_DOCUMENTATION.pages[id].title}</a>)}</nav>
     <nav className="jump-nav">{AUI_SHOWCASE_SECTIONS.map((section)=><a key={section.id} href={`#${section.id}`}>{section.navigation}</a>)}</nav>
 
@@ -202,7 +202,7 @@ function LegacyAideProductUIShowcase() {
     <Section id="compositions" eyebrow="Composed patterns" title="Reusable compositions" description="core 컴포넌트를 실제 서비스 화면 단위로 조합합니다."><div className="stack"><DetailHeader eyebrow="PROJECT" title="Aide Design System" description="토큰과 컴포넌트 계약을 하나의 프로젝트 기준으로 관리합니다." metadata="마지막 수정: 오늘" actions={<><Button variant="outline">공유</Button><Button>편집</Button></>}/><ResponsiveGrid minItemWidth="260px"><ListSection><ListSectionHeader title="최근 화면" description="최근 수정된 프로젝트 화면" action={<Badge variant="info">3</Badge>}/><ListSectionContent>{['Landing','Studio','Playground'].map((item)=><ListRow key={item} contents={<ListRowText title={item} description="자동 저장됨"/>} trailing={<ChevronRight/>}/>)}</ListSectionContent><ListSectionFooter>모든 화면 보기</ListSectionFooter></ListSection><div className="demo-card"><FieldGroup label="서비스 URL" help="프로토콜과 도메인을 나누어 입력합니다."><Select aria-label="프로토콜" defaultValue="https"><option>https</option><option>http</option></Select><Input aria-label="도메인" placeholder="example.com"/></FieldGroup><Prose className="mt-6"><h2>설계 원칙</h2><p>반복되는 화면은 <TextHighlight>공통 계약과 토큰</TextHighlight>을 사용해 일관되게 구성합니다.</p></Prose></div></ResponsiveGrid></div></Section>
     <Section id="specialized" eyebrow="Specialized components" title="Feature-specific controls" description="필요한 서비스에서 선택적으로 사용하는 기능 컴포넌트입니다. 보안 키패드는 별도 감사 구현이 필요하므로 제외합니다."><div className="component-grid"><div className="demo-card"><h3>Numeric input</h3><div className="row"><NumberField label="인원" defaultValue={2} min={1} max={10}/><NumberField label="수량" defaultValue={1} min={0} max={20}/></div><div className="mt-6"><Slider label="투명도" defaultValue={72} min={0} max={100}/></div></div><div className="demo-card"><h3>Rating</h3><Rating label="결과 만족도" defaultValue={4}/></div><div className="demo-card component-wide"><h3>Progress stepper</h3><Stepper current={1} steps={[{id:'brief',label:'기획 입력',description:'요구사항 정리'},{id:'generate',label:'UI 생성',description:'시안 제작 중'},{id:'refine',label:'수정',description:'피드백 반영'},{id:'export',label:'내보내기'}]}/></div><div className="demo-card"><BarChart label="주간 생성 화면" data={[{label:'월',value:8},{label:'화',value:12},{label:'수',value:7},{label:'목',value:16},{label:'금',value:11}]} valueLabel={(value)=>`${value}개`}/></div><div className="demo-card"><h3>Agreement v4</h3><Agreement items={[{id:'terms',label:'서비스 이용약관',required:true,href:'#terms'},{id:'privacy',label:'개인정보 처리방침',required:true,href:'#privacy'},{id:'marketing',label:'업데이트 소식 수신',required:false}]}/></div><div className="demo-card component-wide"><h3>General keypads</h3><div className="component-grid"><Keypad type="alphabet" label="영문 키패드"/><Keypad type="number" label="숫자 키패드"/></div></div></div></Section>
     <Section id="layouts" eyebrow="Patterns" title="Navigation and action bars" description="실제 탐색과 CTA 패턴만 비교합니다."><div className="component-grid"><div className="demo-card component-wide"><h3>Top navigation</h3><Navigation variant="top" activeId="design" items={[{id:'design',label:'Design'},{id:'prototype',label:'Prototype'},{id:'inspect',label:'Inspect'}]}/></div><div className="demo-card"><h3>Side navigation in workspace</h3><div className="navigation-preview"><div className="navigation-preview-header"><NavigationMenuButton/><strong>Aide Studio</strong></div><div className="navigation-preview-body"><div className="navigation-preview-side"><Navigation variant="side" activeId="projects" items={[{id:'home',label:'홈'},{id:'projects',label:'프로젝트'},{id:'settings',label:'설정'}]}/></div><div className="navigation-preview-canvas">Workspace content</div></div></div></div><div className="demo-card"><h3>Breadcrumb and bottom navigation</h3><div className="bottom-navigation-preview"><div><Breadcrumb items={[{label:'Aide',href:'#'},{label:'Studio',href:'#'},{label:'프로젝트'}]}/></div><Navigation variant="bottom" activeId="home" items={[{id:'home',label:'홈'},{id:'search',label:'검색'},{id:'profile',label:'내 정보'}]}/></div></div><div className="demo-card"><h3>Single CTA</h3><div className="action-preview"><ResponsiveActionBar><Button>계속하기</Button></ResponsiveActionBar></div></div><div className="demo-card"><h3>Double CTA</h3><div className="action-preview"><ResponsiveActionBar><Button variant="ghost">취소</Button><Button>변경사항 저장</Button></ResponsiveActionBar></div></div></div></Section>
-    <Section id="accessibility" eyebrow="Quality" title="Interaction and accessibility" description={`${WONHEE_ACCESSIBILITY_STANDARD} 기준을 wonhee-design.md에서 직접 표시합니다.`}><div className="a11y-grid">{WONHEE_ACCESSIBILITY_REQUIREMENTS.map(item=><div className="a11y-item" key={item}>{item}</div>)}</div></Section>
+    <Section id="accessibility" eyebrow="Quality" title="Interaction and accessibility" description={`${AIDE_ACCESSIBILITY_STANDARD} 기준을 aide.md에서 직접 표시합니다.`}><div className="a11y-grid">{AIDE_ACCESSIBILITY_REQUIREMENTS.map(item=><div className="a11y-item" key={item}>{item}</div>)}</div></Section>
     <section className="guide-section" id="develop"><div className="guide-section-head"><span>Develop</span><h2>{AUI_DOCUMENTATION.pages.develop.title}</h2><p>MD 계약을 검증하고 CSS·JSON으로 내보내 실제 제품 컴포넌트에서 사용하는 방법입니다.</p></div><div className="guide-grid"><div className="guide-card"><h3>Documentation</h3><div className="guide-chip-list">{AUI_DOCUMENTATION.pages.develop.items?.map((item)=><span key={item}>{item}</span>)}</div></div>{Object.entries(AUI_DEVELOP_COMMANDS).map(([name,command])=><div className="guide-card" key={name}><h3>{name}</h3><code>{Array.isArray(command)?command.join(' && '):command}</code></div>)}</div></section>
     <section className="guide-section" id="ai-and-tools"><div className="guide-section-head"><span>AI &amp; Tools</span><h2>{AUI_DOCUMENTATION.pages['ai-and-tools'].title}</h2><p>{AUI_AI_GUIDE.skill.purpose}</p></div><div className="guide-grid"><div className="guide-card"><h3>{AUI_AI_GUIDE.skill.id}</h3><ol>{AUI_AI_GUIDE.skill.workflow?.map((step)=><li key={step}>{step}</li>)}</ol></div><div className="guide-card"><h3>llms.txt</h3><code>{AUI_AI_GUIDE.llmsTxt.route}</code><div className="guide-chip-list mt-3">{AUI_AI_GUIDE.llmsTxt.contents?.map((item)=><span key={item}>{item}</span>)}</div></div><div className="guide-card"><h3>Roadmap</h3><ul>{AUI_AI_GUIDE.futureIntegrations.map((item)=><li key={item}>{item}</li>)}</ul></div></div></section>
   </main>

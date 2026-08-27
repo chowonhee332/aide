@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
+import { GEMINI_ECONOMY_MODEL } from '@/lib/gemini-model-policy'
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest) {
 
     const ai = new GoogleGenAI({ apiKey: apiKey.trim() })
     await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: GEMINI_ECONOMY_MODEL,
       contents: 'hi',
       config: { maxOutputTokens: 1, httpOptions: { timeout: 10_000 } },
     })

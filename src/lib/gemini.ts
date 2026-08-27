@@ -1,11 +1,24 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, type GenerateContentResponseUsageMetadata } from '@google/genai';
 import fs from 'fs';
 import path from 'path';
+import {
+  GEMINI_DESIGN_MODEL,
+  GEMINI_ECONOMY_IMAGE_MODEL,
+  GEMINI_ECONOMY_MODEL,
+  GEMINI_IMAGE_FALLBACK_MODEL,
+  GEMINI_IMAGE_MODEL,
+  GEMINI_IMAGE_SIZE,
+  GEMINI_UI_IMAGE_MAX_EDGE,
+  GEMINI_UI_IMAGE_WEBP_QUALITY,
+} from './gemini-model-policy';
 import sharp from 'sharp';
 import { type AppDomain, DOMAIN_KEY_TO_LABEL, DOMAIN_HOME_EMPHASIS_OPTIONS, DOMAIN_PRIMARY_JOURNEY_OPTIONS, DOMAIN_FIRST_SCREEN_FOCUS_OPTIONS } from './domain-constants';
 import { getDomainGuidance } from './variant-refs';
 import { archetypeToPrompt } from './layout-archetypes';
-import { sanitizeMaterialSymbols, lintStructure, buildStructureRepairMessage, logStructureRecord, injectSectionAttrs, repairSectionOrder } from './structure-lint';
+import { sanitizeMaterialSymbols, ensureMaterialSymbolsFont, lintStructure, buildStructureRepairMessage, logStructureRecord, injectSectionAttrs, repairSectionOrder } from './structure-lint';
+import { logGeminiUsage } from './gemini-usage';
+import { parseFencedDesignContract } from './design-md-contract';
+import { selectRelevantComponents, hintsFromDirectionPlan, type ComponentRetrievalHints } from './design-component-retrieval';
 export type { AppDomain } from './domain-constants';
 export { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY, DOMAIN_HOME_EMPHASIS_OPTIONS, DOMAIN_PRIMARY_JOURNEY_OPTIONS, DOMAIN_FIRST_SCREEN_FOCUS_OPTIONS } from './domain-constants';
 
@@ -172,7 +185,7 @@ function detectImageMimeType(base64: string): string {
   return 'image/png'
 }
 
-async function generatePro(prompt: string, apiKey?: string, model = 'gemini-3.5-flash', onChunk?: (accumulated: string) => void): Promise<string> {
+export async function generatePro(prompt: string, apiKey?: string, model: string = GEMINI_DESIGN_MODEL, onChunk?: (accumulated: string) => void): Promise<string> {
   const ai = getAi(apiKey)
   console.log('[gemini] generatePro start, model=', model, 'prompt length=', prompt.length)
   await geminiSemaphore.acquire()
@@ -181,15 +194,18 @@ async function generatePro(prompt: string, apiKey?: string, model = 'gemini-3.5-
       const stream = await ai.models.generateContentStream({
         model,
         contents: prompt,
-        config: { temperature: 1, maxOutputTokens: 32768, httpOptions: { timeout: 300_000 } },
+        config: { maxOutputTokens: 32768, httpOptions: { timeout: 300_000 } },
       })
       let text = ''; let chunkCount = 0
+      let usage: GenerateContentResponseUsageMetadata | undefined
       for await (const chunk of stream) {
         text += chunk.text ?? ''
+        if (chunk.usageMetadata) usage = chunk.usageMetadata
         chunkCount++
         if (onChunk && chunkCount % 8 === 0) onChunk(text)
       }
       if (onChunk) onChunk(text)
+      logGeminiUsage(model, 'generatePro', usage)
       console.log('[gemini] generatePro done, chunks=', chunkCount, 'output length=', text.length)
       return text
     }, `generatePro/${model}`)
@@ -204,7 +220,7 @@ async function generatePro(prompt: string, apiKey?: string, model = 'gemini-3.5-
   }
 }
 
-async function generateProWithImage(prompt: string, imageBase64: string, mimeType: string, apiKey?: string, model = 'gemini-3.5-flash', onChunk?: (accumulated: string) => void): Promise<string> {
+export async function generateProWithImage(prompt: string, imageBase64: string, mimeType: string, apiKey?: string, model: string = GEMINI_DESIGN_MODEL, onChunk?: (accumulated: string) => void): Promise<string> {
   const ai = getAi(apiKey)
   console.log('[gemini] generateProWithImage start, model=', model, 'prompt length=', prompt.length)
   await geminiSemaphore.acquire()
@@ -213,15 +229,18 @@ async function generateProWithImage(prompt: string, imageBase64: string, mimeTyp
       const stream = await ai.models.generateContentStream({
         model,
         contents: [{ role: 'user', parts: [{ inlineData: { mimeType, data: imageBase64 } }, { text: prompt }] }],
-        config: { temperature: 1, maxOutputTokens: 32768, httpOptions: { timeout: 300_000 } },
+        config: { maxOutputTokens: 32768, httpOptions: { timeout: 300_000 } },
       })
       let text = ''; let chunkCount = 0
+      let usage: GenerateContentResponseUsageMetadata | undefined
       for await (const chunk of stream) {
         text += chunk.text ?? ''
+        if (chunk.usageMetadata) usage = chunk.usageMetadata
         chunkCount++
         if (onChunk && chunkCount % 8 === 0) onChunk(text)
       }
       if (onChunk) onChunk(text)
+      logGeminiUsage(model, 'generateProWithImage', usage)
       console.log('[gemini] generateProWithImage done, chunks=', chunkCount, 'output length=', text.length)
       return text
     }, `generateProWithImage/${model}`)
@@ -236,7 +255,7 @@ async function generateProWithImage(prompt: string, imageBase64: string, mimeTyp
   }
 }
 
-async function generateProWithMultipleImages(prompt: string, images: Array<{ data: string; mimeType: string }>, apiKey?: string, model = 'gemini-3.5-flash', onChunk?: (accumulated: string) => void): Promise<string> {
+async function generateProWithMultipleImages(prompt: string, images: Array<{ data: string; mimeType: string }>, apiKey?: string, model: string = GEMINI_DESIGN_MODEL, onChunk?: (accumulated: string) => void): Promise<string> {
   const ai = getAi(apiKey)
   const imageParts = images.map(img => ({ inlineData: { mimeType: img.mimeType, data: img.data } }))
   await geminiSemaphore.acquire()
@@ -245,15 +264,18 @@ async function generateProWithMultipleImages(prompt: string, images: Array<{ dat
       const stream = await ai.models.generateContentStream({
         model,
         contents: [{ role: 'user', parts: [...imageParts, { text: prompt }] }],
-        config: { temperature: 1, maxOutputTokens: 32768, httpOptions: { timeout: 300_000 } },
+        config: { maxOutputTokens: 32768, httpOptions: { timeout: 300_000 } },
       })
       let text = ''; let chunkCount = 0
+      let usage: GenerateContentResponseUsageMetadata | undefined
       for await (const chunk of stream) {
         text += chunk.text ?? ''
+        if (chunk.usageMetadata) usage = chunk.usageMetadata
         chunkCount++
         if (onChunk && chunkCount % 8 === 0) onChunk(text)
       }
       if (onChunk) onChunk(text)
+      logGeminiUsage(model, 'generateProWithMultipleImages', usage)
       return text
     }, `generateProWithMultipleImages/${model}`)
   } catch (err) {
@@ -275,28 +297,11 @@ export interface UrlSourceData {
   componentStructure?: string
 }
 
-export async function analyzeUrlToDesignMd(
-  screenshotBase64: string,
-  url: string,
-  sourceData?: UrlSourceData,
-  apiKey?: string,
-  captureStatus?: 'full' | 'partial' | 'blocked',
-): Promise<string> {
-  const sourceSection = sourceData
-    ? `\n\n## Extracted Source Code Data\n\nUse this raw source data as the PRIMARY source of truth for tokens — these are actual computed values from the browser, not visual estimates.\n\n### Computed Element Styles (MOST ACCURATE — use these for color/typography tokens)\n\`\`\`\n${sourceData.computedStyles || '(none found)'}\n\`\`\`\n\n### Component Structure Samples (MOST USEFUL — use these for component rules)\n\`\`\`\n${sourceData.componentStructure || '(none found)'}\n\`\`\`\n\n### CSS Custom Properties (Design Tokens)\n\`\`\`\n${sourceData.cssVariables || '(none found)'}\n\`\`\`\n\n### Font Family Declarations\n\`\`\`\n${sourceData.fontFamilies || '(none found)'}\n\`\`\`\n\n### HTML Class Patterns (Tailwind / CSS modules)\n\`\`\`\n${sourceData.htmlClasses || '(none found)'}\n\`\`\`\n`
-    : ''
-
-  const accessNote = captureStatus === 'blocked'
-    ? `\n\n⚠️ SECURITY BLOCK DETECTED: This site blocked automated access (Cloudflare / 403 / bot protection). The screenshot may show an error or security page, NOT the real site design. You CANNOT see the actual product UI.\n\nFallback strategy — apply ALL of the following:\n1. Extract any brand/logo colors visible in the screenshot (even from a partial logo or favicon). Use those as primary/secondary.\n2. Infer the industry from the URL domain name (e.g., ".bank" → finance; "shop" → commerce).\n3. Build a clean, professional generic design system appropriate for that industry.\n4. Use system fonts (Pretendard, Noto Sans KR, or Inter) as the typography fallback.\n5. In the DESIGN.md description field, explicitly note: "보안 차단으로 인해 실제 사이트 디자인을 확인할 수 없어 로고 색상 추출 + 범용 디자인시스템으로 생성됨".\n`
-    : captureStatus === 'partial'
-    ? `\n\n⚠️ LIMITED SOURCE ACCESS: CSS extraction was restricted (cross-origin or dynamic rendering). Rely primarily on the screenshot for visual color/font analysis.\n`
-    : ''
-
-  const prompt = `You are a senior design system auditor. Analyze the provided screenshot of "${url}" AND the extracted source code data below to produce an accurate, portable DESIGN.md file that can be used to regenerate UI in the same visual language.${accessNote}${sourceSection}
-
-Output ONLY the raw DESIGN.md content — no explanations, no code fences, no markdown wrappers. Start directly with the YAML frontmatter.
-
-Follow this DESIGN.md schema exactly. This is a neutral Aide DESIGN.md format, not a Google/Material spec:
+/**
+ * DESIGN.md 산출 스키마. URL 분석 경로와 캡처 분석 경로가 같은 계약을 내도록
+ * 프롬프트의 스키마 부분만 공유한다. 분석 규칙은 입력 종류마다 다르므로 각자 붙인다.
+ */
+const DESIGN_MD_SCHEMA = `Follow this DESIGN.md schema exactly. This is a neutral Aide DESIGN.md format, not a Google/Material spec:
 
 ---
 version: "alpha"
@@ -400,7 +405,113 @@ components:
 - DO: [key design principle from what you observed]
 - DO: [another principle]
 - DON'T: [something to avoid]
-- DON'T: [another thing to avoid]
+- DON'T: [another thing to avoid]`
+
+/**
+ * RFP·기능요구사항은 PDF뿐 아니라 표를 페이지별로 캡처한 이미지로 오기도 하고,
+ * PDF 자체가 스캔본이라 텍스트 추출 라이브러리로는 빈 문자열이 나오는 경우가 많다.
+ * Gemini는 PDF와 이미지를 모두 페이지 단위로 읽으므로 한 경로로 처리한다.
+ *
+ * 여러 장을 한 번에 넘기는 게 중요하다. 요구사항 표는 행이 페이지를 넘어가므로
+ * 낱장으로 따로 읽으면 잘린 행을 복원하지 못한다.
+ */
+export async function extractDocumentToMarkdown(
+  files: Array<{ data: string; mimeType: string }>,
+  apiKey?: string,
+): Promise<string> {
+  const prompt = `You are a document extraction engine. The attached ${files.length} file(s) are pages of a Korean RFP, 제안요청서, 기능요구사항 정의서, or 화면기획서.
+
+Convert the ENTIRE document into structured Markdown. This output feeds a UI generation pipeline, so completeness matters more than brevity.
+
+Rules:
+- Extract every page in the order given. Do NOT summarize, abbreviate, or skip sections.
+- Preserve tables as Markdown tables. Requirement tables must keep EVERY row and EVERY column — especially the requirement ID (e.g. SFR-082), the system/channel column (e.g. "TCP 모바일 웹"), the requirement name, and the full detail text. These columns are used to filter scope downstream, so never drop or merge them.
+- A table row may continue across pages. Stitch continued rows back together instead of emitting a fragment twice.
+- Preserve heading hierarchy, numbered clauses (1., 1.1, 가., 나.), and list structure.
+- Keep all Korean text verbatim. Do not translate, paraphrase, or normalize wording.
+- These may be scans or photos of paper. Read them visually and transcribe. Ignore watermarks, page borders, staple marks, and scan artifacts.
+- For diagrams, flowcharts, or screen layouts that cannot be expressed as text, describe them in one line wrapped in [도식: ...].
+- If a page is genuinely unreadable, write [판독 불가: N페이지] and continue.
+- Output ONLY the extracted Markdown. No preamble, no code fences around the whole document, no commentary.`
+
+  const text = files.length > 1
+    ? await generateProWithMultipleImages(prompt, files, apiKey, GEMINI_DESIGN_MODEL)
+    : await generateProWithImage(prompt, files[0].data, files[0].mimeType, apiKey, GEMINI_DESIGN_MODEL)
+
+  return text.trim()
+}
+
+/**
+ * URL이 없는 서비스(네이티브 앱, 사내 시스템)의 캡처만으로 DESIGN.md를 만든다.
+ *
+ * URL 경로와 달리 computed style이 없어 전부 시각 추정이다. 그래서 정확도가
+ * 구조적으로 낮고, 특히 두 가지를 프롬프트에서 막아야 한다.
+ *  1) 배율 — 폰 캡처는 2x/3x라 44pt 버튼이 132px로 보인다. 픽셀 크기를 함께
+ *     넘겨 논리 단위로 환산시킨다. 이걸 놓치면 간격·radius·폰트가 전부 배수로 틀어진다.
+ *  2) 상태 — 캡처에는 default 상태만 있다. hover/pressed를 지어내지 못하게 한다.
+ */
+export async function analyzeScreensToDesignMd(
+  images: Array<{ data: string; mimeType: string; width?: number; height?: number }>,
+  serviceName: string,
+  apiKey?: string,
+): Promise<string> {
+  const sizeNote = images
+    .map((image, index) => {
+      const dim = image.width && image.height ? `${image.width}x${image.height}px` : '크기 미상'
+      return `- 이미지 ${index + 1}: ${dim}`
+    })
+    .join('\n')
+
+  const prompt = `You are a senior design system auditor. Analyze the ${images.length} attached screenshot(s) of "${serviceName}" and produce a portable DESIGN.md that can regenerate UI in the same visual language.
+
+Output ONLY the raw DESIGN.md content — no explanations, no code fences, no markdown wrappers. Start directly with the YAML frontmatter.
+
+${DESIGN_MD_SCHEMA}
+
+## Attached screenshot dimensions
+${sizeNote}
+
+Rules for analysis:
+- SCALE FIRST. These are raw screen captures, so the pixel dimensions above may be device pixels, not CSS/logical units. Before writing ANY px value, infer the scale factor: a mobile capture roughly 750/1080/1170/1290px wide is 2x or 3x of a ~375-430pt logical width; a capture already 375-430px wide is 1x. Divide every measured dimension by that factor and emit LOGICAL px. Getting this wrong makes every spacing, radius, and font size wrong by a multiple.
+- State the inferred scale factor and logical viewport width in the Overview section, in one sentence.
+- These screenshots show only the DEFAULT state. Do NOT invent hover, pressed, focus, disabled, or error styling. Where the schema asks for something not observable, use the closest observed value or omit the key. Never write placeholder text like "[detected]" into the final output.
+- Colors are read from compressed pixels. Sample from large flat areas, not from anti-aliased edges, gradients, or text. Convert to opaque hex.
+- Do NOT name a specific font family unless a wordmark or UI text makes it unmistakable. Otherwise describe the class (e.g. "system sans-serif, geometric") and use a safe stack such as Pretendard or Noto Sans KR.
+- Prefer values that repeat ACROSS multiple screenshots. A value seen on only one screen is an exception, not a token.
+- Do NOT invent Material Design, MD3, Carbon, iOS, or Tailwind conventions unless the screenshots clearly show them.
+- If an icon system is visible, name it generically from what you see. Do not default to Material Symbols.
+- Capture uncertainty in the prose sections, not by inserting vague token values.`
+
+  const parts = images.map(image => ({ data: image.data, mimeType: image.mimeType }))
+  const text = parts.length > 1
+    ? await generateProWithMultipleImages(prompt, parts, apiKey, GEMINI_DESIGN_MODEL)
+    : await generateProWithImage(prompt, parts[0].data, parts[0].mimeType, apiKey, GEMINI_DESIGN_MODEL)
+
+  return text.replace(/^```(?:markdown|md)?\n?/, '').replace(/```\s*$/, '').trim()
+}
+
+export async function analyzeUrlToDesignMd(
+  screenshotBase64: string,
+  url: string,
+  sourceData?: UrlSourceData,
+  apiKey?: string,
+  captureStatus?: 'full' | 'partial' | 'blocked',
+): Promise<string> {
+  const sourceSection = sourceData
+    ? `\n\n## Extracted Source Code Data\n\nUse this raw source data as the PRIMARY source of truth for tokens — these are actual computed values from the browser, not visual estimates.\n\n### Computed Element Styles (MOST ACCURATE — use these for color/typography tokens)\n\`\`\`\n${sourceData.computedStyles || '(none found)'}\n\`\`\`\n\n### Component Structure Samples (MOST USEFUL — use these for component rules)\n\`\`\`\n${sourceData.componentStructure || '(none found)'}\n\`\`\`\n\n### CSS Custom Properties (Design Tokens)\n\`\`\`\n${sourceData.cssVariables || '(none found)'}\n\`\`\`\n\n### Font Family Declarations\n\`\`\`\n${sourceData.fontFamilies || '(none found)'}\n\`\`\`\n\n### HTML Class Patterns (Tailwind / CSS modules)\n\`\`\`\n${sourceData.htmlClasses || '(none found)'}\n\`\`\`\n`
+    : ''
+
+  const accessNote = captureStatus === 'blocked'
+    ? `\n\n⚠️ SECURITY BLOCK DETECTED: This site blocked automated access (Cloudflare / 403 / bot protection). The screenshot may show an error or security page, NOT the real site design. You CANNOT see the actual product UI.\n\nFallback strategy — apply ALL of the following:\n1. Extract any brand/logo colors visible in the screenshot (even from a partial logo or favicon). Use those as primary/secondary.\n2. Infer the industry from the URL domain name (e.g., ".bank" → finance; "shop" → commerce).\n3. Build a clean, professional generic design system appropriate for that industry.\n4. Use system fonts (Pretendard, Noto Sans KR, or Inter) as the typography fallback.\n5. In the DESIGN.md description field, explicitly note: "보안 차단으로 인해 실제 사이트 디자인을 확인할 수 없어 로고 색상 추출 + 범용 디자인시스템으로 생성됨".\n`
+    : captureStatus === 'partial'
+    ? `\n\n⚠️ LIMITED SOURCE ACCESS: CSS extraction was restricted (cross-origin or dynamic rendering). Rely primarily on the screenshot for visual color/font analysis.\n`
+    : ''
+
+  const prompt = `You are a senior design system auditor. Analyze the provided screenshot of "${url}" AND the extracted source code data below to produce an accurate, portable DESIGN.md file that can be used to regenerate UI in the same visual language.${accessNote}${sourceSection}
+
+Output ONLY the raw DESIGN.md content — no explanations, no code fences, no markdown wrappers. Start directly with the YAML frontmatter.
+
+${DESIGN_MD_SCHEMA}
 
 Rules for analysis:
 - Source data beats screenshot estimation. If CSS custom properties or computed styles are provided, extract exact token values from them first.
@@ -415,7 +526,7 @@ Rules for analysis:
 - Capture uncertainty in the prose sections, not by inserting vague token values. Avoid placeholders like "[detected]" in final output; choose the best observed value.
 - Be specific and implementation-ready — this DESIGN.md will be used directly to generate UI.`;
 
-  return generateProWithImage(prompt, screenshotBase64, 'image/png', apiKey, 'gemini-3.5-flash');
+  return generateProWithImage(prompt, screenshotBase64, 'image/png', apiKey, GEMINI_ECONOMY_MODEL);
 }
 
 
@@ -641,6 +752,94 @@ export interface AsIsPageAnalysis {
     links: string[];
   };
   redesignFocus: string[];
+  shellContract?: {
+    topAppBar: { present: boolean; title: string; leftAction: string; rightAction: string; preserveExactly: boolean };
+    bottomNavigation: { present: boolean };
+    brandLogo: { present: boolean };
+  };
+}
+
+/**
+ * 네이티브 앱처럼 URL이 없는 서비스는 캡처 이미지가 유일한 as-is 근거다.
+ * DOM 분석(analyze-asis-url)과 같은 `AsIsPageAnalysis` 스키마로 돌려주어
+ * 생성 파이프라인이 입력 출처를 구분하지 않아도 되게 한다.
+ */
+export async function analyzeScreensToAsIsAnalysis(
+  images: Array<{ data: string; mimeType: string }>,
+  serviceName: string,
+  apiKey?: string,
+): Promise<AsIsPageAnalysis> {
+  const prompt = `You are a UX auditor. The attached ${images.length} screenshot(s) are consecutive screens of an existing service called "${serviceName}".
+
+Analyze the INFORMATION ARCHITECTURE, not the visual style. Output a single JSON object matching this exact schema:
+
+{
+  "sourceUrl": "${serviceName}",
+  "pageTitle": "화면 이름 (한국어)",
+  "metaDescription": "서비스 한 줄 설명 (한국어)",
+  "pagePurpose": "이 화면들의 목적 (한국어)",
+  "layoutType": "mobile-app | responsive-web | admin-dashboard 중 관찰된 것",
+  "globalNavigation": [{ "tag": "nav", "text": "메뉴명", "href": null }],
+  "primaryCtas": [{ "tag": "button", "text": "버튼 문구", "href": null }],
+  "forms": [{ "label": "폼 이름", "fields": ["필드명"], "submitText": "제출 버튼 문구" }],
+  "sections": [{ "index": 0, "role": "hero | list | detail | form | banner | footer 등", "heading": "섹션 제목", "textSamples": ["실제 화면 문구"], "ctaSamples": ["CTA 문구"], "repeatedItemCount": 0 }],
+  "repeatedPatterns": ["반복되는 UI 패턴 이름"],
+  "contentInventory": { "headings": ["제목"], "buttons": ["버튼"], "links": ["링크"] },
+  "redesignFocus": ["리디자인 시 개선할 지점 (한국어)"],
+  "shellContract": {
+    "topAppBar": { "present": true, "title": "화면에 보이는 정확한 제목", "leftAction": "back | none", "rightAction": "menu | none", "preserveExactly": true },
+    "bottomNavigation": { "present": false },
+    "brandLogo": { "present": false }
+  }
+}
+
+Rules:
+- Transcribe visible Korean text EXACTLY as shown. Do not translate or invent copy.
+- Cover every attached screen. Number sections continuously across screens in the order given.
+- repeatedItemCount is the count of repeated items you can actually see in that section (0 if not a list).
+- redesignFocus must name concrete IA problems you observed (정보 위계, 스캔성, CTA 발견성, 밀도 등). Do not mention colors, fonts, or visual style — those come from DESIGN.md, not from these screens.
+- shellContract is a strict presence/absence contract. Record the exact app-bar title and left/right controls. If no bottom navigation or brand logo is visible, set present:false; absence must not be replaced with an invented element.
+- Output ONLY the JSON object. No code fences, no commentary.`
+
+  const raw = await generateProWithMultipleImages(prompt, images, apiKey, GEMINI_DESIGN_MODEL)
+  const jsonText = raw.match(/```json\n?([\s\S]*?)```/)?.[1] ?? raw
+  const start = jsonText.indexOf('{')
+  const end = jsonText.lastIndexOf('}')
+  if (start === -1 || end === -1) throw new Error('as-is 화면 분석 결과를 해석하지 못했습니다.')
+
+  const parsed = JSON.parse(jsonText.slice(start, end + 1)) as Partial<AsIsPageAnalysis>
+
+  // 모델 출력은 신뢰 경계 밖이다. 다운스트림이 배열/객체 접근을 하므로 형태를 보정한다.
+  const list = <T,>(value: unknown): T[] => (Array.isArray(value) ? value as T[] : [])
+  return {
+    sourceUrl: parsed.sourceUrl || serviceName,
+    pageTitle: parsed.pageTitle || serviceName,
+    metaDescription: parsed.metaDescription || '',
+    pagePurpose: parsed.pagePurpose || '',
+    layoutType: parsed.layoutType || 'unknown',
+    globalNavigation: list(parsed.globalNavigation),
+    primaryCtas: list(parsed.primaryCtas),
+    forms: list(parsed.forms),
+    sections: list(parsed.sections),
+    repeatedPatterns: list(parsed.repeatedPatterns),
+    contentInventory: {
+      headings: list(parsed.contentInventory?.headings),
+      buttons: list(parsed.contentInventory?.buttons),
+      links: list(parsed.contentInventory?.links),
+    },
+    redesignFocus: list(parsed.redesignFocus),
+    shellContract: parsed.shellContract && typeof parsed.shellContract === 'object' ? {
+      topAppBar: {
+        present: parsed.shellContract.topAppBar?.present === true,
+        title: typeof parsed.shellContract.topAppBar?.title === 'string' ? parsed.shellContract.topAppBar.title.trim().slice(0, 80) : '',
+        leftAction: typeof parsed.shellContract.topAppBar?.leftAction === 'string' ? parsed.shellContract.topAppBar.leftAction.trim().slice(0, 40) : 'none',
+        rightAction: typeof parsed.shellContract.topAppBar?.rightAction === 'string' ? parsed.shellContract.topAppBar.rightAction.trim().slice(0, 40) : 'none',
+        preserveExactly: parsed.shellContract.topAppBar?.preserveExactly !== false,
+      },
+      bottomNavigation: { present: parsed.shellContract.bottomNavigation?.present === true },
+      brandLogo: { present: parsed.shellContract.brandLogo?.present === true },
+    } : undefined,
+  }
 }
 
 export interface TweakVariable {
@@ -818,7 +1017,7 @@ ${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는
 }
 `;
 
-  const text = await generatePro(prompt, apiKey, 'gemini-3.5-flash');
+  const text = await generatePro(prompt, apiKey, GEMINI_ECONOMY_MODEL);
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Failed to parse questionnaire JSON');
@@ -976,10 +1175,9 @@ function buildCssRootFromYaml(yamlContent: string): string {
   const lines: string[] = [];
 
   const parseSection = (sectionName: string, prefix: string) => {
-    const re = new RegExp(`^${sectionName}:\\s*\\n((?:[ \\t]+\\S[^\\n]*\\n?)*)`, 'm');
-    const m = yamlContent.match(re);
-    if (!m) return;
-    for (const line of m[1].split('\n')) {
+    const block = extractYamlSection(yamlContent, sectionName)
+    if (!block) return;
+    for (const line of block.split('\n')) {
       const kv = line.match(/^[ \t]+([^:#\n][^:\n]*):\s*["']?([^"'\n]+?)["']?\s*$/);
       if (kv) lines.push(`  --${prefix}-${kv[1].trim()}: ${kv[2].trim()};`);
     }
@@ -988,37 +1186,65 @@ function buildCssRootFromYaml(yamlContent: string): string {
   parseSection('colors', 'color');
   parseSection('spacing', 'spacing');
   parseSection('rounded', 'rounded');
+  parseSection('radius', 'rounded');
 
   if (lines.length === 0) return '';
   return `## CSS Implementation\n:root {\n${lines.join('\n')}\n}`;
 }
 
+function normalizeDesignMdSource(designMd: string): string {
+  return designMd.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').trimStart()
+}
+
 function extractDesignMdForPrompt(designMd: string): string {
   if (!designMd) return designMd;
+  const source = normalizeDesignMdSource(designMd)
 
-  // Extract YAML frontmatter — all design tokens (spacing, colors, typography, rounded, components)
-  const yamlMatch = designMd.match(/^---\n([\s\S]*?)\n---/);
+  // Frontmatter is metadata only for the unified aide.md contract. Legacy uploaded
+  // DESIGN.md files may still keep compact tokens here for compatibility.
+  const yamlMatch = source.match(/^---\n([\s\S]*?)\n---/);
   const yaml = yamlMatch ? `---\n${yamlMatch[1]}\n---` : '';
 
   // Extract CSS Implementation section — pre-built :root {} block with all CSS variables
-  const cssMatch = designMd.match(/##\s*CSS Implementation\b[\s\S]*?(?=\n## |\s*$)/);
+  const cssMatch = source.match(/##\s*CSS Implementation\b[\s\S]*?(?=\n## |\s*$)/);
   // If no CSS Implementation section exists, auto-generate one from YAML tokens
   const cssBlock = cssMatch
     ? cssMatch[0].trim()
     : (yamlMatch ? buildCssRootFromYaml(yamlMatch[1]) : '');
 
-  // Priority order: YAML tokens first → CSS vars block → remaining prose
+  // The normalized contract is injected separately by buildDesignSystemContract.
+  // This excerpt keeps metadata/CSS/prose without repeating the large fenced contract.
   const parts: string[] = [];
   if (yaml) parts.push(yaml);
   if (cssBlock) parts.push(cssBlock);
 
-  const prose = designMd
+  // 펜스드 ```yaml contract 블록은 buildDesignSystemContract가 이미 결정론으로
+  // 컴파일해 프롬프트에 따로 주입한다. 원문까지 같이 보내면 100KB가 넘는 이 블록이
+  // 예산을 다 먹고 정작 원칙·가이드 산문이 잘려나간다. 여기서는 제외한다.
+  const prose = source
     .replace(/^---\n[\s\S]*?\n---\n?/, '')
     .replace(/##\s*CSS Implementation\b[\s\S]*?(?=\n## |\s*$)/, '')
+    .replace(/```yaml\n[\s\S]*?\n```/g, '')
     .trim();
   if (prose) parts.push(prose);
 
-  return parts.length > 0 ? parts.join('\n\n') : designMd;
+  const expanded = parts.length > 0 ? parts.join('\n\n') : source;
+  // 큰 DESIGN.md(특히 100KB 이상)를 원문 그대로 3개 시안에 반복하면 비용뿐 아니라
+  // 서로 다른 prose 규칙이 경쟁해 결과가 평균화된다. 전체 문서는 위에서 이미
+  // DesignSystemContract로 결정론 컴파일하므로, 모델에는 핵심 원문만 제한해 전달한다.
+  const maxChars = 24_000
+  if (expanded.length <= maxChars) return expanded
+
+  const yamlBudget = 12_000
+  const yamlPart = yaml.slice(0, yamlBudget)
+  const remainingBudget = maxChars - yamlPart.length
+  const preferredSections = prose
+    .split(/(?=^##+\s+)/m)
+    .filter(section => /(?:principle|foundation|token|color|typograph|spacing|radius|shadow|layout|grid|navigation|button|card|input|list|responsive|accessib|원칙|토큰|색상|타이포|간격|레이아웃|내비게이션|버튼|카드|입력|반응형|접근성)/i.test(section.slice(0, 180)))
+    .join('\n\n')
+    .slice(0, remainingBudget)
+  const compact = [yamlPart, cssBlock.slice(0, 4_000), preferredSections].filter(Boolean).join('\n\n')
+  return compact.slice(0, maxChars)
 }
 
 type DesignTokenMap = Record<string, string>
@@ -1049,16 +1275,34 @@ type DesignRhythmContract = {
 }
 
 function extractYamlFrontmatter(designMd: string): string {
-  return designMd.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? ''
+  return normalizeDesignMdSource(designMd).match(/^---\n([\s\S]*?)\n---/)?.[1] ?? ''
 }
 
-function extractYamlTopLevelSection(yaml: string, section: string): string {
-  const match = yaml.match(new RegExp(`(?:^|\\n)${section}:\\s*\\n([\\s\\S]*?)(?=\\n[a-zA-Z0-9_-]+:\\s*(?:\\n|["'{\\[]|[^\\n]*)|\\s*$)`))
-  return match?.[1] ?? ''
+function extractYamlSection(yaml: string, section: string): string {
+  const lines = yaml.split('\n')
+  const sectionPattern = new RegExp(`^(\\s*)${section.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:\\s*$`)
+  for (let index = 0; index < lines.length; index++) {
+    const match = lines[index].match(sectionPattern)
+    if (!match) continue
+    const baseIndent = match[1].length
+    const block: string[] = []
+    for (let cursor = index + 1; cursor < lines.length; cursor++) {
+      const line = lines[cursor]
+      if (!line.trim()) {
+        block.push('')
+        continue
+      }
+      const indent = line.match(/^\s*/)?.[0].length ?? 0
+      if (indent <= baseIndent) break
+      block.push(line.slice(baseIndent))
+    }
+    if (block.some(line => line.trim())) return block.join('\n')
+  }
+  return ''
 }
 
 function parseSimpleTokenMap(yaml: string, section: string): DesignTokenMap {
-  const block = extractYamlTopLevelSection(yaml, section)
+  const block = extractYamlSection(yaml, section)
   const result: DesignTokenMap = {}
   for (const line of block.split('\n')) {
     const match = line.match(/^[ \t]{2}([^:#\n][^:\n]*):\s*(.+?)\s*$/)
@@ -1072,7 +1316,7 @@ function parseSimpleTokenMap(yaml: string, section: string): DesignTokenMap {
 }
 
 function parseComponentContract(yaml: string): ComponentContract {
-  const block = extractYamlTopLevelSection(yaml, 'components')
+  const block = extractYamlSection(yaml, 'components')
   const result: ComponentContract = {}
   let current = ''
   for (const line of block.split('\n')) {
@@ -1095,7 +1339,7 @@ function parseComponentContract(yaml: string): ComponentContract {
 }
 
 function parseNestedSectionKeys(yaml: string, section: string): string[] {
-  const block = extractYamlTopLevelSection(yaml, section)
+  const block = extractYamlSection(yaml, section)
   const keys: string[] = []
   for (const line of block.split('\n')) {
     const match = line.match(/^[ \t]{2}([^:#\n][^:\n]*):\s*$/)
@@ -1164,23 +1408,37 @@ function buildDesignRhythmContract(designMd: string, hasBrandColors = false): De
   if (!designMd.trim()) return null
 
   const name = extractDesignSystemName(designMd)
-  const colors = parseSimpleTokenMap(yaml, 'colors')
-  const spacing = parseSimpleTokenMap(yaml, 'spacing')
-  const rounded = parseSimpleTokenMap(yaml, 'rounded')
+  // aide.md의 fenced contract가 단일 원본이다. 외부/레거시 DESIGN.md만
+  // frontmatter 토큰을 호환 입력으로 사용한다.
+  const fenced = parseFencedDesignContract(designMd)
+  const frontmatterColors = parseSimpleTokenMap(yaml, 'colors')
+  const colors = fenced?.colors ?? frontmatterColors
+  const frontmatterSpacing = parseSimpleTokenMap(yaml, 'spacing')
+  const spacing = fenced?.spacing ?? frontmatterSpacing
+  const roundedTokens = parseSimpleTokenMap(yaml, 'rounded')
+  const frontmatterRounded = Object.keys(roundedTokens).length ? roundedTokens : parseSimpleTokenMap(yaml, 'radius')
+  const rounded = fenced?.rounded ?? frontmatterRounded
   const typographyKeys = parseNestedSectionKeys(yaml, 'typography')
-  const components = parseComponentContract(yaml)
+  const typeKeys = typographyKeys.length ? typographyKeys : parseSimpleTokenMap(yaml, 'type')
+  const frontmatterComponents = parseComponentContract(yaml)
+  const components = fenced?.components ?? frontmatterComponents
 
   const layout = parseSimpleTokenMap(yaml, 'layout')
+  const chrome = parseSimpleTokenMap(yaml, 'chrome')
 
   const cardPadding = layout['card-padding']
+    ?? spacing['card-padding']
     ?? pickComponentValue(components, ['card'], ['padding', 'paddingX', 'paddingY'])
     ?? pickSpacingToken(spacing, ['lg', 'md', 'base'], 0.58)
   const cardGap = layout['card-gap']
+    ?? spacing['card-gap']
     ?? pickComponentValue(components, ['card'], ['gap', 'rowGap', 'columnGap'])
     ?? pickSpacingToken(spacing, ['md', 'base', 'sm'], 0.42)
   const sectionGap = layout['section-gap']
+    ?? spacing['section-gap']
     ?? pickSpacingToken(spacing, ['lg', 'xl', 'section'], 0.65)
   const pagePadding = layout['page-padding']
+    ?? spacing['page-padding']
     ?? pickSpacingToken(spacing, ['lg', 'md', 'gutter', 'base'], 0.58)
   const cardRadius = pickComponentValue(components, ['card'], ['radius', 'rounded', 'borderRadius'])
     ?? pickRoundedToken(rounded, ['md', 'lg', 'card'], 0.58)
@@ -1192,11 +1450,12 @@ function buildDesignRhythmContract(designMd: string, hasBrandColors = false): De
     ?? '[derive from card component in DESIGN.md]'
   const cardShadow = pickComponentValue(components, ['card'], ['shadow', 'boxShadow'])
     ?? '[derive from card/elevation rules in DESIGN.md]'
-  const pagePaddingWeb = layout['page-padding-web'] ?? pagePadding
+  const pagePaddingWeb = layout['page-padding-web'] ?? spacing['page-padding-web'] ?? pagePadding
   const itemGap = layout['item-gap']
+    ?? spacing['item-gap']
     ?? pickSpacingToken(spacing, ['xs', 'xxs', 'sm'], 0.25)
-  const headerHeight = layout['header-height'] ?? layout['nav-height'] ?? layout['appbar-height'] ?? '56px'
-  const tabbarHeight = layout['tabbar-height'] ?? layout['tab-bar-height'] ?? layout['bottom-nav-height'] ?? '72px'
+  const headerHeight = layout['header-height'] ?? layout['nav-height'] ?? layout['appbar-height'] ?? chrome['header-height'] ?? '56px'
+  const tabbarHeight = layout['tabbar-height'] ?? layout['tab-bar-height'] ?? layout['bottom-nav-height'] ?? chrome['tabbar-height'] ?? '72px'
 
   return {
     systemName: name,
@@ -1204,7 +1463,7 @@ function buildDesignRhythmContract(designMd: string, hasBrandColors = false): De
     colors,
     spacing,
     rounded,
-    typographyKeys: typographyKeys.slice(0, 16),
+    typographyKeys: (Array.isArray(typeKeys) ? typeKeys : Object.keys(typeKeys)).slice(0, 16),
     components,
     layoutRhythm: {
       pagePadding,
@@ -1224,7 +1483,11 @@ function buildDesignRhythmContract(designMd: string, hasBrandColors = false): De
   }
 }
 
-function buildDesignSystemContract(designMd: string, hasBrandColors = false): string {
+function buildDesignSystemContract(
+  designMd: string,
+  hasBrandColors = false,
+  retrievalHints?: ComponentRetrievalHints,
+): string {
   if (!designMd.trim()) return 'No external DESIGN.md was provided. Use the default Aide design system contract.'
 
   const contract = buildDesignRhythmContract(designMd, hasBrandColors)
@@ -1245,9 +1508,17 @@ function buildDesignSystemContract(designMd: string, hasBrandColors = false): st
     'badge-filled-primary', 'badge-tint-primary', 'chip-default', 'chip-selected',
     'modal-default', 'bottom-sheet-default', 'section-header-default',
   ]
-  const prioritized = COMPONENT_PRIORITY.filter(k => components[k]).map(k => [k, components[k]] as [string, Record<string, string>])
-  const rest = Object.entries(components).filter(([k]) => !COMPONENT_PRIORITY.includes(k))
-  const componentLines = [...prioritized, ...rest].slice(0, 28).map(([key, value]) => {
+  // 화면이 실제로 쓰는 컴포넌트만 남긴다. 힌트가 없으면 전체를 그대로 두고
+  // 아래 우선순위 정렬이 처리한다(무신호 상황에서 임의로 줄이지 않는다).
+  const retrievedIds = retrievalHints
+    ? new Set(selectRelevantComponents(Object.keys(components), retrievalHints))
+    : null
+  const retrieved = retrievedIds
+    ? Object.fromEntries(Object.entries(components).filter(([key]) => retrievedIds.has(key)))
+    : components
+  const prioritized = COMPONENT_PRIORITY.filter(k => retrieved[k]).map(k => [k, retrieved[k]] as [string, Record<string, string>])
+  const rest = Object.entries(retrieved).filter(([k]) => !COMPONENT_PRIORITY.includes(k))
+  const componentLines = [...prioritized, ...rest].slice(0, 32).map(([key, value]) => {
     const summary = Object.entries(value).slice(0, 8).map(([prop, val]) => `${prop}: ${val}`).join('; ')
     return `    "${key}": "${summary || 'defined in prose'}"`
   })
@@ -1341,8 +1612,8 @@ ${cssVarDeclaration('--aide-input-height', layoutRhythm.inputHeight)}
 ${cssVarDeclaration('--aide-card-border', layoutRhythm.cardBorder)}
 ${cssVarDeclaration('--aide-card-shadow', layoutRhythm.cardShadow)}
 ${cssVarDeclaration('--aide-page-padding-web', layoutRhythm.pagePaddingWeb)}
-  --aide-tabbar-height: 72px;
-  --aide-header-height: 56px;
+${cssVarDeclaration('--aide-tabbar-height', layoutRhythm.tabbarHeight)}
+${cssVarDeclaration('--aide-header-height', layoutRhythm.headerHeight)}
   --aide-section-label-gap: 8px;
 ${colorVars ? `\n  /* Design token overrides from selected DESIGN.md */\n${colorVars}` : ''}
 ${spacingVars ? `${spacingVars}` : ''}
@@ -1474,6 +1745,20 @@ function resolveTokenRef(value: string, contract: DesignRhythmContract): string 
   })
 }
 
+/**
+ * 계약에서 길이 값을 고른다. `[derive from ...]` 안내 문자열과 "L=40px / M=32px"처럼
+ * 여러 값이 섞인 표기를 걸러 실제 CSS에 쓸 수 있는 단일 길이만 남긴다.
+ */
+function pickLength(...candidates: Array<string | undefined>): string {
+  for (const candidate of candidates) {
+    if (!candidate || candidate.includes('[derive')) continue
+    const first = candidate.match(/\d+(?:\.\d+)?(?:px|rem|em)/)
+    if (first) return first[0]
+    if (candidate.startsWith('var(')) return candidate
+  }
+  return candidates[candidates.length - 1] ?? ''
+}
+
 function buildComponentReferenceSnippets(contract: DesignRhythmContract): string {
   const { colors, rounded, components, layoutRhythm } = contract
   const r = (v: string) => resolveTokenRef(v, contract)
@@ -1482,18 +1767,16 @@ function buildComponentReferenceSnippets(contract: DesignRhythmContract): string
   const btnBg = r(btn.backgroundColor ?? colors.primary ?? '#000')
   const btnColor = r(btn.textColor ?? colors['on-primary'] ?? '#fff')
   const btnRadius = r(btn.rounded ?? rounded.md ?? '8px')
-  const btnH = btn.height ?? layoutRhythm.buttonHeight ?? '48px'
+  // layoutRhythm의 높이 값은 계약에 컴포넌트가 없으면 "[derive from ...]" 안내 문자열이
+  // 된다. 그대로 쓰면 `height:[derive from button component in DESIGN.md]` 같은 깨진 CSS가
+  // 예시로 나가므로 반드시 걸러낸다.
+  const btnH = pickLength(btn.height, layoutRhythm.buttonHeight, '48px')
   const btnPad = btn.padding ?? '0 24px'
 
   const inp = components['input-default'] ?? {}
   const inpBg = r(inp.backgroundColor ?? colors.surface ?? '#fff')
   const inpRadius = r(inp.rounded ?? rounded.md ?? '8px')
-  const inpH = (() => {
-    const raw = inp.height ?? layoutRhythm.inputHeight ?? '40px'
-    // "L=40px / M=32px / S=24px" → pick first value
-    const first = raw.match(/\d+px/)
-    return first ? first[0] : raw
-  })()
+  const inpH = pickLength(inp.height, layoutRhythm.inputHeight, '40px')
   const inpBorder = (() => {
     const raw = r(inp.border ?? `1px solid ${colors.border ?? '#ccc'}`)
     return raw.includes('[derive') ? `1px solid ${colors.border ?? '#ccc'}` : raw
@@ -1512,6 +1795,63 @@ function buildComponentReferenceSnippets(contract: DesignRhythmContract): string
   const primaryColor = colors.primary ?? '#1a75ff'
   const fillNeutral = colors['fill-neutral'] ?? colors['surface-alt'] ?? '#f4f4f5'
   const itemGap = layoutRhythm.itemGap.includes('[derive') ? '8px' : layoutRhythm.itemGap
+  const primarySoft = colors['primary-soft'] ?? `color-mix(in srgb, var(--color-primary,${primaryColor}) 12%, transparent)`
+
+  const btnOutline = components['button-outline'] ?? {}
+  const btnGhost = components['button-ghost'] ?? {}
+  const btnOutlineBorder = (() => {
+    const raw = r(btnOutline.borderColor ?? btnOutline.border ?? '')
+    return raw && !raw.includes('[derive') ? raw : primaryColor
+  })()
+  const btnOutlineText = (() => {
+    const raw = r(btnOutline.textColor ?? '')
+    return raw && !raw.includes('[derive') ? raw : primaryColor
+  })()
+  const btnGhostText = (() => {
+    const raw = r(btnGhost.textColor ?? '')
+    return raw && !raw.includes('[derive') ? raw : primaryColor
+  })()
+
+  const cardB2c = components['card-b2c'] ?? {}
+  const cardB2b = components['card-b2b'] ?? {}
+  const cardB2cShadow = (() => {
+    const raw = r(cardB2c.shadow ?? cardB2c.boxShadow ?? '')
+    return raw && !raw.includes('[derive') ? raw : (cardShadow === 'none' ? '0 2px 10px rgba(15,23,42,.08)' : cardShadow)
+  })()
+  const cardB2bBorder = (() => {
+    const raw = r(cardB2b.border ?? '')
+    return raw && !raw.includes('[derive') ? raw : cardBorder
+  })()
+
+  const positiveColor = r(colors.positive ?? '#158A4A')
+  const cautionColor = r(colors.caution ?? '#C66A05')
+  const negativeColor = r(colors.negative ?? '#D9363E')
+
+  const headerHeight = layoutRhythm.headerHeight.includes('[derive') ? '56px' : layoutRhythm.headerHeight
+  const pagePaddingWeb = layoutRhythm.pagePaddingWeb.includes('[derive') ? '32px' : layoutRhythm.pagePaddingWeb
+
+  const chip = components['chip-default'] ?? {}
+  const chipBorder = (() => {
+    const raw = r(chip.border ?? '')
+    return raw && !raw.includes('[derive') ? raw : `1px solid ${borderColor}`
+  })()
+
+  const modalRadius = rounded.lg ?? cardRadius
+
+  const inpLarge = components['input-large'] ?? {}
+  const inpSmall = components['input-small'] ?? {}
+  const inpLargeH = inpLarge.height ?? '48px'
+  const inpSmallH = inpSmall.height ?? '32px'
+
+  const badgeTint = components['badge-tint-primary'] ?? {}
+  const badgeTintBg = (() => {
+    const raw = r(badgeTint.backgroundColor ?? '')
+    return raw && !raw.includes('[derive') ? raw : primarySoft
+  })()
+  const badgeTintText = (() => {
+    const raw = r(badgeTint.textColor ?? '')
+    return raw && !raw.includes('[derive') ? raw : primaryColor
+  })()
 
   return `\`\`\`html
 <!-- ✅ Button Primary -->
@@ -1531,6 +1871,16 @@ function buildComponentReferenceSnippets(contract: DesignRhythmContract): string
 .btn-secondary:disabled { opacity:0.38; cursor:not-allowed; pointer-events:none; }
 </style>
 
+<!-- ✅ Button Outline / Ghost -->
+<button class="btn-outline">레이블</button>
+<button class="btn-ghost">레이블</button>
+<style>
+.btn-outline { height:${btnH}; padding:${btnPad}; background:transparent; color:var(--color-primary,${btnOutlineText}); border:1px solid var(--color-primary,${btnOutlineBorder}); border-radius:var(--rounded-md,${btnRadius}); font-size:14px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+.btn-outline:hover { background:color-mix(in srgb, var(--color-primary,${btnOutlineBorder}) 8%, transparent); }
+.btn-ghost { height:${btnH}; padding:${btnPad}; background:transparent; color:var(--color-primary,${btnGhostText}); border:none; border-radius:var(--rounded-md,${btnRadius}); font-size:14px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+.btn-ghost:hover { background:color-mix(in srgb, var(--color-primary,${btnGhostText}) 8%, transparent); }
+</style>
+
 <!-- ✅ Input Field (default / focus / error / disabled) -->
 <input class="input-default" type="text" placeholder="입력하세요" />
 <input class="input-default input-error" type="text" value="잘못된 입력" aria-invalid="true" />
@@ -1545,6 +1895,14 @@ function buildComponentReferenceSnippets(contract: DesignRhythmContract): string
 .input-default:disabled { opacity:0.5; cursor:not-allowed; background:var(--color-fill-neutral,${fillNeutral}); }
 </style>
 
+<!-- ✅ Input Size Variants (large / small) -->
+<input class="input-default input-large" type="text" placeholder="큰 입력" />
+<input class="input-default input-small" type="text" placeholder="작은 입력" />
+<style>
+.input-large { height:${inpLargeH}; font-size:15px; }
+.input-small { height:${inpSmallH}; font-size:12px; padding:0 10px; }
+</style>
+
 <!-- ✅ Card (B2C: shadow / B2B: border) -->
 <div class="aide-card">
   <div style="font-size:14px;font-weight:600;color:var(--color-text,${textColor});margin:0;">제목</div>
@@ -1552,24 +1910,91 @@ function buildComponentReferenceSnippets(contract: DesignRhythmContract): string
 </div>
 <style>
 .aide-card { background:var(--color-surface,${surfaceColor}); padding:var(--aide-card-padding,${cardPad}); border-radius:var(--aide-card-radius,${cardRadius}); border:${cardBorder}; box-shadow:${cardShadow}; display:flex; flex-direction:column; gap:var(--aide-card-gap,${cardGap}); }
+.aide-card.card-b2c { border:none; box-shadow:${cardB2cShadow}; }
+.aide-card.card-b2b { border:${cardB2bBorder}; box-shadow:none; }
 </style>
 
-<!-- ✅ List Item -->
+<!-- ✅ List Item (default / selected) -->
 <div class="list-item">
   <span class="material-symbols-rounded" style="color:var(--color-primary,${primaryColor});font-size:20px;">home</span>
   <span style="flex:1;font-size:14px;color:var(--color-text,${textColor});">항목 텍스트</span>
   <span style="font-size:12px;color:var(--color-text-alternative,#9a9ba0);">보조</span>
 </div>
+<div class="list-item list-item-selected">
+  <span class="material-symbols-rounded" style="color:var(--color-primary,${primaryColor});font-size:20px;">check_circle</span>
+  <span style="flex:1;font-size:14px;color:var(--color-text,${textColor});">선택된 항목</span>
+</div>
 <style>
 .list-item { display:flex; align-items:center; gap:var(--aide-item-gap,${itemGap}); padding:12px var(--aide-page-padding,${cardPad}); border-bottom:1px solid var(--color-border-alt,${borderColor}); min-height:56px; }
+.list-item-selected { background:var(--color-primary-soft,${primarySoft}); border-radius:var(--rounded-md,${btnRadius}); }
 </style>
 
 <!-- ✅ Badge -->
 <span class="badge-primary">신규</span>
 <span class="badge-neutral">일반</span>
+<span class="badge-positive">완료</span>
+<span class="badge-caution">주의</span>
+<span class="badge-negative">오류</span>
 <style>
 .badge-primary { display:inline-flex; align-items:center; background:var(--color-primary,${primaryColor}); color:#fff; border-radius:9999px; padding:2px 8px; font-size:12px; font-weight:600; }
 .badge-neutral { display:inline-flex; align-items:center; background:var(--color-fill-neutral,${fillNeutral}); color:var(--color-text-neutral,${textNeutral}); border-radius:9999px; padding:2px 8px; font-size:12px; font-weight:600; }
+.badge-positive { display:inline-flex; align-items:center; background:var(--color-positive,${positiveColor}); color:#fff; border-radius:9999px; padding:2px 8px; font-size:12px; font-weight:600; }
+.badge-caution { display:inline-flex; align-items:center; background:var(--color-caution,${cautionColor}); color:#fff; border-radius:9999px; padding:2px 8px; font-size:12px; font-weight:600; }
+.badge-negative { display:inline-flex; align-items:center; background:var(--color-negative,${negativeColor}); color:#fff; border-radius:9999px; padding:2px 8px; font-size:12px; font-weight:600; }
+</style>
+
+<!-- ✅ Badge Tint (은은한 톤, filled보다 낮은 강조) -->
+<span class="badge-tint">신규</span>
+<style>
+.badge-tint { display:inline-flex; align-items:center; background:${badgeTintBg}; color:${badgeTintText}; border-radius:9999px; padding:2px 8px; font-size:12px; font-weight:600; }
+</style>
+
+<!-- ✅ Chip (default / selected) -->
+<span class="chip">필터</span>
+<span class="chip chip-selected">선택됨</span>
+<style>
+.chip { display:inline-flex; align-items:center; height:32px; padding:0 12px; border-radius:9999px; border:${chipBorder}; background:var(--color-surface,${surfaceColor}); color:var(--color-text,${textColor}); font-size:13px; font-weight:600; cursor:pointer; }
+.chip-selected { border-color:var(--color-primary,${primaryColor}); background:var(--color-primary,${primaryColor}); color:#fff; }
+</style>
+
+<!-- ✅ Section Header -->
+<div class="section-header">
+  <h2 class="section-title">섹션 제목</h2>
+  <a class="section-action" href="#">전체 보기</a>
+</div>
+<style>
+.section-header { display:flex; align-items:center; justify-content:space-between; }
+.section-title { font-size:16px; font-weight:700; color:var(--color-text,${textColor}); margin:0; }
+.section-action { font-size:13px; font-weight:600; color:var(--color-primary,${primaryColor}); text-decoration:none; }
+</style>
+
+<!-- ✅ Modal / Bottom Sheet -->
+<div class="modal-overlay">
+  <div class="modal">
+    <h3 class="modal-title" style="font-size:16px;font-weight:700;color:var(--color-text,${textColor});margin:0;">제목</h3>
+    <p class="modal-body" style="font-size:14px;color:var(--color-text-neutral,${textNeutral});margin:0;">본문 내용</p>
+    <div class="modal-actions">
+      <button class="btn-secondary">취소</button>
+      <button class="btn-primary">확인</button>
+    </div>
+  </div>
+</div>
+<style>
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; z-index:200; }
+.modal { width:min(340px,90vw); background:var(--color-surface,${surfaceColor}); border-radius:var(--rounded-lg,${modalRadius}); padding:var(--aide-card-padding,${cardPad}); display:flex; flex-direction:column; gap:var(--aide-card-gap,${cardGap}); }
+.modal-actions { display:flex; justify-content:flex-end; gap:var(--aide-item-gap,${itemGap}); }
+</style>
+
+<div class="bottom-sheet-overlay">
+  <div class="bottom-sheet">
+    <div class="bottom-sheet-handle"></div>
+    <h3 class="bottom-sheet-title" style="font-size:16px;font-weight:700;color:var(--color-text,${textColor});margin:0;">제목</h3>
+  </div>
+</div>
+<style>
+.bottom-sheet-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:flex-end; z-index:200; }
+.bottom-sheet { width:100%; background:var(--color-surface,${surfaceColor}); border-radius:${modalRadius} ${modalRadius} 0 0; padding:12px var(--aide-page-padding,${cardPad}) calc(var(--aide-card-padding,${cardPad}) + env(safe-area-inset-bottom)); }
+.bottom-sheet-handle { width:36px; height:4px; border-radius:2px; background:var(--color-border-alt,${borderColor}); margin:0 auto 12px; }
 </style>
 
 <!-- ✅ Bottom Navigation (모바일) -->
@@ -1589,6 +2014,30 @@ function buildComponentReferenceSnippets(contract: DesignRhythmContract): string
 .nav-item.active { color:var(--color-primary,${primaryColor}); }
 .nav-item .material-symbols-rounded { font-size:22px; }
 @media (min-width:768px) { .nav-bottom { display:none; } }
+</style>
+
+<!-- ✅ Web Navigation (nav-top / nav-side) — 웹 플랫폼 전용, 모바일에서는 숨김 -->
+<nav class="nav-top">
+  <span class="nav-top-logo" style="font-size:16px;font-weight:700;color:var(--color-text,${textColor});">Brand</span>
+  <a class="nav-top-item active" href="#">홈</a>
+  <a class="nav-top-item" href="#">탐색</a>
+</nav>
+<style>
+.nav-top { display:none; height:var(--aide-header-height,${headerHeight}); align-items:center; gap:24px; padding:0 var(--aide-page-padding-web,${pagePaddingWeb}); border-bottom:1px solid var(--color-border-alt,${borderColor}); background:var(--color-surface,${surfaceColor}); }
+.nav-top-item { font-size:14px; font-weight:600; color:var(--color-text-neutral,${textNeutral}); text-decoration:none; }
+.nav-top-item.active { color:var(--color-primary,${primaryColor}); }
+@media (min-width:768px) { .nav-top { display:flex; } }
+</style>
+
+<nav class="nav-side">
+  <a class="nav-side-item active" href="#"><span class="material-symbols-rounded">home</span>홈</a>
+  <a class="nav-side-item" href="#"><span class="material-symbols-rounded">search</span>탐색</a>
+</nav>
+<style>
+.nav-side { display:none; flex-direction:column; gap:4px; width:220px; padding:16px 12px; border-right:1px solid var(--color-border-alt,${borderColor}); }
+.nav-side-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:var(--rounded-md,${btnRadius}); font-size:14px; font-weight:600; color:var(--color-text-neutral,${textNeutral}); text-decoration:none; }
+.nav-side-item.active { background:var(--color-primary-soft,${primarySoft}); color:var(--color-primary,${primaryColor}); }
+@media (min-width:768px) { .nav-side { display:flex; } }
 </style>
 \`\`\``
 }
@@ -1794,7 +2243,9 @@ const MATERIAL_SYMBOLS_CSS = `<style id="aide-material-symbols">
 
 function injectMaterialSymbolsFont(html: string): string {
   if (html.includes('id="aide-material-symbols"')) return html
-  if (/material.symbols.rounded/i.test(html)) return html  // CDN 링크 이미 있으면 스킵
+  // class="material-symbols-rounded"는 폰트 로드가 아니다. 기존 정규식은 클래스명만 보고
+  // 주입을 건너뛰어 ligature 이름(pets, circle 등)이 문자로 노출되게 했다.
+  if (/fonts\.googleapis\.com[^"']*Material\+Symbols\+Rounded/i.test(html)) return html
   if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, `${MATERIAL_SYMBOLS_CSS}\n</head>`)
   if (/<body/i.test(html)) return html.replace(/<body/i, `${MATERIAL_SYMBOLS_CSS}\n<body`)
   return MATERIAL_SYMBOLS_CSS + '\n' + html
@@ -2574,6 +3025,32 @@ function loadCreonRefImages(): Array<{ inlineData: { data: string; mimeType: str
   return parts
 }
 
+async function optimizeGeneratedImageForUi(
+  base64: string,
+  mimeType = 'image/png',
+): Promise<{ base64: string; mimeType: string }> {
+  try {
+    const webp = await sharp(Buffer.from(base64, 'base64'))
+      .rotate()
+      .resize({
+        width: GEMINI_UI_IMAGE_MAX_EDGE,
+        height: GEMINI_UI_IMAGE_MAX_EDGE,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .webp({
+        quality: GEMINI_UI_IMAGE_WEBP_QUALITY,
+        alphaQuality: 90,
+        effort: 4,
+      })
+      .toBuffer()
+    return { base64: webp.toString('base64'), mimeType: 'image/webp' }
+  } catch (err) {
+    console.warn('[gemini] WebP optimization failed, using generated source:', err instanceof Error ? err.message : String(err))
+    return { base64, mimeType }
+  }
+}
+
 export async function generateHeroImage(
   subject: string,
   apiKey?: string,
@@ -2593,7 +3070,9 @@ export async function generateHeroImage(
       { text: prompt },
       ...refImages,
     ]
-    const imageModels = modelOverride ? [modelOverride, 'gemini-2.5-flash-image'] : ['gemini-2.5-flash-image', 'gemini-2.5-pro-image']
+    const imageModels = [...new Set(modelOverride
+      ? [modelOverride, GEMINI_IMAGE_FALLBACK_MODEL]
+      : [GEMINI_IMAGE_MODEL, GEMINI_IMAGE_FALLBACK_MODEL])]
     let res: Awaited<ReturnType<typeof ai.models.generateContent>> | null = null
     for (const model of imageModels) {
       try {
@@ -2602,9 +3081,18 @@ export async function generateHeroImage(
           contents: { parts },
           config: {
             responseModalities: ['IMAGE'],
+            imageConfig: {
+              imageSize: model === GEMINI_ECONOMY_IMAGE_MODEL ? '1K' : GEMINI_IMAGE_SIZE,
+              aspectRatio: mode === 'scene'
+                ? '16:9'
+                : mode === 'scene-card-cover'
+                  ? '3:4'
+                  : '1:1',
+            },
             httpOptions: { timeout: 120_000 },
           },
         })
+        logGeminiUsage(model, 'generateHeroImage', res.usageMetadata)
         console.log('[gemini] generateHeroImage model used:', model)
         break
       } catch (modelErr) {
@@ -2617,7 +3105,7 @@ export async function generateHeroImage(
       if (part.inlineData?.data) {
         if (mode === 'scene' || mode === 'scene-card-cover') {
           console.log('[gemini] 3D hero scene generated, preserving background', mode === 'scene-card-cover' ? '(card-cover mode)' : '')
-          return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType || 'image/png' }
+          return optimizeGeneratedImageForUi(part.inlineData.data, part.inlineData.mimeType || 'image/png')
         }
         try {
           // 1) BiRefNet(로컬 self-host) 우선 — 머리/털/경계 품질↑. 실패 시 @imgly 폴백.
@@ -2630,11 +3118,11 @@ export async function generateHeroImage(
           // 투명 여백을 잘라 객체가 카드 visual zone을 꽉 채우게 한다 (빈 히어로 방지)
           const tightened = await trimTransparentPadding(transparent.base64, transparent.mimeType)
           console.log('[gemini] 3D hero object transparent bg via', birefnet ? 'BiRefNet' : '@imgly', '(trimmed)')
-          return tightened
+          return optimizeGeneratedImageForUi(tightened.base64, tightened.mimeType)
         } catch (removeErr) {
           const message = removeErr instanceof Error ? removeErr.message : String(removeErr)
           console.error('[gemini] background removal failed, using original:', message)
-          return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType || 'image/png' }
+          return optimizeGeneratedImageForUi(part.inlineData.data, part.inlineData.mimeType || 'image/png')
         }
       }
     }
@@ -2816,12 +3304,7 @@ ${domainBlock}
    - %%SCENE_3D%% 이미지 자체에는 텍스트/버튼/로고가 없어야 합니다. HTML/CSS 정보는 scene 주변 여백, 좌측/상단 정보 영역, 또는 별도 action panel에 배치하십시오.
    - %%SCENE_3D%%를 무조건 object-fit:cover로 꽉 채우지 마십시오. Ambient Canvas, Split Workspace, Anchored Scene, Hero Cover 중 화면 목적에 맞게 contain/cover/anchor를 선택하세요.
    - scene 위에 overlay를 써야 한다면 작은 badge/label 1개만 허용합니다.
-   - **[WCAG AA 필수]** 히어로 섹션의 텍스트 색상 규칙:
-     * 배경색이 Primary(blue, #1A75FF 등 짙은 색), 다크 계열이면 반드시 color:#ffffff (white) 사용
-     * 배경색이 White/Light surface이면 color:#111111 사용
-     * 절대 어두운 배경 위에 color:#000000/#111111 같은 어두운 텍스트를 쓰지 마십시오 → WCAG 대비 미달
-     * 올바른 예시: style="background:#1A75FF; color:#ffffff;" ✅
-     * 금지 예시: style="background:#1A75FF; color:#000000;" ❌
+   - **[WCAG AA]** 히어로 섹션도 위 "5. [WCAG AA] 색상 대비 규칙"을 그대로 적용합니다 (Primary/다크 배경 → 흰 텍스트, 밝은 배경 → 어두운 텍스트).
    - 모바일에서는 grid-template-columns: 1fr (이미지가 텍스트 아래 또는 위로 스택)으로 자동 대응하십시오.
    ` : ''}
    
@@ -3024,51 +3507,6 @@ HTML을 쓰기 전에 아래 7가지를 내부 설계안으로 먼저 확정한 
    - 예쁘게 보이려고 임의 컬러/그림자/라운드를 추가하지 말고, DESIGN.md 안에서 가장 표현력 있는 조합을 선택한다.
 
 위 설계안은 출력하지 말고, 최종 HTML/CSS 결과에만 반영하세요.`;
-}
-
-function buildDesignDirectionSelectorLayer(_heroImagePrompt?: string, variantStyle?: string, domain?: AppDomain, visualPolicy?: VariantVisualPolicy): string {
-  const variant = getVariantLabel(variantStyle)
-  const domainHint = domain ? `\n도메인 힌트: ${domain}` : ''
-  const visualPolicyRules = visualPolicy === 'scene-3d'
-    ? `- **시안 A**: 이번에는 3D가 필요한 서비스로 판단되었습니다. A안 히어로는 %%SCENE_3D%%를 화면 전체에 통합되는 3D scene layer로 사용합니다. 과한 full-bleed wallpaper가 아니라 서비스 상태·공간·상황을 설명하는 큰 visual participant여야 합니다. 히어로에서 %%HERO_3D%% 단일 오브젝트와 실사 이미지는 금지. 단, 하위 콘텐츠 썸네일은 서비스 분석 결과에 따라 실사 사용 가능.`
-    : visualPolicy === 'scene-3d-card-cover'
-      ? `- **시안 B**: 이번 브리프는 배경까지 포함된 몰입형 씬이 적합합니다. B안 히어로는 %%SCENE_3D%%를 **Hero Card Cover** 패턴으로 사용합니다. 카드를 꽉 채우는 배경 씬 위에 하단 그라데이션 오버레이를 깔고, 배지·헤드라인·상태 정보·CTA를 white 텍스트로 올리세요. 히어로에서 %%HERO_3D%% 단일 오브젝트와 실사 이미지는 금지. 단, 하위 콘텐츠 카드/리스트에는 서비스 분석 결과에 따라 실사 썸네일 사용 가능.`
-      : visualPolicy === 'creon-object-3d'
-        ? `- **시안 B**: 히어로는 3D 필요 여부와 무관하게 반드시 %%HERO_3D%% 단일 오브젝트를 사용합니다. Creon식 배경 없는 3D 아이콘/오브젝트만 허용. 히어로에서 %%SCENE_3D%%와 실사 이미지는 금지. 단, 하위 콘텐츠 카드/리스트에는 서비스 분석 결과에 따라 실사 썸네일 사용 가능.`
-        : visualPolicy === 'real-photo'
-        ? `- **시안 C**: 히어로 섹션은 실사 이미지(Unsplash) 사용. 히어로에 반드시 %%IMG_1:관련 키워드%%를 사용합니다. 히어로에서 3D 플레이스홀더 금지. C안은 가능한 경우 Bold Editorial Hero를 백단 기본 패턴으로 우선 고려하세요. 사용자가 프롬프트에 과감한 히어로를 명시하지 않아도 Aide가 서비스 성격을 판단해 자동 적용합니다. C안이라고 해서 모든 이미지 영역을 실사로 채우지 마세요.`
-        : `- **시안 A**: 히어로 이미지 없음. 데이터·수치·차트·카드가 첫 화면을 채운다. %%HERO_3D%%, %%SCENE_3D%%, %%IMG_1%% 등 어떤 이미지 플레이스홀더도 히어로 섹션에 사용 금지. 단, 하위 콘텐츠 썸네일은 서비스 분석 결과에 따라 실사 사용 가능.`
-
-  return `## Design Direction Selector — 템플릿 고정 금지, 전략 다양성 강제 (CRITICAL)
-
-HTML을 작성하기 전에 이 시안의 디자인 전략을 아래 후보군에서 1개 이상 선택해 화면 구조에 반영하세요. 선택 결과를 텍스트로 출력하지 말고, 최종 레이아웃과 CSS에만 반영합니다.${domainHint}
-
-### 전략 후보군
-- Practical Dashboard: 숫자, 진행률, 상태, 미션을 가장 읽기 쉽게 만든 실사용 대시보드.
-- Mascot Companion: 캐릭터가 KPI, 미션, 리워드와 대화하듯 연결되는 companion 앱.
-- Immersive Hero Scene: 배경까지 포함한 큰 비주얼 씬과 하단 action panel로 브랜드 감정을 만드는 화면.
-- Reward Store First: 쿠폰, 포인트, 교환 가능 혜택, 상품 카드가 중심인 리워드 커머스 화면.
-- Challenge Social: 친구 랭킹, 주간 챌린지, streak, 뱃지가 중심인 소셜/게임형 화면.
-- Minimal Premium: Apple Fitness/Toss처럼 절제된 정보 계층과 넓은 여백으로 고급감을 만드는 화면.
-- Gamified Quest: 레벨, 퀘스트, 보상 박스, 잠금 해제 흐름을 강조하는 게임형 화면.
-- Editorial Story: 큰 카피, 감성 이미지, 짧은 카드 흐름으로 브랜드 스토리를 먼저 전달하는 화면.
-
-	### ⚠️ 이번 시안의 히어로 비주얼 타입 — STRICT RULE, 절대 바꾸지 말 것
-	${visualPolicyRules}
-
-### 이번 시안의 차별화 의무
-- 현재 시안: ${variant}
-- A/B/C는 서로 다른 전략이어야 합니다. 같은 header + hero + CTA + 2 card + mission list 골격을 반복하면 실패입니다.
-- hero 구조, CTA 위치, 카드 밀도, bottom navigation 위 콘텐츠 흐름은 달라야 합니다.
-- 시안 A는 정보 구조/실사용성을 강하게, 시안 B는 3D 비주얼 임팩트와 전환을 강하게, 시안 C는 실사 히어로를 통한 신뢰/혜택/탐색 경험을 강하게 만든다.
-- C안은 B2C, 멤버십, 커머스, 라이프스타일, 교육, 헬스, 여행, 푸드처럼 감정·혜택·탐색이 중요한 서비스에서 큰 실사/scene hero card를 우선 고려한다.
-- B2B/관리자/업무형 서비스라면 Bold Editorial Hero를 과하게 쓰지 말고 신뢰형 visual panel로 톤다운하세요.
-
-### 시각 품질 기준
-- 시안 A: 이미지 없이도 완성도 있어야 함. 데이터 계층, 차트, 진행률, KPI 카드로 화면을 채운다.
-- 시안 B: 3D 오브젝트/씬이 작은 스티커처럼 보이면 실패. 히어로 비주얼이 화면의 핵심이어야 한다.
-- 시안 C: 실사 이미지가 브랜드 분위기를 만들고 그 위 or 아래에 핵심 CTA가 명확히 읽혀야 한다.
-- 어떤 시안이든 실제 서비스 홈 화면이어야 한다. 포스터처럼 예쁜 상단만 만들고 아래가 비면 실패.`
 }
 
 function buildMediaLayoutSafetyLayer(heroImagePrompt?: string): string {
@@ -3328,13 +3766,6 @@ ${domainPatternHint ? `
 이 섹션은 출력하지 말고 최종 HTML/CSS에만 반영하세요.`
 }
 
-function stripCodeFence(text: string): string {
-  return text
-    .replace(/^```(?:json|html|text)?\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim()
-}
-
 function getVariantLabel(variantStyle?: string): string {
   if (variantStyle?.includes('시안 A')) return 'A'
   if (variantStyle?.includes('시안 B')) return 'B'
@@ -3419,165 +3850,8 @@ function buildFallbackDesignIntentPlan(args: {
   }, null, 2)
 }
 
-export async function generateDesignIntentAndHeroVisualPlan(args: {
-  brief: string;
-  answersText: string;
-  designMd?: string;
-  generationPlan?: AideGenerationPlan;
-  variantStyle?: string;
-  platform: PlatformType;
-  domain?: AppDomain;
-  heroImagePrompt?: string;
-  structuredAnswerRules?: string;
-  apiKey?: string;
-}): Promise<string> {
-  const variant = getVariantLabel(args.variantStyle)
-  const designContext = args.designMd ? extractDesignMdForPrompt(args.designMd).slice(0, 5000) : ''
-  const domainContext = args.domain ? getDomainGuidance(args.domain).slice(0, 1800) : ''
-  const variantKey = (['A', 'B', 'C'] as const).find(k => args.variantStyle?.toUpperCase().includes(k)) ?? 'A'
-  const recommendedStrategyHint = args.generationPlan?.recommendedStrategy?.[variantKey]
-    ? `\n## 이 시안(${variantKey})의 권장 디자인 전략 (서비스 서브타입 분석 기반)\n\`${args.generationPlan.recommendedStrategy[variantKey]}\` 전략을 이 시안의 기본 방향으로 우선 고려하세요. 전략 선택 근거와 다른 전략을 선택할 경우 그 이유를 assumptions에 명시하세요.\n`
-    : ''
-  const prompt = `당신은 AI UI 생성 전 단계의 프로덕트 디자이너 겸 아트 디렉터입니다.
-HTML을 만들지 말고, 아래 입력을 바탕으로 시안 ${variant}의 Product Brief + Design Intent + Layout Composition Plan만 짧은 JSON으로 작성하세요.
-
-목표:
-- 사용자가 애매하게 적은 요청을 실제 제품 화면으로 번역한다.
-- 부족한 정보는 멈춰서 묻지 말고, 합리적인 제품 가정으로 보정하되 assumptions에 명시한다.
-- 이후 HTML 생성 모델이 이미지를 장식으로 끼우지 않고, UI와 자연스럽게 녹이도록 구체적인 설계 기준을 준다.
-- 이후 HTML 생성 모델이 와이어프레임이 아니라 실제 서비스처럼 보이는 데이터, 상태, CTA, 탐색 구조를 넣도록 지시한다.
-- QA 단계가 아니므로 검사/평가를 하지 않는다.
-- 디자인 시스템 토큰을 바꾸지 않는다.
-- A/B/C가 서로 다른 레이아웃 골격과 비주얼 전략을 갖게 한다.
-
-반드시 결정할 것:
-1. 사용자가 만들려는 서비스의 productBrief
-2. 첫 화면에서 반드시 보여야 할 정보와 행동
-3. 이 시안의 핵심 의도
-4. 첫 화면 focal point
-5. 3개 영역 구조: 핵심 요약 / 주요 행동 / 보조 탐색
-6. 히어로 비주얼 전략
-7. 3D 사용 여부와 사용할 경우 정확한 placeholder:
-   - %%SCENE_3D%%: 통합 3D scene layer. 화면을 과하게 덮는 배경이 아니라 UI 캔버스 안에서 공간/상태/상황을 설명하는 큰 visual participant
-   - %%MASCOT_3D%%: 배경 제거된 투명 마스코트
-   - %%REWARD_OBJECT_3D%%: 배경 제거된 보상/아이템/상품 오브젝트
-   - 3D가 어울리지 않으면 %%IMG_n:english keyword%% 실사 이미지 사용
-8. 이미지 크롭/스케일/위치/safe area
-9. Unsplash 키워드가 필요하면 브랜드명 말고 범용 영문 명사구
-10. 간격/여백/정보밀도 품질 기준
-11. 절대 하면 안 되는 것
-
-디자인 전략 후보군:
-- Practical Dashboard
-- Mascot Companion
-- Immersive Hero Scene
-- Reward Store First
-- Challenge Social
-- Minimal Premium
-- Gamified Quest
-- Editorial Story
-
-전략 선택 규칙:
-- 시안별 전략은 고정 템플릿이 아니라 브리프에 맞는 선택입니다.
-- A/B/C가 같은 골격이 되지 않도록 selectedDesignStrategy, layoutThesis, heroVisualPlan이 서로 명확히 달라야 합니다.
-- 3D 요청이 있어도 모든 시안을 3D로 만들지 말고, 가장 설득력 있는 시안에 강하게 쓰거나 보조 마스코트로 제한합니다.
-- Immersive Hero Scene을 선택하면 CTA는 이미지 하단 safe area 또는 별도 action panel에 배치해야 합니다. 이미지 중앙에 애매하게 떠 있으면 실패입니다.
-
-응답 형식:
-\`\`\`json
-{
-  "variant": "${variant}",
-  "productBrief": {
-    "serviceType": "...",
-    "targetUser": "...",
-    "coreProblem": "...",
-    "primaryJourney": "...",
-    "screenPurpose": "...",
-    "mustShowData": ["...", "...", "..."],
-    "assumptions": ["...", "..."]
-  },
-  "selectedDesignStrategy": "Practical Dashboard | Mascot Companion | Immersive Hero Scene | Reward Store First | Challenge Social | Minimal Premium | Gamified Quest | Editorial Story",
-  "designIntent": "...",
-  "layoutThesis": "...",
-  "focalPoint": "...",
-  "primaryAction": "...",
-  "firstViewportContract": {
-    "visibleAboveFold": ["...", "...", "..."],
-    "hierarchy": "...",
-    "rhythm": "...",
-    "density": "...",
-    "emptyStateAvoidance": "..."
-  },
-  "zones": {
-    "summary": "...",
-    "mainAction": "...",
-    "supportingNavigation": "..."
-  },
-  "heroVisualPlan": {
-    "selectedRole": "%%SCENE_3D%% | %%HERO_3D%% | %%IMG_1:keyword%% | none",
-    "semanticPurpose": "...",
-    "containerType": "contained-visual-stage | anchored-mascot-stage | reward-object-stage | cropped-immersive-scene-stage | content-image-container | none",
-    "requiredHtmlStructure": ".aide-visual-stage > img.aide-hero-3d | semantic image container | none",
-    "reason": "...",
-    "composition": "...",
-    "scale": "...",
-    "crop": "...",
-    "safeArea": "...",
-    "placement": "...",
-    "fallbackRealImageKeywords": ["..."]
-  },
-  "visualDifferentiation": "...",
-  "designSystemApplication": "...",
-  "compositionQualityGates": [
-    "No wireframe feel: ...",
-    "No floating asset: ...",
-    "No random rhythm: ...",
-    "No empty first viewport: ..."
-  ],
-  "avoid": ["...", "...", "..."]
-}
-\`\`\`
-
-## 기획서
-${args.brief}
-
-## 사용자 답변
-${args.answersText || '(없음)'}
-
-## 구조화 규칙
-${args.structuredAnswerRules || '(없음)'}
-
-## 공통 생성 계획 — 모든 시안이 반드시 공유해야 하는 상위 계약
-${args.generationPlan ? `\`\`\`json\n${JSON.stringify(args.generationPlan, null, 2)}\n\`\`\`` : '(없음)'}
-
-## 시안 방향
-${args.variantStyle || '(단일 시안)'}
-${recommendedStrategyHint}
-## 기준 플랫폼
-${args.platform}
-
-## 3D 생성 의도
-${args.heroImagePrompt || '(3D 없음 또는 AI 판단)'}
-
-${domainContext ? `## 도메인 패턴\n${domainContext}\n` : ''}
-${designContext ? `## 디자인 시스템 요약\n${designContext}\n` : ''}
-JSON 코드블록만 출력하세요.`
-
-  try {
-    const raw = await generatePro(prompt, args.apiKey, 'gemini-3.5-flash')
-    const plan = stripCodeFence(raw)
-    return plan.length > 200
-      ? plan.slice(0, 6000)
-      : buildFallbackDesignIntentPlan(args)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('[gemini] design intent plan failed, using fallback:', message)
-    return buildFallbackDesignIntentPlan(args)
-  }
-}
-
 export async function generateUI(params: GenerateParams, apiKey?: string): Promise<GenerateUIResult> {
-  const { designMd, brief, answers, projectSummary, logoDataUrl, brandColors, mainOnly = false, variantStyle, referenceImageBase64, referenceImageKind = 'reference', asIsAnalysis, platform, modelId = 'gemini-3.5-flash', heroImagePrompt, heroSubject, sharedVisualMode, sharedVisualSubject, visualPolicy, generationPlan, domain, onStep, prdDoc, iaImageBase64, iaText } = params;
+  const { designMd, brief, answers, projectSummary, logoDataUrl, brandColors, mainOnly = false, variantStyle, referenceImageBase64, referenceImageKind = 'reference', asIsAnalysis, platform, modelId = GEMINI_DESIGN_MODEL, heroImagePrompt, heroSubject, sharedVisualMode, sharedVisualSubject, visualPolicy, generationPlan, domain, onStep, prdDoc, iaImageBase64, iaText } = params;
   const effectiveHeroImagePrompt = heroSubject || heroImagePrompt
   const effectiveVisualPolicy = visualPolicy ?? (() => {
     if (getVariantLabel(variantStyle) !== 'B') return undefined
@@ -3716,7 +3990,8 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
     visualDirectionRule,
   ].filter(Boolean).join('\n')
 
-  // 이 시안의 레이아웃 아키타입 — 골격(다양성)을 정함. 정확성은 DESIGN.md 결정론 규칙이 담당.
+  // DesignDirection은 아트 디렉션이고 UIStructureIR은 셸·스크롤·섹션 계약이다.
+  // 둘 중 하나를 끄면 자유 HTML이 제품 구조 안전장치를 우회하므로 함께 사용한다.
   const variantArchetype = generationPlan?.variantArchetypes?.[getVariantLabel(variantStyle) as 'A' | 'B' | 'C']
   const archetypeGuide = variantArchetype
     ? `\n## ★ 레이아웃 아키타입 — 이 시안의 골격 (CRITICAL)\n${archetypeToPrompt(variantArchetype)}\n`
@@ -3777,7 +4052,22 @@ ${JSON.stringify(variantStructure, null, 2)}
 - 포털형/탐색형 서비스인데 좌측 LNB만 있는 어드민 구조로 만들면 실패입니다.
 ` : ''
   const hasBrandColors = !!(brandColors && brandColors.length > 0);
-  const designSystemContract = buildDesignSystemContract(effectiveDesignMd, hasBrandColors);
+  // 이 시안의 방향(구도·내비게이션·섹션 흐름)으로 필요한 컴포넌트만 계약에서 뽑는다.
+  // 구조 IR이 있으면 chrome/repeatPattern까지 더해 정확도를 높인다.
+  const retrievalHints: ComponentRetrievalHints = hintsFromDirectionPlan(
+    params.precomputedDesignIntentPlan,
+    effectivePlatform,
+  );
+  const planStructure = generationPlan?.variantStructures?.[getVariantLabel(variantStyle) as 'A' | 'B' | 'C'];
+  if (planStructure) {
+    retrievalHints.chrome = planStructure.chrome;
+    retrievalHints.repeatPatterns = planStructure.sections.map(section => section.repeatPattern);
+    retrievalHints.sectionRoles = [
+      ...(retrievalHints.sectionRoles ?? []),
+      ...planStructure.sections.map(section => section.role),
+    ];
+  }
+  const designSystemContract = buildDesignSystemContract(effectiveDesignMd, hasBrandColors, retrievalHints);
 
   const designDescription = hasDesignSystem
     ? extractDesignDescription(extractYamlFrontmatter(effectiveDesignMd))
@@ -3788,27 +4078,13 @@ ${JSON.stringify(variantStructure, null, 2)}
   const componentSnippets = designContract ? buildComponentReferenceSnippets(designContract) : ''
   onStep?.('디자인 인텐트 · 레이아웃 분석 중...')
   const designIntentPlan = params.precomputedDesignIntentPlan
-    ? params.precomputedDesignIntentPlan
-    : isDraftMode
-      ? buildFallbackDesignIntentPlan({
-          variantStyle,
-          platform: effectivePlatform,
-          heroImagePrompt: visual3dPrompt,
-          domain,
-          visualPolicy: effectiveVisualPolicy,
-        })
-      : await generateDesignIntentAndHeroVisualPlan({
-        brief,
-        answersText,
-        designMd: effectiveDesignMd,
-        generationPlan,
-        variantStyle,
-        platform: effectivePlatform,
-        domain,
-        heroImagePrompt: visual3dPrompt,
-        structuredAnswerRules,
-        apiKey,
-      })
+    ?? buildFallbackDesignIntentPlan({
+      variantStyle,
+      platform: effectivePlatform,
+      heroImagePrompt: visual3dPrompt,
+      domain,
+      visualPolicy: effectiveVisualPolicy,
+    })
 
   const visualPolicyContract = effectiveVisualPolicy === 'scene-3d'
     ? `이번 시안 비주얼 정책: A안/scene-3d — Integrated 3D Scene Layer
@@ -3852,7 +4128,8 @@ ${JSON.stringify(variantStructure, null, 2)}
 - %%IMG_1:keyword%% keyword는 반드시 브리프 서비스 도메인과 직접 관련된 영문 명사구로 작성하세요.
   서비스 키워드: ${extractVisualKeyword(effectiveSharedVisualSubject || brief)}
 - C안 히어로에서 3D placeholder(%%HERO_3D%%, %%SCENE_3D%%)는 사용 금지입니다.
-- C안은 가능한 경우 Bold Editorial Hero를 백단 기본 패턴으로 우선 고려하세요.
+- C안은 가능한 경우 Bold Editorial Hero를 백단 기본 패턴으로 우선 고려하세요. 사용자가 프롬프트에 과감한 히어로를 명시하지 않아도 Aide가 서비스 성격을 판단해 자동 적용합니다.
+- C안은 B2C, 멤버십, 커머스, 라이프스타일, 교육, 헬스, 여행, 푸드처럼 감정·혜택·탐색이 중요한 서비스에서 큰 실사/scene hero card를 우선 고려한다.
 
 ⛔ **Bold Editorial Hero — 반드시 이 구조를 사용하세요 (레이아웃 붕괴 방지)**
 
@@ -3911,7 +4188,7 @@ ${JSON.stringify(variantStructure, null, 2)}
 - ❌ padding 하드코딩(16px) → CSS 변수 미사용으로 디자인 시스템 불일치
 
 - 히어로 아래에는 category/filter rail, 혜택/추천/콘텐츠 카드 등 탐색 흐름이 이어져야 합니다.
-- B2B/관리자/업무형 서비스라면 Bold Editorial Hero를 신뢰형 visual panel로 톤다운하세요.
+- B2B/관리자/업무형 서비스라면 Bold Editorial Hero를 과하게 쓰지 말고 신뢰형 visual panel로 톤다운하세요.
 - C안이라고 해서 모든 이미지 영역을 실사로 채우지 마세요.
 - A/B와 같은 구조를 반복하지 마세요.
 - ⛔ C안 스크롤 필수: 메인 콘텐츠 컨테이너에 반드시 overflow-y:auto; height:calc(100dvh - var(--aide-tabbar-height) - var(--aide-header-height)); 를 적용하세요.`
@@ -3959,7 +4236,7 @@ ${hasBrandColors
   ? `- 색상: DESIGN.md의 neutral/surface/background/border/status colors는 유지하고, primary/action/accent 계열만 아래 [브랜드 컬러]로 치환합니다.`
   : isAdaptive
   ? `- 색상: colors 토큰이 "[AI 결정]" 형태로 되어있습니다. 도메인·브랜드·시안 방향에 맞는 컬러를 직접 선택해 :root에 CSS 변수로 선언하세요. CSS 속성에 #hex 직접 사용 절대 금지 (반드시 var(--color-*) 사용).`
-  : `- 색상: ⛔ YAML frontmatter의 colors 토큰만 사용. CSS 속성에 #hex 직접 사용 절대 금지 (예: color:#333 금지, background:#fff 금지 → 반드시 CSS 변수 사용).`}
+  : `- 색상: ⛔ 컴파일된 [디자인 시스템]의 colors 토큰만 사용. CSS 속성에 #hex 직접 사용 절대 금지 (예: color:#333 금지, background:#fff 금지 → 반드시 CSS 변수 사용).`}
 - 폰트: typography 토큰의 fontFamily·fontSize·fontWeight 그대로 적용.
 - spacing: ⛔ 아래 CSS 변수를 반드시 :root에 선언하고 전체 HTML에 일관 적용 — 임의 px 값 직접 사용 절대 금지.
   :root 안에 선언할 변수:
@@ -3971,7 +4248,7 @@ ${hasBrandColors
   ⛔ 금지: padding: 16px / gap: 12px / margin: 24px — 반드시 var(--aide-card-padding) / var(--aide-section-gap) / var(--aide-item-gap) 사용.
   ✅ 허용: padding: 0 / margin: auto / gap: 0 / width: 100% / clamp() 포함 식.
 - border-radius: ⛔ rounded 토큰을 --rounded-* CSS 변수로 :root에 선언 후 var(--rounded-*) 사용. 임의 px 값 직접 사용 절대 금지.
-- 컴포넌트: YAML frontmatter의 components 섹션을 모든 컴포넌트에 정확히 적용. 토큰 이름 해석 규칙:
+- 컴포넌트: 컴파일된 [디자인 시스템]의 components 섹션을 모든 컴포넌트에 정확히 적용. 토큰 이름 해석 규칙:
   • background / textColor / borderColor / dividerColor 값이 이름이면 → var(--color-{이름}) (예: "primary" → var(--color-primary), "border-alt" → var(--color-border-alt))
   • radius / radiusTop 값이 이름이면 → var(--rounded-{이름}) (예: "md" → var(--rounded-md), "xl" → var(--rounded-xl))
   • padding / paddingX / paddingY 값이 이름이면 → var(--spacing-{이름}) (예: "lg" → var(--spacing-lg), "md" → var(--spacing-md))
@@ -4238,7 +4515,7 @@ ${usesKtdsCompatibleRules ? `> - [ ] ⛔ ${ktdsCompatibleLabel} 치수 준수: �
 ` : ''}
 ${logoDataUrl ? `\n## ⚠️ 브랜드 로고 슬롯 (CRITICAL)\n- 로고 이미지를 직접 작성하지 마세요. src, data URL, placeholder 이미지, 텍스트 로고를 만들지 마세요.\n- **메인 화면과 모든 서브 화면(탭 목적지, 내부 페이지)의 헤더/앱바 브랜드 위치에 각각 1개씩 슬롯을 삽입하세요.** 화면이 3개면 슬롯도 3개입니다.\n${AIDE_LOGO_SLOT_HTML}\n- Aide가 생성 후 마지막 단계에서 모든 슬롯을 실제 업로드 로고 이미지로 치환합니다.\n- 텍스트 브랜드명(앱 이름, 서비스명 등)으로 대체 금지. 모든 화면의 로고 슬롯이 항상 우선입니다.\n- ❌ 히어로 배경, 대형 이미지, 히어로 카드 안에 슬롯을 넣지 마세요. 헤더/앱바 전용입니다.\n- ❌ 로고를 화면 폭의 큰 영역으로 확대하지 마세요. 헤더/앱바 안의 작은 브랜드 영역만 예약하세요.` : `\n## 브랜드명 표시 규칙\n- 로고 입력이 없습니다. 앱/서비스 브랜드는 텍스트로 표시하세요.\n- <img src="FreshFit">처럼 존재하지 않는 로고 이미지를 만들지 마세요.\n- 선택된 디자인 시스템의 로고나 회사명(예: kt ds)을 최종 서비스 로고로 표시하지 마세요.`}
 ${hasBrandColors ? `\n## 브랜드 컬러 적용 규칙\n로고에서 추출한 브랜드 컬러는 사용자의 회사 정체성을 반영하기 위한 값입니다. DESIGN.md가 기본 UI 품질과 컴포넌트 구조를 보장하고, 브랜드 컬러는 primary/action/accent 계열만 치환합니다.\n\n메인 브랜드 컬러: ${brandColors![0]}${brandColors![1] ? `\n보조 브랜드 컬러: ${brandColors![1]}` : ''}${brandColors!.length > 2 ? `\n추가 브랜드 컬러: ${brandColors!.slice(2).join(', ')}` : ''}\n\nCSS 변수 선언 규칙:\n- --color-primary, --color-primary-text, --color-primary-fill, --color-primary-border, --color-primary-icon 등 primary/action/accent 계열은 브랜드 컬러 기반으로 선언\n- --color-secondary는 보조 브랜드 컬러가 있을 때만 선언\n- --color-surface, --color-surface-alt, --color-background, --color-text, --color-border, --color-fill, --color-disabled, --color-positive, --color-caution, --color-negative, --color-info 등 neutral/surface/background/border/status 계열은 DESIGN.md 값을 유지\n- spacing, rounded, typography, component height/padding/radius/card rules는 DESIGN.md 값을 유지\n- 브랜드 컬러와 DESIGN.md 토큰 외 임의 hex 사용 금지\n- CTA, 주요 액션, 활성 탭, 링크, primary icon에만 브랜드 컬러를 사용하고 카드 배경/페이지 배경/본문 텍스트를 브랜드 컬러로 덮지 않음` : ''}
-${asIsAnalysis ? `\n## As-is URL 구조 분석 — 리디자인 대상 정보 구조 (스타일 금지)\n아래 데이터는 기존 서비스의 정보 구조, 섹션 순서, 주요 CTA, 내비게이션, 콘텐츠 재료를 파악하기 위한 것입니다.\n\n절대 규칙:\n- As-is URL의 색상, 폰트, 라운드, 카드 그림자, 아이콘 스타일, 시각 톤을 복사하지 마세요.\n- 최종 시각 스타일은 DESIGN.md와 브랜드 규칙만 따릅니다.\n- As-is는 \"무엇을 유지/개선할지\" 판단하는 입력입니다.\n- 기존 화면의 핵심 섹션/CTA/콘텐츠 의미는 유지하되, 정보 위계·스캔성·반응형 레이아웃·CTA 발견성을 개선하세요.\n\n분석 JSON:\n\`\`\`json\n${JSON.stringify(asIsAnalysis, null, 2).slice(0, 12000)}\n\`\`\`` : ''}
+${asIsAnalysis ? `\n## As-is 화면 구조 분석 — 리디자인 대상 정보 구조 (스타일 금지)\n아래 데이터는 기존 서비스의 정보 구조, 섹션 순서, 주요 CTA, 내비게이션, 콘텐츠 재료를 파악하기 위한 것입니다.\n\n절대 규칙:\n- As-is의 색상, 폰트, 라운드, 카드 그림자, 아이콘 스타일, 시각 톤을 복사하지 마세요.\n- 최종 시각 스타일은 DESIGN.md와 브랜드 규칙만 따릅니다.\n- 기존 화면의 핵심 섹션/CTA/콘텐츠 의미는 유지하되, 정보 위계·스캔성·반응형 레이아웃·CTA 발견성을 개선하세요.\n- shellContract는 바꾸면 안 되는 화면 셸의 존재/부재 계약입니다. topAppBar의 title·leftAction·rightAction을 그대로 유지하세요.\n- shellContract.bottomNavigation.present가 false이면 하단 탭바·하단 내비게이션을 절대 추가하지 마세요.\n- shellContract.brandLogo.present가 false이면 이미지 로고·텍스트 로고·Aide 로고를 절대 추가하지 마세요.\n\n분석 JSON:\n\`\`\`json\n${JSON.stringify(asIsAnalysis, null, 2).slice(0, 12000)}\n\`\`\`` : ''}
 ${prdDoc?.trim() ? `\n## PRD / IA 문서 (기획 문서 원문 — 화면 구조·메뉴·플로우의 근거)\n아래는 사용자가 첨부한 PRD·IA·메뉴 구조 문서입니다.\n- 이 문서에 명시된 메뉴 구조, 화면 목록, 핵심 기능, 유저 플로우를 UI 레이아웃과 네비게이션 설계에 정확히 반영하세요.\n- 기획서 요약(brief)보다 이 문서가 화면 구성의 우선 근거입니다.\n- 스타일·컬러·타이포그래피는 DESIGN.md를 따릅니다.\n- 문서가 HTML 화면기획서라면 기존 HTML의 CSS나 시각 스타일을 복사하지 말고, 표시 텍스트·메뉴명·버튼명·콘텐츠 문구·정보 구조를 원문과 동일하게 유지하세요.\n- 사용자가 제공한 문구와 콘텐츠를 임의로 다시 쓰거나 요약하지 마세요. A/B/C 시안 차이는 레이아웃, 정보 위계, 밀도, CTA 위치, 반응형 배치에서만 만듭니다.\n\`\`\`\n${prdDoc.slice(0, 10000)}\n\`\`\`` : ''}
 ## 프로젝트 개요
 ${projectSummary}
@@ -4247,7 +4524,7 @@ ${projectSummary}
 ${brief}
 
 ## Brand / Language / Content Consistency Rules (CRITICAL)
-- 모든 시안의 헤더에는 명확한 앱 브랜드가 있어야 합니다. 로고가 제공되었으면 \`aide-brand-logo\` 이미지를 사용하고, 없을 때만 앱 이름 텍스트 브랜드를 생성해 표시하세요.
+${asIsAnalysis?.shellContract?.brandLogo.present === false ? '- 기존 캡처에 로고가 없으므로 이미지·텍스트 로고를 만들지 말고 보존된 페이지 타이틀만 앱바에 표시하세요.' : '- 모든 시안의 헤더에는 명확한 앱 브랜드가 있어야 합니다. 로고가 제공되었으면 `aide-brand-logo` 이미지를 사용하고, 없을 때만 앱 이름 텍스트 브랜드를 생성해 표시하세요.'}
 - 브랜드명, 공간명, 사용자명, 식물명/상품명은 역할을 섞지 마세요. 예: 앱명 "초록이", 공간 "거실", 사용자 "원희님", 식물명 "몬스테라 문이".
 - 디자인 시스템 제공자명은 제품 브랜드가 아닙니다. KTDS 선택 시에도 헤더 브랜드에는 \`kt ds\`가 아니라 브리프의 서비스명 또는 업로드 로고 슬롯을 사용하세요.
 - 한국어 서비스 화면이면 UI 라벨은 한국어로 통일합니다. "Today's Routine", "Store", "Magazine", "Home" 같은 영어 라벨을 쓰지 말고 "오늘의 루틴", "스토어", "매거진", "홈"으로 작성하세요.
@@ -4286,7 +4563,7 @@ generationPlan.designIntelligence가 있으면 먼저 serviceSubtype, selectedPa
 - dataPointTarget은 첫 viewport에 보일 판단 재료의 목표량입니다. 데이터 포인트가 부족하면 히어로가 예뻐도 실패입니다.
 - contentMediaPolicy는 히어로/하위 콘텐츠 이미지 사용 규칙입니다. C안은 실사 히어로를 우선 고려하되, A/B/C 하위 썸네일 이미지는 서비스 분석 결과에 따라 허용됩니다.
 - generationPlan.variantBriefs가 있으면 variantBriefs.A/B/C의 strategy, screenPattern, heroPolicy, mustShow, shouldAvoid, layoutRhythm을 해당 시안에 반드시 반영하세요.
-- variantBriefs는 A/B/C를 다르게 만드는 핵심입니다. 같은 섹션 순서와 같은 카드 묶음을 세 시안에 반복하면 실패입니다.
+- variantBriefs는 A/B/C의 표현 방식을 다르게 만드는 계약입니다. 콘텐츠 항목은 같아야 하며, 같은 섹션 순서와 같은 카드 묶음을 반복하지 마세요.
 - selectedPatterns가 mascot-companion이면 B안 3D 오브젝트는 작은 장식이 아니라 사용자의 행동을 돕는 캐릭터/대상으로 읽혀야 합니다.
 - selectedPatterns가 comparison-calculator이면 절약액, 기준값, 비교 결과, 추천 근거, 전환 CTA가 한 화면에서 판단 가능해야 합니다.
 - selectedPatterns가 bold-editorial-hero이면 C안은 과감한 실사/scene hero를 쓰되, 바로 아래 실제 정보량을 이어 붙이세요.
@@ -4300,15 +4577,18 @@ generationPlan.designIntelligence가 있으면 먼저 serviceSubtype, selectedPa
 - variantDirector의 A/B/C 역할은 해당 시안의 정보 구조와 첫 화면 구성에 반드시 반영해야 합니다.
 - variantDirector[variant].layoutRole에 명시된 섹션 순서와 비율(%, px)을 정확히 따르세요. 예: 'hero 40-50%'이면 hero div의 min-height가 실제로 viewport의 40-50%여야 합니다.
 - variantDirector[variant].forbidden 배열이 있으면 해당 항목은 이 시안에 절대 사용하지 마세요. 예: 'KPI 숫자 그리드'가 forbidden이면 수치만 나열하는 그리드 섹션을 만들지 않습니다.
-- A/B/C는 섹션 목록 자체가 달라야 합니다. **각 시안의 컴포넌트 구성은 variantDirector[variant].componentSpec을 최우선으로 따르세요.** componentSpec은 이 서비스 유형에 맞게 미리 결정된 컴포넌트 목록입니다. 방향 원칙: A=밀도형(히어로 최소 + 이 서비스 정보 컴포넌트로 조밀하게), B=전환형(히어로 40-50% + 이 서비스 핵심 오브젝트/CTA), C=탐색형(이미지 중심 + 이 서비스 카테고리 탐색). componentSpec에 명시된 컴포넌트가 실제로 화면에 존재해야 합니다. 다른 서비스의 componentSpec과 혼동하지 마세요.
+- A/B/C는 동일한 콘텐츠를 서로 다른 섹션 순서·그룹·위계·컴포넌트 표현으로 구성해야 합니다. **각 시안의 컴포넌트 구성은 variantDirector[variant].componentSpec을 최우선으로 따르세요.** componentSpec은 이 서비스 유형에 맞게 미리 결정된 표현 목록입니다. 방향 원칙: A=밀도형, B=전환형, C=탐색형. 콘텐츠를 바꾸는 것으로 차이를 만들지 마세요.
 - 시안 차이를 랜덤 이미지, 랜덤 색상, 랜덤 radius, 랜덤 shadow로 만들지 마세요. 디자인 시스템은 공유하고 UX 방향만 다르게 만드세요.
+- 세 시안 모두 같은 DESIGN.md 색상·타이포그래피·radius·spacing·컴포넌트 토큰을 사용하세요. 시안별로 별도 팔레트나 임의 hex를 만들면 실패입니다.
 
 ## Content Seed Contract — 화면 정보량의 실제 재료 (CRITICAL)
 아래 seed는 예시 설명이 아니라 시안 선택용 UI에 들어갈 실제 더미 콘텐츠입니다.
 ${generationPlan?.contentInventory ? `\`\`\`json\n${JSON.stringify(generationPlan.contentInventory, null, 2)}\n\`\`\`` : '(contentInventory 없음 — productBrief와 brief를 바탕으로 동등한 수준의 실제 KPI/카드/내역을 직접 생성)'}
 
 적용 규칙:
-- contentInventory의 항목은 그대로 나열하는 체크리스트가 아닙니다. 서비스 목적과 사용자 의사결정에 필요한 항목을 골라 실제 화면 흐름에 녹이세요.
+- 이 contentInventory 전체가 A/B/C 공통 콘텐츠 계약입니다. 모든 시안에 동일한 kpis, quickActions, listItems, activityItems를 모두 포함하세요.
+- 제목·라벨·값·meta·badge를 생략, 추가, 개명하거나 다른 수치로 바꾸지 마세요. 브리프에 없는 혜택·등급·기간·기능·단계·개인정보도 만들지 마세요.
+- 같은 콘텐츠를 카드, 리스트, 타임라인, 탭, 히어로 요약 등 서로 다른 구조와 정보 위계로 표현하세요. 표현 순서와 묶음은 달라도 콘텐츠 집합은 같아야 합니다.
 - 첫 viewport에는 사용자가 이 서비스를 이해하고 다음 행동을 판단할 수 있을 만큼 충분한 실제 콘텐츠를 배치하세요.
 - 콘텐츠 단위의 종류와 순서는 서비스 목적에 맞게 선택하세요.
 - 비교 서비스라면 비교표/추천/절약액, 루틴 서비스라면 상태/미션/진행률, 커머스라면 검색/카테고리/상품, 대시보드라면 KPI/필터/작업 큐를 우선 검토하세요.
@@ -4342,14 +4622,11 @@ Aide의 A/B/C는 최종 빈 랜딩 포스터가 아니라 사용자가 방향을
 
 ## Layout Rhythm Guard — 콘텐츠 종류는 자유롭게, 간격 리듬은 고정 (CRITICAL)
 콘텐츠 종류와 순서는 서비스 목적에 맞게 선택하지만, spacing/padding/radius/card rhythm은 흔들리면 실패입니다.
-- **section gap: 반드시 var(--aide-section-gap) 사용. 인라인 margin-top/padding-top에 임의 픽셀값 금지.**
-- **card padding: 반드시 var(--aide-card-padding) 사용. 카드 내부 p-3/p-4/p-5 같은 임의 Tailwind 클래스 금지.**
-- **card gap: 반드시 var(--aide-card-gap) 사용. 카드 간 gap-2/gap-3/gap-4 같은 임의 클래스 금지.**
+section-gap/card-padding/card-gap/border-radius에 var() 대신 임의 px를 쓰지 말라는 규칙은 위 "Contract-Based Generation Rules"와 동일합니다 — 여기서는 그 섹션이 다루지 않는 것만 추가로 확인하세요.
 - **button: 높이는 반드시 var(--aide-button-height) 사용. 버튼에 py-2/py-3/py-4 같은 임의 패딩 금지.**
 - 모바일 페이지 좌우 여백은 var(--aide-page-padding) 1종류만 사용. 요소마다 다른 px-3/px-4/px-5 혼용 금지.
 - 반복되는 카드·리스트 아이템은 같은 CSS 클래스를 공유해야 합니다. 각 아이템마다 다른 padding/margin 금지.
 - hero가 크더라도 다음 카드/섹션과의 간격을 과하게 벌리지 마세요. 24px 이상 빈 여백이 반복되면 느슨하고 미완성으로 보입니다.
-- 디자인 시스템 토큰을 바꾸지 말고, 토큰을 안정적으로 재사용해 이전 시안과 같은 깔끔한 밀도와 리듬을 유지하세요.
 
 시안별 판단 기준:
 - 시안 A/B/C는 같은 덩어리 세트를 반복하지 말고, 서비스 목적에 맞는 서로 다른 화면 패턴을 선택하세요.
@@ -4465,8 +4742,6 @@ ${designIntentPlan}
 ${buildArtDirectionLayer(effectivePlatform)}
 
 ${buildBrandAndChromeLayer(effectivePlatform, Boolean(logoDataUrl))}
-
-${buildDesignDirectionSelectorLayer(visual3dPrompt, variantStyle, domain, effectiveVisualPolicy)}
 
 ${buildHeroVisualIntegrationLayer(visual3dPrompt, variantStyle, domain, effectiveVisualPolicy)}
 
@@ -4648,12 +4923,9 @@ ${effectivePlatform === 'web' ? `
   }
 
   html = sanitizeGeneratedBranding(html, brief, effectiveDesignMd, logoDataUrl)
-  html = ensureRequiredVariantVisuals(html, { variantStyle, sharedVisualSubject: effectiveSharedVisualSubject, heroImagePrompt: visual3dPrompt, visualPolicy: effectiveVisualPolicy })
-  html = applyLogoDataUrlOnce(html, logoDataUrl)
   html = injectMaterialSymbolsFont(html)
-  html = injectLayoutEssentialsGuard(html)
-
   html = ensureRequiredVariantVisuals(html, { variantStyle, sharedVisualSubject: effectiveSharedVisualSubject, heroImagePrompt: visual3dPrompt, visualPolicy: effectiveVisualPolicy })
+  html = injectDesignContractStyle(html, effectiveDesignMd, hasBrandColors)
   html = auditSpacingTokens(html, designContract)
   html = applyLogoDataUrlOnce(html, logoDataUrl)
   html = injectLayoutEssentialsGuard(html)
@@ -4668,7 +4940,7 @@ ${effectivePlatform === 'web' ? `
   // ── 3층 안전망: 아이콘 자동 교정 → IR 계약 대조 → 로그 적재 → severe만 핀포인트 수정 1회 ──
   // 반복 잡히는 위반은 로그로 확인해 1·2층(결정론/계약)으로 승격하고 여기서 제거한다.
   const iconResult = sanitizeMaterialSymbols(html)
-  html = iconResult.html
+  html = ensureMaterialSymbolsFont(iconResult.html)
   if (variantStructure) {
     let lintViolations = lintStructure(html, variantStructure)
     // 섹션 순서 위반은 결정론으로 먼저 수정 (LLM 호출 전)
@@ -4687,9 +4959,10 @@ ${effectivePlatform === 'web' ? `
       try {
         onStep?.('구조 계약 위반 수정 중...')
         const repairMessage = buildStructureRepairMessage(severeViolations, variantStructure)
-        const fixedRaw = await refineUI(html, repairMessage, brief, effectiveDesignMd, apiKey, logoDataUrl, domain, modelId)
+        const fixedRaw = await refineUI(html, repairMessage, brief, effectiveDesignMd, apiKey, logoDataUrl, domain, GEMINI_ECONOMY_MODEL)
         repaired = true
         const fixedIcons = sanitizeMaterialSymbols(fixedRaw)
+        fixedIcons.html = ensureMaterialSymbolsFont(fixedIcons.html)
         const fixedHtml = injectLayoutEssentialsGuard(fixedIcons.html)
         const reViolations = lintStructure(fixedHtml, variantStructure)
         const reSevere = reViolations.filter(v => v.severity === 'severe')
@@ -4720,12 +4993,13 @@ ${effectivePlatform === 'web' ? `
   let variantDescription: VariantDescription | undefined
   try {
     const jsonMatch = designIntentPlan.match(/```json\n?([\s\S]*?)```/)
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[1]) as { selectedDesignStrategy?: string; designIntent?: string; layoutThesis?: string }
+    const jsonSource = jsonMatch?.[1] ?? designIntentPlan
+    if (jsonSource.trim().startsWith('{')) {
+      const parsed = JSON.parse(jsonSource) as { name?: string; thesis?: string; composition?: string; selectedDesignStrategy?: string; designIntent?: string; layoutThesis?: string }
       variantDescription = {
-        strategy: parsed.selectedDesignStrategy ?? '',
-        intent: parsed.designIntent ?? '',
-        layoutThesis: parsed.layoutThesis ?? '',
+        strategy: parsed.selectedDesignStrategy ?? parsed.name ?? '',
+        intent: parsed.designIntent ?? parsed.thesis ?? '',
+        layoutThesis: parsed.layoutThesis ?? parsed.composition ?? '',
       }
     }
   } catch { /* intentionally ignored */ }
@@ -4812,7 +5086,7 @@ function stripScreenHomeDiv(html: string): string {
 }
 
 export async function expandToPrototype(mainHtml: string, params: GenerateParams, apiKey?: string): Promise<string> {
-  const { brief, answers, projectSummary, designMd, logoDataUrl: expandLogoUrl, brandColors: expandBrandColors, asIsAnalysis, modelId = 'gemini-3.5-flash', platform, domain, heroImagePrompt, heroSubject } = params;
+  const { brief, answers, projectSummary, designMd, logoDataUrl: expandLogoUrl, brandColors: expandBrandColors, asIsAnalysis, modelId = GEMINI_ECONOMY_MODEL, platform, domain, heroImagePrompt, heroSubject } = params;
   const answersText = Object.entries(answers)
     .map(([k, v]) => `- ${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
     .join('\n');
@@ -5041,7 +5315,7 @@ ${logoDataUrl ? '- HTML에 `aide-logo-slot`, `aide-brand-logo`, 또는 `__LOGO_D
 > 수정 요청 외의 기존 품질을 절대 낮추지 말 것. 아래는 기존 퀄리티를 지키기 위한 기준이다.
 ${buildQualityRules(undefined, domain)}`;
 
-  const text = (await generatePro(prompt, apiKey, modelId ?? 'gemini-3.5-flash')).trim();
+  const text = (await generatePro(prompt, apiKey, modelId ?? GEMINI_DESIGN_MODEL)).trim();
   const mdMatch = text.match(/```(?:html)?\n?([\s\S]*?)```/);
   let result = mdMatch ? mdMatch[1].trim() : text;
   result = sanitizeGeneratedBranding(result, brief, designMd, logoDataUrl)
@@ -5163,7 +5437,7 @@ script 작성 규칙:
 `;
 
   try {
-    const text = await generatePro(prompt, apiKey, 'gemini-3.1-flash-lite');
+    const text = await generatePro(prompt, apiKey, GEMINI_ECONOMY_MODEL);
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return { variables: [], states: [], events: [] };
     const parsed = JSON.parse(jsonMatch[0]);

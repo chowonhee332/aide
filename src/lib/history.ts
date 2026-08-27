@@ -9,15 +9,37 @@ export interface HistoryItem {
   platform?: 'mobile' | 'web'
   itemType?: 'variant' | 'design' | 'board'
   board?: {
+    stage?: 'variants-ready' | 'prototype-ready'
     designSystemName?: string | null
     designMd?: string | null
-    mainVariants?: Array<{ html: string; image?: string; variantDescription?: unknown; imageWarnings?: string[] } | null>
+    mainVariants?: Array<{
+      html: string
+      image?: string
+      variantDescription?: unknown
+      imageWarnings?: string[]
+      isCanvasPreview?: boolean
+      designDirection?: unknown
+      designCanvas?: unknown
+      screenIr?: unknown
+    } | null>
     pickedVariantIdx?: 0 | 1 | 2 | null
     prototypeHtml?: string | null
     prototypeThumbnail?: string | null
     prototypeScreens?: Array<{ id: string; label: string }>
     bSceneImage?: { base64: string; mimeType: string } | null
     questionnaire?: unknown | null
+    answers?: Record<string, string | string[]>
+    generationEngine?: 'node-graph' | 'legacy-html'
+    logoDataUrl?: string | null
+    brandColors?: string[]
+    sourceContext?: {
+      asIsAnalysis?: unknown
+      prdDoc?: string
+      iaImage?: string
+      iaText?: string
+      referenceImage?: string
+      referenceImageKind?: string
+    }
   }
 }
 

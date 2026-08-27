@@ -33,7 +33,7 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
         />
-        {/* Product tokens compiled from wonhee-product-ui.md. Loaded after globals.css so the
+        {/* Product tokens compiled from aide.md. Loaded after globals.css so the
             contract wins; tokens the md omits keep their globals.css fallback. */}
         <style id="aui-tokens">{AUI_ROOT_CSS}</style>
       </head>

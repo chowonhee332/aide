@@ -8,14 +8,14 @@ import {
   AUI_SCHEMA_VERSION,
   AUI_TOKEN_ENTRIES,
 } from '@/lib/aide-product-tokens'
-import { WONHEE_DESIGN_CONTRACT } from '@/lib/wonhee-design-contract'
+import { AIDE_DESIGN_CONTRACT } from '@/lib/aide-design-contract'
 import { humanizeId } from '@/lib/aide-docs'
 
 /**
  * `/aide-ui/llms.txt` — the AI-retrieval entrypoint declared by
- * `contract.ai.llms_txt` in wonhee-product-ui.md.
+ * `contract.ai.llms_txt` in aide.md.
  *
- * Every line is derived from the two contracts, so the file cannot drift from
+ * Every line is derived from the unified contract, so the file cannot drift from
  * the design system. Section order follows `contract.ai.llms_txt.contents`.
  */
 
@@ -25,7 +25,7 @@ const ROUTE = '/aide-ui/llms.txt'
 const declaredRoute = AUI_AI_GUIDE.llmsTxt?.route
 if (declaredRoute && declaredRoute !== ROUTE) {
   throw new Error(
-    `wonhee-product-ui.md: contract.ai.llms_txt.route is "${declaredRoute}" but the handler serves "${ROUTE}"`,
+    `aide.md: contract.ai.llms_txt.route is "${declaredRoute}" but the handler serves "${ROUTE}"`,
   )
 }
 
@@ -94,7 +94,7 @@ function contractLinks(): string {
 function foundationIndex(): string {
   const page = AUI_DOCUMENTATION.pages.foundations
   const items = page?.items ?? []
-  const foundations = dict(WONHEE_DESIGN_CONTRACT.foundations)
+  const foundations = dict(AIDE_DESIGN_CONTRACT.foundations)
 
   return [
     '## Foundations',
@@ -107,7 +107,7 @@ function foundationIndex(): string {
 
 function componentIndex(): string {
   // A product component may inherit its purpose from the base contract.
-  const baseComponents = dict(WONHEE_DESIGN_CONTRACT.components)
+  const baseComponents = dict(AIDE_DESIGN_CONTRACT.components)
   const lines = ['## Components', '']
 
   for (const [category, ids] of Object.entries(AUI_COMPONENT_CATEGORIES)) {
@@ -122,7 +122,7 @@ function componentIndex(): string {
 }
 
 function patternIndex(): string {
-  const patterns = dict(WONHEE_DESIGN_CONTRACT.patterns)
+  const patterns = dict(AIDE_DESIGN_CONTRACT.patterns)
   const layouts = dict(AUI_PRODUCT_CONTRACT.layouts)
 
   return [
@@ -181,7 +181,7 @@ const declaredSections = AUI_AI_GUIDE.llmsTxt?.contents ?? Object.keys(SECTION_B
 const unknownSections = declaredSections.filter((id) => !SECTION_BUILDERS[id])
 if (unknownSections.length) {
   throw new Error(
-    `wonhee-product-ui.md: contract.ai.llms_txt.contents has no builder for: ${unknownSections.join(', ')}`,
+    `aide.md: contract.ai.llms_txt.contents has no builder for: ${unknownSections.join(', ')}`,
   )
 }
 

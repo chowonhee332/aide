@@ -1,0 +1,1282 @@
+{
+  "tokens": {
+    "dimension": {
+      "$type": "dimension",
+      "space-1": {
+        "$value": "4px",
+        "$description": "4px micro gap"
+      },
+      "space-2": {
+        "$value": "8px",
+        "$description": "8px related-item gap"
+      },
+      "space-3": {
+        "$value": "12px",
+        "$description": "12px compact component gap"
+      },
+      "space-4": {
+        "$value": "16px",
+        "$description": "16px default padding"
+      },
+      "space-5": {
+        "$value": "20px",
+        "$description": "20px card or dialog padding"
+      },
+      "space-6": {
+        "$value": "24px",
+        "$description": "24px section padding"
+      },
+      "space-8": {
+        "$value": "32px",
+        "$description": "32px major separation"
+      },
+      "space-10": {
+        "$value": "40px",
+        "$description": "40px page rhythm"
+      },
+      "space-12": {
+        "$value": "48px",
+        "$description": "Page-region separation"
+      },
+      "space-16": {
+        "$value": "64px",
+        "$description": "Large page-region separation"
+      },
+      "control-compact": {
+        "$value": "32px",
+        "$description": "Dense desktop tool control"
+      },
+      "control-default": {
+        "$value": "40px",
+        "$description": "General product control"
+      },
+      "control-touch": {
+        "$value": "44px",
+        "$description": "Touch-first minimum product control"
+      },
+      "control-prominent": {
+        "$value": "48px",
+        "$description": "Landing and major CTA"
+      },
+      "content-narrow": {
+        "$value": "700px",
+        "$description": "Primary form and focused reading width"
+      },
+      "content-default": {
+        "$value": "1120px",
+        "$description": "Default page content width"
+      },
+      "content-wide": {
+        "$value": "1440px",
+        "$description": "Wide workspace content width"
+      },
+      "side-panel": {
+        "$value": "280px",
+        "$description": "Default workspace side panel"
+      },
+      "target-touch": {
+        "$value": "44px",
+        "$description": "Touch-first minimum target"
+      },
+      "toolbar-height": {
+        "$value": "56px",
+        "$description": "Studio and Playground toolbar"
+      },
+      "panel-min": {
+        "$value": "280px",
+        "$description": "Workspace side panel minimum"
+      },
+      "panel-max": {
+        "$value": "320px",
+        "$description": "Workspace side panel preferred maximum"
+      },
+      "content-max": {
+        "$value": "1200px",
+        "$description": "Landing content maximum width"
+      },
+      "hero-copy-max": {
+        "$value": "560px",
+        "$description": "Landing hero supporting-copy measure"
+      },
+      "hero-title-max": {
+        "$value": "860px",
+        "$description": "Landing hero display measure"
+      },
+      "header-height": {
+        "$value": "64px",
+        "$description": "Marketing and showcase global navigation"
+      },
+      "icon-sm": {
+        "$value": "16px",
+        "$description": "Inline glyph icon — emoji and Material Symbols in body text"
+      },
+      "icon-md": {
+        "$value": "20px",
+        "$description": "Standard glyph icon — toolbar and control affordance"
+      },
+      "icon-lg": {
+        "$value": "22px",
+        "$description": "Prominent glyph icon — section and picker header"
+      }
+    },
+    "color": {
+      "$type": "color",
+      "primary": {
+        "$value": "#0066FF",
+        "$description": "Montage Primary Normal — primary action, selected control, focus indicator"
+      },
+      "primary-strong": {
+        "$value": "#005EEB",
+        "$description": "Montage Primary Strong — hover emphasis"
+      },
+      "primary-pressed": {
+        "$value": "#0054D1",
+        "$description": "Montage Primary Heavy — pressed emphasis"
+      },
+      "primary-soft": {
+        "$value": "rgba(0, 102, 255, 0.08)",
+        "$description": "Selected and informative tinted surface"
+      },
+      "on-primary": {
+        "$value": "#FFFFFF",
+        "$description": "Text and icon on primary action"
+      },
+      "page": {
+        "$value": "#F7F7F8",
+        "$description": "Montage Background Normal Alternative — workspace and application background"
+      },
+      "surface": {
+        "$value": "#FFFFFF",
+        "$description": "Panel, card, control, dialog"
+      },
+      "surface-muted": {
+        "$value": "rgba(112, 115, 124, 0.08)",
+        "$description": "Montage Fill Normal — grouped region and secondary control"
+      },
+      "surface-raised": {
+        "$value": "rgba(255, 255, 255, 0.96)",
+        "$description": "Floating toolbar and panel chrome"
+      },
+      "text": {
+        "$value": "#171719",
+        "$description": "Montage Label Normal — primary text"
+      },
+      "text-muted": {
+        "$value": "rgba(55, 56, 60, 0.61)",
+        "$description": "Montage Label Alternative — description and metadata"
+      },
+      "text-assistive": {
+        "$value": "rgba(55, 56, 60, 0.28)",
+        "$description": "Montage Label Assistive — placeholder and nonessential hint"
+      },
+      "text-disabled": {
+        "$value": "rgba(55, 56, 60, 0.16)",
+        "$description": "Montage Label Disable — disabled content"
+      },
+      "border": {
+        "$value": "rgba(112, 115, 124, 0.22)",
+        "$description": "Montage Line Normal Normal — control and panel boundary"
+      },
+      "border-subtle": {
+        "$value": "rgba(112, 115, 124, 0.08)",
+        "$description": "Montage Line Normal Alternative — divider and quiet boundary"
+      },
+      "fill-subtle": {
+        "$value": "rgba(112, 115, 124, 0.05)",
+        "$description": "Montage low-emphasis component fill"
+      },
+      "positive": {
+        "$value": "#00BF40",
+        "$description": "Success icon and accent"
+      },
+      "caution": {
+        "$value": "#FF9200",
+        "$description": "Warning icon and accent"
+      },
+      "negative": {
+        "$value": "#FF4242",
+        "$description": "Error and destructive action"
+      },
+      "info": {
+        "$value": "#0066FF",
+        "$description": "Informative state"
+      },
+      "primary-heavy": {
+        "$value": "#0054D1",
+        "$description": "High-emphasis text on primary-soft"
+      },
+      "primary-tint": {
+        "$value": "rgba(0, 102, 255, 0.28)",
+        "$description": "Focus ring and subtle state layer"
+      },
+      "primary-outline": {
+        "$value": "rgba(0, 102, 255, 0.43)",
+        "$description": "Montage selected outline emphasis"
+      },
+      "primary-disabled": {
+        "$value": "#F4F4F5",
+        "$description": "Disabled primary control only"
+      },
+      "hero-gradient-start": {
+        "$value": "#95C7CD",
+        "$description": "Existing Aide landing hero gradient start"
+      },
+      "hero-gradient-middle": {
+        "$value": "#0066FF",
+        "$description": "Existing Aide landing hero gradient center"
+      },
+      "hero-gradient-end": {
+        "$value": "#B497CF",
+        "$description": "Existing Aide landing hero gradient end"
+      },
+      "canvas": {
+        "$value": "#FFFFFF",
+        "$description": "Landing and modal canvas"
+      },
+      "surface-sunken": {
+        "$value": "#F7F7F8",
+        "$description": "Workspace canvas behind panels and artifacts"
+      },
+      "glass-surface": {
+        "$value": "rgba(255, 255, 255, 0.72)",
+        "$description": "Brand-aware translucent chrome over expressive backgrounds"
+      },
+      "glass-surface-strong": {
+        "$value": "rgba(255, 255, 255, 0.90)",
+        "$description": "Readable input and navigation surface over expressive backgrounds"
+      },
+      "glass-border": {
+        "$value": "rgba(255, 255, 255, 0.34)",
+        "$description": "Boundary for translucent chrome"
+      },
+      "inverse-surface": {
+        "$value": "#1B1C1E",
+        "$description": "Toast and inverse chrome"
+      },
+      "text-strong": {
+        "$value": "#000000",
+        "$description": "Maximum emphasis; use sparingly"
+      },
+      "text-neutral": {
+        "$value": "rgba(46, 47, 51, 0.88)",
+        "$description": "Secondary emphasis"
+      },
+      "fill": {
+        "$value": "rgba(112, 115, 124, 0.08)",
+        "$description": "Secondary control fill"
+      },
+      "fill-strong": {
+        "$value": "rgba(112, 115, 124, 0.16)",
+        "$description": "Pressed or stronger neutral fill"
+      },
+      "negative-soft": {
+        "$value": "rgba(255, 66, 66, 0.08)",
+        "$description": "Error background"
+      },
+      "caution-soft": {
+        "$value": "rgba(255, 146, 0, 0.08)",
+        "$description": "Warning background"
+      },
+      "scrim": {
+        "$value": "rgba(23, 23, 25, 0.52)",
+        "$description": "Modal backdrop"
+      },
+      "scrim-soft": {
+        "$value": "rgba(0, 0, 0, 0.25)",
+        "$description": "Light backdrop and hover veil"
+      },
+      "scrim-strong": {
+        "$value": "rgba(0, 0, 0, 0.65)",
+        "$description": "Focused media or fullscreen backdrop"
+      },
+      "on-dark": {
+        "$value": "#FFFFFF",
+        "$description": "Text on inverse surface"
+      },
+      "on-dark-strong": {
+        "$value": "rgba(255, 255, 255, 0.90)",
+        "$description": "High-emphasis text on inverse surface"
+      },
+      "on-dark-muted": {
+        "$value": "rgba(255, 255, 255, 0.72)",
+        "$description": "Secondary text on inverse surface"
+      },
+      "on-dark-subtle": {
+        "$value": "rgba(255, 255, 255, 0.30)",
+        "$description": "Divider on inverse surface"
+      },
+      "on-dark-faint": {
+        "$value": "rgba(255, 255, 255, 0.15)",
+        "$description": "Quiet boundary on inverse surface"
+      },
+      "inverse-surface-raised": {
+        "$value": "#292A2D",
+        "$description": "Raised layer on inverse chrome"
+      },
+      "primary-muted": {
+        "$value": "rgba(0, 102, 255, 0.08)",
+        "$description": "Quiet primary fill and progress track"
+      },
+      "negative-border": {
+        "$value": "rgba(255, 66, 66, 0.25)",
+        "$description": "Error field boundary"
+      },
+      "caution-border": {
+        "$value": "rgba(255, 146, 0, 0.43)",
+        "$description": "Warning container boundary"
+      },
+      "caution-text": {
+        "$value": "#D17600",
+        "$description": "Readable warning text on caution-soft"
+      }
+    },
+    "typography": {
+      "$type": "typography",
+      "display": {
+        "$value": {
+          "fontFamily": "var(--font-pretendard)",
+          "fontSize": "32px",
+          "fontWeight": "700",
+          "lineHeight": "44px",
+          "letterSpacing": "-0.0253em"
+        },
+        "$description": "Montage Title 1 — product introduction and compact display"
+      },
+      "page-title": {
+        "$value": {
+          "fontFamily": "var(--font-pretendard)",
+          "fontSize": "24px",
+          "fontWeight": "700",
+          "lineHeight": "32px",
+          "letterSpacing": "-0.023em"
+        },
+        "$description": "Montage Title 3 — page title"
+      },
+      "section-title": {
+        "$value": {
+          "fontFamily": "var(--font-pretendard)",
+          "fontSize": "18px",
+          "fontWeight": "700",
+          "lineHeight": "26px",
+          "letterSpacing": "-0.002em"
+        },
+        "$description": "Montage Headline 1 — section title"
+      },
+      "heading": {
+        "$value": {
+          "fontFamily": "var(--font-pretendard)",
+          "fontSize": "20px",
+          "fontWeight": "700",
+          "lineHeight": "28px",
+          "letterSpacing": "-0.012em"
+        },
+        "$description": "Montage Heading 2 — component heading"
+      },
+      "body": {
+        "$value": {
+          "fontFamily": "var(--font-pretendard)",
+          "fontSize": "15px",
+          "fontWeight": "400",
+          "lineHeight": "22px",
+          "letterSpacing": "0.0096em"
+        },
+        "$description": "Montage Body 2 Normal — default product body"
+      },
+      "body-small": {
+        "$value": {
+          "fontFamily": "var(--font-pretendard)",
+          "fontSize": "14px",
+          "fontWeight": "400",
+          "lineHeight": "20px",
+          "letterSpacing": "0.0145em"
+        },
+        "$description": "Montage Label 1 Normal — compact body"
+      },
+      "label": {
+        "$value": {
+          "fontFamily": "var(--font-pretendard)",
+          "fontSize": "14px",
+          "fontWeight": "600",
+          "lineHeight": "20px",
+          "letterSpacing": "0.0145em"
+        },
+        "$description": "Montage Label 1 Normal — control label"
+      },
+      "caption": {
+        "$value": {
+          "fontFamily": "var(--font-pretendard)",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "16px",
+          "letterSpacing": "0.0252em"
+        },
+        "$description": "Montage Caption 1 — metadata and supporting copy"
+      },
+      "display-hero": {
+        "$value": {
+          "fontFamily": "var(--font-pretendard)",
+          "fontSize": "56px",
+          "fontWeight": "800",
+          "lineHeight": "72px",
+          "letterSpacing": "-0.0319em"
+        },
+        "$description": "Montage Display 1 — landing hero maximum"
+      },
+      "display-large": {
+        "$value": {
+          "fontFamily": "var(--font-pretendard)",
+          "fontSize": "40px",
+          "fontWeight": "700",
+          "lineHeight": "52px",
+          "letterSpacing": "-0.0282em"
+        },
+        "$description": "Montage Display 2 — showcase and marketing hero"
+      },
+      "compact": {
+        "$value": {
+          "fontFamily": "var(--font-pretendard)",
+          "fontSize": "13px",
+          "fontWeight": "600",
+          "lineHeight": "18px",
+          "letterSpacing": "0.0194em"
+        },
+        "$description": "Montage Label 2 — compact desktop control"
+      },
+      "micro": {
+        "$value": {
+          "fontFamily": "var(--font-pretendard)",
+          "fontSize": "11px",
+          "fontWeight": "500",
+          "lineHeight": "14px",
+          "letterSpacing": "0.0311em"
+        },
+        "$description": "Montage Caption 2 — dense tool hint and item description"
+      },
+      "meta": {
+        "$value": {
+          "fontFamily": "var(--font-pretendard)",
+          "fontSize": "11px",
+          "fontWeight": "700",
+          "lineHeight": "14px",
+          "letterSpacing": "0.0311em"
+        },
+        "$description": "Montage Caption 2 emphasized — metadata badge and source label"
+      },
+      "nano": {
+        "$value": {
+          "fontFamily": "var(--font-pretendard)",
+          "fontSize": "11px",
+          "fontWeight": "600",
+          "lineHeight": "14px",
+          "letterSpacing": "0.0311em"
+        },
+        "$description": "Legacy alias of Montage Caption 2; 11px is the minimum UI type size"
+      }
+    },
+    "radius": {
+      "$type": "dimension",
+      "sm": {
+        "$value": "6px",
+        "$description": "Compact toolbar control"
+      },
+      "control": {
+        "$value": "10px",
+        "$description": "Montage default button and field radius"
+      },
+      "card": {
+        "$value": "16px",
+        "$description": "Card and grouped content surface"
+      },
+      "overlay": {
+        "$value": "20px",
+        "$description": "Dialog and sheet"
+      },
+      "pill": {
+        "$value": "9999px",
+        "$description": "Badge, chip, avatar, status only"
+      }
+    },
+    "shadow": {
+      "$type": "shadow",
+      "resting": {
+        "$value": "0 1px 2px -1px rgba(23, 23, 23, 0.10)",
+        "$description": "Montage Shadow Normal XSmall — subtle resting separation"
+      },
+      "raised": {
+        "$value": "0 2px 4px -2px rgba(23, 23, 23, 0.06), 0 4px 6px -1px rgba(23, 23, 23, 0.06)",
+        "$description": "Montage Shadow Normal Small — card and hovering surface"
+      },
+      "floating": {
+        "$value": "0 4px 6px -2px rgba(23, 23, 23, 0.07), 0 10px 15px -3px rgba(23, 23, 23, 0.07)",
+        "$description": "Montage Shadow Normal Medium — dropdown, popover, drag preview"
+      },
+      "modal": {
+        "$value": "0 10px 15px -5px rgba(23, 23, 23, 0.10), 0 24px 38px -10px rgba(23, 23, 23, 0.12)",
+        "$description": "Montage Shadow Normal XLarge — dialog and sheet"
+      },
+      "card": {
+        "$value": "0 2px 4px -2px rgba(23, 23, 23, 0.06), 0 4px 6px -1px rgba(23, 23, 23, 0.06)",
+        "$description": "Raised card only; plain cards remain borderless"
+      },
+      "elevated": {
+        "$value": "0 6px 10px -4px rgba(23, 23, 23, 0.08), 0 16px 24px -6px rgba(23, 23, 23, 0.08)",
+        "$description": "Popover, menu, dialog"
+      },
+      "focus": {
+        "$value": "0 0 0 2px var(--aui-primary-tint)",
+        "$description": "Visible keyboard focus ring"
+      },
+      "subtle": {
+        "$value": "0 1px 2px -1px rgba(23, 23, 23, 0.10)",
+        "$description": "Resting chip and inline control"
+      },
+      "ring": {
+        "$value": "0 0 0 1px rgba(112, 115, 124, 0.08)",
+        "$description": "Hairline outline instead of border"
+      },
+      "glow": {
+        "$value": "0 0 8px #DCEAFF",
+        "$description": "Focus or active emphasis halo"
+      },
+      "line": {
+        "$value": "rgba(0, 0, 0, 0.07)",
+        "$description": "Hairline shadow color"
+      },
+      "soft": {
+        "$value": "rgba(0, 0, 0, 0.09)",
+        "$description": "Soft shadow color"
+      },
+      "medium": {
+        "$value": "rgba(0, 0, 0, 0.15)",
+        "$description": "Medium shadow color"
+      }
+    },
+    "duration": {
+      "$type": "duration",
+      "fast": {
+        "$value": "150ms",
+        "$description": "Hover, pressed, checkbox"
+      },
+      "base": {
+        "$value": "200ms",
+        "$description": "Dropdown, panel, popover"
+      },
+      "slow": {
+        "$value": "300ms",
+        "$description": "Dialog and page transition"
+      },
+      "easing": {
+        "$value": "cubic-bezier(0.2, 0, 0, 1)",
+        "$type": "cubicBezier",
+        "$description": "Shared easing curve"
+      }
+    },
+    "gradient": {
+      "$type": "string",
+      "brand-hero": {
+        "$value": "linear-gradient(180deg, #FFFFFF 0%, #F5F8FF 100%)",
+        "$description": "Quiet product-first landing surface"
+      },
+      "brand-hero-soft": {
+        "$value": "linear-gradient(180deg, #FFFFFF 0%, #EDF3FF 100%)",
+        "$description": "Low-intensity documentation and empty-state expression"
+      },
+      "brand-accent": {
+        "$value": "linear-gradient(90deg, #7AA2FF 0%, #2F6BFF 100%)",
+        "$description": "Short blue decorative accent; not a control background"
+      }
+    },
+    "blur": {
+      "$type": "dimension",
+      "glass": {
+        "$value": "16px",
+        "$description": "Navigation and lightweight translucent chrome"
+      },
+      "glass-strong": {
+        "$value": "24px",
+        "$description": "Readable glass card over expressive background"
+      }
+    },
+    "weight": {
+      "$type": "fontWeight",
+      "regular": {
+        "$value": "400",
+        "$description": "Body and long-form text"
+      },
+      "medium": {
+        "$value": "500",
+        "$description": "Quiet emphasis and dense hints"
+      },
+      "semibold": {
+        "$value": "600",
+        "$description": "Labels, controls, list titles"
+      },
+      "bold": {
+        "$value": "700",
+        "$description": "Headings and primary emphasis"
+      },
+      "extrabold": {
+        "$value": "800",
+        "$description": "Hero display only"
+      }
+    },
+    "tracking": {
+      "$type": "dimension",
+      "tighter": {
+        "$value": "-0.03em",
+        "$description": "Hero display and large headings"
+      },
+      "tight": {
+        "$value": "-0.01em",
+        "$description": "Default UI text and headings"
+      },
+      "normal": {
+        "$value": "0em",
+        "$description": "Monospace and neutral text"
+      },
+      "slight": {
+        "$value": "0.03em",
+        "$description": "Small caps-ish labels"
+      },
+      "wide": {
+        "$value": "0.06em",
+        "$description": "Uppercase label and badge"
+      },
+      "wider": {
+        "$value": "0.09em",
+        "$description": "Eyebrow and section kicker"
+      }
+    },
+    "leading": {
+      "$type": "number",
+      "none": {
+        "$value": "1",
+        "$description": "Single-line glyph, badge, icon label"
+      },
+      "tight": {
+        "$value": "1.2",
+        "$description": "Display and heading"
+      },
+      "snug": {
+        "$value": "1.35",
+        "$description": "Compact UI copy"
+      },
+      "normal": {
+        "$value": "1.5",
+        "$description": "Body text"
+      },
+      "relaxed": {
+        "$value": "1.6",
+        "$description": "Long-form description and help text"
+      }
+    }
+  },
+  "component_tokens": {
+    "button": {
+      "compact-height": {
+        "$value": "32px",
+        "$description": "Compact desktop action height"
+      },
+      "default-height": {
+        "$value": "40px",
+        "$description": "Default action height"
+      },
+      "touch-height": {
+        "$value": "44px",
+        "$description": "Touch-first action height"
+      },
+      "prominent-height": {
+        "$value": "48px",
+        "$description": "Prominent action height"
+      },
+      "compact-padding-x": {
+        "$value": "12px",
+        "$description": "Compact horizontal padding"
+      },
+      "default-padding-x": {
+        "$value": "20px",
+        "$description": "Montage default button horizontal padding"
+      },
+      "prominent-padding-x": {
+        "$value": "20px",
+        "$description": "Prominent horizontal padding"
+      },
+      "radius": {
+        "$value": "10px",
+        "$description": "Montage Button radius"
+      },
+      "gap": {
+        "$value": "5px",
+        "$description": "Montage Button icon-to-label gap"
+      }
+    },
+    "field": {
+      "compact-height": {
+        "$value": "32px",
+        "$description": "Dense desktop field height"
+      },
+      "default-height": {
+        "$value": "48px",
+        "$description": "Montage Text Field default height"
+      },
+      "touch-height": {
+        "$value": "48px",
+        "$description": "Montage Text Field touch height"
+      },
+      "label-gap": {
+        "$value": "8px",
+        "$description": "Field label to control spacing"
+      },
+      "message-gap": {
+        "$value": "4px",
+        "$description": "Control to supporting message spacing"
+      },
+      "padding-inline": {
+        "$value": "12px",
+        "$description": "Field control horizontal inset"
+      },
+      "radius": {
+        "$value": "12px",
+        "$description": "Montage Text Field radius"
+      },
+      "control-gap": {
+        "$value": "8px",
+        "$description": "Montage Text Field internal gap"
+      },
+      "textarea-min-height": {
+        "$value": "96px",
+        "$description": "Default multiline field minimum height"
+      },
+      "textarea-touch-min-height": {
+        "$value": "112px",
+        "$description": "Touch-first multiline field minimum height"
+      }
+    },
+    "navigation": {
+      "item-height": {
+        "$value": "44px",
+        "$description": "Navigation item target height"
+      },
+      "compact-item-height": {
+        "$value": "40px",
+        "$description": "Pointer-first navigation item height"
+      }
+    },
+    "card": {
+      "padding": {
+        "$value": "16px",
+        "$description": "Default card content padding"
+      },
+      "compact-padding": {
+        "$value": "12px",
+        "$description": "Compact card content padding"
+      },
+      "gap": {
+        "$value": "16px",
+        "$description": "Default card slot gap"
+      },
+      "compact-gap": {
+        "$value": "12px",
+        "$description": "Compact card slot gap"
+      },
+      "header-gap": {
+        "$value": "4px",
+        "$description": "Card title to description gap"
+      },
+      "radius": {
+        "$value": "20px",
+        "$description": "Montage Card radius"
+      }
+    },
+    "chip": {
+      "height": {
+        "$value": "24px",
+        "$description": "Montage Chip default height"
+      },
+      "padding-inline": {
+        "$value": "7px",
+        "$description": "Montage Chip horizontal padding"
+      },
+      "gap": {
+        "$value": "2px",
+        "$description": "Montage Chip content gap"
+      },
+      "radius": {
+        "$value": "6px",
+        "$description": "Montage Chip radius"
+      },
+      "outlined-active-border": {
+        "$value": "rgba(0, 102, 255, 0.43)",
+        "$description": "Montage Chip outlined active inset border"
+      },
+      "solid-active-content": {
+        "$value": "#F7F7F8",
+        "$description": "Montage Chip solid active foreground"
+      }
+    },
+    "overlay": {
+      "dialog-width": {
+        "$value": "420px",
+        "$description": "Default dialog width"
+      },
+      "dialog-max-width": {
+        "$value": "560px",
+        "$description": "Maximum dialog width"
+      }
+    },
+    "action-bar": {
+      "padding": {
+        "$value": "16px",
+        "$description": "Action bar inset"
+      }
+    },
+    "control": {
+      "compact-height": {
+        "$value": "32px",
+        "$description": "Dense pointer-first control height"
+      },
+      "default-height": {
+        "$value": "40px",
+        "$description": "Default control height"
+      },
+      "touch-height": {
+        "$value": "44px",
+        "$description": "Touch-first control height"
+      },
+      "inline-padding": {
+        "$value": "12px",
+        "$description": "Default control horizontal inset"
+      },
+      "gap": {
+        "$value": "8px",
+        "$description": "Control content gap"
+      },
+      "icon-size": {
+        "$value": "20px",
+        "$description": "Default control icon size"
+      }
+    },
+    "selection": {
+      "indicator-size": {
+        "$value": "24px",
+        "$description": "Montage Checkbox and Radio default indicator size"
+      },
+      "compact-indicator-size": {
+        "$value": "20px",
+        "$description": "Montage compact Checkbox indicator size"
+      },
+      "checkbox-radius": {
+        "$value": "5px",
+        "$description": "Montage Checkbox radius"
+      },
+      "switch-width": {
+        "$value": "40px",
+        "$description": "Switch track width"
+      },
+      "switch-height": {
+        "$value": "24px",
+        "$description": "Switch track height"
+      },
+      "switch-inset": {
+        "$value": "2px",
+        "$description": "Switch thumb inset"
+      },
+      "switch-thumb-size": {
+        "$value": "20px",
+        "$description": "Switch thumb diameter"
+      },
+      "segment-padding": {
+        "$value": "4px",
+        "$description": "Segmented control inset"
+      }
+    },
+    "feedback": {
+      "inset": {
+        "$value": "12px",
+        "$description": "Inline feedback inset"
+      },
+      "radius": {
+        "$value": "10px",
+        "$description": "Feedback surface radius"
+      },
+      "progress-height": {
+        "$value": "8px",
+        "$description": "Progress track height"
+      }
+    },
+    "data-display": {
+      "row-height": {
+        "$value": "48px",
+        "$description": "Dense data row minimum height"
+      },
+      "row-touch-height": {
+        "$value": "56px",
+        "$description": "Touch-first row minimum height"
+      },
+      "section-inset": {
+        "$value": "16px",
+        "$description": "List and table section inset"
+      },
+      "row-padding-block": {
+        "$value": "8px",
+        "$description": "List row vertical inset"
+      },
+      "row-content-gap": {
+        "$value": "4px",
+        "$description": "List row title to description gap"
+      }
+    },
+    "table": {
+      "min-width": {
+        "$value": "560px",
+        "$description": "Minimum comparison-table canvas before horizontal scrolling"
+      },
+      "header-height": {
+        "$value": "40px",
+        "$description": "Table header row height"
+      },
+      "row-height": {
+        "$value": "48px",
+        "$description": "Default data row height"
+      },
+      "cell-padding-inline": {
+        "$value": "16px",
+        "$description": "Table cell horizontal inset"
+      }
+    },
+    "list-section": {
+      "header-height": {
+        "$value": "56px",
+        "$description": "List section header minimum height"
+      },
+      "inset": {
+        "$value": "16px",
+        "$description": "List section horizontal inset"
+      },
+      "block-padding": {
+        "$value": "12px",
+        "$description": "List section header and footer block inset"
+      },
+      "header-gap": {
+        "$value": "16px",
+        "$description": "Gap between header copy and action"
+      }
+    },
+    "keypad": {
+      "inset": {
+        "$value": "8px",
+        "$description": "Keypad surface inset"
+      },
+      "gap": {
+        "$value": "8px",
+        "$description": "Gap between keypad keys"
+      },
+      "key-height": {
+        "$value": "44px",
+        "$description": "Touch-safe keypad key height"
+      },
+      "key-min-width": {
+        "$value": "32px",
+        "$description": "Minimum keypad key width"
+      }
+    },
+    "slider": {
+      "gap": {
+        "$value": "8px",
+        "$description": "Gap between slider label and track"
+      },
+      "target-height": {
+        "$value": "44px",
+        "$description": "Touch-first slider interaction target"
+      },
+      "compact-target-height": {
+        "$value": "40px",
+        "$description": "Pointer-first slider interaction target"
+      }
+    },
+    "menu": {
+      "min-width": {
+        "$value": "192px",
+        "$description": "Minimum popup menu width"
+      },
+      "inset": {
+        "$value": "8px",
+        "$description": "Menu popup inner inset"
+      },
+      "item-height": {
+        "$value": "40px",
+        "$description": "Menu item minimum height"
+      },
+      "item-gap": {
+        "$value": "8px",
+        "$description": "Menu item content gap"
+      },
+      "item-padding-inline": {
+        "$value": "12px",
+        "$description": "Menu item horizontal inset"
+      },
+      "inset-item-padding-left": {
+        "$value": "32px",
+        "$description": "Indented menu item leading inset"
+      }
+    },
+    "sheet": {
+      "bottom-max-height": {
+        "$value": "90dvh",
+        "$description": "Maximum bottom-sheet viewport height"
+      },
+      "side-width": {
+        "$value": "420px",
+        "$description": "Preferred inspector sheet width"
+      },
+      "side-max-viewport-width": {
+        "$value": "90vw",
+        "$description": "Side sheet maximum viewport width"
+      },
+      "compact-padding": {
+        "$value": "20px",
+        "$description": "Bottom sheet content inset"
+      },
+      "wide-padding": {
+        "$value": "24px",
+        "$description": "Side sheet content inset"
+      },
+      "close-size": {
+        "$value": "40px",
+        "$description": "Sheet close action target"
+      },
+      "handle-width": {
+        "$value": "40px",
+        "$description": "Bottom sheet drag handle width"
+      },
+      "handle-height": {
+        "$value": "4px",
+        "$description": "Bottom sheet drag handle height"
+      }
+    },
+    "stepper": {
+      "indicator-size": {
+        "$value": "32px",
+        "$description": "Stepper marker diameter"
+      },
+      "item-gap": {
+        "$value": "12px",
+        "$description": "Vertical step marker-to-content gap"
+      },
+      "item-padding-block": {
+        "$value": "24px",
+        "$description": "Vertical step separation"
+      },
+      "label-padding-inline": {
+        "$value": "8px",
+        "$description": "Horizontal step label inset"
+      }
+    },
+    "breadcrumb": {
+      "gap": {
+        "$value": "4px",
+        "$description": "Breadcrumb item and separator gap"
+      },
+      "item-height": {
+        "$value": "32px",
+        "$description": "Breadcrumb link minimum height"
+      },
+      "item-padding-inline": {
+        "$value": "4px",
+        "$description": "Breadcrumb item horizontal inset"
+      }
+    },
+    "tabs": {
+      "trigger-padding-inline": {
+        "$value": "0px",
+        "$description": "Montage hug Tab has no internal horizontal inset"
+      },
+      "list-height": {
+        "$value": "52px",
+        "$description": "Montage Tab default height"
+      },
+      "list-gap": {
+        "$value": "20px",
+        "$description": "Montage hug Tab item gap"
+      },
+      "indicator-height": {
+        "$value": "2px",
+        "$description": "Selected tab indicator thickness"
+      },
+      "content-padding-block": {
+        "$value": "16px",
+        "$description": "Tab panel block inset"
+      }
+    },
+    "avatar": {
+      "compact-size": {
+        "$value": "32px",
+        "$description": "Compact avatar size"
+      },
+      "default-size": {
+        "$value": "40px",
+        "$description": "Default avatar size"
+      },
+      "prominent-size": {
+        "$value": "48px",
+        "$description": "Prominent avatar size"
+      }
+    },
+    "bar-chart": {
+      "plot-height": {
+        "$value": "160px",
+        "$description": "Default compact categorical chart height"
+      },
+      "bar-gap": {
+        "$value": "12px",
+        "$description": "Gap between categorical bars"
+      }
+    },
+    "prose": {
+      "readable-width": {
+        "$value": "700px",
+        "$description": "Maximum long-form reading measure"
+      }
+    },
+    "dialog": {
+      "viewport-inset": {
+        "$value": "16px",
+        "$description": "Minimum dialog distance from the viewport edge"
+      },
+      "content-gap": {
+        "$value": "16px",
+        "$description": "Gap between dialog content regions"
+      },
+      "compact-padding": {
+        "$value": "20px",
+        "$description": "Compact dialog content inset"
+      },
+      "wide-padding": {
+        "$value": "24px",
+        "$description": "Wide dialog content inset"
+      },
+      "close-inset": {
+        "$value": "16px",
+        "$description": "Close action distance from dialog edges"
+      },
+      "close-size": {
+        "$value": "40px",
+        "$description": "Touch-first dialog close target"
+      },
+      "close-compact-size": {
+        "$value": "32px",
+        "$description": "Pointer-first dialog close target"
+      },
+      "header-gap": {
+        "$value": "8px",
+        "$description": "Dialog heading content gap"
+      },
+      "header-action-reserve": {
+        "$value": "40px",
+        "$description": "Space reserved for the close action"
+      },
+      "footer-gap": {
+        "$value": "8px",
+        "$description": "Gap between dialog actions"
+      },
+      "footer-padding-top": {
+        "$value": "8px",
+        "$description": "Space above dialog actions"
+      }
+    },
+    "popover": {
+      "width": {
+        "$value": "288px",
+        "$description": "Default informational popover width"
+      },
+      "padding": {
+        "$value": "16px",
+        "$description": "Popover content inset"
+      },
+      "close-inset": {
+        "$value": "8px",
+        "$description": "Close action distance from popover edges"
+      },
+      "close-size": {
+        "$value": "40px",
+        "$description": "Popover close target"
+      },
+      "description-gap": {
+        "$value": "4px",
+        "$description": "Title-to-description spacing"
+      }
+    },
+    "agreement": {
+      "padding": {
+        "$value": "16px",
+        "$description": "Agreement group inset"
+      },
+      "section-gap": {
+        "$value": "8px",
+        "$description": "Separation around select-all and agreement items"
+      },
+      "detail-action-size": {
+        "$value": "44px",
+        "$description": "Agreement detail link touch target"
+      }
+    },
+    "detail-header": {
+      "content-gap": {
+        "$value": "16px",
+        "$description": "Gap between header content and actions"
+      },
+      "padding-bottom": {
+        "$value": "20px",
+        "$description": "Detail header bottom inset"
+      },
+      "eyebrow-gap": {
+        "$value": "4px",
+        "$description": "Eyebrow-to-title spacing"
+      },
+      "description-gap": {
+        "$value": "8px",
+        "$description": "Title-to-description spacing"
+      },
+      "metadata-gap": {
+        "$value": "12px",
+        "$description": "Description-to-metadata spacing"
+      },
+      "action-gap": {
+        "$value": "8px",
+        "$description": "Gap between contextual actions"
+      }
+    },
+    "result": {
+      "padding-inline": {
+        "$value": "20px",
+        "$description": "Result content horizontal inset"
+      },
+      "padding-block": {
+        "$value": "40px",
+        "$description": "Result content vertical inset"
+      },
+      "figure-gap": {
+        "$value": "16px",
+        "$description": "Figure-to-title spacing"
+      },
+      "description-gap": {
+        "$value": "8px",
+        "$description": "Title-to-description spacing"
+      },
+      "action-gap": {
+        "$value": "20px",
+        "$description": "Description-to-action spacing"
+      }
+    },
+    "responsive-grid": {
+      "min-item-width": {
+        "$value": "240px",
+        "$description": "Default minimum width of a responsive grid item"
+      },
+      "gap": {
+        "$value": "16px",
+        "$description": "Default responsive grid gutter"
+      }
+    }
+  }
+}

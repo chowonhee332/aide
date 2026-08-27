@@ -1,9 +1,19 @@
 'use client'
 
-import { Bell, ChevronRight, Search } from '@/components/ui/material-icon'
+import { Bell, ChevronRight, Search, X } from '@/components/ui/material-icon'
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { Accordion } from '@/components/ui/accordion'
+import { Anchor } from '@/components/ui/anchor'
+import { AvatarGroup } from '@/components/ui/avatar-group'
+import { Carousel } from '@/components/ui/carousel'
+import { DatePicker, TimePicker } from '@/components/ui/date-picker'
+import { Editor } from '@/components/ui/editor'
+import { FileUploader } from '@/components/ui/file-uploader'
+import { FloatingActionButton } from '@/components/ui/floating-action-button'
+import { Pagination, PaginationDots } from '@/components/ui/pagination'
+import { Rating } from '@/components/ui/rating'
 import { Agreement } from '@/components/ui/agreement'
-import { Avatar } from '@/components/ui/asset'
+import { Asset, Avatar } from '@/components/ui/asset'
 import { Badge } from '@/components/ui/badge'
 import { BarChart } from '@/components/ui/bar-chart'
 import { Button } from '@/components/ui/button'
@@ -57,19 +67,24 @@ function booleanProp(value: string | undefined) {
 
 /** Canonical React renderer shared by /aide-ui and Playground. */
 export function ComponentPreview({ id, props = {}, device = 'desktop', context = 'docs' }: ComponentPreviewProps) {
-  const label = props.label || props.title || '계속하기'
+  const label = props.label || props.title || 'Continue'
   const title = props.title || label
-  const description = props.description || '컴포넌트 설명을 입력하세요.'
-  const options = optionLines(props.options, ['첫 번째', '두 번째', '세 번째'])
+  const description = props.description || 'Add a short component description.'
+  const options = optionLines(props.options, ['First', 'Second', 'Third'])
   const disabled = props.state === 'disabled' || booleanProp(props.disabled)
-  const buttonVariant = props.variant === 'secondary' ? 'secondary' : props.variant === 'outline' ? 'outline' : props.variant === 'ghost' ? 'ghost' : 'default'
+  const buttonVariant = props.variant === 'secondary' ? 'secondary'
+    : props.variant === 'outline' ? 'outline'
+    : props.variant === 'ghost' ? 'ghost'
+    : props.variant === 'destructive' ? 'destructive'
+    : props.variant === 'link' ? 'link'
+    : 'primary'
   const buttonSize = props.size === 'compact' ? 'sm' : props.size === 'prominent' ? 'prominent' : props.size === 'touch' || device === 'mobile' ? 'touch' : 'default'
   const previewClassName = context === 'playground' ? 'w-full' : undefined
   const navigationItems = options.slice(0, 5).map((option, index) => ({ id: `item-${index}`, label: option }))
   const numericValue = (key: string, fallback: number) => Number.isFinite(Number(props[key])) ? Number(props[key]) : fallback
   const chartData = options.map((option, index) => {
     const [chartLabel, rawValue] = option.split(':')
-    return { label: chartLabel || `항목 ${index + 1}`, value: Number(rawValue) || (index + 1) * 12 }
+    return { label: chartLabel || `Item ${index + 1}`, value: Number(rawValue) || (index + 1) * 12 }
   })
   switch (id) {
     case 'button':
@@ -77,15 +92,15 @@ export function ComponentPreview({ id, props = {}, device = 'desktop', context =
     case 'icon-button':
       return <Button size="icon" variant={buttonVariant} disabled={disabled} aria-label={label}><Bell/></Button>
     case 'action-bar':
-      return <ResponsiveActionBar className={props.layout === 'stack' ? 'w-full flex-col' : 'w-full'}><Button variant="ghost" size={buttonSize}>취소</Button><Button size={buttonSize} disabled={disabled}>{label}</Button></ResponsiveActionBar>
+      return <ResponsiveActionBar className={props.layout === 'stack' ? 'w-full flex-col' : 'w-full'}><Button variant="ghost" size={buttonSize}>Cancel</Button><Button size={buttonSize} disabled={disabled}>{label}</Button></ResponsiveActionBar>
     case 'fixed-bottom-cta':
-      return <ResponsiveActionBar className="w-full" fixed={false}>{props['action-count'] === '2'&&<Button variant="ghost">취소</Button>}<Button className={device === 'mobile' ? 'w-full' : undefined}>{label}</Button></ResponsiveActionBar>
+      return <ResponsiveActionBar className="w-full" fixed={false}>{props['action-count'] === '2'&&<Button variant="ghost">Cancel</Button>}<Button className={device === 'mobile' ? 'w-full' : undefined}>{label}</Button></ResponsiveActionBar>
     case 'field':
-      return <div className="docs-preview-stack"><Field label={props.label || '프로젝트 이름'} help={props.help} error={props.state === 'error' ? description : undefined} required={booleanProp(props.required)}><Input value={props.value || ''} placeholder={props.placeholder || '내용을 입력하세요'} disabled={disabled} readOnly/></Field></div>
+      return <div className="docs-preview-stack"><Field label={props.label || 'Project name'} help={props.help} error={props.state === 'error' ? description : undefined} required={booleanProp(props.required)}><Input value={props.value || ''} placeholder={props.placeholder || 'Enter a project name'} disabled={disabled} readOnly/></Field></div>
     case 'field-group':
       return <FieldGroup label={title} help={description}>{options.map((option)=><Input key={option} aria-label={option} placeholder={option} readOnly/>)}</FieldGroup>
     case 'textarea':
-      return <div className="docs-preview-stack"><Field label={props.label || '서비스 설명'}><Textarea value={props.value || ''} placeholder={props.placeholder || description} disabled={disabled} readOnly/></Field></div>
+      return <div className="docs-preview-stack"><Field label={props.label || 'Description'}><Textarea value={props.value || ''} placeholder={props.placeholder || description} disabled={disabled} readOnly/></Field></div>
     case 'select':
       return <div className="docs-preview-stack"><Field label={label}><Select value={props.value || options[0]} onChange={() => {}} disabled={disabled}>{options.map((option)=><option key={option} value={option}>{option}</option>)}</Select></Field></div>
     case 'search':
@@ -109,7 +124,7 @@ export function ComponentPreview({ id, props = {}, device = 'desktop', context =
     case 'segmented-control':
       return <SegmentedControl label={label} defaultValue="option-0" options={options.map((option,index)=>({value:`option-${index}`,label:option}))}/>
     case 'chip':
-      return <div className="docs-preview-row">{options.map((option,index)=><Chip key={option} selected={index===0}>{option}</Chip>)}</div>
+      return <div className="docs-preview-row">{options.map((option,index)=><Chip key={option} variant={props.variant === 'outlined' ? 'outlined' : 'solid'} selected={index===0}>{option}</Chip>)}</div>
     case 'stepper':
       return <Stepper current={Math.max(0, Math.min(options.length - 1, numericValue('value', 1)))} steps={options.map((option,index)=>({id:`step-${index}`,label:option}))}/>
     case 'navigation':
@@ -141,9 +156,9 @@ export function ComponentPreview({ id, props = {}, device = 'desktop', context =
     case 'list-cell':
       return <div className="docs-preview-stack"><ListRow leading={<Avatar fallback={label.slice(0,2).toUpperCase()} size="sm"/>} contents={<ListRowText title={label} description={description}/>} trailing={<ChevronRight size={16}/>}/></div>
     case 'list-section':
-      return <ListSection className="w-full"><ListSectionHeader title={title} description={description}/><ListSectionContent>{options.map((option)=><ListRow key={option} contents={<ListRowText title={option}/>} trailing={<ChevronRight size={16}/>}/>)}</ListSectionContent><ListSectionFooter>총 {options.length}개</ListSectionFooter></ListSection>
+      return <ListSection className="w-full"><ListSectionHeader title={title} description={description}/><ListSectionContent>{options.map((option)=><ListRow key={option} contents={<ListRowText title={option}/>} trailing={<ChevronRight size={16}/>}/>)}</ListSectionContent><ListSectionFooter>{options.length} items</ListSectionFooter></ListSection>
     case 'table':
-      return <TableContainer><Table><TableCaption>{title}</TableCaption><TableHeader><TableRow>{options.map((option)=><TableHead key={option}>{option}</TableHead>)}</TableRow></TableHeader><TableBody>{optionLines(description, ['데이터 1']).map((row,rowIndex)=><TableRow key={`${row}-${rowIndex}`}>{row.split('|').map((cell,index)=><TableCell key={`${cell}-${index}`}>{cell.trim()}</TableCell>)}</TableRow>)}</TableBody></Table></TableContainer>
+      return <TableContainer><Table><TableCaption>{title}</TableCaption><TableHeader><TableRow>{options.map((option)=><TableHead key={option}>{option}</TableHead>)}</TableRow></TableHeader><TableBody>{optionLines(description, ['Data 1']).map((row,rowIndex)=><TableRow key={`${row}-${rowIndex}`}>{row.split('|').map((cell,index)=><TableCell key={`${cell}-${index}`}>{cell.trim()}</TableCell>)}</TableRow>)}</TableBody></Table></TableContainer>
     case 'metric':
       return <div className="docs-preview-panel"><span className="docs-preview-muted">{label}</span><div className="docs-preview-metric">{props.value || '24'}</div><Badge variant="success">{description}</Badge></div>
     case 'bar-chart':
@@ -169,22 +184,103 @@ export function ComponentPreview({ id, props = {}, device = 'desktop', context =
     case 'toast':
       return <Toast tone={props.state === 'error' ? 'error' : props.state === 'warning' ? 'warning' : 'success'} title={label} description={description}/>
     case 'loading':
-      return <div className="docs-loading-preview"><Loader label={description || '컴포넌트를 불러오고 있어요.'}/><div className="docs-loading-skeleton"><Skeleton className="h-4 w-2/3"/><Skeleton className="h-3 w-full"/><Skeleton className="h-3 w-4/5"/></div></div>
+      return <div className="docs-loading-preview"><Loader label={description || 'Loading component...'}/><div className="docs-loading-skeleton"><Skeleton className="h-4 w-2/3"/><Skeleton className="h-3 w-full"/><Skeleton className="h-3 w-4/5"/></div></div>
     case 'empty-state':
       return <Result figure={<Search size={22}/>} title={title} description={description}/>
     case 'result':
       return <Result figure={<Search size={22}/>} title={title} description={description} action={<Button>{label}</Button>}/>
     case 'dialog':
-      return <AlertDialog><AlertDialogTrigger render={<Button/>}>{label}</AlertDialogTrigger><AlertDialogContent><AlertDialogTitle>{title}</AlertDialogTitle><AlertDialogDescription>{description}</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel render={<Button/>}>확인</AlertDialogCancel></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      // overlay는 기본적으로 닫혀 있어 트리거만 보여주면 무엇을 보여주는 컴포넌트인지 알 수 없다.
+      // 카탈로그/hero 프리뷰(context!=='playground')에서는 실제로 열린 표면을 정적으로 그린다.
+      // Playground는 실제 상호작용 확인이 목적이라 진짜 Trigger+Portal 컴포넌트를 그대로 쓴다.
+      return context === 'playground'
+        ? <AlertDialog><AlertDialogTrigger render={<Button/>}>{label}</AlertDialogTrigger><AlertDialogContent><AlertDialogTitle>{title}</AlertDialogTitle><AlertDialogDescription>{description}</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel render={<Button/>}>Done</AlertDialogCancel></AlertDialogFooter></AlertDialogContent></AlertDialog>
+        : <div className="docs-overlay-window docs-overlay-window-dialog">
+            <span className="docs-overlay-window-close" aria-hidden="true"><X size="var(--aui-icon-sm)"/></span>
+            <p className="docs-overlay-window-title">{title}</p>
+            <p className="docs-overlay-window-description">{description}</p>
+            <Button className="w-full">{label}</Button>
+          </div>
     case 'sheet':
-      return <Sheet><SheetTrigger asChild><Button variant="outline">{label}</Button></SheetTrigger><SheetContent><SheetTitle>{title}</SheetTitle><SheetDescription>{description}</SheetDescription></SheetContent></Sheet>
+      return context === 'playground'
+        ? <Sheet><SheetTrigger asChild><Button variant="outline">{label}</Button></SheetTrigger><SheetContent><SheetTitle>{title}</SheetTitle><SheetDescription>{description}</SheetDescription></SheetContent></Sheet>
+        : <div className="docs-overlay-window docs-overlay-window-sheet">
+            <span className="docs-overlay-window-handle" aria-hidden="true"/>
+            <span className="docs-overlay-window-close" aria-hidden="true"><X size="var(--aui-icon-sm)"/></span>
+            <p className="docs-overlay-window-title">{title}</p>
+            <p className="docs-overlay-window-description">{description}</p>
+          </div>
     case 'popover':
-      return <Popover><PopoverTrigger render={<Button variant="outline"/>}>{label}</PopoverTrigger><PopoverContent><PopoverTitle>{title}</PopoverTitle><PopoverDescription>{description}</PopoverDescription></PopoverContent></Popover>
+      return context === 'playground'
+        ? <Popover><PopoverTrigger render={<Button variant="outline"/>}>{label}</PopoverTrigger><PopoverContent><PopoverTitle>{title}</PopoverTitle><PopoverDescription>{description}</PopoverDescription></PopoverContent></Popover>
+        : <div className="docs-overlay-window docs-overlay-window-popover">
+            <span className="docs-overlay-window-close" aria-hidden="true"><X size="var(--aui-icon-sm)"/></span>
+            <p className="docs-overlay-window-title docs-overlay-window-title-sm">{title}</p>
+            <p className="docs-overlay-window-description docs-overlay-window-description-sm">{description}</p>
+          </div>
     case 'tooltip':
-      return <TooltipProvider><Tooltip><TooltipTrigger render={<Button variant="outline" size="icon" aria-label={label}/> }><Bell/></TooltipTrigger><TooltipContent>{description}</TooltipContent></Tooltip></TooltipProvider>
+      return context === 'playground'
+        ? <TooltipProvider><Tooltip><TooltipTrigger render={<Button variant="outline" size="icon" aria-label={label}/> }><Bell/></TooltipTrigger><TooltipContent>{description}</TooltipContent></Tooltip></TooltipProvider>
+        : <div className="docs-overlay-window docs-overlay-window-tooltip">{description}</div>
     case 'dropdown-menu':
-      return <Menu><MenuTrigger render={<Button variant="outline"/>}>{label}</MenuTrigger><MenuContent>{options.map((option)=><MenuItem key={option}>{option}</MenuItem>)}</MenuContent></Menu>
+      return context === 'playground'
+        ? <Menu><MenuTrigger render={<Button variant="outline"/>}>{label}</MenuTrigger><MenuContent>{options.map((option)=><MenuItem key={option}>{option}</MenuItem>)}</MenuContent></Menu>
+        : <div className="docs-overlay-window docs-overlay-window-menu">{options.map((option)=><span className="docs-overlay-window-menu-item" key={option}>{option}</span>)}</div>
+    case 'accordion':
+      return <Accordion className="w-full" defaultOpenId="item-0" items={options.map((option, index)=>({ id:`item-${index}`, title:option, content:description }))}/>
+    case 'anchor':
+      return <Anchor href="#" external>{label}</Anchor>
+    case 'floating-action-button':
+      return <FloatingActionButton label={label} disabled={disabled}/>
+    case 'avatar-group':
+      return <AvatarGroup names={options.length ? options : ['Alex Kim','Jamie Lee','Taylor Park','Morgan Choi','Casey Jung']}/>
+    case 'carousel':
+      return <Carousel className="w-full" items={options}/>
+    case 'pagination':
+      return <Pagination total={Math.max(3, Math.min(7, options.length || 5))} defaultPage={1}/>
+    case 'pagination-dots':
+      return <PaginationDots total={Math.max(3, Math.min(7, options.length || 4))} index={0}/>
+    case 'date-picker':
+      return <div className="docs-preview-stack"><DatePicker label={props.label || 'Visit date'} days={12} disabled={disabled}/></div>
+    case 'time-picker':
+      return <div className="docs-preview-stack"><TimePicker label={props.label || 'Visit time'} disabled={disabled}/></div>
+    case 'rating':
+      return <Rating label={props.label || 'Satisfaction'} defaultValue={4} readOnly={disabled}/>
+    case 'file-uploader':
+      return <div className="docs-preview-stack"><FileUploader label={props.label || 'Attachments'} files={['proposal.pdf']} disabled={disabled}/></div>
+    case 'editor':
+      return <div className="docs-preview-stack"><Editor label={props.label || 'Body'} value={props.value || undefined}/></div>
+    case 'asset':
+      return <div className="docs-preview-stack"><Asset alt="" src="/logo_aide.png" width={320} height={180} fit="contain" className="w-full"/></div>
+    case 'list-row':
+      return <div className="docs-preview-stack"><ListRow contents={<ListRowText title={label} description={description}/>} trailing={<ChevronRight className="size-4 text-[var(--aui-text-muted)]"/>}/></div>
     default:
-      return <div className="docs-preview-stack"><div className="docs-preview-panel"><b>{id}</b><p className="docs-preview-muted">Wonhee component contract</p></div></div>
+      return <div className="docs-preview-stack"><div className="docs-preview-panel"><b>{id}</b><p className="docs-preview-muted">Aide component contract</p></div></div>
   }
+}
+
+const BUTTON_VARIANTS = ['primary', 'secondary', 'outline', 'ghost', 'destructive', 'link'] as const
+const BUTTON_SIZES = [
+  ['compact', 'sm'],
+  ['default', 'default'],
+  ['touch', 'touch'],
+  ['prominent', 'prominent'],
+] as const
+
+/** Complete contract specimen used by the Button documentation page. */
+export function ButtonSpecimen() {
+  return <div className="docs-button-specimen">
+    <div className="docs-button-specimen-group">
+      <h3>Variants</h3>
+      <div className="docs-button-specimen-row">{BUTTON_VARIANTS.map((variant)=><Button key={variant} variant={variant}>{variant}</Button>)}</div>
+    </div>
+    <div className="docs-button-specimen-group">
+      <h3>Sizes</h3>
+      <div className="docs-button-specimen-row">{BUTTON_SIZES.map(([label,size])=><Button key={label} variant="primary" size={size}>{label}</Button>)}</div>
+    </div>
+    <div className="docs-button-specimen-group">
+      <h3>States and content</h3>
+      <div className="docs-button-specimen-row"><Button variant="primary">Default</Button><Button variant="primary" disabled>Disabled</Button><Button variant="primary" aria-busy="true">Loading…</Button><Button variant="outline">Leading icon</Button><Button variant="ghost" size="icon" aria-label="Icon button"><Bell/></Button></div>
+    </div>
+  </div>
 }

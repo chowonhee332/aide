@@ -2,6 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
 import { COMPONENT_DEFINITIONS } from '@/lib/builder-components';
 import type { BuilderDevice } from '@/lib/builder-types';
+import { GEMINI_ECONOMY_MODEL } from '@/lib/gemini-model-policy';
 
 interface ComposeItem {
   componentId: string;
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     const ai = new GoogleGenAI({ apiKey });
     const result = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: GEMINI_ECONOMY_MODEL,
       contents: `You are the layout planner for the Aide Playground component editor.
 Convert the user's Korean or English request into editable components from the supplied catalog only.
 

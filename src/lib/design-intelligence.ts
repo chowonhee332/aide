@@ -534,12 +534,18 @@ function variantBriefsFor(
 ): Record<VariantKey, NonNullable<AideGenerationPlan['variantBriefs']>[VariantKey]> {
   const cScreenPattern = domain === 'business' ? 'trust-visual-panel' : 'bold-editorial-hero'
   const componentHints = getSubtypeComponentHints(serviceSubtype, domain)
+  const sharedMustShow = [
+    ...contentInventory.kpis.map(item => `${item.label}: ${item.value}`),
+    ...contentInventory.quickActions,
+    ...contentInventory.listItems.map(item => item.title),
+    ...contentInventory.activityItems.map(item => item.title),
+  ]
   return {
     A: {
       strategy: needsScene3d ? 'Contextual 3D Scene Home' : 'Dense Utility Home',
       screenPattern: needsScene3d ? 'scene-3d-overview' : 'data-first-dashboard',
       heroPolicy: needsScene3d ? 'scene-3d' : 'no-image',
-      mustShow: [contentInventory.kpis[0].label, contentInventory.kpis[1].label, contentInventory.quickActions[0], contentInventory.listItems[0].title, contentInventory.activityItems[0].title],
+      mustShow: sharedMustShow,
       shouldAvoid: ['old game render', 'generic 3D stock render', 'oversized empty hero', 'same card order as B/C'],
       layoutRhythm: [
         '히어로 없거나 최소(화면 25% 이하). B보다 히어로가 작아야 한다',
@@ -554,17 +560,7 @@ function variantBriefsFor(
       strategy: 'Creon Object 3D Conversion Home',
       screenPattern: serviceSubtype === 'pizza-order-membership' ? 'mascot-companion commerce hero' : 'object-stage recommendation hero',
       heroPolicy: 'creon-object-3d',
-      mustShow: [
-        contentInventory.kpis[0].label,
-        contentInventory.kpis[1].label,
-        contentInventory.kpis[2].label,
-        contentInventory.kpis[3]?.label ?? contentInventory.kpis[0].label,
-        contentInventory.quickActions[0],
-        contentInventory.quickActions[1],
-        contentInventory.listItems[0].title,
-        contentInventory.listItems[1].title,
-        contentInventory.activityItems[0].title,
-      ],
+      mustShow: sharedMustShow,
       shouldAvoid: ['tiny sticker 3D', 'floating object without content', 'hero-only poster', 'sparse content below hero', 'same information grouping as A/C'],
       layoutRhythm: [
         '히어로 패널이 화면의 35-45%를 차지. A/C보다 히어로가 커야 하지만 45% 초과 금지 — 콘텐츠 공간 확보 필수',
@@ -580,7 +576,7 @@ function variantBriefsFor(
       strategy: 'Photo Editorial Service Home',
       screenPattern: cScreenPattern,
       heroPolicy: 'real-photo',
-      mustShow: [contentInventory.kpis[0].label, 'primary CTA', contentInventory.quickActions[0], contentInventory.listItems[0].title, contentInventory.listItems[1].title, contentInventory.activityItems[0].title],
+      mustShow: sharedMustShow,
       shouldAvoid: ['photo everywhere', 'random Unsplash thumbnails', 'same white card stack as A/B', 'B2B over-dramatic hero if service is operational'],
       layoutRhythm: [
         '실사 히어로가 화면 35-45%. A보다 크고 감성적, B처럼 3D는 없음',
@@ -823,7 +819,7 @@ export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
           : buildCoreObjects(input.domain, serviceSubtype),
         keyActions: buildKeyActions(serviceSubtype),
         successCriteria: ['첫 화면에서 서비스 목적이 즉시 이해됨', '주요 CTA가 명확함', '반복 콘텐츠가 실제 서비스처럼 충분함', '선택한 design.md 리듬을 유지함'],
-        assumptions: ['입력이 부족한 부분은 서비스 subtype과 도메인 표준 홈 화면으로 보정', 'A/B/C는 같은 소재 강제가 아니라 서로 다른 UX 방향으로 차별화'],
+        assumptions: ['입력이 부족한 부분은 서비스 subtype과 도메인 표준 홈 화면으로 보정', 'A/B/C는 동일한 콘텐츠를 유지하고 구조·위계·비주얼 표현만 다른 UX 방향으로 차별화'],
       },
       contentInventory,
       visualStrategy: {
@@ -862,11 +858,10 @@ export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
           mustDifferBy: variantBriefs.C.layoutRhythm,
         },
       },
-      // 정적 검증 패턴(SUBTYPE_SCREENS) 우선, 없으면 LLM IA 분석 결과 사용 (Phase 1-C/3-B)
-      expectedSubScreens: SUBTYPE_SCREENS[serviceSubtype]
-        ?? (input.serviceAnalysis?.informationArchitecture && input.serviceAnalysis.informationArchitecture.length > 0
-          ? input.serviceAnalysis.informationArchitecture
-          : undefined),
+      // 사용자의 실제 서비스 IA를 우선하고, 분석 결과가 없을 때만 정적 서브타입 패턴을 사용한다.
+      expectedSubScreens: input.serviceAnalysis?.informationArchitecture && input.serviceAnalysis.informationArchitecture.length > 0
+        ? input.serviceAnalysis.informationArchitecture
+        : SUBTYPE_SCREENS[serviceSubtype],
       // 적응형 전략 (Phase 3-A): 서브타입 매핑 + 도메인 기본 + 답변 기반 조정
       recommendedStrategy: resolveRecommendedStrategy(serviceSubtype, input.domain, input.answers),
       // 레이아웃 아키타입 배정 — A/B/C가 서로 다른 골격 + 서비스마다 다른 조합 (다양성)

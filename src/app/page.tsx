@@ -1,16 +1,17 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect, startTransition } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect, startTransition } from 'react'
 import {
   ArrowUp, ArrowRight, FileText, Upload, X,
-  Check, ChevronDown, Zap, Palette, Share2,
+  Check, ChevronDown, Palette, Share2,
   Clock, Trash2, ExternalLink, Link2, KeyRound,
-  Download, Eye, EyeOff,
+  Download, Eye, EyeOff, Coins,
 } from '@/components/ui/material-icon'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import Grainient from '@/components/Grainient'
 import { DesignMdPreview } from '@/components/DesignMdPreview'
 import { type HistoryItem, loadHistory, deleteHistoryItem, relativeTime } from '@/lib/history'
+import type { GeminiUsageSummary } from '@/lib/gemini-usage'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import StudioView from '@/components/StudioView'
@@ -33,6 +34,91 @@ const F = {
   primarySoft:  AIDE_UI.primarySoft,
   hairline:     AIDE_UI.border,
   hairlineSoft: AIDE_UI.borderSubtle,
+}
+
+function formatCompactTokens(value: number) {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`
+  if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1)}K`
+  return value.toLocaleString()
+}
+
+function UsageTrendChart({ data }: { data: GeminiUsageSummary['byDay'] }) {
+  const width = 620
+  const height = 176
+  const left = 10
+  const right = 10
+  const top = 12
+  const bottom = 30
+  const graphWidth = width - left - right
+  const graphHeight = height - top - bottom
+  const maxCost = Math.max(...data.map(day => day.costUsd), 0.0001)
+  const points = data.map((day, index) => ({
+    ...day,
+    x: left + (data.length <= 1 ? graphWidth / 2 : (index / (data.length - 1)) * graphWidth),
+    y: top + graphHeight - (day.costUsd / maxCost) * graphHeight,
+  }))
+  const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ')
+  const areaPath = points.length
+    ? `${linePath} L ${points.at(-1)!.x.toFixed(1)} ${(top + graphHeight).toFixed(1)} L ${points[0].x.toFixed(1)} ${(top + graphHeight).toFixed(1)} Z`
+    : ''
+  const labelIndexes = new Set([0, Math.floor((data.length - 1) / 2), data.length - 1])
+
+  return (
+    <div style={{ border: `1px solid ${F.hairlineSoft}`, borderRadius: 'var(--aui-radius-card)', padding: 'var(--aui-space-4)', background: F.surface }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 'var(--aui-space-2)' }}>
+        <span style={{ fontSize: 'var(--aui-type-body-size)', fontWeight: 'var(--aui-weight-semibold)', color: F.ink }}>최근 14일 비용 추이</span>
+        <span style={{ fontSize: 'var(--aui-type-caption-size)', color: F.inkMuted }}>일별 추정 비용 · USD</span>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="최근 14일 Gemini API 비용 추이" style={{ width: '100%', height: '176px', display: 'block', overflow: 'visible' }}>
+        {[0, 0.5, 1].map(ratio => {
+          const y = top + graphHeight * ratio
+          return <line key={ratio} x1={left} y1={y} x2={width - right} y2={y} stroke={F.hairlineSoft} strokeWidth="1" strokeDasharray={ratio === 1 ? undefined : '4 5'} />
+        })}
+        <defs>
+          <linearGradient id="usage-cost-area" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={F.primary} stopOpacity="0.24" />
+            <stop offset="100%" stopColor={F.primary} stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {areaPath && <path d={areaPath} fill="url(#usage-cost-area)" />}
+        {linePath && <path d={linePath} fill="none" stroke={F.primary} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+        {points.map((point, index) => (
+          <g key={point.date}>
+            <circle cx={point.x} cy={point.y} r={point.costUsd > 0 ? 4 : 2.5} fill={point.costUsd > 0 ? F.primary : F.hairline} stroke={F.surface} strokeWidth="2">
+              <title>{`${point.date} · ${point.calls}회 · $${point.costUsd.toFixed(4)}`}</title>
+            </circle>
+            {labelIndexes.has(index) && <text x={point.x} y={height - 7} textAnchor={index === 0 ? 'start' : index === data.length - 1 ? 'end' : 'middle'} fontSize="11" fill={F.inkMuted}>{point.date.slice(5).replace('-', '.')}</text>}
+          </g>
+        ))}
+      </svg>
+    </div>
+  )
+}
+
+function UsageModelBreakdown({ rows, totalCost }: { rows: GeminiUsageSummary['byModel']; totalCost: number }) {
+  const colors = [F.primary, '#7C5CFC', '#17A673', '#E59A2F', '#E45D6F', '#5A7184']
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aui-space-3)' }}>
+      <div style={{ fontSize: 'var(--aui-type-body-size)', fontWeight: 'var(--aui-weight-semibold)', color: F.ink }}>모델별 비용</div>
+      {rows.map((row, index) => {
+        const ratio = totalCost > 0 ? row.costUsd / totalCost : 0
+        return (
+          <div key={row.model} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 'var(--aui-space-3)', alignItems: 'center' }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--aui-space-2)', marginBottom: 6 }}>
+                <span style={{ color: F.ink, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-medium)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.model}</span>
+                <span style={{ color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', flexShrink: 0 }}>{row.calls}회 · {(ratio * 100).toFixed(ratio >= 0.1 ? 0 : 1)}%</span>
+              </div>
+              <div style={{ height: 7, borderRadius: 999, background: 'var(--aui-border-subtle)', overflow: 'hidden' }}>
+                <div style={{ width: `${Math.max(ratio * 100, row.costUsd > 0 ? 1.5 : 0)}%`, height: '100%', borderRadius: 999, background: colors[index % colors.length], transition: 'width 300ms ease' }} />
+              </div>
+            </div>
+            <span style={{ color: F.ink, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)', minWidth: 68, textAlign: 'right' }}>${row.costUsd.toFixed(4)}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 type ApiKeyTab = 'gemini' | 'unsplash' | 'figma'
@@ -89,6 +175,11 @@ type AsIsAnalysis = {
   primaryCtas: Array<{ text: string }>
   globalNavigation: Array<{ text: string }>
   redesignFocus: string[]
+  shellContract?: {
+    topAppBar: { present: boolean; title: string; leftAction: string; rightAction: string; preserveExactly: boolean }
+    bottomNavigation: { present: boolean }
+    brandLogo: { present: boolean }
+  }
 }
 
 function hexToHsl(hex: string): [number, number, number] {
@@ -275,11 +366,28 @@ export default function Home() {
     }
   }, [historyModalOpen])
 
+  const [usageModalOpen, setUsageModalOpen] = useState(false)
+  const [usageSummary, setUsageSummary] = useState<GeminiUsageSummary | null>(null)
+  const [usageLoading, setUsageLoading] = useState(false)
+  useEffect(() => {
+    if (!usageModalOpen) return
+    fetch('/api/usage')
+      .then(res => res.json())
+      .then((data: GeminiUsageSummary) => startTransition(() => setUsageSummary(data)))
+      .catch(() => startTransition(() => setUsageSummary(null)))
+      .finally(() => setUsageLoading(false))
+  }, [usageModalOpen])
+
   const [briefDesc, setBriefDesc] = useState('')
   const [briefFeatures, setBriefFeatures] = useState('')
+  const [briefAudience, setBriefAudience] = useState('')
+  const [briefConstraints, setBriefConstraints] = useState('')
+  const [briefDetailsOpen, setBriefDetailsOpen] = useState(false)
   const brief = [
-    briefDesc.trim(),
-    briefFeatures.trim() ? `핵심 기능:\n${briefFeatures.trim()}` : '',
+    briefDesc.trim() ? `사용자 요청:\n${briefDesc.trim()}` : '',
+    briefAudience.trim() ? `주요 사용자:\n${briefAudience.trim()}` : '',
+    briefFeatures.trim() ? `핵심 기능 또는 필수 정보:\n${briefFeatures.trim()}` : '',
+    briefConstraints.trim() ? `추가 요청:\n${briefConstraints.trim()}` : '',
   ].filter(Boolean).join('\n\n')
   const [designPreset, setDesignPreset] = useState<DesignPreset>('none')
   const [designPanelOpen, setDesignPanelOpen] = useState(false)
@@ -299,6 +407,9 @@ export default function Home() {
   const [refPageImage, setRefPageImage] = useState<string | null>(null)
   const [refImageKind, setRefImageKind] = useState<'wireframe' | 'reference'>('reference')
   const [asIsAnalysis, setAsIsAnalysis] = useState<AsIsAnalysis | null>(null)
+  // 네이티브 앱·사내 시스템처럼 URL이 없는 as-is는 캡처 이미지로만 분석할 수 있다.
+  const [asIsShots, setAsIsShots] = useState<Array<{ name: string; data: string; mimeType: string }>>([])
+  const asIsShotInputRef = useRef<HTMLInputElement>(null)
   const [refPageUrlInput, setRefPageUrlInput] = useState('')
   const [refCapturing, setRefCapturing] = useState(false)
   const [refError, setRefError] = useState<string | null>(null)
@@ -307,8 +418,41 @@ export default function Home() {
   const [refSearchResults, setRefSearchResults] = useState<{ url: string; title: string; source: string }[]>([])
   const [refSearching, setRefSearching] = useState(false)
 
-  const [prdDoc, setPrdDoc] = useState<string | null>(null)
-  const [prdDocFileName, setPrdDocFileName] = useState<string | null>(null)
+  // RFP·제안요청서·기능요구사항을 함께 올리는 경우가 많아 문서는 여러 건을 받는다.
+  // 다운스트림은 여전히 하나의 문자열(prdDoc)만 보므로 파이프라인은 그대로 둔다.
+  const [prdDocEntries, setPrdDocEntries] = useState<Array<{ name: string; text: string }>>([])
+  const [prdParsing, setPrdParsing] = useState(false)
+  // 생성 프롬프트가 prdDoc을 10,000자에서 자른다(gemini.ts). 문서를 그냥 이어붙이면
+  // 긴 RFP 하나가 예산을 다 먹고 뒤 문서(보통 기능요구사항)가 통째로 사라진다.
+  // 문서마다 몫을 주고, 남는 몫은 더 긴 문서에 되돌려준다.
+  const prdDoc = useMemo(() => {
+    if (!prdDocEntries.length) return null
+    const BUDGET = 10000
+    const overhead = prdDocEntries.reduce((sum, entry) => sum + entry.name.length + 24, 0)
+    let remaining = Math.max(BUDGET - overhead, prdDocEntries.length * 200)
+
+    // 짧은 문서부터 확정해야 남는 몫이 긴 문서로 흘러간다.
+    const order = prdDocEntries
+      .map((entry, index) => ({ index, len: entry.text.length }))
+      .sort((a, b) => a.len - b.len)
+    const allowance = new Array<number>(prdDocEntries.length).fill(0)
+    let left = order.length
+    for (const { index, len } of order) {
+      const share = Math.floor(remaining / left)
+      const take = Math.min(len, share)
+      allowance[index] = take
+      remaining -= take
+      left -= 1
+    }
+
+    return prdDocEntries
+      .map((entry, index) => {
+        const body = entry.text.slice(0, allowance[index])
+        const cut = body.length < entry.text.length ? '\n\n[이하 생략]' : ''
+        return `# 첨부 문서: ${entry.name}\n\n${body}${cut}`
+      })
+      .join('\n\n---\n\n')
+  }, [prdDocEntries])
   const [iaImage, setIaImage] = useState<string | null>(null)
   const [iaImageFileName, setIaImageFileName] = useState<string | null>(null)
   const [iaText, setIaText] = useState<string | null>(null)
@@ -316,14 +460,6 @@ export default function Home() {
   const [htmlSourceLoading, setHtmlSourceLoading] = useState(false)
   const prdFileInputRef = useRef<HTMLInputElement>(null)
   const iaImageInputRef = useRef<HTMLInputElement>(null)
-
-  const [modelId, setModelId] = useState<string>('gemini-3.1-pro-preview')
-  const [modelDropOpen, setModelDropOpen] = useState(false)
-
-  useEffect(() => {
-    const saved = localStorage.getItem('aide_model')
-    if (saved) startTransition(() => setModelId(saved))
-  }, [])
 
   const [brandPanelOpen, setBrandPanelOpen] = useState(false)
   const [brandLogo, setBrandLogo] = useState<string | null>(null)
@@ -351,6 +487,10 @@ export default function Home() {
   const [genMdScreenshot, setGenMdScreenshot] = useState<string | null>(null)
   const [genMdCopied, setGenMdCopied] = useState(false)
   const [genMdCaptureStatus, setGenMdCaptureStatus] = useState<'full' | 'partial' | 'blocked' | null>(null)
+  // URL이 없는 서비스는 캡처만으로 design.md를 만든다.
+  const [genMdShots, setGenMdShots] = useState<Array<{ name: string; data: string; mimeType: string }>>([])
+  const [genMdSourceLabel, setGenMdSourceLabel] = useState<string | null>(null)
+  const genMdShotInputRef = useRef<HTMLInputElement>(null)
 
   const handleGenMdAnalyze = async () => {
     if (!genMdUrl.trim() || genMdAnalyzing) return
@@ -380,6 +520,62 @@ export default function Home() {
     }
   }
 
+  const handleGenMdShotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (genMdShotInputRef.current) genMdShotInputRef.current.value = ''
+    if (!files.length) return
+    setGenMdError(null)
+    const loaded = await Promise.all(
+      files.map(
+        file =>
+          new Promise<{ name: string; data: string; mimeType: string }>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = ev =>
+              resolve({
+                name: file.name,
+                data: (ev.target?.result as string).split(',')[1],
+                mimeType: file.type || 'image/png',
+              })
+            reader.onerror = () => reject(new Error('read failed'))
+            reader.readAsDataURL(file)
+          }),
+      ),
+    )
+    setGenMdShots(prev => [...prev, ...loaded].slice(0, 10))
+  }
+
+  const handleGenMdShotAnalyze = async () => {
+    if (!genMdShots.length || genMdAnalyzing) return
+    setGenMdAnalyzing(true)
+    setGenMdError(null)
+    setGenMdResult(null)
+    setGenMdScreenshot(null)
+    setGenMdCaptureStatus(null)
+    try {
+      const res = await fetch('/api/analyze-screens-design-md', {
+        method: 'POST',
+        headers: buildClientApiHeaders(),
+        body: JSON.stringify({
+          images: genMdShots.map(shot => ({ data: shot.data, mimeType: shot.mimeType })),
+          serviceName: genMdUrl.trim() || '캡처 화면',
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setGenMdError(data.error ?? '캡처 분석에 실패했습니다.')
+        return
+      }
+      setGenMdResult(data.designMd)
+      // 대표 1장을 미리보기로 쓴다. URL 경로의 screenshot 자리와 같은 역할.
+      setGenMdScreenshot(`data:${genMdShots[0].mimeType};base64,${genMdShots[0].data}`)
+      setGenMdSourceLabel(`캡처 ${genMdShots.length}장${genMdUrl.trim() ? ` · ${genMdUrl.trim()}` : ''}`)
+    } catch {
+      setGenMdError('네트워크 오류가 발생했습니다.')
+    } finally {
+      setGenMdAnalyzing(false)
+    }
+  }
+
   const handleGenMdDownload = () => {
     if (!genMdResult) return
     const blob = new Blob([genMdResult], { type: 'text/markdown' })
@@ -401,7 +597,7 @@ export default function Home() {
   const handleGenMdUseInStudio = () => {
     if (!genMdResult) return
     setDesignMdContent(genMdResult)
-    setDesignMdFileName(genMdUrl.trim())
+    setDesignMdFileName(genMdSourceLabel ?? genMdUrl.trim())
     setDesignPreset('none')
     setAppliedUrlScreenshot(genMdScreenshot)
     setGenMdModalOpen(false)
@@ -409,6 +605,8 @@ export default function Home() {
     setGenMdScreenshot(null)
     setGenMdCaptureStatus(null)
     setGenMdUrl('')
+    setGenMdShots([])
+    setGenMdSourceLabel(null)
   }
 
   const closeGenMdModal = () => {
@@ -418,6 +616,8 @@ export default function Home() {
     setGenMdResult(null)
     setGenMdScreenshot(null)
     setGenMdCaptureStatus(null)
+    setGenMdShots([])
+    setGenMdSourceLabel(null)
   }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -555,6 +755,58 @@ export default function Home() {
     }
   }
 
+  const handleAsIsShotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (asIsShotInputRef.current) asIsShotInputRef.current.value = ''
+    if (!files.length) return
+    setRefError(null)
+
+    const loaded = await Promise.all(
+      files.map(
+        file =>
+          new Promise<{ name: string; data: string; mimeType: string }>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = ev =>
+              resolve({
+                name: file.name,
+                data: (ev.target?.result as string).split(',')[1],
+                mimeType: file.type || 'image/png',
+              })
+            reader.onerror = () => reject(new Error('read failed'))
+            reader.readAsDataURL(file)
+          }),
+      ),
+    )
+    setAsIsShots(prev => [...prev, ...loaded].slice(0, 12))
+  }
+
+  const handleAsIsShotAnalyze = async () => {
+    if (!asIsShots.length || refCapturing) return
+    setRefCapturing(true)
+    setRefError(null)
+    try {
+      const res = await fetch('/api/analyze-asis-images', {
+        method: 'POST',
+        headers: buildClientApiHeaders(),
+        body: JSON.stringify({
+          images: asIsShots.map(shot => ({ data: shot.data, mimeType: shot.mimeType })),
+          serviceName: refPageUrlInput.trim() || brief.slice(0, 60) || '캡처 화면',
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setRefError(data.error ?? '캡처 화면 분석에 실패했습니다.')
+        return
+      }
+      setAsIsAnalysis(data.analysis)
+      setRefPanelOpen(false)
+    } catch {
+      setRefError('네트워크 오류가 발생했습니다.')
+    } finally {
+      setRefCapturing(false)
+    }
+  }
+
   const handleRefCapture = async () => {
     if (!refPageUrlInput.trim() || refCapturing) return
     setRefCapturing(true)
@@ -621,21 +873,86 @@ export default function Home() {
 
   const clearAsIs = () => {
     setAsIsAnalysis(null)
+    setAsIsShots([])
     setRefError(null)
   }
 
-  const handlePrdFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => {
-      const text = ev.target?.result as string
-      const isHtml = /\.html?$/i.test(file.name)
-      setPrdDoc(isHtml ? `[HTML 화면기획서: ${file.name}]\n\n${text}` : text)
-      setPrdDocFileName(file.name)
-    }
-    reader.readAsText(file)
+  const readAsBase64 = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = ev => resolve((ev.target?.result as string).split(',')[1])
+      reader.onerror = () => reject(new Error('read failed'))
+      reader.readAsDataURL(file)
+    })
+
+  const handlePrdFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
     if (prdFileInputRef.current) prdFileInputRef.current.value = ''
+    if (!files.length) return
+
+    const isPdf = (file: File) => /\.pdf$/i.test(file.name) || file.type === 'application/pdf'
+    const isImage = (file: File) => file.type.startsWith('image/')
+
+    const images = files.filter(isImage)
+    const pdfs = files.filter(isPdf)
+    const texts = files.filter(file => !isImage(file) && !isPdf(file))
+
+    // 텍스트류는 브라우저에서 그대로 읽는다.
+    for (const file of texts) {
+      const text = await new Promise<string>(resolve => {
+        const reader = new FileReader()
+        reader.onload = ev => resolve(ev.target?.result as string)
+        reader.readAsText(file)
+      })
+      const isHtml = /\.html?$/i.test(file.name)
+      setPrdDocEntries(prev => [
+        ...prev,
+        { name: file.name, text: isHtml ? `[HTML 화면기획서: ${file.name}]\n\n${text}` : text },
+      ])
+    }
+
+    if (!images.length && !pdfs.length) return
+
+    // PDF는 스캔본인 경우가 많고, 캡처 이미지는 애초에 텍스트가 없다.
+    // 둘 다 서버에서 Gemini로 읽는다. 이미지 여러 장은 표가 페이지를 넘어가므로
+    // 한 문서로 묶어 한 번에 넘긴다.
+    setPrdParsing(true)
+    setRefError(null)
+    try {
+      const jobs: Array<{ label: string; files: File[] }> = [
+        ...pdfs.map(file => ({ label: file.name, files: [file] })),
+        ...(images.length
+          ? [{
+              label: images.length > 1 ? `${images[0].name} 외 ${images.length - 1}장` : images[0].name,
+              files: images,
+            }]
+          : []),
+      ]
+
+      for (const job of jobs) {
+        const payload = await Promise.all(
+          job.files.map(async file => ({
+            data: await readAsBase64(file),
+            mimeType: isPdf(file) ? 'application/pdf' : file.type,
+          })),
+        )
+        const res = await fetch('/api/parse-document', {
+          method: 'POST',
+          headers: buildClientApiHeaders(),
+          body: JSON.stringify({ files: payload, fileName: job.label }),
+        })
+        const json = await res.json()
+        if (!res.ok) {
+          setRefError(json.error ?? '문서를 분석하지 못했습니다.')
+          continue
+        }
+        setPrdDocEntries(prev => [...prev, { name: job.label, text: json.text }])
+      }
+    } catch {
+      setRefError('문서 분석 중 오류가 발생했습니다.')
+    } finally {
+      setPrdParsing(false)
+    }
   }
 
   const handleIaImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -699,8 +1016,13 @@ export default function Home() {
         setRefError(data.error ?? 'HTML 링크를 가져오지 못했습니다.')
         return
       }
-      setPrdDoc(`[HTML 화면기획서 링크: ${data.url}]\n\n${data.html}`)
-      setPrdDocFileName(data.title ? `${data.title} · ${data.url}` : data.url)
+      setPrdDocEntries(prev => [
+        ...prev,
+        {
+          name: data.title ? `${data.title} · ${data.url}` : data.url,
+          text: `[HTML 화면기획서 링크: ${data.url}]\n\n${data.html}`,
+        },
+      ])
       setHtmlSourceUrlInput('')
     } catch {
       setRefError('네트워크 오류가 발생했습니다.')
@@ -710,8 +1032,7 @@ export default function Home() {
   }
 
   const clearPlanning = () => {
-    setPrdDoc(null)
-    setPrdDocFileName(null)
+    setPrdDocEntries([])
     setIaImage(null)
     setIaText(null)
     setIaImageFileName(null)
@@ -762,19 +1083,12 @@ export default function Home() {
     } else {
       sessionStorage.removeItem('iaText')
     }
-    sessionStorage.setItem('aide_model', modelId)
+    sessionStorage.removeItem('aide_model')
     setStudioTrigger({
       brief: brief.trim(),
       preset: designPreset !== 'none' ? designPreset : undefined,
     })
-  }, [brief, designPreset, designMdContent, asIsAnalysis, refPageImage, refImageKind, brandLogo, brandColors, prdDoc, iaImage, iaText, modelId])
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit()
-    }
-  }
+  }, [brief, designPreset, designMdContent, asIsAnalysis, refPageImage, refImageKind, brandLogo, brandColors, prdDoc, iaImage, iaText])
 
   const canSubmit = brief.trim().length > 0
   const designButtonLabel = designMdFileName ?? null
@@ -809,6 +1123,8 @@ export default function Home() {
         @keyframes marquee-right { from { transform: translateX(-50%) } to { transform: translateX(0) } }
         .marquee-left { animation: marquee-left 32s linear infinite; display: flex; width: max-content; }
         .marquee-right { animation: marquee-right 28s linear infinite; display: flex; width: max-content; }
+        .brief-details-grid { display: grid; grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr); gap: 12px; padding-top: 10px; }
+        @media (max-width: 720px) { .brief-details-grid { grid-template-columns: 1fr; } }
         .history-card:hover .history-card-overlay { opacity: 1 !important; }
         @keyframes scroll-cue {
           0%, 100% { transform: translateY(0); opacity: 0.45; }
@@ -851,7 +1167,7 @@ export default function Home() {
                   </span>
                 </div>
                 <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", margin: 0, letterSpacing: "var(--aui-tracking-tight)" }}>
-                  서비스 URL만 넣으면 AI가 디자인 시스템 파일을 만들어드려요
+                  서비스 URL 또는 화면 캡처로 AI가 디자인 시스템 파일을 만들어드려요
                 </p>
               </div>
               <button
@@ -910,6 +1226,80 @@ export default function Home() {
                     </p>
                   )}
 
+                  {/* URL이 없는 서비스(네이티브 앱·사내 시스템)는 캡처로만 만들 수 있다. */}
+                  {!genMdAnalyzing && (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", margin: `var(--aui-space-4) 0` }}>
+                        <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
+                        <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-micro-size)", letterSpacing: "var(--aui-tracking-tight)" }}>또는 화면 캡처로</span>
+                        <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
+                      </div>
+
+                      <input
+                        ref={genMdShotInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        multiple
+                        onChange={handleGenMdShotUpload}
+                        style={{ display: 'none' }}
+                      />
+
+                      {genMdShots.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-2)", marginBottom: "var(--aui-space-3)" }}>
+                          {genMdShots.map((shot, index) => (
+                            <div key={`${shot.name}-${index}`} style={{ position: 'relative', width: 52, height: 90, borderRadius: "var(--aui-radius-sm)", overflow: 'hidden', border: `1px solid ${F.hairline}`, backgroundColor: F.surface2 }}>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={`data:${shot.mimeType};base64,${shot.data}`} alt={shot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <button
+                                onClick={() => setGenMdShots(prev => prev.filter((_, i) => i !== index))}
+                                aria-label={`${shot.name} 제거`}
+                                style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', border: 'none', cursor: 'pointer', backgroundColor: 'var(--aui-scrim-strong)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                              >
+                                <X size={10} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', gap: "var(--aui-space-2)" }}>
+                        <button
+                          onClick={() => genMdShotInputRef.current?.click()}
+                          style={{
+                            flex: 1, padding: "var(--aui-space-4)", borderRadius: "var(--aui-radius-control)",
+                            border: `1px dashed ${F.hairline}`, backgroundColor: F.surface1,
+                            color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
+                            letterSpacing: "var(--aui-tracking-tight)",
+                          }}
+                        >
+                          <Upload size={13} />
+                          {genMdShots.length ? `캡처 추가 (${genMdShots.length}/10)` : '앱·화면 캡처 업로드'}
+                        </button>
+                        {genMdShots.length > 0 && (
+                          <button
+                            onClick={handleGenMdShotAnalyze}
+                            style={{
+                              padding: `var(--aui-space-3) var(--aui-space-5)`, borderRadius: "var(--aui-radius-control)", flexShrink: 0,
+                              border: 'none', cursor: 'pointer', backgroundColor: F.ink, color: 'var(--aui-on-dark)',
+                              fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)",
+                              letterSpacing: "var(--aui-tracking-tight)", whiteSpace: 'nowrap',
+                            }}
+                          >
+                            캡처로 생성
+                          </button>
+                        )}
+                      </div>
+
+                      {genMdShots.length > 0 && (
+                        <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-caption-size)", margin: `var(--aui-space-3) 0 0`, lineHeight: "var(--aui-leading-relaxed)", letterSpacing: "var(--aui-tracking-tight)" }}>
+                          캡처에는 기본 상태만 담겨 있어 hover·pressed 같은 상태값과 정확한 폰트 이름은 추정되지 않습니다.
+                          같은 화면이 여러 장일수록 토큰이 정확해집니다. 생성 후 값을 확인해 주세요.
+                        </p>
+                      )}
+                    </>
+                  )}
+
                   {/* 로딩 상태 */}
                   {genMdAnalyzing && (
                     <div style={{
@@ -925,10 +1315,10 @@ export default function Home() {
                       }} />
                       <div style={{ textAlign: 'center' }}>
                         <p style={{ color: F.ink, fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)", margin: `0 0 var(--aui-space-1)`, letterSpacing: "var(--aui-tracking-tight)" }}>
-                          웹사이트를 분석하고 있어요
+                          {genMdShots.length ? '캡처 화면을 분석하고 있어요' : '웹사이트를 분석하고 있어요'}
                         </p>
                         <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", margin: 0, letterSpacing: "var(--aui-tracking-tight)" }}>
-                          색상, 타이포그래피, 레이아웃을 읽는 중입니다
+                          {genMdShots.length ? '배율을 환산하고 색상·타이포그래피를 읽는 중입니다' : '색상, 타이포그래피, 레이아웃을 읽는 중입니다'}
                         </p>
                       </div>
                     </div>
@@ -941,8 +1331,8 @@ export default function Home() {
                       backgroundColor: `${F.primary}08`, border: `1px solid ${F.primary}15`,
                     }}>
                       <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-caption-size)", margin: 0, lineHeight: "var(--aui-leading-relaxed)", letterSpacing: "var(--aui-tracking-tight)" }}>
-                        AI가 사이트를 스크린샷하고 색상·폰트·컴포넌트 패턴을 추출해<br />
-                        Google Stitch 규격의 design.md 파일을 생성합니다.
+                        URL을 넣으면 사이트를 스크린샷하고 CSS까지 읽어 정확한 토큰을 뽑습니다.<br />
+                        URL이 없는 앱·사내 시스템은 화면 캡처로 만들 수 있고, 이 경우 값은 추정치입니다.
                       </p>
                     </div>
                   )}
@@ -1199,6 +1589,16 @@ export default function Home() {
               >
                 <Clock size={18} />
               </Button>
+              <Button
+                onClick={() => { setUsageLoading(true); setUsageModalOpen(true) }}
+                aria-label="Gemini 사용량"
+                variant="outline"
+                size="icon"
+                className="bg-[var(--aui-on-dark-strong)] text-[var(--aui-text-muted)] backdrop-blur-[var(--aui-blur-glass)]"
+                title="Gemini 사용량"
+              >
+                <Coins size={18} />
+              </Button>
               <Link
                 href="/aide-ui"
                 aria-label="Aide UI 컴포넌트"
@@ -1298,15 +1698,16 @@ export default function Home() {
             })()}
             <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-3)" }}>
               <div>
-                <div style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.primary, marginBottom: '4px', letterSpacing: "var(--aui-tracking-tight)" }}>
-                  ㅇ 서비스 설명
+                <div id="brief-desc-label" style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.primary, marginBottom: '4px', letterSpacing: "var(--aui-tracking-tight)" }}>
+                  ㅇ 어떤 화면이 필요한가요?
                 </div>
                 <textarea
+                  aria-labelledby="brief-desc-label"
                   value={briefDesc}
                   onChange={e => setBriefDesc(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && briefDesc.trim()) { e.preventDefault(); handleSubmit() } }}
-                  placeholder="어떤 서비스인지 2-3문장으로 적어주세요.&#10;예) 반려식물을 키우는 사람들이 물주기·일조량을 기록하고 AI가 식물 상태를 진단해주는 앱"
-                  rows={2}
+                  onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && briefDesc.trim()) { e.preventDefault(); handleSubmit() } }}
+                  placeholder="예) SaaS 고객사에 제안할 VOC 통합관리 어드민. 문의 접수 현황, 상태별 티켓, SLA 지연 알림과 담당자 배정을 한눈에 보여줘."
+                  rows={4}
                   style={{
                     width: '100%', background: 'none', border: 'none', outline: 'none',
                     color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-label-size)", lineHeight: "var(--aui-leading-normal)",
@@ -1315,23 +1716,27 @@ export default function Home() {
                   }}
                 />
               </div>
-              <div style={{ borderTop: '1px solid var(--aui-shadow-line)', paddingTop: '12px' }}>
-                <div style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.primary, marginBottom: '4px', letterSpacing: "var(--aui-tracking-tight)" }}>
-                  ㅇ 핵심 기능
-                </div>
-                <textarea
-                  value={briefFeatures}
-                  onChange={e => setBriefFeatures(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && briefDesc.trim()) { e.preventDefault(); handleSubmit() } }}
-                  placeholder="주요 기능을 줄바꿈으로 나열해주세요.&#10;예) - 식물 상태 기록 (물주기, 햇빛, 온도)&#10;- AI 진단 및 케어 추천&#10;- 스토어 (식물·용품 구매)"
-                  rows={3}
-                  style={{
-                    width: '100%', background: 'none', border: 'none', outline: 'none',
-                    color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-label-size)", lineHeight: "var(--aui-leading-normal)",
-                    letterSpacing: "var(--aui-tracking-tight)", resize: 'none', fontFamily: 'inherit',
-                    caretColor: F.primary,
-                  }}
-                />
+              <div style={{ borderTop: '1px solid var(--aui-shadow-line)', paddingTop: '10px' }}>
+                <button type="button" aria-expanded={briefDetailsOpen} onClick={() => setBriefDetailsOpen(value => !value)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0', border: 0, background: 'transparent', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)', cursor: 'pointer' }}>
+                  <ChevronDown size={14} style={{ transform: briefDetailsOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s ease' }} />
+                  상세 입력 <span style={{ color: F.inkSubtle, fontWeight: 'var(--aui-weight-regular)' }}>선택사항</span>
+                </button>
+                {briefDetailsOpen && (
+                  <div className="brief-details-grid">
+                    <label style={{ display: 'grid', gap: '5px', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
+                      주요 사용자
+                      <input value={briefAudience} onChange={event => setBriefAudience(event.target.value)} placeholder="예) CS 운영 담당자와 서비스 기획자" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: `1px solid ${F.hairlineSoft}`, borderRadius: 'var(--aui-radius-control)', background: F.surface, color: F.ink, font: 'inherit', outline: 'none' }} />
+                    </label>
+                    <label style={{ display: 'grid', gap: '5px', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
+                      핵심 기능 또는 필수 정보
+                      <input value={briefFeatures} onChange={event => setBriefFeatures(event.target.value)} placeholder="예) 티켓 목록, 처리 상태, SLA 알림, 주간 리포트" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: `1px solid ${F.hairlineSoft}`, borderRadius: 'var(--aui-radius-control)', background: F.surface, color: F.ink, font: 'inherit', outline: 'none' }} />
+                    </label>
+                    <label style={{ gridColumn: '1 / -1', display: 'grid', gap: '5px', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
+                      강조하거나 피하고 싶은 구성
+                      <input value={briefConstraints} onChange={event => setBriefConstraints(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && briefDesc.trim()) { event.preventDefault(); handleSubmit() } }} placeholder="예) 대량 목록을 빠르게 훑도록, 불필요한 그래프 남발은 피하기" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: `1px solid ${F.hairlineSoft}`, borderRadius: 'var(--aui-radius-control)', background: F.surface, color: F.ink, font: 'inherit', outline: 'none' }} />
+                    </label>
+                  </div>
+                )}
               </div>
             </div>
             <div style={{
@@ -1518,60 +1923,8 @@ export default function Home() {
 
               </div>
 
-              {/* 모델 선택 드롭다운 + 전송 버튼 */}
+              {/* 모델은 기능별 정책으로 자동 라우팅한다. 사용자는 생성만 실행한다. */}
               <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", flexShrink: 0, position: 'relative' }}>
-                <div style={{ position: 'relative' }}>
-                  <button
-                    onClick={() => setModelDropOpen(v => !v)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)",
-                      padding: `0 var(--aui-space-3) 0 var(--aui-space-3)`, height: '38px', borderRadius: "var(--aui-radius-pill)",
-                      border: 'none', backgroundColor: 'var(--aui-border-subtle)',
-                      color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)",
-                      cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)", transition: 'all 0.15s',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    <Zap size={11} />
-                    {modelId === 'gemini-3.1-pro-preview' ? 'Gemini 3.1 Pro' : 'Gemini 2.0 Flash'}
-                    <ChevronDown size={11} />
-                  </button>
-                  {modelDropOpen && (
-                    <div style={{
-                      position: 'absolute', bottom: 'calc(100% + 6px)', right: 0,
-                      backgroundColor: 'var(--aui-on-dark)', border: `1px solid ${F.hairline}`,
-                      borderRadius: "var(--aui-radius-control)", boxShadow: "var(--aui-shadow-raised)",
-                      overflow: 'hidden', zIndex: 100, minWidth: '180px',
-                    }}>
-                      {([
-                        { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', desc: '고품질 · 느림' },
-                        { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', desc: '빠름 · 가벼움' },
-                      ] as const).map(opt => (
-                        <button
-                          key={opt.id}
-                          onClick={() => {
-                            setModelId(opt.id)
-                            localStorage.setItem('aide_model', opt.id)
-                            setModelDropOpen(false)
-                          }}
-                          style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            width: '100%', padding: `var(--aui-space-3) var(--aui-space-4)`, border: 'none',
-                            backgroundColor: modelId === opt.id ? F.surface1 : 'var(--aui-on-dark)',
-                            cursor: 'pointer', textAlign: 'left', gap: "var(--aui-space-3)",
-                          }}
-                        >
-                          <div>
-                            <div style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", color: F.ink, letterSpacing: "var(--aui-tracking-tight)" }}>{opt.label}</div>
-                            <div style={{ fontSize: "var(--aui-type-micro-size)", color: F.inkMuted, marginTop: '1px' }}>{opt.desc}</div>
-                          </div>
-                          {modelId === opt.id && <Check size={13} color={F.primary} />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
                 <button
                   onClick={handleSubmit}
                   disabled={!canSubmit}
@@ -1835,7 +2188,7 @@ export default function Home() {
               <div style={{ display: 'flex', gap: "var(--aui-space-1)", padding: "var(--aui-space-1)", borderRadius: "var(--aui-radius-control)", backgroundColor: F.surface2, marginBottom: 14 }}>
                 {([
                   ['planning', '기획/화면 설계'],
-                  ['asis', 'As-is URL'],
+                  ['asis', 'As-is 화면'],
                   ['reference', '참고자료'],
                   ['brand', '브랜드'],
                 ] as const).map(([key, label]) => (
@@ -1879,38 +2232,48 @@ export default function Home() {
 
               {sourceTab === 'planning' && (
                 <>
-                  <input ref={prdFileInputRef} type="file" accept=".txt,.md,.markdown,.html,.htm" onChange={handlePrdFileUpload} style={{ display: 'none' }} />
+                  <input ref={prdFileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.markdown,.html,.htm" multiple onChange={handlePrdFileUpload} style={{ display: 'none' }} />
                   <input ref={iaImageInputRef} type="file" accept="image/*,.xlsx,.xls,.html,.htm" onChange={handleIaImageUpload} style={{ display: 'none' }} />
 
                   {/* PRD 문서 */}
                   <div style={{ marginBottom: 10 }}>
-                    <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)", color: F.inkMuted, marginBottom: '8px', letterSpacing: "var(--aui-tracking-tight)" }}>기획 문서 / HTML 화면기획서</p>
-                    {prdDoc ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)", backgroundColor: F.surface2, border: `1px solid ${F.hairline}` }}>
+                    <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)", color: F.inkMuted, marginBottom: '8px', letterSpacing: "var(--aui-tracking-tight)" }}>기획 문서 / RFP / HTML 화면기획서</p>
+                    {prdDocEntries.map((entry, index) => (
+                      <div key={`${entry.name}-${index}`} style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)", backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, marginBottom: "var(--aui-space-2)" }}>
                         <FileText size={16} color={F.primary} style={{ flexShrink: 0 }} />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", color: F.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{prdDocFileName}</div>
-                          <div style={{ fontSize: "var(--aui-type-micro-size)", color: F.inkMuted, marginTop: 2 }}>{prdDoc.length.toLocaleString()}자</div>
+                          <div style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", color: F.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.name}</div>
+                          <div style={{ fontSize: "var(--aui-type-micro-size)", color: F.inkMuted, marginTop: 2 }}>{entry.text.length.toLocaleString()}자</div>
                         </div>
-                        <button onClick={() => { setPrdDoc(null); setPrdDocFileName(null) }} style={{ border: 'none', background: 'none', cursor: 'pointer', color: F.inkMuted, display: 'flex', padding: "var(--aui-space-1)" }}>
+                        <button onClick={() => setPrdDocEntries(prev => prev.filter((_, i) => i !== index))} style={{ border: 'none', background: 'none', cursor: 'pointer', color: F.inkMuted, display: 'flex', padding: "var(--aui-space-1)" }}>
                           <X size={14} />
                         </button>
                       </div>
-                    ) : (
-                      <button
-                        onClick={() => prdFileInputRef.current?.click()}
-                        style={{
-                          width: '100%', padding: "var(--aui-space-4)", borderRadius: "var(--aui-radius-control)",
-                          border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
-                          color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
-                          letterSpacing: "var(--aui-tracking-tight)",
-                        }}
-                      >
-                        <Upload size={13} />
-                        PRD · 기획 문서 · HTML 업로드 (.txt, .md, .html)
-                      </button>
-                    )}
+                    ))}
+                    <button
+                      onClick={() => prdFileInputRef.current?.click()}
+                      disabled={prdParsing}
+                      style={{
+                        width: '100%', padding: "var(--aui-space-4)", borderRadius: "var(--aui-radius-control)",
+                        border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
+                        color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)",
+                        cursor: prdParsing ? 'wait' : 'pointer', opacity: prdParsing ? 0.6 : 1,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
+                        letterSpacing: "var(--aui-tracking-tight)",
+                      }}
+                    >
+                      {prdParsing ? (
+                        <>
+                          <div className="size-3 rounded-full animate-spin" style={{ border: `2px solid ${F.hairline}`, borderTopColor: F.ink }} />
+                          문서 분석 중… (스캔·캡처는 시간이 걸립니다)
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={13} />
+                          {prdDocEntries.length ? '문서 추가' : 'RFP · 요구사항 업로드 (PDF, 캡처 이미지, .txt, .md, .html)'}
+                        </>
+                      )}
+                    </button>
                   </div>
 
                   <div style={{ marginBottom: 10 }}>
@@ -2220,11 +2583,70 @@ export default function Home() {
                 </div>
               )}
               {sourceTab === 'asis' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", marginBottom: '14px' }}>
-                <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
-                <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-micro-size)", letterSpacing: "var(--aui-tracking-tight)" }}>URL 입력</span>
-                <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
-              </div>
+                <>
+                  {/* 네이티브 앱·사내 시스템은 URL이 없다. 캡처 이미지가 유일한 as-is 근거인 경우를 지원한다. */}
+                  <input
+                    ref={asIsShotInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    multiple
+                    onChange={handleAsIsShotUpload}
+                    style={{ display: 'none' }}
+                  />
+                  {asIsShots.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-2)", marginBottom: "var(--aui-space-3)" }}>
+                      {asIsShots.map((shot, index) => (
+                        <div key={`${shot.name}-${index}`} style={{ position: 'relative', width: 56, height: 96, borderRadius: "var(--aui-radius-sm)", overflow: 'hidden', border: `1px solid ${F.hairline}`, backgroundColor: F.surface2 }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={`data:${shot.mimeType};base64,${shot.data}`} alt={shot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <button
+                            onClick={() => setAsIsShots(prev => prev.filter((_, i) => i !== index))}
+                            aria-label={`${shot.name} 제거`}
+                            style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', border: 'none', cursor: 'pointer', backgroundColor: 'var(--aui-scrim-strong)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: "var(--aui-space-2)", marginBottom: '14px' }}>
+                    <button
+                      onClick={() => asIsShotInputRef.current?.click()}
+                      style={{
+                        flex: 1, padding: "var(--aui-space-4)", borderRadius: "var(--aui-radius-control)",
+                        border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
+                        color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
+                        letterSpacing: "var(--aui-tracking-tight)",
+                      }}
+                    >
+                      <Upload size={13} />
+                      {asIsShots.length ? `캡처 추가 (${asIsShots.length}/12)` : '앱·화면 캡처 업로드 (URL 없을 때)'}
+                    </button>
+                    {asIsShots.length > 0 && (
+                      <button
+                        onClick={handleAsIsShotAnalyze}
+                        disabled={refCapturing}
+                        style={{
+                          padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)", flexShrink: 0,
+                          border: 'none', cursor: refCapturing ? 'default' : 'pointer',
+                          backgroundColor: refCapturing ? F.surface2 : F.ink,
+                          color: refCapturing ? 'var(--aui-scrim-soft)' : F.canvas,
+                          fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", letterSpacing: "var(--aui-tracking-tight)",
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {refCapturing ? '분석 중…' : '캡처 분석하기'}
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", marginBottom: '14px' }}>
+                    <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
+                    <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-micro-size)", letterSpacing: "var(--aui-tracking-tight)" }}>또는 URL 입력</span>
+                    <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
+                  </div>
+                </>
               )}
 
               <div style={{ display: 'flex', gap: "var(--aui-space-2)" }}>
@@ -2271,7 +2693,7 @@ export default function Home() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-4)", marginTop: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
             <p style={{ color: 'var(--aui-on-dark-muted)', fontSize: "var(--aui-type-compact-size)", letterSpacing: "var(--aui-tracking-tight)", margin: 0 }}>
-              Enter로 전송 · Shift+Enter로 줄바꿈
+              Enter로 줄바꿈 · Cmd/Ctrl+Enter로 생성
             </p>
             <div style={{ width: '1px', height: '12px', backgroundColor: 'var(--aui-on-dark-faint)' }} />
             <button
@@ -2285,7 +2707,7 @@ export default function Home() {
               }}
             >
               <FileText size={12} />
-              design.md 없으신가요? URL로 자동 생성하기
+              design.md 없으신가요? URL·화면 캡처로 자동 생성하기
             </button>
           </div>
 
@@ -2725,6 +3147,85 @@ export default function Home() {
                 </div>
               )
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Usage modal */}
+      {usageModalOpen && (
+        <div
+          onClick={() => setUsageModalOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            backgroundColor: 'var(--aui-scrim)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: "var(--aui-space-6)",
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: '720px', maxHeight: '88vh',
+              borderRadius: "var(--aui-radius-overlay)", backgroundColor: F.canvas,
+              border: `1px solid ${F.hairline}`,
+              boxShadow: "var(--aui-shadow-modal)",
+              display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            }}
+          >
+            <div style={{
+              padding: `var(--aui-space-4) var(--aui-space-6)`, borderBottom: `1px solid ${F.hairlineSoft}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
+                <Coins size={16} color={F.inkMuted} />
+                <span style={{ color: F.ink, fontSize: "var(--aui-type-body-size)", fontWeight: "var(--aui-weight-semibold)", letterSpacing: "var(--aui-tracking-tighter)" }}>Gemini 사용량</span>
+              </div>
+              <button
+                onClick={() => setUsageModalOpen(false)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: F.inkMuted, display: 'flex', alignItems: 'center',
+                  padding: "var(--aui-space-1)", borderRadius: "var(--aui-radius-sm)", fontFamily: 'inherit',
+                  fontSize: "var(--aui-type-section-title-size)", lineHeight: "var(--aui-leading-none)",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: "var(--aui-space-6)", overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-4)" }}>
+              <p style={{ margin: 0, fontSize: "var(--aui-type-caption-size)", color: F.inkMuted, lineHeight: 1.5 }}>
+                Aide가 이 기기에서 직접 호출한 Gemini API 요청 기준 추정치입니다. Google 공식 청구 금액과 다를 수 있습니다.
+              </p>
+              {usageLoading ? (
+                <div style={{ fontSize: "var(--aui-type-body-size)", color: F.inkMuted }}>불러오는 중...</div>
+              ) : !usageSummary || usageSummary.totalCalls === 0 ? (
+                <div style={{ fontSize: "var(--aui-type-body-size)", color: F.inkMuted }}>아직 기록된 호출이 없습니다.</div>
+              ) : (
+                <>
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                    gap: 'var(--aui-space-2)',
+                  }}>
+                    {[
+                      { label: '추정 비용', value: `$${usageSummary.totalCostUsd.toFixed(4)}`, accent: true },
+                      { label: 'API 호출', value: `${usageSummary.totalCalls.toLocaleString()}회` },
+                      { label: '전체 토큰', value: formatCompactTokens(usageSummary.totalPromptTokens + usageSummary.totalOutputTokens) },
+                    ].map(metric => (
+                      <div key={metric.label} style={{ padding: 'var(--aui-space-4)', borderRadius: 'var(--aui-radius-card)', backgroundColor: metric.accent ? F.primarySoft : 'var(--aui-border-subtle)', minWidth: 0 }}>
+                        <div style={{ fontSize: 'var(--aui-type-caption-size)', color: F.inkMuted, marginBottom: 5 }}>{metric.label}</div>
+                        <div style={{ fontSize: 'var(--aui-type-section-title-size)', fontWeight: 'var(--aui-weight-semibold)', color: metric.accent ? F.primaryActive : F.ink, overflow: 'hidden', textOverflow: 'ellipsis' }}>{metric.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <UsageTrendChart data={usageSummary.byDay} />
+                  <UsageModelBreakdown rows={usageSummary.byModel} totalCost={usageSummary.totalCostUsd} />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 'var(--aui-space-2)', borderTop: `1px solid ${F.hairlineSoft}`, fontSize: 'var(--aui-type-caption-size)', color: F.inkMuted }}>
+                    <span>입력 {formatCompactTokens(usageSummary.totalPromptTokens)} 토큰</span>
+                    <span>출력 {formatCompactTokens(usageSummary.totalOutputTokens)} 토큰</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
