@@ -31,7 +31,7 @@ function functionSpan(name) {
 // ratcheted down as each slimming step lands. Never raise without a written
 // reason in the commit message.
 const CEILINGS = {
-  buildQualityRules: 19100, // step A: rhythm/tabbar/interaction/skeleton CSS -> deterministic injection
+  buildQualityRules: 17450, // step A: injected CSS out; step B: 3D role taxonomy -> hero layer; step E: checklists out
   buildArtDirectionLayer: 2050,
   buildMediaLayoutSafetyLayer: 4100,
   buildBrandAndChromeLayer: 3250,
@@ -84,6 +84,28 @@ assert.ok(
 assert.ok(
   !/8의 배수/.test(qualityRules),
   'buildQualityRules still has the "8px grid" spacing authority — conflicts with the token/--aide-* authority',
+)
+
+// Step B: the 3D role taxonomy + size ratios are DEFINED once, in the hero
+// layer. buildQualityRules may point to it but must not restate the 4 roles
+// with their width/height ratios.
+assert.ok(
+  /Banner Character:[\s\S]{0,200}배너 너비 40~60%/.test(functionSpan('buildHeroVisualIntegrationLayer')),
+  '3D role taxonomy + ratios should be defined in buildHeroVisualIntegrationLayer',
+)
+assert.ok(
+  !/Banner Character —[\s\S]{0,200}배너 너비의 40~60%/.test(qualityRules),
+  'buildQualityRules restates the 3D role taxonomy with ratios — point to the hero layer instead',
+)
+
+// Step E: the restatement-only checklists are gone.
+assert.ok(
+  !/체크리스트 — 코드 작성 전 반드시 확인/.test(src),
+  'the "코드 작성 전 반드시 확인" checklist is back — it only restates rules stated above it',
+)
+assert.ok(
+  !/시각 계층 체크리스트/.test(qualityRules),
+  'buildQualityRules "시각 계층 체크리스트" is back — restatement only',
 )
 
 console.log('Prompt budget OK. Measured builder span total:', total, 'chars')

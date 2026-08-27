@@ -3148,12 +3148,6 @@ ${domainBlock}
    - 시각적 완성도는 높이되, 선택한 디자인 시스템의 정체성을 바꾸는 장식(과한 그라데이션, 임의 shadow, 임의 pill, 임의 컬러)을 추가하지 않는다.
    - 동일한 기획서라도 선택한 DESIGN.md에 따라 해당 디자인 시스템처럼 보여야 한다. 기본값이면 Aide처럼, ktds.md를 선택하면 KTDS처럼, 다른 md를 선택하면 그 md의 토큰과 컴포넌트 규칙처럼 보여야 한다.
 
-   **시각 계층 체크리스트:**
-   - [ ] 선택한 DESIGN.md의 색상/타입/간격/컴포넌트 규칙이 화면 전체에 일관되게 적용되는가?
-   - [ ] 핵심 정보와 주요 CTA가 명확히 보이는가?
-   - [ ] 리스트, 카드, 폼, 내비게이션이 서비스 목적에 맞게 충분한 정보를 담고 있는가?
-   - [ ] 반응형에서 정보 구조가 유지되는가?
-
 2. **디자인 시스템 토큰 100% 동적 상속**
    - 임의의 px, hex, shadow 값을 프롬프트 수준에서 하드코딩하지 마십시오.
    - 모든 스타일은 오직 제공된 [디자인 시스템] (DESIGN.md)의 colors, typography, rounded, spacing 토큰을 참조한 CSS 변수만을 사용하여 구현되어야 합니다.
@@ -3220,24 +3214,10 @@ ${domainBlock}
    - 단, "모든 시안에 실사 이미지" 또는 "C안의 모든 이미지 영역을 실사로 채우기"처럼 기계적으로 강제하지 마십시오. 브리프, 도메인, 사용자가 요청한 캐릭터 중요도에 따라 자연스럽게 선택하십시오.
    - **플레이스홀더는 반드시 img src 속성값에만 사용** — %%SCENE_3D%%·%%HERO_3D%%·%%SHARED_IMG:keyword:width:height%%·%%IMG_1%%·%%THUMB%%·%%THUMB:...%% 등 모든 플레이스홀더 문자열은 반드시 <img src="%%...%%"> 형태로만 사용하십시오. 텍스트 노드(<p>, <span>, <div> 등의 내용), alt, href, 주석, 또는 다른 어떤 위치에도 절대 삽입 금지.
    ${heroImagePrompt ? `
-   ⚠️ **3D 히어로 이미지 규칙 (CRITICAL)**
-   - 3D 플레이스홀더는 딱 2가지만 사용합니다. 한 화면에서 3D는 **메인 히어로 1회만** 사용합니다.
-     * %%SCENE_3D%%: 서비스 상태·공간·상황을 설명하는 통합 3D scene layer. 꼭 화면을 꽉 채우는 배경이 아니라, UI 캔버스 안의 큰 visual participant로 배치합니다.
-     * %%HERO_3D%%: 투명 배경 오브젝트/캐릭터. 배경 제거된 PNG. 카드 옆, KPI 옆, 히어로 섹션 오브젝트로 배치합니다.
-   - 플레이스홀더는 반드시 <img src="%%SCENE_3D%%"> 또는 <img src="%%HERO_3D%%"> 형태로만 사용하십시오.
-   - 히어로 섹션 배경은 DESIGN.md 토큰으로 구성하되, %%SCENE_3D%%는 과한 wallpaper가 아니라 UI 정보와 같은 캔버스에서 공간감/상황을 만드는 큰 scene layer로 배치하십시오.
-   - %%HERO_3D%% 이미지 자체에는 그림자가 없습니다. 접지감이 필요하면 HTML/CSS의 ::after, radial-gradient로만 처리하십시오.
-   - 캐릭터/오브젝트가 브리프에 포함된 경우 3D 이미지는 장식 아이콘이 아니라 히어로의 핵심 비주얼입니다. 단, 무조건 같은 크기로 키우지 말고 아래 role을 먼저 고른 뒤 role별 배율을 적용하십시오.
-   - 이미지 컨테이너에는 overflow:hidden을 사용해 가로 스크롤을 절대 만들지 마십시오.
-   - **%%HERO_3D 역할별 배치 판단:**
-     1. Banner Character — 마스코트/펫/리워드/멤버십/소비미션처럼 감정적 캐릭터가 배너 주인공인 경우. 3D는 배너 너비의 40~60%, 배너 높이의 90~130%; right/bottom anchor와 일부 crop 허용.
-     2. Product Object — 카드/쿠폰/기기/요금제/상품처럼 정보 보조 오브젝트인 경우. 3D는 배너 너비의 42~58%, 배너 높이의 80~115%; 전체 실루엣을 되도록 보존하되 visual zone은 명확해야 합니다.
-     3. Companion Accent — 대시보드/업무/폼 중심에서 보조 companion인 경우에도 B안에서는 3D가 히어로의 focal point입니다. 3D는 배너 너비의 34~46%; KPI나 CTA 근처의 독립 visual zone에 배치.
-     4. Scene Substitute — 성장/게임/온보딩처럼 3D가 상태를 설명하는 경우. 3D는 stage 중앙 또는 하단에 55~75% 폭으로 크게 배치하고, 아래/옆에 진행률·미션·액션 카드를 연결.
-   - 먼저 위 4개 중 하나를 내부적으로 선택하고, CSS class나 주석 없이 실제 배율/anchor/crop에 반영하십시오.
-   - B안 HERO_3D는 작은 floating sticker가 아니라 히어로 카드의 명확한 visual zone입니다.
-   - HERO_3D 이미지는 피사체가 캔버스의 65~75%를 차지하도록 생성됩니다. CSS width는 반드시 clamp(320px,82vw,480px) 이상으로 설정하세요. 피사체가 200px 이상으로 선명하게 보여야 합니다.
-   - 실패 조건: 모든 %%HERO_3D%%를 120~160px 작은 아이콘처럼 넣기, 오른쪽 위 작은 스티커로 띄우기, 버튼 위 빈 공간에 애매하게 놓기, 텍스트/CTA와 의미 연결 없이 빈 공간에 놓기.
+   ⚠️ **3D 히어로 이미지 (CRITICAL)**
+   - 3D 플레이스홀더는 %%SCENE_3D%%(통합 scene layer, 배경 유지)와 %%HERO_3D%%(투명 오브젝트/캐릭터, 그림자 없음) 2가지만. 한 화면에서 3D는 메인 히어로 1회. 반드시 <img src="%%...%%"> 형태로만, 컨테이너에 overflow:hidden.
+   - 배치 역할(Banner Character / Product Object / Companion Accent / Scene Substitute)과 role별 배율·anchor·crop, SCENE 배치 유형(Ambient/Split/Anchored/Cover)은 아래 "3D 이미지-UI 통합 설계" 섹션에서 판단합니다. 여기서 다시 정의하지 마십시오.
+   - %%HERO_3D%%는 피사체가 캔버스의 65~75%를 차지하도록 생성됩니다. CSS width는 clamp(320px,82vw,480px) 이상. 120~160px 작은 아이콘·오른쪽 위 스티커·빈 공간에 애매하게 띄우기는 실패입니다.
    - **히어로 이미지 배치 패턴:**
 
      패턴 A. **Product Object / 전체 보임 (contain)** — 상품형 오브젝트 전체를 안정적으로 보여줄 때
@@ -3390,12 +3370,6 @@ ${domainBlock}
    @media (min-width: [tablet-breakpoint])       { .card-grid { grid-template-columns: repeat(3, 1fr); } }
    @media (min-width: [desktop-breakpoint])      { .card-grid { grid-template-columns: repeat(4, 1fr); } }
    \`\`\`
-
-   체크리스트 (반드시 확인):
-   - [ ] CSS @media 쿼리로 주요 레이아웃이 브레이크포인트에 따라 전환되는가?
-   - [ ] 모바일에서 가로 스크롤이나 잘림이 없는가?
-   - [ ] 데스크탑에서 콘텐츠 폭과 내비게이션이 안정적으로 배치되는가?
-   - [ ] DESIGN.md가 정의한 카드 gap, container padding, navigation 패턴을 우선했는가?
 
 ## 🚀 출시 수준 Product UI 기준 (CRITICAL — 앱스토어 심사 통과 가능한 퀄리티)
 
@@ -4433,33 +4407,6 @@ ${componentSnippets}
 - design.md가 명시한 componentContract가 있으면 semantic variable보다 componentContract 값을 우선합니다.
 - design.md가 URL에서 생성된 불완전한 문서여도 Contract에서 추출한 rhythm을 우선하고, 부족한 값은 가장 가까운 existing token을 한 번만 선택해 :root에 고정하십시오.
 
-${hasDesignSystem ? `
-> **체크리스트 — 코드 작성 전 반드시 확인**
-> - [ ] ${hasBrandColors ? '브랜드 컬러를 primary/action/accent 계열에만 반영하고, neutral/surface/background/border/status 토큰은 DESIGN.md 값을 유지했는가?' : 'colors 토큰을 CSS 변수로 선언했는가?'}
-> - [ ] components.button 규칙을 DESIGN.md 그대로 적용했는가?
-> - [ ] components.input/select 규칙을 DESIGN.md 그대로 적용했는가?
-> - [ ] components.card 규칙을 DESIGN.md 그대로 적용했는가?
-> - [ ] components.listItem/navigation/dialog 등 필요한 컴포넌트를 DESIGN.md 기준으로 적용했는가?
-> - [ ] ${effectivePlatform === 'web' ? '웹 내비게이션이 서비스 성격에 맞는가? 포털/커머스/배달/예약형이면 상단 GNB, B2B/어드민/대시보드형이면 좌측 LNB를 사용했는가? 하단 탭바는 즉시 제거.' : 'components.navigationBar → bg var(--color-surface), border-top 1px var(--color-border-alt), active=var(--color-primary)?'}
-> - [ ] 폰트 크기·굵기가 typography 토큰과 일치하는가?
-> - [ ] ${hasBrandColors ? '브랜드 컬러와 DESIGN.md 토큰 외 임의 hex를 사용하지 않았는가?' : '⛔ CSS 속성에 #hex 직접 사용했는가? → 있으면 반드시 CSS 변수로 교체 (e.g., color: #333 → color: var(--color-text))'}
-> - [ ] ⛔ spacing에 임의 px 값 사용하지 않았는가? (var(--spacing-*) 변수만 허용, 예: padding: 16px 금지)
-> - [ ] ⛔ border-radius에 임의 px 값 사용하지 않았는가? (var(--rounded-*) 변수만 허용, 예: border-radius: 8px 금지)
-${usesKtdsCompatibleRules ? `> - [ ] ⛔ ${ktdsCompatibleLabel} 치수 준수: 일반 Button height 48px/radius 8px, Input default 32px, Card radius 16px를 지켰는가?
-> - [ ] 일반 Button에 pill/capsule radius를 쓰지 않았는가? Badge·Chip·Avatar·FAB만 rounded.full 예외를 사용했는가?
-> - [ ] 카드가 B2B border-only 또는 B2C shadow-only 중 하나만 쓰고, border와 shadow를 동시에 쓰지 않았는가?
-> - [ ] ${effectivePlatform === 'web' ? '웹 내비게이션이 서비스 성격에 맞는가? 포털/커머스/예약/브랜드형이면 상단 GNB, B2B/어드민/대시보드형이면 좌측 LNB를 사용했는가?' : '모바일 NavBottom을 사용하고 스크롤 콘텐츠 padding-bottom을 확보했는가?'}
-> - [ ] ⛔ Pretendard CDN이 <head>에 포함되었는가? body에 font-family: var(--font-sans) 선언했는가?` : isMd3Base ? `> - [ ] MD3 구조: 버튼·입력·카드·리스트·내비게이션이 MD3 컴포넌트 패턴을 따르는가?
-> - [ ] Input 레이블이 필드 위(above)에 배치되었는가? (인라인 placeholder-only 금지)
-> - [ ] --md-sys-color-* 변수가 :root에 선언되었는가?
-> - [ ] 폰트와 치수는 MD3 구조 위에 DESIGN.md 토큰을 우선 적용했는가?` : isMd3 ? `> - [ ] ⚠️ 버튼: height:40px, border-radius:9999px (pill) 적용했는가?
-> - [ ] ⚠️ 카드: border-radius:12px 적용했는가?
-> - [ ] ⚠️ --color-surface-container-* 변수가 :root에 선언되었는가?
-> - [ ] ${effectivePlatform === 'web' ? '웹 내비게이션이 서비스 성격에 맞는가? 포털/커머스/배달/예약형이면 상단 GNB, B2B/어드민/대시보드형이면 좌측 LNB를 사용했는가? 하단 탭바는 즉시 제거.' : 'Navigation Bar: height:80px, indicator pill(width:64px height:32px border-radius:9999px) 구현했는가?'}
-> - [ ] Chip: height:32px, border-radius:9999px (pill) 적용했는가?
-> - [ ] Input floating label 구현했는가? (placeholder 단독 사용 금지)
-> - [ ] Google Fonts Roboto CDN이 <head>에 포함되었는가?` : ''}
-` : ''}
 ${logoDataUrl ? `\n## ⚠️ 브랜드 로고 슬롯 (CRITICAL)\n- 로고 이미지를 직접 작성하지 마세요. src, data URL, placeholder 이미지, 텍스트 로고를 만들지 마세요.\n- **메인 화면과 모든 서브 화면(탭 목적지, 내부 페이지)의 헤더/앱바 브랜드 위치에 각각 1개씩 슬롯을 삽입하세요.** 화면이 3개면 슬롯도 3개입니다.\n${AIDE_LOGO_SLOT_HTML}\n- Aide가 생성 후 마지막 단계에서 모든 슬롯을 실제 업로드 로고 이미지로 치환합니다.\n- 텍스트 브랜드명(앱 이름, 서비스명 등)으로 대체 금지. 모든 화면의 로고 슬롯이 항상 우선입니다.\n- ❌ 히어로 배경, 대형 이미지, 히어로 카드 안에 슬롯을 넣지 마세요. 헤더/앱바 전용입니다.\n- ❌ 로고를 화면 폭의 큰 영역으로 확대하지 마세요. 헤더/앱바 안의 작은 브랜드 영역만 예약하세요.` : `\n## 브랜드명 표시 규칙\n- 로고 입력이 없습니다. 앱/서비스 브랜드는 텍스트로 표시하세요.\n- <img src="FreshFit">처럼 존재하지 않는 로고 이미지를 만들지 마세요.\n- 선택된 디자인 시스템의 로고나 회사명(예: kt ds)을 최종 서비스 로고로 표시하지 마세요.`}
 ${hasBrandColors ? `\n## 브랜드 컬러 적용 규칙\n로고에서 추출한 브랜드 컬러는 사용자의 회사 정체성을 반영하기 위한 값입니다. DESIGN.md가 기본 UI 품질과 컴포넌트 구조를 보장하고, 브랜드 컬러는 primary/action/accent 계열만 치환합니다.\n\n메인 브랜드 컬러: ${brandColors![0]}${brandColors![1] ? `\n보조 브랜드 컬러: ${brandColors![1]}` : ''}${brandColors!.length > 2 ? `\n추가 브랜드 컬러: ${brandColors!.slice(2).join(', ')}` : ''}\n\nCSS 변수 선언 규칙:\n- --color-primary, --color-primary-text, --color-primary-fill, --color-primary-border, --color-primary-icon 등 primary/action/accent 계열은 브랜드 컬러 기반으로 선언\n- --color-secondary는 보조 브랜드 컬러가 있을 때만 선언\n- --color-surface, --color-surface-alt, --color-background, --color-text, --color-border, --color-fill, --color-disabled, --color-positive, --color-caution, --color-negative, --color-info 등 neutral/surface/background/border/status 계열은 DESIGN.md 값을 유지\n- spacing, rounded, typography, component height/padding/radius/card rules는 DESIGN.md 값을 유지\n- 브랜드 컬러와 DESIGN.md 토큰 외 임의 hex 사용 금지\n- CTA, 주요 액션, 활성 탭, 링크, primary icon에만 브랜드 컬러를 사용하고 카드 배경/페이지 배경/본문 텍스트를 브랜드 컬러로 덮지 않음` : ''}
 ${asIsAnalysis ? `\n## As-is 화면 구조 분석 — 리디자인 대상 정보 구조 (스타일 금지)\n아래 데이터는 기존 서비스의 정보 구조, 섹션 순서, 주요 CTA, 내비게이션, 콘텐츠 재료를 파악하기 위한 것입니다.\n\n절대 규칙:\n- As-is의 색상, 폰트, 라운드, 카드 그림자, 아이콘 스타일, 시각 톤을 복사하지 마세요.\n- 최종 시각 스타일은 DESIGN.md와 브랜드 규칙만 따릅니다.\n- 기존 화면의 핵심 섹션/CTA/콘텐츠 의미는 유지하되, 정보 위계·스캔성·반응형 레이아웃·CTA 발견성을 개선하세요.\n- shellContract는 바꾸면 안 되는 화면 셸의 존재/부재 계약입니다. topAppBar의 title·leftAction·rightAction을 그대로 유지하세요.\n- shellContract.bottomNavigation.present가 false이면 하단 탭바·하단 내비게이션을 절대 추가하지 마세요.\n- shellContract.brandLogo.present가 false이면 이미지 로고·텍스트 로고·Aide 로고를 절대 추가하지 마세요.\n\n분석 JSON:\n\`\`\`json\n${JSON.stringify(asIsAnalysis, null, 2).slice(0, 12000)}\n\`\`\`` : ''}
