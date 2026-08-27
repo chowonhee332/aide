@@ -8,7 +8,7 @@ import {
   Download, Eye, EyeOff, Coins,
 } from '@/components/ui/material-icon'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
-import Grainient from '@/components/Grainient'
+import WaterHero from '@/components/WaterHero'
 import { DesignMdPreview } from '@/components/DesignMdPreview'
 import { type HistoryItem, loadHistory, deleteHistoryItem, relativeTime } from '@/lib/history'
 import type { GeminiUsageSummary } from '@/lib/gemini-usage'
@@ -16,8 +16,8 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import StudioView from '@/components/StudioView'
 import BuilderView from '@/components/BuilderView'
-import { AIDE_UI, AIDE_UI_RAW } from '@/lib/aide-ui'
-import { Button } from '@/components/ui/button'
+import { AIDE_UI } from '@/lib/aide-ui'
+import { Button, buttonVariants } from '@/components/ui/button'
 
 const CircularGallery = dynamic(() => import('@/components/CircularGallery'), { ssr: false })
 
@@ -1502,32 +1502,7 @@ export default function Home() {
       ══════════════════════════════════════════ */}
       <section style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
         <div className="fixed inset-0 pointer-events-none">
-          <Grainient
-            color1={AIDE_UI_RAW.heroGradientStart}
-            color2={AIDE_UI_RAW.heroGradientMiddle}
-            color3={AIDE_UI_RAW.heroGradientEnd}
-            timeSpeed={1}
-            colorBalance={0}
-            warpStrength={1}
-            warpFrequency={3.7}
-            warpSpeed={2.5}
-            warpAmplitude={50}
-            blendAngle={5}
-            blendSoftness={0.05}
-            rotationAmount={400}
-            noiseScale={2}
-            grainAmount={0.1}
-            grainScale={1.5}
-            grainAnimated={false}
-            contrast={1.5}
-            gamma={1}
-            saturation={0.8}
-            centerX={0}
-            centerY={0}
-            zoom={0.9}
-          />
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '300px', background: `linear-gradient(to bottom, ${F.canvas} 0%, transparent 100%)` }} />
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '200px', background: `linear-gradient(to top, ${F.canvas} 0%, transparent 100%)` }} />
+          <WaterHero />
         </div>
 
         <header style={{
@@ -1543,7 +1518,6 @@ export default function Home() {
           <div style={{
             backgroundColor: scrolled ? 'var(--aui-on-dark-subtle)' : 'transparent',
             backdropFilter: scrolled ? 'blur(var(--aui-blur-glass))' : 'none',
-            borderBottom: !scrolled ? '1px solid var(--aui-on-dark-faint)' : '1px solid transparent',
             border: scrolled ? '1px solid var(--aui-on-dark-subtle)' : undefined,
             borderRadius: scrolled ? '20px' : '0',
             padding: scrolled ? '12px 24px' : '20px 48px',
@@ -1569,50 +1543,51 @@ export default function Home() {
 
             {/* 우측: 액션 */}
             <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: "var(--aui-space-3)" }}>
-              <Button
-                onClick={openApiKeyModal}
-                aria-label="API Key 설정"
-                variant="outline"
-                size="icon"
-                className="bg-[var(--aui-on-dark-strong)] text-[var(--aui-text-muted)] backdrop-blur-[var(--aui-blur-glass)]"
-                title="API Key 설정"
-              >
-                <KeyRound size={18} />
-              </Button>
-              <Button
-                onClick={() => setHistoryModalOpen(true)}
-                aria-label="히스토리"
-                variant="outline"
-                size="icon"
-                className="bg-[var(--aui-on-dark-strong)] text-[var(--aui-text-muted)] backdrop-blur-[var(--aui-blur-glass)]"
-                title="히스토리"
-              >
-                <Clock size={18} />
-              </Button>
-              <Button
-                onClick={() => { setUsageLoading(true); setUsageModalOpen(true) }}
-                aria-label="Gemini 사용량"
-                variant="outline"
-                size="icon"
-                className="bg-[var(--aui-on-dark-strong)] text-[var(--aui-text-muted)] backdrop-blur-[var(--aui-blur-glass)]"
-                title="Gemini 사용량"
-              >
-                <Coins size={18} />
-              </Button>
-              <Link
-                href="/aide-ui"
-                aria-label="Aide UI 컴포넌트"
-                title="Aide UI 컴포넌트"
-                className="flex size-10 items-center justify-center rounded-[var(--aui-radius-control)] border border-[var(--aui-border)] bg-[var(--aui-on-dark-strong)] text-[var(--aui-text-muted)] transition-all duration-[var(--aui-motion-fast)] hover:border-[var(--aui-primary-muted)] hover:bg-[var(--aui-surface)] hover:text-[var(--aui-primary)]"
-              >
-                <Palette size={18} />
-              </Link>
+              <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}>
+                <Button
+                  onClick={openApiKeyModal}
+                  aria-label="API Key 설정"
+                  variant="ghost"
+                  size="icon"
+                  className="text-[var(--aui-text-strong)]"
+                  title="API Key 설정"
+                >
+                  <KeyRound size={20} />
+                </Button>
+                <Button
+                  onClick={() => setHistoryModalOpen(true)}
+                  aria-label="히스토리"
+                  variant="ghost"
+                  size="icon"
+                  className="text-[var(--aui-text-strong)]"
+                  title="히스토리"
+                >
+                  <Clock size={20} />
+                </Button>
+                <Button
+                  onClick={() => { setUsageLoading(true); setUsageModalOpen(true) }}
+                  aria-label="Gemini 사용량"
+                  variant="ghost"
+                  size="icon"
+                  className="text-[var(--aui-text-strong)]"
+                  title="Gemini 사용량"
+                >
+                  <Coins size={20} />
+                </Button>
+                <Link
+                  href="/aide-ui"
+                  aria-label="Aide UI 컴포넌트"
+                  title="Aide UI 컴포넌트"
+                  className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'text-[var(--aui-text-strong)]' })}
+                >
+                  <Palette size={20} />
+                </Link>
+              </div>
               <Button
                 onClick={() => setBuilderOpen(true)}
-                variant="outline"
-                className="bg-[var(--aui-on-dark-strong)] backdrop-blur-[var(--aui-blur-glass)]"
+                variant="ghost"
               >
-                Playground
+                Playground <ArrowRight size={14} strokeWidth={2.5} />
               </Button>
               <Button
                 onClick={async () => {
@@ -1631,17 +1606,6 @@ export default function Home() {
 
 
         <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 pt-24" style={{ paddingBottom: '100px' }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: "var(--aui-space-2)",
-            border: '1px solid var(--aui-on-dark-subtle)', color: 'var(--aui-on-dark)',
-            fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", padding: `var(--aui-space-2) var(--aui-space-4)`, borderRadius: "var(--aui-radius-pill)",
-            backgroundColor: 'var(--aui-on-dark-faint)', backdropFilter: 'blur(8px)',
-            marginBottom: '24px', letterSpacing: "var(--aui-tracking-tight)",
-          }}>
-            <span style={{ backgroundColor: 'var(--aui-on-dark)', color: 'var(--aui-text)', padding: `var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-sm)", fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-extrabold)", marginRight: '4px' }}>NEW</span>
-            Just shipped v2.0
-          </div>
-
           <h1 style={{
             fontSize: 'clamp(40px, 6.5vw, var(--aui-type-display-hero-size))', fontWeight: "var(--aui-type-display-hero-weight)", color: 'var(--aui-on-dark)',
             textAlign: 'center', lineHeight: "var(--aui-type-display-hero-leading)", letterSpacing: "var(--aui-type-display-hero-tracking)",
