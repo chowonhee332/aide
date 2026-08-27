@@ -12,7 +12,7 @@ import { Renderer, Program, Mesh, Triangle } from 'ogl';
  * Replaces <Grainient> on the landing hero. Self-contained and reversible.
  */
 
-const MAX_RIPPLES = 16; // ripple ring pool size
+const MAX_RIPPLES = 28; // ripple pool — enough for a trailing cursor wake
 
 const hexToRgb = (hex: string): [number, number, number] => {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -78,27 +78,30 @@ void main(){
   float aspect = iResolution.x / iResolution.y;
   vec2 auv = vec2(uv.x * aspect, uv.y);
 
-  // ---- ripple field: damped wavefronts (ambient + cursor) ----
+  // ---- ripple field: damped wavefronts (ambient + cursor wake) ----
   float height = 0.0;   // surface height, drives refraction + shading
   vec2  grad = vec2(0.0);
-  float sheen = 0.0;    // faint specular on the leading crest
+  float ringLight = 0.0; // visible crest light — the "water kick"
   for (int i = 0; i < ${MAX_RIPPLES}; i++){
     if (float(i) >= uRippleCount) break;
     vec4 r = uRipples[i];
     float age = iTime - r.z;
-    if (age < 0.0 || age > 6.0) continue;
+    if (age < 0.0 || age > 4.2) continue;
     vec2 cc = vec2(r.x * aspect, r.y);
     float d = distance(auv, cc);
-    float radius = age * 0.36;
-    float life = 1.0 - age / 6.0;
+    float radius = age * 0.42;
+    float life = 1.0 - age / 4.2;
     float band = d - radius;
-    // a train of ~3 concentric waves, decaying behind the front
-    float envelope = exp(-abs(band) * 4.5) * exp(-max(band, 0.0) * 2.0) * life * life;
-    float phase = band * 34.0 - age * 5.0;
-    height += sin(phase) * envelope * r.w;
+    // window holds ~3 trailing waves behind the front
+    float envelope = exp(-abs(band) * 2.8) * exp(-max(band, 0.0) * 1.6) * life;
+    float phase = band * 28.0 - age * 4.5;
+    float wave = sin(phase);
+    height += wave * envelope * r.w;
     vec2 dir = d > 1e-4 ? (auv - cc) / d : vec2(0.0);
     grad += dir * cos(phase) * envelope * r.w;
-    sheen += max(sin(phase), 0.0) * exp(-abs(band) * 7.0) * life * r.w;
+    // trailing crests + a slightly brighter leading edge
+    float front = exp(-abs(band) * 9.0) * life;
+    ringLight += (max(wave, 0.0) * envelope * 0.7 + front * 0.5) * life * r.w;
   }
 
   // ---- surface: slow organic swell + ripple slope → refraction offset ----
@@ -128,9 +131,9 @@ void main(){
   float causticMix = ca * mix(0.14, 0.40, 1.0 - uv.y);
   vec3 col = base + vec3(0.55, 0.88, 1.0) * causticMix;
 
-  // ripple shading: refraction darkens troughs, brightens crests; faint sheen
-  col += vec3(0.32, 0.56, 0.78) * height * 0.16;
-  col += vec3(0.75, 0.92, 1.0) * sheen * 0.20;
+  // ripple shading: refraction shades troughs/crests, soft wake on the crests
+  col += vec3(0.28, 0.52, 0.75) * height * 0.16;
+  col += vec3(0.82, 0.94, 1.0) * ringLight * 0.42;
 
   // gentle depth vignette
   vec2 vd = uv - 0.5;
@@ -191,7 +194,9 @@ const WaterHero = ({
     glCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(1.8px);transform:scale(1.05);';
     host.appendChild(glCanvas);
 
-    const ripplesBuf = new Float32Array(MAX_RIPPLES * 4);
+    // plain Array (not Float32Array): ogl only uploads array uniforms whose
+    // value passes Array.isArray()
+    const ripplesBuf: number[] = new Array(MAX_RIPPLES * 4).fill(0);
     const program = new Program(gl, {
       vertex,
       fragment,
@@ -273,25 +278,25 @@ const WaterHero = ({
       pointer.y = 1 - ny; // gl y-up
       pointer.active = true;
       pointer.lastMove = now();
-      if (now() - lastPointerRipple > 0.11) {
+      if (now() - lastPointerRipple > 0.09) {
         lastPointerRipple = now();
-        addRipple(nx, 1 - ny, 0.5);
+        addRipple(nx, 1 - ny, 0.6);
       }
     };
     const onPointerDown = (e: PointerEvent) => {
       const rect = host.getBoundingClientRect();
-      addRipple((e.clientX - rect.left) / rect.width, 1 - (e.clientY - rect.top) / rect.height, 1.1);
+      addRipple((e.clientX - rect.left) / rect.width, 1 - (e.clientY - rect.top) / rect.height, 1.3);
     };
     window.addEventListener('pointermove', onPointerMove, { passive: true });
     window.addEventListener('pointerdown', onPointerDown, { passive: true });
 
-    // seed staggered rings so the surface is alive immediately
-    for (let i = 0; i < 6; i++) {
+    // seed a couple of fading rings so the surface isn't dead on load
+    for (let i = 0; i < 4; i++) {
       const r = ripples[writeIdx] ?? ({} as Ripple);
       r.x = Math.random();
       r.y = Math.random() * 0.8;
-      r.birth = -i * 0.9;
-      r.strength = 1.1;
+      r.birth = -i * 0.7;
+      r.strength = 0.6;
       ripples[writeIdx] = r;
       writeIdx = (writeIdx + 1) % MAX_RIPPLES;
     }
@@ -381,16 +386,16 @@ const WaterHero = ({
 
       // ambient ripples, biased to the lower half
       ambientAcc += dt;
-      if (ambientAcc > 0.5) {
+      if (ambientAcc > 1.4) {
         ambientAcc = 0;
-        addRipple(Math.random(), Math.random() * 0.8, 1.05 + Math.random() * 0.5);
+        addRipple(Math.random(), Math.random() * 0.8, 0.25 + Math.random() * 0.25);
       }
 
       // pack ripple uniforms
       let count = 0;
       for (const r of ripples) {
         if (!r) continue;
-        if (time - r.birth > 6.0) continue;
+        if (time - r.birth > 4.2) continue;
         const o = count * 4;
         ripplesBuf[o] = r.x;
         ripplesBuf[o + 1] = r.y;

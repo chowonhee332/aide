@@ -332,14 +332,6 @@ export default function Home() {
     }
   }
 
-  const [scrolled, setScrolled] = useState(false)
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20)
-    }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
 
   const [historyModalOpen, setHistoryModalOpen] = useState(false)
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([])
@@ -1507,28 +1499,26 @@ export default function Home() {
 
         <header style={{
           position: 'fixed',
-          top: scrolled ? '24px' : '0',
+          top: '20px',
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 50,
-          width: scrolled ? 'calc(100% - 48px)' : '100%',
-          maxWidth: scrolled ? '1000px' : 'none',
-          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          width: 'auto',
+          maxWidth: 'calc(100% - 32px)',
         }}>
           <div style={{
-            backgroundColor: scrolled ? 'var(--aui-on-dark-subtle)' : 'transparent',
-            backdropFilter: scrolled ? 'blur(var(--aui-blur-glass))' : 'none',
-            border: scrolled ? '1px solid var(--aui-on-dark-subtle)' : undefined,
-            borderRadius: scrolled ? '20px' : '0',
-            padding: scrolled ? '12px 24px' : '20px 48px',
+            backgroundColor: 'var(--aui-on-dark-subtle)',
+            backdropFilter: 'blur(var(--aui-blur-glass))',
+            border: '1px solid var(--aui-on-dark-faint)',
+            borderRadius: 'var(--aui-radius-pill)',
+            padding: '8px 8px 8px 20px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: scrolled ? "var(--aui-shadow-floating)" : 'none',
-            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            gap: "var(--aui-space-6)",
+            boxShadow: "var(--aui-shadow-floating)",
           }}>
             {/* 좌측: 로고 */}
-            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
+            <div style={{ display: 'flex', flexShrink: 0 }}>
               <Button
                 type="button"
                 aria-label="Aide 홈으로 이동"
@@ -1536,13 +1526,12 @@ export default function Home() {
                 variant="ghost"
                 className="h-auto p-0 hover:bg-transparent"
               >
-                <img src="/logo_aide.png" alt="Aide" style={{ height: 58, width: 'auto', display: 'block', objectFit: 'contain' }} />
+                <img src="/logo_aide.png" alt="Aide" style={{ height: 32, width: 'auto', display: 'block', objectFit: 'contain' }} />
               </Button>
             </div>
 
-
             {/* 우측: 액션 */}
-            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: "var(--aui-space-3)" }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}>
                 <Button
                   onClick={openApiKeyModal}
