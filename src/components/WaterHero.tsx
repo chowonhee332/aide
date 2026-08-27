@@ -39,8 +39,6 @@ uniform vec4  uRipples[${MAX_RIPPLES}]; // xy=center(0..1), z=birthTime, w=stren
 
 out vec4 fragColor;
 
-#define TAU 6.28318530718
-
 float hash1(vec2 p){ return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
 
 float vnoise(vec2 p){
@@ -59,20 +57,20 @@ float fbm(vec2 p){
   return v;
 }
 
-// classic distorted sine-field water caustic — thin bright refracted veins
-float caustic(vec2 uv, float t){
-  vec2 p = mod(uv * TAU, TAU) - 250.0;
-  vec2 i = p;
-  float c = 1.0;
-  float inten = 0.0045;
-  for (int n = 0; n < 5; n++){
-    float tt = t * 0.35 * (1.0 - (3.5 / float(n + 1)));
-    i = p + vec2(cos(tt - i.x) + sin(tt + i.y), sin(tt - i.y) + cos(tt + i.x));
-    c += 1.0 / length(vec2(p.x / (sin(i.x + tt) / inten), p.y / (cos(i.y + tt) / inten)));
+// organic water caustic — domain-warped ridged fbm, irregular light veins
+float caustic(vec2 p, float t){
+  float c = 0.0;
+  float amp = 0.5;
+  for (int i = 0; i < 3; i++){
+    vec2 q = p * (1.8 + float(i) * 1.25);
+    // swirl the sample point so veins curve naturally
+    q += (vec2(fbm(q * 0.5 + t * 0.09),
+               fbm(q * 0.5 - t * 0.11 + 3.7)) - 0.5) * 1.6;
+    float n = fbm(q + t * 0.13);
+    c += amp * pow(1.0 - abs(2.0 * n - 1.0), 3.5);
+    amp *= 0.55;
   }
-  c /= 5.0;
-  c = 1.17 - pow(c, 1.4);
-  return clamp(pow(abs(c), 3.0), 0.0, 1.0);
+  return c;
 }
 
 void main(){
@@ -80,11 +78,10 @@ void main(){
   float aspect = iResolution.x / iResolution.y;
   vec2 auv = vec2(uv.x * aspect, uv.y);
 
-  // ---- ripple field (ambient + cursor rings) ----
-  float height = 0.0;
+  // ---- ripple field: damped wavefronts (ambient + cursor) ----
+  float height = 0.0;   // surface height, drives refraction + shading
   vec2  grad = vec2(0.0);
-  float ringGlow = 0.0;
-  float ringDark = 0.0;
+  float sheen = 0.0;    // faint specular on the leading crest
   for (int i = 0; i < ${MAX_RIPPLES}; i++){
     if (float(i) >= uRippleCount) break;
     vec4 r = uRipples[i];
@@ -92,65 +89,59 @@ void main(){
     if (age < 0.0 || age > 6.0) continue;
     vec2 cc = vec2(r.x * aspect, r.y);
     float d = distance(auv, cc);
-    float radius = age * 0.38;
+    float radius = age * 0.36;
     float life = 1.0 - age / 6.0;
     float band = d - radius;
-    float env = exp(-abs(band) * 2.6) * life;
+    // a train of ~3 concentric waves, decaying behind the front
+    float envelope = exp(-abs(band) * 4.5) * exp(-max(band, 0.0) * 2.0) * life * life;
+    float phase = band * 34.0 - age * 5.0;
+    height += sin(phase) * envelope * r.w;
     vec2 dir = d > 1e-4 ? (auv - cc) / d : vec2(0.0);
-    // 4 soft concentric wavefronts trailing the leading edge
-    float rings = 0.0;
-    for (int k = 0; k < 4; k++){
-      float rr = radius - float(k) * 0.10;
-      float w = float(4 - k) / 4.0;
-      float db = abs(d - rr);
-      rings += smoothstep(0.055, 0.0, db) * w;
-      ringDark += smoothstep(0.10, 0.055, db) * w * 0.4;
-    }
-    ringGlow += (rings * 0.8 + env * 0.5) * life * r.w;
-    // physical displacement so the caustic bends through each ring
-    float wob = sin(band * 22.0 - 1.5);
-    height += wob * env * r.w;
-    grad += dir * cos(band * 22.0 - 1.5) * env * r.w;
+    grad += dir * cos(phase) * envelope * r.w;
+    sheen += max(sin(phase), 0.0) * exp(-abs(band) * 7.0) * life * r.w;
   }
 
-  // ---- surface distortion: slow swell + ripple refraction ----
-  float swell = fbm(auv * 1.6 + iTime * 0.03);
-  vec2 refr = (vec2(fbm(auv * 3.0 + iTime * 0.05) - 0.5,
-                    fbm(auv * 3.0 - iTime * 0.045 + 7.0) - 0.5)) * 0.10
-            + grad * 0.14;
+  // ---- surface: slow organic swell + ripple slope → refraction offset ----
+  float swell = fbm(auv * 1.4 + iTime * 0.025);
+  vec2 slope = (vec2(fbm(auv * 2.6 + iTime * 0.04) - 0.5,
+                     fbm(auv * 2.6 - iTime * 0.037 + 7.0) - 0.5)) * 0.09
+             + grad * 0.16;
 
-  // ---- caustics: two octaves for depth, refracted by the surface ----
-  vec2 wuv = (auv + refr) * 8.5 + vec2(iTime * 0.06, iTime * 0.10);
-  float ca = caustic(wuv, iTime) * 0.6 + caustic(wuv * 0.45 - 2.0, iTime * 0.55) * 0.75;
+  // ---- caustics: two octaves, bent by the surface slope ----
+  vec2 wuv = (auv + slope) * 3.6 + vec2(iTime * 0.045, iTime * 0.07);
+  float ca = caustic(wuv, iTime) * 0.9 + caustic(wuv * 2.1 - 4.0, iTime * 1.3) * 0.4;
   ca *= uCaustic;
 
-  // broad soft light patches drifting under the surface
-  float soft = fbm(auv * 1.9 - iTime * 0.028 + refr * 2.0);
+  // broad slow light/shadow patches for depth
+  float shade = fbm(auv * 1.5 - iTime * 0.02 + slope * 3.0) - 0.5;
 
-  // ---- base water colour: deep cobalt at top → vivid cyan at bottom ----
-  float g = clamp(uv.y + (swell - 0.5) * 0.14 + height * 0.04, 0.0, 1.0);
+  // ---- base water colour: deep at top → bright cyan at bottom ----
+  float g = clamp(uv.y + (swell - 0.5) * 0.13 + height * 0.05, 0.0, 1.0);
   vec3 base = g < 0.42
     ? mix(uColorBot, uColorMid, g / 0.42)
-    : mix(uColorMid, uColorTop, pow((g - 0.42) / 0.58, 0.8));
-  // gentle volume light, kept subtle so the blue stays saturated
-  base += vec3(0.03, 0.05, 0.06) * smoothstep(1.4, -0.2, uv.x + uv.y);
-  base += vec3(0.18, 0.40, 0.55) * (soft - 0.5) * 0.28;
+    : mix(uColorMid, uColorTop, pow((g - 0.42) / 0.58, 0.85));
+  base += vec3(0.10, 0.20, 0.26) * shade * 0.5;
+  // light entering the water, a touch stronger up-screen
+  base += vec3(0.04, 0.07, 0.09) * smoothstep(1.5, -0.1, uv.x + uv.y);
 
-  // caustic light — cyan, not white, so it doesn't wash the colour out
-  float causticMix = ca * mix(0.10, 0.34, 1.0 - uv.y);
-  vec3 col = base + vec3(0.45, 0.85, 1.0) * causticMix;
+  // caustic light — soft cyan-white, stronger where the water is shallower
+  float causticMix = ca * mix(0.14, 0.40, 1.0 - uv.y);
+  vec3 col = base + vec3(0.55, 0.88, 1.0) * causticMix;
 
-  // expanding ripple rings + gentle wave shading
-  col += vec3(0.80, 0.96, 1.0) * ringGlow * 1.15;
-  col -= vec3(0.10, 0.16, 0.24) * ringDark * 1.0;
-  col += vec3(0.30, 0.60, 1.0) * height * 0.22;
+  // ripple shading: refraction darkens troughs, brightens crests; faint sheen
+  col += vec3(0.32, 0.56, 0.78) * height * 0.16;
+  col += vec3(0.75, 0.92, 1.0) * sheen * 0.20;
 
-  // punch up saturation so it reads like the reference
+  // gentle depth vignette
+  vec2 vd = uv - 0.5;
+  col *= 1.0 - dot(vd, vd) * 0.28;
+
+  // mild saturation lift, nothing garish
   float luma = dot(col, vec3(0.299, 0.587, 0.114));
-  col = mix(vec3(luma), col, 1.28);
+  col = mix(vec3(luma), col, 1.10);
 
   // very fine grain
-  col += (hash1(gl_FragCoord.xy + iTime) - 0.5) * 0.015;
+  col += (hash1(gl_FragCoord.xy + iTime) - 0.5) * 0.014;
 
   fragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }
