@@ -13,7 +13,7 @@ import { Renderer, Program, Mesh, Triangle } from 'ogl';
  */
 
 const MAX_RIPPLES = 18; // ripple pool — enough for an ambient pool disturbance
-const MAX_KOI = 3;      // koi count — also the wake-emitter count fed to the shader
+const MAX_KOI = 2;      // koi count — also the wake-emitter count fed to the shader
 
 const hexToRgb = (hex: string): [number, number, number] => {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -29,10 +29,10 @@ const hexToRgb = (hex: string): [number, number, number] => {
 // deep = dark tone for the volume patches that give the body form
 interface KoiKind { body: string; rim: string; deep: string; water: [string, string, string]; }
 const KOI_KINDS: KoiKind[] = [
-  { body: '226,74,42', rim: '255,186,96', deep: '112,22,10', water: ['#8a2410', '#e0431f', '#ff9a6b'] }, // vermilion (Kohaku)
-  { body: '236,182,78', rim: '255,234,160', deep: '146,88,14', water: ['#7a4708', '#e0982a', '#ffe0a0'] }, // gold (Yamabuki Ogon)
-  { body: '104,146,214', rim: '178,214,248', deep: '32,62,132', water: ['#0068ff', '#0e9dfa', '#1dd2f6'] }, // blue (Asagi) — default pool
+  { body: '230,58,36', rim: '255,150,60', deep: '120,20,8', water: ['#8a2410', '#e0431f', '#ff9a6b'] }, // vermilion — the video's redder fish
+  { body: '234,120,40', rim: '255,196,96', deep: '150,72,12', water: ['#7a4708', '#e0982a', '#ffe0a0'] }, // amber — the video's more orange fish
 ];
+const KOI_HOT = '255,206,104'; // shared hot yellow-orange leading edge / head glow
 
 const vertex = `#version 300 es
 in vec2 position;
@@ -240,15 +240,20 @@ void main(){
 interface Ripple { x: number; y: number; birth: number; strength: number; }
 
 interface Koi {
-  x: number; y: number;
-  tx: number; ty: number; // personal roaming waypoint — re-picked on arrival
-  angle: number;      // current facing (rendered)
-  dir: number;        // target bearing — evolves as a damped random walk
-  dirVel: number;     // angular velocity of that target
-  speed: number;
-  len: number;
-  phase: number;      // tail-beat phase
-  kind: number;       // index into KOI_KINDS — body colour + ink palette
+  x: number; y: number;        // head position, css px
+  heading: number;             // travel bearing, rad
+  turn: number;                // live angular velocity, rad/s
+  turnGoal: number;            // committed bank target — held for turnHold seconds
+  turnHold: number;            // seconds left on the current bank
+  speed: number;               // live px/s (eased toward target)
+  cruise: number; burst: number; // this koi's slow / rocket speeds
+  throttle: number; throttleGoal: number; // 0..1 → speed target between cruise and burst
+  burstIn: number; burstDur: number;      // seconds until next burst / left in this one
+  phase: number;               // tail-beat phase
+  len: number;                 // rest body length
+  hist: Float64Array;          // ring buffer of past head positions [x,y,x,y,…]
+  histHead: number; histN: number;        // newest-sample slot · samples written
+  kind: number;                // index into KOI_KINDS — body colour + ink palette
 }
 
 interface WaterHeroProps {
@@ -319,9 +324,38 @@ const WaterHero = ({
 
     // ---------- 2D koi overlay ----------
     const koiCanvas = document.createElement('canvas');
-    koiCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(2.8px);';
+    koiCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(3.4px);';
     host.appendChild(koiCanvas);
     const kctx = koiCanvas.getContext('2d')!;
+
+    // ---------- koi model ----------
+    // Each koi is rendered as a ribbon laid along its own recent head-position
+    // history: on a fast burst the samples spread out → a long stretched streak;
+    // at cruise they bunch → a compact crescent. This is what gives the video's
+    // "segmented red comet when fast, clean fish when slow" without any extra
+    // trail buffer or per-fin geometry.
+    const HIST = 40;            // head-position ring depth (~0.7 s at 60 fps)
+    const RIB_N = 16;           // ribbon sample points, head → tail
+    const rx = new Float64Array(RIB_N);   // resampled spine (world px)
+    const ry = new Float64Array(RIB_N);
+    const rnx = new Float64Array(RIB_N);  // per-point unit normal
+    const rny = new Float64Array(RIB_N);
+    const wx = new Float64Array(RIB_N);   // spine + body undulation
+    const wy = new Float64Array(RIB_N);
+    const smooth = (v: number) => v * v * (3 - 2 * v);
+
+    // lay the history straight back from the head so the body is full-length at
+    // spawn and never streaks across a wrap-around teleport
+    const fillHist = (k: Koi) => {
+      const bx = Math.cos(k.heading), by = Math.sin(k.heading);
+      const stp = k.len / HIST;
+      k.histHead = 0; k.histN = HIST;
+      for (let j = 0; j < HIST; j++) {
+        const slot = (HIST - j) % HIST;
+        k.hist[slot * 2] = k.x - bx * stp * j;
+        k.hist[slot * 2 + 1] = k.y - by * stp * j;
+      }
+    };
 
     let cssW = 1, cssH = 1;
     const koi: Koi[] = [];
@@ -329,23 +363,29 @@ const WaterHero = ({
       koi.length = 0;
       const n = reduceMotion ? 0 : MAX_KOI;
       for (let i = 0; i < n; i++) {
-        const heading = Math.random() * Math.PI * 2;
-        // spread the starting points across the whole canvas
-        const gx = ((i % 2) + 0.2 + Math.random() * 0.6) / 2;
-        const gy = (Math.floor(i / 2) + 0.2 + Math.random() * 0.6) / 2;
-        koi.push({
-          x: cssW * gx,
-          y: cssH * gy,
-          tx: cssW * (0.08 + Math.random() * 0.84),
-          ty: cssH * (0.1 + Math.random() * 0.78),
-          angle: heading,
-          dir: heading,
-          dirVel: 0,
-          speed: 98 + Math.random() * 54,
-          len: 131 + Math.random() * 61,
+        const k: Koi = {
+          x: cssW * (0.22 + Math.random() * 0.56),
+          y: cssH * (0.24 + Math.random() * 0.52),
+          heading: Math.random() * Math.PI * 2,
+          turn: 0,
+          turnGoal: (Math.random() - 0.5) * 1.2,
+          turnHold: 1 + Math.random() * 2,
+          speed: 90,
+          cruise: 66 + Math.random() * 30,
+          burst: 430 + Math.random() * 190,
+          throttle: 0,
+          throttleGoal: 0,
+          burstIn: 1.2 + Math.random() * 3.5,
+          burstDur: 0,
           phase: Math.random() * Math.PI * 2,
+          len: 122 + Math.random() * 48,
+          hist: new Float64Array(HIST * 2),
+          histHead: 0,
+          histN: HIST,
           kind: i % KOI_KINDS.length,
-        });
+        };
+        fillHist(k);
+        koi.push(k);
       }
     };
 
@@ -411,7 +451,7 @@ const WaterHero = ({
       let best = Infinity;
       for (const k of koi) {
         const dd = Math.hypot(k.x - mx, k.y - my);
-        if (dd < k.len * 0.6 && dd < best) { best = dd; hit = k; }
+        if (dd < k.len && dd < best) { best = dd; hit = k; }
       }
       if (!hit) return;
       const w = KOI_KINDS[hit.kind].water;
@@ -447,256 +487,206 @@ const WaterHero = ({
     let onScreen = true;
     let pageVisible = !document.hidden;
 
-    // reusable spine scratch buffers — sized to the koi vertex count, never
-    // reallocated per frame (keeps GC quiet)
-    const KOI_N = 13;
-    const sx = new Array<number>(KOI_N);
-    const sy = new Array<number>(KOI_N);
-    const nX = new Array<number>(KOI_N);
-    const nY = new Array<number>(KOI_N);
-
     const drawKoi = (dt: number) => {
-      // fade previous frame → long motion-blur smears
-      kctx.globalCompositeOperation = 'destination-out';
-      kctx.fillStyle = 'rgba(0,0,0,0.17)';
-      kctx.fillRect(0, 0, cssW, cssH);
-      kctx.globalCompositeOperation = 'source-over';
+      kctx.clearRect(0, 0, cssW, cssH);
+      kctx.lineJoin = 'round';
 
       for (const k of koi) {
-        // tail beats a little faster when swimming faster — kept slow + graceful
-        k.phase += dt * (1.7 + k.speed * 0.02);
+        // ---- throttle: rare hard bursts — snappy attack, lazy glide-down ----
+        k.burstIn -= dt;
+        if (k.burstIn <= 0) {
+          k.throttleGoal = 1;
+          k.burstDur = 0.42 + Math.random() * 0.7;
+          k.burstIn = 2.4 + Math.random() * 4.6;
+        }
+        if (k.burstDur > 0) { k.burstDur -= dt; if (k.burstDur <= 0) k.throttleGoal = 0; }
+        k.throttle += (k.throttleGoal - k.throttle) * Math.min(1, dt * (k.throttleGoal > k.throttle ? 7 : 1.6));
+        const thr = smooth(k.throttle);
+        const tgtSpeed = k.cruise + (k.burst - k.cruise) * thr;
+        k.speed += (tgtSpeed - k.speed) * Math.min(1, dt * 4);
 
-        // gentle damped random walk on top of everything → organic wiggle
-        k.dirVel += (Math.random() - 0.5) * dt * 0.25;
-        k.dirVel *= Math.pow(0.5, dt * 1.6);
-        k.dirVel = Math.max(-0.3, Math.min(0.3, k.dirVel));
-        k.dir += k.dirVel * dt;
+        // ---- steering: commit to a bank for a stretch; sharper turns at cruise,
+        //      near-straight while rocketing (matches the video's arcs) ----
+        k.turnHold -= dt;
+        if (k.turnHold <= 0) {
+          k.turnHold = 0.7 + Math.random() * 2.4;
+          k.turnGoal = (Math.random() - 0.5) * 2.6 * (0.32 + 0.68 * (1 - k.throttle));
+        }
+        k.turn += (k.turnGoal - k.turn) * Math.min(1, dt * 3);
+        k.heading += k.turn * dt;
 
-        // head for a personal waypoint; on arrival pick a fresh one anywhere on
-        // the canvas → the koi roam the whole area independently, never clump
-        const wdx = k.tx - k.x, wdy = k.ty - k.y;
-        if (Math.hypot(wdx, wdy) < cssW * 0.09) {
-          k.tx = cssW * (0.06 + Math.random() * 0.88);
-          k.ty = cssH * (0.08 + Math.random() * 0.82);
-        } else {
-          k.dir += angleDelta(k.dir, Math.atan2(wdy, wdx)) * Math.min(1, dt * 1.3);
+        // weak pull back once it has strayed well past the frame
+        const cx = cssW * 0.5, cy = cssH * 0.5;
+        const stray = Math.max(
+          (Math.abs(k.x - cx) - cssW * 0.42) / (cssW * 0.2),
+          (Math.abs(k.y - cy) - cssH * 0.42) / (cssH * 0.2),
+        );
+        if (stray > 0) {
+          k.heading += angleDelta(k.heading, Math.atan2(cy - k.y, cx - k.x)) * Math.min(1, stray) * Math.min(1, dt * 1.2);
         }
 
-        // firm turn-away from the real edges
-        const edge = cssW * 0.05;
-        if (k.x < edge) k.dir += angleDelta(k.dir, 0) * Math.min(1, dt * 5);
-        if (k.x > cssW - edge) k.dir += angleDelta(k.dir, Math.PI) * Math.min(1, dt * 5);
-        if (k.y < edge) k.dir += angleDelta(k.dir, Math.PI * 0.5) * Math.min(1, dt * 5);
-        if (k.y > cssH - edge) k.dir += angleDelta(k.dir, -Math.PI * 0.5) * Math.min(1, dt * 5);
-
-        // gentle separation so two koi don't overlap
+        // keep the two fish off each other
         for (const o of koi) {
           if (o === k) continue;
-          const sdx = k.x - o.x, sdy = k.y - o.y;
-          const sd = Math.hypot(sdx, sdy);
-          const near = k.len * 1.3;
-          if (sd > 1e-3 && sd < near) {
-            k.dir += angleDelta(k.dir, Math.atan2(sdy, sdx)) * (1 - sd / near) * 0.5 * Math.min(1, dt * 3);
+          const dx = k.x - o.x, dy = k.y - o.y;
+          const d = Math.hypot(dx, dy);
+          const near = (k.len + o.len) * 0.55;
+          if (d > 1e-3 && d < near) {
+            k.heading += angleDelta(k.heading, Math.atan2(dy, dx)) * (1 - d / near) * 0.4 * Math.min(1, dt * 3);
           }
         }
 
-        // barely-there veer away from a passing cursor
+        // barely-there veer around a passing cursor
         if (pointer.active && now() - pointer.lastMove < 0.9) {
-          const px = pointer.x * cssW;
-          const py = (1 - pointer.y) * cssH;
-          const dx = k.x - px, dy = k.y - py;
-          const dist = Math.hypot(dx, dy);
-          const reach = cssW * 0.16;
-          if (dist < reach) {
-            const away = Math.atan2(dy, dx);
-            k.dir += angleDelta(k.dir, away) * (1 - dist / reach) * 0.6 * Math.min(1, dt * 3);
-          }
+          const dx = k.x - pointer.x * cssW, dy = k.y - (1 - pointer.y) * cssH;
+          const d = Math.hypot(dx, dy);
+          const reach = cssW * 0.14;
+          if (d < reach) k.heading += angleDelta(k.heading, Math.atan2(dy, dx)) * (1 - d / reach) * 0.5 * Math.min(1, dt * 3);
         }
 
-        // ease the visible facing toward the target bearing — brisk enough that
-        // a faster koi actually completes its turns
-        k.angle += angleDelta(k.angle, k.dir) * Math.min(1, dt * 3.0);
+        // ---- advance + record the head trail ----
+        k.phase += dt * (5 + k.speed * 0.03);
+        k.x += Math.cos(k.heading) * k.speed * dt;
+        k.y += Math.sin(k.heading) * k.speed * dt;
 
-        // glide-and-surge: each tail stroke drives a clear forward burst
-        const surge = 0.72 + 0.55 * Math.max(0, Math.sin(k.phase));
-        k.x += Math.cos(k.angle) * k.speed * surge * dt;
-        k.y += Math.sin(k.angle) * k.speed * surge * dt;
+        const m = k.len * 3;
+        let wrapped = false;
+        if (k.x < -m) { k.x = cssW + m; wrapped = true; }
+        else if (k.x > cssW + m) { k.x = -m; wrapped = true; }
+        if (k.y < -m) { k.y = cssH + m; wrapped = true; }
+        else if (k.y > cssH + m) { k.y = -m; wrapped = true; }
+        if (wrapped) {
+          fillHist(k);
+        } else {
+          k.histHead = (k.histHead + 1) % HIST;
+          k.hist[k.histHead * 2] = k.x;
+          k.hist[k.histHead * 2 + 1] = k.y;
+          if (k.histN < HIST) k.histN++;
+        }
 
-        // wrap with margin — a rare fallback; edge steering normally prevents it
-        const m = k.len * 0.8;
-        if (k.x < -m) k.x = cssW + m;
-        if (k.x > cssW + m) k.x = -m;
-        if (k.y < -m) k.y = cssH + m;
-        if (k.y > cssH + m) k.y = -m;
+        // ---- resample the recent trail into an even ribbon spine, head → tail.
+        //      Trail length tracks throttle: a compact crescent at cruise, a long
+        //      stretched streak on a burst — the video's core motion cue ----
+        const trailLen = k.len * (0.5 + 2.7 * thr);
+        const step = trailLen / (RIB_N - 1);
+        rx[0] = k.hist[k.histHead * 2];
+        ry[0] = k.hist[k.histHead * 2 + 1];
+        let curX = rx[0], curY = ry[0];
+        let acc = 0, out = 1, j = 1;
+        while (out < RIB_N && j < k.histN) {
+          const idx = (k.histHead - j + HIST * 2) % HIST;
+          const nx = k.hist[idx * 2], ny = k.hist[idx * 2 + 1];
+          let dx = nx - curX, dy = ny - curY;
+          let d = Math.hypot(dx, dy);
+          if (d < 1e-6) { j++; continue; }
+          while (d >= step - acc && out < RIB_N) {
+            const t = (step - acc) / d;
+            curX += dx * t; curY += dy * t;
+            rx[out] = curX; ry[out] = curY; out++;
+            dx = nx - curX; dy = ny - curY; d = Math.hypot(dx, dy);
+            acc = 0;
+          }
+          acc += d; curX = nx; curY = ny; j++;
+        }
+        while (out < RIB_N) {
+          const bx = out >= 2 ? rx[out - 1] - rx[out - 2] : -Math.cos(k.heading);
+          const by = out >= 2 ? ry[out - 1] - ry[out - 2] : -Math.sin(k.heading);
+          const bl = Math.hypot(bx, by) || 1;
+          rx[out] = rx[out - 1] + (bx / bl) * step;
+          ry[out] = ry[out - 1] + (by / bl) * step;
+          out++;
+        }
 
-        const L = k.len;
-        const N = KOI_N;
-        const WAVES = 2.3;
+        // per-point normal from the local tangent
+        for (let i = 0; i < RIB_N; i++) {
+          const a = i > 0 ? i - 1 : 0;
+          const b = i < RIB_N - 1 ? i + 1 : RIB_N - 1;
+          const tx = rx[b] - rx[a], ty = ry[b] - ry[a];
+          const tl = Math.hypot(tx, ty) || 1;
+          rnx[i] = -ty / tl; rny[i] = tx / tl;
+        }
+
+        // body undulation — travelling wave, deeper toward the tail and when the
+        // fish is working hard
+        const WAVES = 2.6;
+        const ampK = k.len * (0.35 + 0.75 * thr);
+        for (let i = 0; i < RIB_N; i++) {
+          const s = i / (RIB_N - 1);
+          const w = (0.02 + 0.12 * s) * ampK * Math.sin(k.phase - s * WAVES);
+          wx[i] = rx[i] + rnx[i] * w;
+          wy[i] = ry[i] + rny[i] * w;
+        }
+
         const kind = KOI_KINDS[k.kind];
         const core = kind.body;
-        const rim = kind.rim;
-        const deep = kind.deep;
-
-        // undulating spine: a travelling wave whose amplitude ramps toward the tail
-        for (let i = 0; i < N; i++) {
-          const s = i / (N - 1);
-          sx[i] = L * 0.5 - s * L * 0.99;
-          sy[i] = L * (0.012 + 0.14 * s * s) * Math.sin(k.phase - s * WAVES);
-        }
-        // per-vertex normal from the local tangent
-        for (let i = 0; i < N; i++) {
-          const a = i > 0 ? i - 1 : 0;
-          const b = i < N - 1 ? i + 1 : N - 1;
-          const tx = sx[b] - sx[a];
-          const ty = sy[b] - sy[a];
-          const tl = Math.hypot(tx, ty) || 1;
-          nX[i] = -ty / tl;
-          nY[i] = tx / tl;
-        }
-        const halfW = (i: number) => {
-          const s = i / (N - 1);
-          return Math.max(L * 0.018 * (1 - s), L * 0.185 * Math.sin(Math.pow(s, 0.6) * Math.PI));
-        };
-
-        // ---- cast shadow on the pool floor — a soft, feathered silhouette that
-        //      follows the same undulating spine (so the tail sways in shadow
-        //      too), offset down-right and laid down in two diffuse layers ----
-        {
-          kctx.save();
-          kctx.translate(k.x + L * 0.18, k.y + L * 0.26);
-          kctx.rotate(k.angle);
-          kctx.fillStyle = 'rgb(4,12,28)';
-          // wide faint halo, then a slightly tighter core — no hard edge anywhere
-          for (const [blurPx, alpha, grow] of [[20, 0.06, 1.35], [10, 0.11, 1.12]] as const) {
-            kctx.filter = `blur(${blurPx}px)`;
-            kctx.globalAlpha = alpha;
-            kctx.beginPath();
-            kctx.moveTo(sx[0] + nX[0] * halfW(0) * grow, sy[0] + nY[0] * halfW(0) * grow);
-            for (let i = 1; i < N; i++) kctx.lineTo(sx[i] + nX[i] * halfW(i) * grow, sy[i] + nY[i] * halfW(i) * grow);
-            for (let i = N - 1; i >= 0; i--) kctx.lineTo(sx[i] - nX[i] * halfW(i) * grow, sy[i] - nY[i] * halfW(i) * grow);
-            kctx.closePath();
-            kctx.fill();
-          }
-          kctx.restore();
-        }
-
-        kctx.save();
-        kctx.translate(k.x, k.y);
-        kctx.rotate(k.angle + Math.sin(k.phase) * 0.035); // slight head-wag with the beat
-        kctx.globalAlpha = 0.85;
-        kctx.lineJoin = 'round';
-
-        // ---- caudal fin: broad translucent fork, swung by the tail-tip slope ----
-        {
-          const hx = sx[N - 1];
-          const hy = sy[N - 1];
-          const ang = Math.atan2(sy[N - 1] - sy[N - 4], sx[N - 1] - sx[N - 4]);
-          const dx = Math.cos(ang);
-          const dy = Math.sin(ang);
-          const ex = -dy;
-          const ey = dx;
-          const fl = L * 0.48;
-          const sp = L * 0.3 * (0.85 + 0.2 * Math.sin(k.phase - 1.5));
-          const tx = hx + dx * fl;
-          const ty = hy + dy * fl;
-          const kx = hx + dx * fl * 0.46;
-          const ky = hy + dy * fl * 0.46;
+        const edge = kind.rim;
+        const L = k.len;
+        const half = (s: number) => L * (0.145 * Math.sin(Math.pow(s, 0.6) * Math.PI) + 0.012 * (1 - s));
+        const ribbon = (grow: number, ox: number, oy: number) => {
           kctx.beginPath();
-          kctx.moveTo(hx, hy);
-          kctx.quadraticCurveTo(hx + dx * fl * 0.5 + ex * sp * 0.6, hy + dy * fl * 0.5 + ey * sp * 0.6, tx + ex * sp, ty + ey * sp);
-          kctx.quadraticCurveTo(kx + ex * sp * 0.25, ky + ey * sp * 0.25, kx, ky);
-          kctx.quadraticCurveTo(tx - ex * sp * 0.25, ty - ey * sp * 0.25, tx - ex * sp, ty - ey * sp);
-          kctx.quadraticCurveTo(hx + dx * fl * 0.5 - ex * sp * 0.6, hy + dy * fl * 0.5 - ey * sp * 0.6, hx, hy);
-          kctx.closePath();
-          const fg = kctx.createLinearGradient(hx, hy, tx, ty);
-          fg.addColorStop(0, `rgba(${core},0.55)`);
-          fg.addColorStop(0.55, `rgba(${rim},0.32)`);
-          fg.addColorStop(1, `rgba(${rim},0)`);
-          kctx.fillStyle = fg;
-          kctx.fill();
-        }
-
-        // ---- dorsal fin: translucent sail over the mid-back ----
-        {
-          const a = Math.round(0.24 * (N - 1));
-          const b = Math.round(0.64 * (N - 1));
-          kctx.beginPath();
-          kctx.moveTo(sx[a] + nX[a] * halfW(a) * 0.5, sy[a] + nY[a] * halfW(a) * 0.5);
-          for (let i = a; i <= b; i++) {
-            const lift = halfW(i) * 0.5 + L * 0.1 * Math.sin(((i - a) / (b - a)) * Math.PI);
-            kctx.lineTo(sx[i] + nX[i] * lift, sy[i] + nY[i] * lift);
+          kctx.moveTo(wx[0] + rnx[0] * half(0) * grow + ox, wy[0] + rny[0] * half(0) * grow + oy);
+          for (let i = 1; i < RIB_N; i++) {
+            const s = i / (RIB_N - 1);
+            kctx.lineTo(wx[i] + rnx[i] * half(s) * grow + ox, wy[i] + rny[i] * half(s) * grow + oy);
           }
-          for (let i = b; i >= a; i--) {
-            kctx.lineTo(sx[i] + nX[i] * halfW(i) * 0.5, sy[i] + nY[i] * halfW(i) * 0.5);
+          for (let i = RIB_N - 1; i >= 0; i--) {
+            const s = i / (RIB_N - 1);
+            kctx.lineTo(wx[i] - rnx[i] * half(s) * grow + ox, wy[i] - rny[i] * half(s) * grow + oy);
           }
-          kctx.closePath();
-          kctx.fillStyle = `rgba(${core},0.32)`;
-          kctx.fill();
-        }
-
-        // ---- pectoral fins: broad flutter flappers behind the head ----
-        {
-          const gi = Math.round(0.22 * (N - 1));
-          for (const side of [-1, 1] as const) {
-            const flu = 0.55 + 0.45 * Math.sin(k.phase * 0.8 + (side > 0 ? 0 : Math.PI));
-            const ox = nX[gi] * side;
-            const oy = nY[gi] * side;
-            const ax = sx[gi] + ox * halfW(gi) * 0.7;
-            const ay = sy[gi] + oy * halfW(gi) * 0.7;
-            const tx = ax - L * (0.14 + 0.08 * flu) + ox * L * (0.08 + 0.08 * flu);
-            const ty = ay + oy * L * (0.14 + 0.08 * flu);
-            kctx.beginPath();
-            kctx.moveTo(ax, ay);
-            kctx.quadraticCurveTo(ax + ox * L * 0.03 - L * 0.02, ay + oy * L * 0.05, tx, ty);
-            kctx.quadraticCurveTo(ax - L * 0.1 + ox * L * 0.02, ay + oy * L * 0.02, ax - L * 0.04, ay);
-            kctx.closePath();
-            kctx.fillStyle = `rgba(${core},0.34)`;
-            kctx.fill();
-          }
-        }
-
-        // ---- body: filled ribbon — warm-lit at head & tail, deep core in the
-        //      middle, wrapped in a warm glow-haze that bleeds into the water ----
-        const bodyPath = () => {
-          kctx.beginPath();
-          kctx.moveTo(sx[0] + nX[0] * halfW(0), sy[0] + nY[0] * halfW(0));
-          for (let i = 1; i < N; i++) kctx.lineTo(sx[i] + nX[i] * halfW(i), sy[i] + nY[i] * halfW(i));
-          for (let i = N - 1; i >= 0; i--) kctx.lineTo(sx[i] - nX[i] * halfW(i), sy[i] - nY[i] * halfW(i));
           kctx.closePath();
         };
-        const bg = kctx.createLinearGradient(L * 0.5, 0, -L * 0.5, 0);
-        bg.addColorStop(0, `rgba(${rim},0.95)`);        // lit nose
-        bg.addColorStop(0.13, `rgba(${core},1)`);
-        bg.addColorStop(0.55, `rgba(${core},1)`);
-        bg.addColorStop(0.8, `rgba(${rim},0.75)`);      // tail catches the light again
-        bg.addColorStop(1, `rgba(${core},0)`);          // then melts into blur
+
+        // ---- cast shadow on the pool floor: the same undulating ribbon, larger,
+        //      murkier, offset toward the floor, in two feathered layers ----
+        kctx.fillStyle = 'rgb(10,26,24)';
+        for (const [blurPx, a, grow] of [[24, 0.05, 1.7], [12, 0.09, 1.35]] as const) {
+          kctx.filter = `blur(${blurPx}px)`;
+          kctx.globalAlpha = a;
+          ribbon(grow, L * 0.12, L * 0.24);
+          kctx.fill();
+        }
+        kctx.filter = 'none';
+
+        // ---- body: hot yellow nose → vermilion core → tail dissolving to water ----
+        kctx.globalAlpha = 0.92;
+        const bg = kctx.createLinearGradient(wx[0], wy[0], wx[RIB_N - 1], wy[RIB_N - 1]);
+        bg.addColorStop(0, `rgba(${KOI_HOT},0.95)`);
+        bg.addColorStop(0.12, `rgba(${core},1)`);
+        bg.addColorStop(0.5, `rgba(${core},0.98)`);
+        bg.addColorStop(0.8, `rgba(${core},0.55)`);
+        bg.addColorStop(1, `rgba(${edge},0)`);
         kctx.fillStyle = bg;
-        kctx.shadowColor = `rgba(${core},0.35)`;
-        kctx.shadowBlur = L * 0.24;
-        bodyPath();
+        ribbon(1, 0, 0);
         kctx.fill();
-        kctx.shadowBlur = 0;
 
-        // ---- roundness: bright dorsal edge + dark belly edge ----
-        kctx.lineCap = 'round';
-        kctx.globalAlpha = 0.5;
-        kctx.strokeStyle = `rgba(255,255,255,0.45)`;
-        kctx.lineWidth = Math.max(1.5, L * 0.03);
-        kctx.beginPath();
-        kctx.moveTo(sx[2] + nX[2] * halfW(2), sy[2] + nY[2] * halfW(2));
-        for (let i = 3; i < N - 2; i++) kctx.lineTo(sx[i] + nX[i] * halfW(i), sy[i] + nY[i] * halfW(i));
-        kctx.stroke();
-        kctx.strokeStyle = `rgba(${deep},0.4)`;
-        kctx.lineWidth = Math.max(1.2, L * 0.024);
-        kctx.beginPath();
-        kctx.moveTo(sx[2] - nX[2] * halfW(2), sy[2] - nY[2] * halfW(2));
-        for (let i = 3; i < N - 2; i++) kctx.lineTo(sx[i] - nX[i] * halfW(i), sy[i] - nY[i] * halfW(i));
-        kctx.stroke();
+        // on a hard burst, carve the streak into beads at the wave troughs —
+        // the video's segmented red comet
+        if (thr > 0.4) {
+          kctx.globalCompositeOperation = 'destination-out';
+          for (let i = 2; i < RIB_N - 2; i++) {
+            const s = i / (RIB_N - 1);
+            const g = Math.sin(k.phase - s * WAVES);
+            if (g < -0.2) {
+              kctx.globalAlpha = (thr - 0.4) * 1.3 * -g;
+              kctx.beginPath();
+              kctx.ellipse(wx[i], wy[i], half(s) * 0.55, half(s) * 1.5, Math.atan2(rny[i], rnx[i]), 0, Math.PI * 2);
+              kctx.fill();
+            }
+          }
+          kctx.globalCompositeOperation = 'source-over';
+        }
 
-        kctx.restore();
+        // hot head glow bleeding into the water
+        kctx.globalAlpha = 1;
+        const hg = kctx.createRadialGradient(wx[0], wy[0], 0, wx[0], wy[0], L * 0.15);
+        hg.addColorStop(0, `rgba(${KOI_HOT},0.5)`);
+        hg.addColorStop(1, `rgba(${KOI_HOT},0)`);
+        kctx.fillStyle = hg;
+        kctx.beginPath();
+        kctx.arc(wx[0], wy[0], L * 0.15, 0, Math.PI * 2);
+        kctx.fill();
       }
       kctx.filter = 'none';
-      kctx.shadowBlur = 0;
       kctx.globalAlpha = 1;
     };
 
@@ -744,17 +734,16 @@ const WaterHero = ({
       program.uniforms.iTime.value = time;
 
       // pack koi wake sources — head position (uv, y-up) + heading scaled by the
-      // live stroke speed, so the wake strengthens on each forward surge
+      // live speed, so the wake spikes on each burst and fades on the glide
       for (let i = 0; i < MAX_KOI; i++) {
         const k = koi[i];
         const o = i * 4;
         if (!k) { koiBuf[o] = koiBuf[o + 1] = koiBuf[o + 2] = koiBuf[o + 3] = 0; continue; }
-        const surge = 0.72 + 0.55 * Math.max(0, Math.sin(k.phase));
-        const sf = Math.min(1, (k.speed * surge) / 170);
-        koiBuf[o] = (k.x + Math.cos(k.angle) * k.len * 0.5) / cssW;
-        koiBuf[o + 1] = 1 - (k.y + Math.sin(k.angle) * k.len * 0.5) / cssH;
-        koiBuf[o + 2] = Math.cos(k.angle) * sf;
-        koiBuf[o + 3] = -Math.sin(k.angle) * sf;
+        const sf = Math.min(1, k.speed / 380);
+        koiBuf[o] = (k.x + Math.cos(k.heading) * k.len * 0.5) / cssW;
+        koiBuf[o + 1] = 1 - (k.y + Math.sin(k.heading) * k.len * 0.5) / cssH;
+        koiBuf[o + 2] = Math.cos(k.heading) * sf;
+        koiBuf[o + 3] = -Math.sin(k.heading) * sf;
       }
 
       // advance an in-flight ink spread; bake the palette once it covers the frame
