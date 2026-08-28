@@ -516,17 +516,25 @@ const WaterHero = ({
           return Math.max(L * 0.018 * (1 - s), L * 0.185 * Math.sin(Math.pow(s, 0.6) * Math.PI));
         };
 
-        // ---- cast shadow on the pool floor — sells "suspended in deep water" ----
+        // ---- cast shadow on the pool floor — a soft, feathered silhouette that
+        //      follows the same undulating spine (so the tail sways in shadow
+        //      too), offset down-right and laid down in two diffuse layers ----
         {
           kctx.save();
-          kctx.translate(k.x + L * 0.16, k.y + L * 0.24);
+          kctx.translate(k.x + L * 0.18, k.y + L * 0.26);
           kctx.rotate(k.angle);
-          kctx.filter = 'blur(9px)';
-          kctx.globalAlpha = 0.24;
-          kctx.fillStyle = 'rgb(5,14,32)';
-          kctx.beginPath();
-          kctx.ellipse(0, 0, L * 0.48, L * 0.17, 0, 0, Math.PI * 2);
-          kctx.fill();
+          kctx.fillStyle = 'rgb(4,12,28)';
+          // wide faint halo, then a slightly tighter core — no hard edge anywhere
+          for (const [blurPx, alpha, grow] of [[20, 0.06, 1.35], [10, 0.11, 1.12]] as const) {
+            kctx.filter = `blur(${blurPx}px)`;
+            kctx.globalAlpha = alpha;
+            kctx.beginPath();
+            kctx.moveTo(sx[0] + nX[0] * halfW(0) * grow, sy[0] + nY[0] * halfW(0) * grow);
+            for (let i = 1; i < N; i++) kctx.lineTo(sx[i] + nX[i] * halfW(i) * grow, sy[i] + nY[i] * halfW(i) * grow);
+            for (let i = N - 1; i >= 0; i--) kctx.lineTo(sx[i] - nX[i] * halfW(i) * grow, sy[i] - nY[i] * halfW(i) * grow);
+            kctx.closePath();
+            kctx.fill();
+          }
           kctx.restore();
         }
 
