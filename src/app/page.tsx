@@ -1120,9 +1120,7 @@ export default function Home() {
       <style>{`
         ::placeholder { color: var(--aui-scrim); }
         textarea:focus { outline: none; }
-        .hero-brief-card { text-shadow: 0 1px 3px rgba(4, 16, 45, 0.22); }
-        .hero-brief-card textarea { color: #fff; caret-color: #fff; }
-        .hero-brief-card ::placeholder { color: rgba(255, 255, 255, 0.6); }
+        .hero-brief-card ::placeholder { color: var(--aui-scrim); }
         .tpl-scroll { scrollbar-width: none; }
         .tpl-scroll::-webkit-scrollbar { display: none; }
         @keyframes marquee-left { from { transform: translateX(0) } to { transform: translateX(-50%) } }
@@ -1524,18 +1522,18 @@ export default function Home() {
           }}
         >
           <div style={{
-            backgroundColor: navScrolled ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
-            backgroundImage: navScrolled ? 'linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02) 44%, rgba(255,255,255,0.06))' : 'none',
-            backdropFilter: navScrolled ? 'blur(5px) saturate(1.05)' : 'none',
-            WebkitBackdropFilter: navScrolled ? 'blur(5px) saturate(1.05)' : 'none',
-            border: navScrolled ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid transparent',
+            backgroundColor: navScrolled ? 'rgba(255, 255, 255, 0.04)' : 'transparent',
+            backgroundImage: navScrolled ? 'linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0) 22%, rgba(255,255,255,0) 76%, rgba(255,255,255,0.08))' : 'none',
+            backdropFilter: navScrolled ? 'blur(7px) saturate(1.1)' : 'none',
+            WebkitBackdropFilter: navScrolled ? 'blur(7px) saturate(1.1)' : 'none',
+            border: navScrolled ? '1px solid rgba(255, 255, 255, 0.34)' : '1px solid transparent',
             borderRadius: 'var(--aui-radius-pill)',
             padding: navScrolled ? '10px 14px 10px 16px' : '24px 24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: navScrolled ? '64px' : "var(--aui-space-6)",
-            boxShadow: navScrolled ? "0 14px 40px rgba(6, 22, 60, 0.24), inset 0 1px 1px rgba(255,255,255,0.5), inset 0 -1px 2px rgba(255,255,255,0.16)" : 'none',
+            boxShadow: navScrolled ? "0 12px 34px rgba(6, 22, 60, 0.22), inset 0 1.5px 2px rgba(255,255,255,0.55), inset 0 -1.5px 4px rgba(255,255,255,0.2)" : 'none',
             transition: 'background-color .32s ease, padding .32s ease, box-shadow .32s ease, border-color .32s ease, gap .32s ease',
           }}>
             {/* 좌측: 로고 */}
@@ -1653,13 +1651,12 @@ export default function Home() {
           {/* Input card */}
           <div className="hero-brief-card" style={{
             width: '100%', maxWidth: 'var(--aui-content-narrow)', borderRadius: "var(--aui-radius-overlay)",
-            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-            backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02) 44%, rgba(255,255,255,0.06))',
-            backdropFilter: 'blur(5px) saturate(1.05)',
-            WebkitBackdropFilter: 'blur(5px) saturate(1.05)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
+            backgroundColor: 'var(--aui-on-dark-strong)',
+            backdropFilter: 'blur(var(--aui-blur-glass-strong))',
+            WebkitBackdropFilter: 'blur(var(--aui-blur-glass-strong))',
+            border: '1px solid var(--aui-on-dark-subtle)',
             padding: `var(--aui-space-6) var(--aui-space-6) var(--aui-space-4)`,
-            boxShadow: "0 14px 40px rgba(6, 22, 60, 0.24), inset 0 1px 1px rgba(255,255,255,0.5), inset 0 -1px 2px rgba(255,255,255,0.16)",
+            boxShadow: 'none',
           }}>
             {(designPreset !== 'none' || designButtonLabel) && (() => {
               const isUrl = !!designButtonLabel && (designButtonLabel.startsWith('http://') || designButtonLabel.startsWith('https://'))
@@ -1671,19 +1668,19 @@ export default function Home() {
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)",
                     padding: `var(--aui-space-1) var(--aui-space-3) var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-pill)",
-                    border: '1px solid rgba(255, 255, 255, 0.25)', backgroundColor: 'rgba(255, 255, 255, 0.14)',
-                    color: '#fff', fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-medium)",
+                    border: `1px solid ${F.hairlineSoft}`, backgroundColor: 'var(--aui-on-dark)',
+                    color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-medium)",
                   }}>
                     <FileText size={11} />
                     <span>{chipLabel}</span>
                     <button
                       onClick={designButtonLabel ? clearDesign : () => setDesignPreset('none')}
-                      style={{ display: 'flex', alignItems: 'center', border: 'none', background: 'none', cursor: 'pointer', color: 'rgba(255, 255, 255, 0.6)', padding: 0, marginLeft: '2px' }}
+                      style={{ display: 'flex', alignItems: 'center', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--aui-scrim)', padding: 0, marginLeft: '2px' }}
                     >
                       <X size={11} />
                     </button>
                   </div>
-                  <span style={{ fontSize: "var(--aui-type-caption-size)", color: 'rgba(255, 255, 255, 0.6)' }}>이 design.md 파일의 디자인 시스템 사용</span>
+                  <span style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-scrim)' }}>이 design.md 파일의 디자인 시스템 사용</span>
                 </div>
               )
             })()}
@@ -1698,30 +1695,30 @@ export default function Home() {
                   rows={4}
                   style={{
                     width: '100%', background: 'none', border: 'none', outline: 'none',
-                    color: '#fff', fontSize: "var(--aui-type-label-size)", lineHeight: "var(--aui-leading-normal)",
+                    color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-label-size)", lineHeight: "var(--aui-leading-normal)",
                     letterSpacing: "var(--aui-tracking-tight)", resize: 'none', fontFamily: 'inherit',
-                    caretColor: '#fff',
+                    caretColor: F.primary,
                   }}
                 />
               </div>
-              <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.2)', paddingTop: '10px' }}>
-                <button type="button" aria-expanded={briefDetailsOpen} onClick={() => setBriefDetailsOpen(value => !value)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0', border: 0, background: 'transparent', color: 'rgba(255, 255, 255, 0.82)', fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)', cursor: 'pointer' }}>
+              <div style={{ borderTop: '1px solid var(--aui-shadow-line)', paddingTop: '10px' }}>
+                <button type="button" aria-expanded={briefDetailsOpen} onClick={() => setBriefDetailsOpen(value => !value)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0', border: 0, background: 'transparent', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)', cursor: 'pointer' }}>
                   <ChevronDown size={14} style={{ transform: briefDetailsOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s ease' }} />
-                  상세 입력 <span style={{ color: 'rgba(255, 255, 255, 0.55)', fontWeight: 'var(--aui-weight-regular)' }}>선택사항</span>
+                  상세 입력 <span style={{ color: F.inkSubtle, fontWeight: 'var(--aui-weight-regular)' }}>선택사항</span>
                 </button>
                 {briefDetailsOpen && (
                   <div className="brief-details-grid">
-                    <label style={{ display: 'grid', gap: '5px', color: 'rgba(255, 255, 255, 0.82)', fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
+                    <label style={{ display: 'grid', gap: '5px', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
                       주요 사용자
-                      <input value={briefAudience} onChange={event => setBriefAudience(event.target.value)} placeholder="예) CS 운영 담당자와 서비스 기획자" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: 'var(--aui-radius-control)', background: 'rgba(255, 255, 255, 0.12)', color: '#fff', font: 'inherit', outline: 'none' }} />
+                      <input value={briefAudience} onChange={event => setBriefAudience(event.target.value)} placeholder="예) CS 운영 담당자와 서비스 기획자" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: `1px solid ${F.hairlineSoft}`, borderRadius: 'var(--aui-radius-control)', background: F.surface, color: F.ink, font: 'inherit', outline: 'none' }} />
                     </label>
-                    <label style={{ display: 'grid', gap: '5px', color: 'rgba(255, 255, 255, 0.82)', fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
+                    <label style={{ display: 'grid', gap: '5px', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
                       핵심 기능 또는 필수 정보
-                      <input value={briefFeatures} onChange={event => setBriefFeatures(event.target.value)} placeholder="예) 티켓 목록, 처리 상태, SLA 알림, 주간 리포트" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: 'var(--aui-radius-control)', background: 'rgba(255, 255, 255, 0.12)', color: '#fff', font: 'inherit', outline: 'none' }} />
+                      <input value={briefFeatures} onChange={event => setBriefFeatures(event.target.value)} placeholder="예) 티켓 목록, 처리 상태, SLA 알림, 주간 리포트" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: `1px solid ${F.hairlineSoft}`, borderRadius: 'var(--aui-radius-control)', background: F.surface, color: F.ink, font: 'inherit', outline: 'none' }} />
                     </label>
-                    <label style={{ gridColumn: '1 / -1', display: 'grid', gap: '5px', color: 'rgba(255, 255, 255, 0.82)', fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
+                    <label style={{ gridColumn: '1 / -1', display: 'grid', gap: '5px', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
                       강조하거나 피하고 싶은 구성
-                      <input value={briefConstraints} onChange={event => setBriefConstraints(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && briefDesc.trim()) { event.preventDefault(); handleSubmit() } }} placeholder="예) 대량 목록을 빠르게 훑도록, 불필요한 그래프 남발은 피하기" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: 'var(--aui-radius-control)', background: 'rgba(255, 255, 255, 0.12)', color: '#fff', font: 'inherit', outline: 'none' }} />
+                      <input value={briefConstraints} onChange={event => setBriefConstraints(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && briefDesc.trim()) { event.preventDefault(); handleSubmit() } }} placeholder="예) 대량 목록을 빠르게 훑도록, 불필요한 그래프 남발은 피하기" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: `1px solid ${F.hairlineSoft}`, borderRadius: 'var(--aui-radius-control)', background: F.surface, color: F.ink, font: 'inherit', outline: 'none' }} />
                     </label>
                   </div>
                 )}
@@ -1740,8 +1737,8 @@ export default function Home() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     width: '38px', height: '38px', borderRadius: '50%',
                     border: 'none',
-                    backgroundColor: refPanelOpen ? '#fff' : 'rgba(255, 255, 255, 0.16)',
-                    color: refPanelOpen ? 'var(--aui-text-strong)' : '#fff',
+                    backgroundColor: refPanelOpen ? F.ink : 'var(--aui-border-subtle)',
+                    color: refPanelOpen ? F.canvas : 'var(--aui-scrim-strong)',
                     cursor: 'pointer', transition: 'all 0.15s', flexShrink: 0,
                   }}
                   title="리디자인 소스 추가"
@@ -1900,8 +1897,8 @@ export default function Home() {
                     display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)",
                     padding: `0 var(--aui-space-3)`, height: '38px', borderRadius: "var(--aui-radius-pill)",
                     border: 'none',
-                    backgroundColor: 'rgba(255, 255, 255, 0.16)',
-                    color: '#fff', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)",
+                    backgroundColor: 'var(--aui-border-subtle)',
+                    color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)",
                     cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)", transition: 'all 0.15s',
                   }}
                 >
@@ -1920,8 +1917,8 @@ export default function Home() {
                     width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     cursor: canSubmit ? 'pointer' : 'default', transition: 'all 0.2s',
-                    backgroundColor: canSubmit ? '#fff' : 'rgba(255, 255, 255, 0.12)',
-                    color: canSubmit ? 'var(--aui-text-strong)' : 'rgba(255, 255, 255, 0.4)', border: 'none',
+                    backgroundColor: canSubmit ? F.ink : F.surface2,
+                    color: canSubmit ? F.canvas : 'var(--aui-scrim-soft)', border: 'none',
                   }}
                 >
                   <ArrowUp size={17} strokeWidth={2.2} />
