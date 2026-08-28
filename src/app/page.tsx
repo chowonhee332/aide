@@ -1120,6 +1120,9 @@ export default function Home() {
       <style>{`
         ::placeholder { color: var(--aui-scrim); }
         textarea:focus { outline: none; }
+        .hero-brief-card { text-shadow: 0 1px 3px rgba(4, 16, 45, 0.22); }
+        .hero-brief-card textarea { color: #fff; caret-color: #fff; }
+        .hero-brief-card ::placeholder { color: rgba(255, 255, 255, 0.6); }
         .tpl-scroll { scrollbar-width: none; }
         .tpl-scroll::-webkit-scrollbar { display: none; }
         @keyframes marquee-left { from { transform: translateX(0) } to { transform: translateX(-50%) } }
@@ -1516,23 +1519,24 @@ export default function Home() {
             transform: 'translateX(-50%)',
             zIndex: 50,
             width: navScrolled ? 'auto' : '100%',
-            maxWidth: navScrolled ? 'calc(100% - 32px)' : '1240px',
+            maxWidth: navScrolled ? 'calc(100% - 32px)' : '1400px',
             transition: 'top .32s cubic-bezier(.4,0,.2,1), max-width .32s cubic-bezier(.4,0,.2,1)',
           }}
         >
           <div style={{
-            backgroundColor: navScrolled ? 'rgba(255, 255, 255, 0.16)' : 'transparent',
-            backdropFilter: navScrolled ? 'blur(24px) saturate(1.5)' : 'none',
-            WebkitBackdropFilter: navScrolled ? 'blur(24px) saturate(1.5)' : 'none',
-            border: navScrolled ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid transparent',
+            backgroundColor: navScrolled ? 'rgba(255, 255, 255, 0.14)' : 'transparent',
+            backgroundImage: navScrolled ? 'linear-gradient(135deg, rgba(255,255,255,0.24), rgba(255,255,255,0.05) 42%, rgba(255,255,255,0.02))' : 'none',
+            backdropFilter: navScrolled ? 'blur(28px) saturate(1.6)' : 'none',
+            WebkitBackdropFilter: navScrolled ? 'blur(28px) saturate(1.6)' : 'none',
+            border: navScrolled ? '1px solid rgba(255, 255, 255, 0.45)' : '1px solid transparent',
             borderRadius: 'var(--aui-radius-pill)',
-            padding: navScrolled ? '8px 8px 8px 20px' : '24px 24px',
+            padding: navScrolled ? '10px 14px 10px 16px' : '24px 24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: "var(--aui-space-6)",
-            boxShadow: navScrolled ? "0 8px 32px rgba(8, 30, 90, 0.2)" : 'none',
-            transition: 'background-color .32s ease, padding .32s ease, box-shadow .32s ease, border-color .32s ease',
+            gap: navScrolled ? '64px' : "var(--aui-space-6)",
+            boxShadow: navScrolled ? "0 12px 40px rgba(6, 22, 60, 0.28), inset 0 1px 0 rgba(255,255,255,0.5)" : 'none',
+            transition: 'background-color .32s ease, padding .32s ease, box-shadow .32s ease, border-color .32s ease, gap .32s ease',
           }}>
             {/* 좌측: 로고 */}
             <div style={{ display: 'flex', flexShrink: 0 }}>
@@ -1560,20 +1564,21 @@ export default function Home() {
                   <Button onClick={openApiKeyModal} variant="ghost" size="icon" aria-label="API" title="API" className="rounded-[var(--aui-radius-pill)] text-white hover:bg-white/15 hover:text-white">
                     <KeyRound size={18} />
                   </Button>
-                  <Link href="/aide-ui" className={buttonVariants({ variant: 'ghost', className: 'group/ds relative rounded-[var(--aui-radius-pill)] text-white hover:bg-white/15 hover:text-white' })}>
-                    <span className="inline-block transition-transform duration-200 group-hover/ds:-translate-x-1.5">Design System</span>
-                    <ArrowRight
-                      size={16}
-                      className="pointer-events-none absolute right-1.5 top-1/2 -translate-x-1 -translate-y-1/2 opacity-0 transition-[opacity,transform] duration-200 group-hover/ds:translate-x-0 group-hover/ds:opacity-100"
-                    />
-                  </Link>
                 </>
               )}
+
+              <Link href="/aide-ui" className={buttonVariants({ variant: 'ghost', className: 'group/ds relative rounded-[var(--aui-radius-pill)] px-3.5 text-white hover:bg-white/15 hover:text-white' })}>
+                <span className="inline-block transition-transform duration-200 group-hover/ds:-translate-x-1.5">Design System</span>
+                <ArrowRight
+                  size={16}
+                  className="pointer-events-none absolute right-1.5 top-1/2 -translate-x-1 -translate-y-1/2 opacity-0 transition-[opacity,transform] duration-200 group-hover/ds:translate-x-0 group-hover/ds:opacity-100"
+                />
+              </Link>
 
               <Button
                 onClick={() => setBuilderOpen(true)}
                 variant="ghost"
-                className="group/pg relative rounded-[var(--aui-radius-pill)] text-white hover:bg-white/15 hover:text-white"
+                className="group/pg relative rounded-[var(--aui-radius-pill)] px-3.5 text-white hover:bg-white/15 hover:text-white"
               >
                 <span className="inline-block transition-transform duration-200 group-hover/pg:-translate-x-1.5">Playground</span>
                 <ArrowRight
@@ -1589,7 +1594,7 @@ export default function Home() {
                     setStudioTrigger({ brief: '', historyId: items[0].id })
                   }
                 }}
-                className="group/st relative rounded-[var(--aui-radius-pill)] bg-white text-[var(--aui-text-strong)] shadow-[var(--aui-shadow-raised)] hover:bg-white/90"
+                className="group/st relative rounded-[var(--aui-radius-pill)] px-3.5 bg-white text-[var(--aui-text-strong)] shadow-[var(--aui-shadow-raised)] hover:bg-white/90"
               >
                 <span className="inline-block transition-transform duration-200 group-hover/st:-translate-x-1.5">Studio</span>
                 <ArrowRight
@@ -1617,9 +1622,6 @@ export default function Home() {
                     <MenuItem onClick={openApiKeyModal}>
                       <KeyRound size={16} /> API
                     </MenuItem>
-                    <MenuItem render={<Link href="/aide-ui" />}>
-                      <Palette size={16} /> Design System
-                    </MenuItem>
                   </MenuContent>
                 </Menu>
               )}
@@ -1630,7 +1632,7 @@ export default function Home() {
 
         <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 pt-24" style={{ paddingBottom: '100px' }}>
           <h1 style={{
-            fontSize: 'clamp(44px, 6.8vw, 76px)', fontWeight: "var(--aui-type-display-hero-weight)", color: 'var(--aui-on-dark)',
+            fontSize: 'clamp(42px, 6.4vw, 72px)', fontWeight: "var(--aui-type-display-hero-weight)", color: 'var(--aui-on-dark)',
             textAlign: 'center', lineHeight: "var(--aui-type-display-hero-leading)", letterSpacing: "var(--aui-type-display-hero-tracking)",
             fontFamily: 'inherit',
             marginBottom: '24px', maxWidth: 'var(--aui-hero-title-max)',
@@ -1649,14 +1651,15 @@ export default function Home() {
 
 
           {/* Input card */}
-          <div style={{
+          <div className="hero-brief-card" style={{
             width: '100%', maxWidth: 'var(--aui-content-narrow)', borderRadius: "var(--aui-radius-overlay)",
-            backgroundColor: 'rgba(255, 255, 255, 0.55)',
-            backdropFilter: 'blur(24px) saturate(1.5)',
-            WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
-            border: '1px solid rgba(255, 255, 255, 0.4)',
+            backgroundColor: 'rgba(255, 255, 255, 0.14)',
+            backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.24), rgba(255,255,255,0.05) 42%, rgba(255,255,255,0.02))',
+            backdropFilter: 'blur(28px) saturate(1.6)',
+            WebkitBackdropFilter: 'blur(28px) saturate(1.6)',
+            border: '1px solid rgba(255, 255, 255, 0.45)',
             padding: `var(--aui-space-6) var(--aui-space-6) var(--aui-space-4)`,
-            boxShadow: "0 8px 32px rgba(8, 30, 90, 0.2)",
+            boxShadow: "0 12px 40px rgba(6, 22, 60, 0.28), inset 0 1px 0 rgba(255,255,255,0.5)",
           }}>
             {(designPreset !== 'none' || designButtonLabel) && (() => {
               const isUrl = !!designButtonLabel && (designButtonLabel.startsWith('http://') || designButtonLabel.startsWith('https://'))
@@ -1668,29 +1671,26 @@ export default function Home() {
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)",
                     padding: `var(--aui-space-1) var(--aui-space-3) var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-pill)",
-                    border: `1px solid ${F.hairlineSoft}`, backgroundColor: 'var(--aui-on-dark)',
-                    color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-medium)",
+                    border: '1px solid rgba(255, 255, 255, 0.25)', backgroundColor: 'rgba(255, 255, 255, 0.14)',
+                    color: '#fff', fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-medium)",
                   }}>
                     <FileText size={11} />
                     <span>{chipLabel}</span>
                     <button
                       onClick={designButtonLabel ? clearDesign : () => setDesignPreset('none')}
-                      style={{ display: 'flex', alignItems: 'center', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--aui-scrim)', padding: 0, marginLeft: '2px' }}
+                      style={{ display: 'flex', alignItems: 'center', border: 'none', background: 'none', cursor: 'pointer', color: 'rgba(255, 255, 255, 0.6)', padding: 0, marginLeft: '2px' }}
                     >
                       <X size={11} />
                     </button>
                   </div>
-                  <span style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-scrim)' }}>이 design.md 파일의 디자인 시스템 사용</span>
+                  <span style={{ fontSize: "var(--aui-type-caption-size)", color: 'rgba(255, 255, 255, 0.6)' }}>이 design.md 파일의 디자인 시스템 사용</span>
                 </div>
               )
             })()}
             <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-3)" }}>
               <div>
-                <div id="brief-desc-label" style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: F.primary, marginBottom: '4px', letterSpacing: "var(--aui-tracking-tight)" }}>
-                  ㅇ 어떤 화면이 필요한가요?
-                </div>
                 <textarea
-                  aria-labelledby="brief-desc-label"
+                  aria-label="어떤 화면이 필요한가요?"
                   value={briefDesc}
                   onChange={e => setBriefDesc(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && briefDesc.trim()) { e.preventDefault(); handleSubmit() } }}
@@ -1698,30 +1698,30 @@ export default function Home() {
                   rows={4}
                   style={{
                     width: '100%', background: 'none', border: 'none', outline: 'none',
-                    color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-label-size)", lineHeight: "var(--aui-leading-normal)",
+                    color: '#fff', fontSize: "var(--aui-type-label-size)", lineHeight: "var(--aui-leading-normal)",
                     letterSpacing: "var(--aui-tracking-tight)", resize: 'none', fontFamily: 'inherit',
-                    caretColor: F.primary,
+                    caretColor: '#fff',
                   }}
                 />
               </div>
-              <div style={{ borderTop: '1px solid var(--aui-shadow-line)', paddingTop: '10px' }}>
-                <button type="button" aria-expanded={briefDetailsOpen} onClick={() => setBriefDetailsOpen(value => !value)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0', border: 0, background: 'transparent', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)', cursor: 'pointer' }}>
+              <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.2)', paddingTop: '10px' }}>
+                <button type="button" aria-expanded={briefDetailsOpen} onClick={() => setBriefDetailsOpen(value => !value)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0', border: 0, background: 'transparent', color: 'rgba(255, 255, 255, 0.82)', fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)', cursor: 'pointer' }}>
                   <ChevronDown size={14} style={{ transform: briefDetailsOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s ease' }} />
-                  상세 입력 <span style={{ color: F.inkSubtle, fontWeight: 'var(--aui-weight-regular)' }}>선택사항</span>
+                  상세 입력 <span style={{ color: 'rgba(255, 255, 255, 0.55)', fontWeight: 'var(--aui-weight-regular)' }}>선택사항</span>
                 </button>
                 {briefDetailsOpen && (
                   <div className="brief-details-grid">
-                    <label style={{ display: 'grid', gap: '5px', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
+                    <label style={{ display: 'grid', gap: '5px', color: 'rgba(255, 255, 255, 0.82)', fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
                       주요 사용자
-                      <input value={briefAudience} onChange={event => setBriefAudience(event.target.value)} placeholder="예) CS 운영 담당자와 서비스 기획자" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: `1px solid ${F.hairlineSoft}`, borderRadius: 'var(--aui-radius-control)', background: F.surface, color: F.ink, font: 'inherit', outline: 'none' }} />
+                      <input value={briefAudience} onChange={event => setBriefAudience(event.target.value)} placeholder="예) CS 운영 담당자와 서비스 기획자" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: 'var(--aui-radius-control)', background: 'rgba(255, 255, 255, 0.12)', color: '#fff', font: 'inherit', outline: 'none' }} />
                     </label>
-                    <label style={{ display: 'grid', gap: '5px', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
+                    <label style={{ display: 'grid', gap: '5px', color: 'rgba(255, 255, 255, 0.82)', fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
                       핵심 기능 또는 필수 정보
-                      <input value={briefFeatures} onChange={event => setBriefFeatures(event.target.value)} placeholder="예) 티켓 목록, 처리 상태, SLA 알림, 주간 리포트" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: `1px solid ${F.hairlineSoft}`, borderRadius: 'var(--aui-radius-control)', background: F.surface, color: F.ink, font: 'inherit', outline: 'none' }} />
+                      <input value={briefFeatures} onChange={event => setBriefFeatures(event.target.value)} placeholder="예) 티켓 목록, 처리 상태, SLA 알림, 주간 리포트" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: 'var(--aui-radius-control)', background: 'rgba(255, 255, 255, 0.12)', color: '#fff', font: 'inherit', outline: 'none' }} />
                     </label>
-                    <label style={{ gridColumn: '1 / -1', display: 'grid', gap: '5px', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
+                    <label style={{ gridColumn: '1 / -1', display: 'grid', gap: '5px', color: 'rgba(255, 255, 255, 0.82)', fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
                       강조하거나 피하고 싶은 구성
-                      <input value={briefConstraints} onChange={event => setBriefConstraints(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && briefDesc.trim()) { event.preventDefault(); handleSubmit() } }} placeholder="예) 대량 목록을 빠르게 훑도록, 불필요한 그래프 남발은 피하기" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: `1px solid ${F.hairlineSoft}`, borderRadius: 'var(--aui-radius-control)', background: F.surface, color: F.ink, font: 'inherit', outline: 'none' }} />
+                      <input value={briefConstraints} onChange={event => setBriefConstraints(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && briefDesc.trim()) { event.preventDefault(); handleSubmit() } }} placeholder="예) 대량 목록을 빠르게 훑도록, 불필요한 그래프 남발은 피하기" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: 'var(--aui-radius-control)', background: 'rgba(255, 255, 255, 0.12)', color: '#fff', font: 'inherit', outline: 'none' }} />
                     </label>
                   </div>
                 )}
@@ -1740,8 +1740,8 @@ export default function Home() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     width: '38px', height: '38px', borderRadius: '50%',
                     border: 'none',
-                    backgroundColor: refPanelOpen ? F.ink : 'var(--aui-border-subtle)',
-                    color: refPanelOpen ? F.canvas : 'var(--aui-scrim-strong)',
+                    backgroundColor: refPanelOpen ? '#fff' : 'rgba(255, 255, 255, 0.16)',
+                    color: refPanelOpen ? 'var(--aui-text-strong)' : '#fff',
                     cursor: 'pointer', transition: 'all 0.15s', flexShrink: 0,
                   }}
                   title="리디자인 소스 추가"
@@ -1900,8 +1900,8 @@ export default function Home() {
                     display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)",
                     padding: `0 var(--aui-space-3)`, height: '38px', borderRadius: "var(--aui-radius-pill)",
                     border: 'none',
-                    backgroundColor: 'var(--aui-border-subtle)',
-                    color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)",
+                    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+                    color: '#fff', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)",
                     cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)", transition: 'all 0.15s',
                   }}
                 >
@@ -1920,8 +1920,8 @@ export default function Home() {
                     width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     cursor: canSubmit ? 'pointer' : 'default', transition: 'all 0.2s',
-                    backgroundColor: canSubmit ? F.ink : F.surface2,
-                    color: canSubmit ? F.canvas : 'var(--aui-scrim-soft)', border: 'none',
+                    backgroundColor: canSubmit ? '#fff' : 'rgba(255, 255, 255, 0.12)',
+                    color: canSubmit ? 'var(--aui-text-strong)' : 'rgba(255, 255, 255, 0.4)', border: 'none',
                   }}
                 >
                   <ArrowUp size={17} strokeWidth={2.2} />

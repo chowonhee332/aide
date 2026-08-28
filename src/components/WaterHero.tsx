@@ -121,29 +121,35 @@ void main(){
   web += causticWeb(cuv * 1.9 + 11.0, t * 1.35) * 0.5;
   web *= uCaustic;
 
-  // ---- base colour: bright azure (top) → aqua (bottom) ----
-  float gy = clamp(uv.y + ringWarp * 0.015
-                 + (fbm(auv * 1.3 + swirl * 2.0 + t * 0.03) - 0.5) * 0.12, 0.0, 1.0);
-  float gg = gy * gy * (3.0 - 2.0 * gy);
+  // ---- base colour: deep cobalt mass (top) → luminous cyan (bottom) ----
+  // premium soft-focus gradient: deep blue holds through most of the frame,
+  // cyan reads as a glow only near the lower edge
+  float gy = clamp(uv.y + ringWarp * 0.012
+                 + (fbm(auv * 1.3 + swirl * 2.0 + t * 0.03) - 0.5) * 0.06, 0.0, 1.0);
+  float gg = pow(gy, 0.62);
   vec3 base = mix(uColorBot, uColorTop, gg);
-  base = mix(base, uColorMid, (1.0 - abs(gg - 0.5) * 2.0) * 0.28);
+  base = mix(base, uColorMid, (1.0 - abs(gg - 0.5) * 2.0) * 0.30);
 
-  // broad light / shade patches drifting across the surface (kept gentle so
-  // the specified gradient stays true, not muddy)
-  float shade = fbm(auv * 1.05 + swirl * 2.2 - t * 0.02);
-  base *= 0.95 + shade * 0.16;
+  // one big soft light bloom drifting low, like an abstract gradient wallpaper
+  vec2 bc = vec2(0.40 + 0.06 * sin(t * 0.05), 0.10 + 0.04 * sin(t * 0.037 + 2.0));
+  float bloom = exp(-pow(length((uv - bc) * vec2(1.0, 1.35)), 1.6) * 3.2);
+  base = mix(base, uColorBot * 1.04 + vec3(0.05), bloom * 0.42);
+
+  // very gentle drift in tone — smooth, not mottled
+  float shade = fbm(auv * 0.9 + swirl * 1.8 - t * 0.02);
+  base *= 0.97 + shade * 0.09;
 
   // ---- compose ----
   vec3 col = base;
-  vec3 causticTint = mix(vec3(0.50, 0.72, 0.82), vec3(0.72, 0.90, 0.92), uv.y);
-  col += causticTint * web * mix(0.30, 0.13, uv.y);   // stronger near the bottom
-  col += vec3(0.72, 0.87, 0.97) * ringLight * 0.26;   // the two ring crests
+  vec3 causticTint = mix(vec3(0.46, 0.68, 0.80), vec3(0.70, 0.90, 0.94), uv.y);
+  col += causticTint * web * mix(0.22, 0.09, uv.y);   // subtle, richer near the bottom
+  col += vec3(0.72, 0.87, 0.97) * ringLight * 0.22;   // the two ring crests
 
-  // ---- vignette: gently darker blurred top corners, luminous lower centre ----
-  vec2 vd = uv - vec2(0.5, 0.32);
-  float vig = clamp(1.0 - dot(vd, vd) * 0.72, 0.0, 1.0);
-  col *= mix(0.82, 1.0, vig);
-  col *= 1.0 - smoothstep(0.82, 1.0, uv.y) * 0.08;    // slight top nudge for nav
+  // ---- vignette: deeper cobalt corners, luminous lower centre ----
+  vec2 vd = uv - vec2(0.5, 0.28);
+  float vig = clamp(1.0 - dot(vd, vd) * 0.85, 0.0, 1.0);
+  col *= mix(0.74, 1.0, vig);
+  col *= 1.0 - smoothstep(0.78, 1.0, uv.y) * 0.12;    // deepen the top for nav + mass
 
   // clean and photographic — not neon, not murky
   float luma = dot(col, vec3(0.299, 0.587, 0.114));
