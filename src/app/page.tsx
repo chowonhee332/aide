@@ -1524,18 +1524,18 @@ export default function Home() {
           }}
         >
           <div style={{
-            backgroundColor: navScrolled ? 'rgba(255, 255, 255, 0.14)' : 'transparent',
-            backgroundImage: navScrolled ? 'linear-gradient(135deg, rgba(255,255,255,0.24), rgba(255,255,255,0.05) 42%, rgba(255,255,255,0.02))' : 'none',
-            backdropFilter: navScrolled ? 'blur(28px) saturate(1.6)' : 'none',
-            WebkitBackdropFilter: navScrolled ? 'blur(28px) saturate(1.6)' : 'none',
-            border: navScrolled ? '1px solid rgba(255, 255, 255, 0.45)' : '1px solid transparent',
+            backgroundColor: navScrolled ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
+            backgroundImage: navScrolled ? 'linear-gradient(135deg, rgba(255,255,255,0.22), rgba(255,255,255,0.02) 40%, rgba(255,255,255,0.09))' : 'none',
+            backdropFilter: navScrolled ? 'blur(4px) saturate(1.7) brightness(1.05)' : 'none',
+            WebkitBackdropFilter: navScrolled ? 'blur(4px) saturate(1.7) brightness(1.05)' : 'none',
+            border: navScrolled ? '1px solid rgba(255, 255, 255, 0.55)' : '1px solid transparent',
             borderRadius: 'var(--aui-radius-pill)',
             padding: navScrolled ? '10px 14px 10px 16px' : '24px 24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: navScrolled ? '64px' : "var(--aui-space-6)",
-            boxShadow: navScrolled ? "0 12px 40px rgba(6, 22, 60, 0.28), inset 0 1px 0 rgba(255,255,255,0.5)" : 'none',
+            boxShadow: navScrolled ? "0 16px 44px rgba(6, 22, 60, 0.28), inset 0 1px 1px rgba(255,255,255,0.75), inset 0 -1px 3px rgba(255,255,255,0.28), inset 0 0 26px rgba(255,255,255,0.05)" : 'none',
             transition: 'background-color .32s ease, padding .32s ease, box-shadow .32s ease, border-color .32s ease, gap .32s ease',
           }}>
             {/* 좌측: 로고 */}
@@ -1653,13 +1653,13 @@ export default function Home() {
           {/* Input card */}
           <div className="hero-brief-card" style={{
             width: '100%', maxWidth: 'var(--aui-content-narrow)', borderRadius: "var(--aui-radius-overlay)",
-            backgroundColor: 'rgba(255, 255, 255, 0.14)',
-            backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.24), rgba(255,255,255,0.05) 42%, rgba(255,255,255,0.02))',
-            backdropFilter: 'blur(28px) saturate(1.6)',
-            WebkitBackdropFilter: 'blur(28px) saturate(1.6)',
-            border: '1px solid rgba(255, 255, 255, 0.45)',
+            backgroundColor: 'rgba(255, 255, 255, 0.06)',
+            backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.22), rgba(255,255,255,0.02) 40%, rgba(255,255,255,0.09))',
+            backdropFilter: 'blur(4px) saturate(1.7) brightness(1.05)',
+            WebkitBackdropFilter: 'blur(4px) saturate(1.7) brightness(1.05)',
+            border: '1px solid rgba(255, 255, 255, 0.55)',
             padding: `var(--aui-space-6) var(--aui-space-6) var(--aui-space-4)`,
-            boxShadow: "0 12px 40px rgba(6, 22, 60, 0.28), inset 0 1px 0 rgba(255,255,255,0.5)",
+            boxShadow: "0 16px 44px rgba(6, 22, 60, 0.28), inset 0 1px 1px rgba(255,255,255,0.75), inset 0 -1px 3px rgba(255,255,255,0.28), inset 0 0 26px rgba(255,255,255,0.05)",
           }}>
             {(designPreset !== 'none' || designButtonLabel) && (() => {
               const isUrl = !!designButtonLabel && (designButtonLabel.startsWith('http://') || designButtonLabel.startsWith('https://'))
