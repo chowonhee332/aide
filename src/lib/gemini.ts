@@ -2133,10 +2133,23 @@ function buildReverseTokenMap(tokens: DesignTokenMap, prefix: string): Map<strin
   return result
 }
 
+/** Snap an off-grid px integer to the nearest 4px step (min 4). */
+function snapTo4(px: number): number {
+  const snapped = Math.round(px / 4) * 4
+  return snapped < 4 ? 4 : snapped
+}
+
+/** Snap an off-scale font-size to the nearest value in the typography scale. */
+function snapToScale(px: number, scale: number[]): number {
+  if (scale.length === 0 || scale.includes(px)) return px
+  return scale.reduce((best, v) => (Math.abs(v - px) < Math.abs(best - px) ? v : best), scale[0])
+}
+
 function patchCssTokens(
   css: string,
   spacingMap: Map<string, string>,
-  roundedMap: Map<string, string>
+  roundedMap: Map<string, string>,
+  typeScale: number[] = [],
 ): string {
   const spacingEntries = [...spacingMap.entries()].sort((a, b) => b[0].length - a[0].length)
   const roundedEntries = [...roundedMap.entries()].sort((a, b) => b[0].length - a[0].length)
@@ -2146,6 +2159,23 @@ function patchCssTokens(
     const trimmed = line.trim()
     if (!inRoot && /:root\s*\{/.test(trimmed)) { inRoot = true; return line }
     if (inRoot) { if (trimmed === '}') inRoot = false; return line }
+    // Off-grid gap snap: model routinely writes gap: 6px / 10px / 2px, which match no
+    // token. Snap the small-band (<=14px) column/row/gap values to the 4px grid so the
+    // exact-match remap below can turn them into var(). padding/margin are left alone.
+    if (/\b(?:gap|row-gap|column-gap)\s*:/i.test(trimmed)) {
+      line = line.replace(/((?:gap|row-gap|column-gap)\s*:\s*)(\d{1,2})px/gi, (m, head, n) => {
+        const px = Number(n)
+        if (px === 0 || px % 4 === 0 || px > 14) return m
+        return `${head}${snapTo4(px)}px`
+      })
+    }
+    if (typeScale.length > 0 && /font-size\s*:/i.test(trimmed)) {
+      line = line.replace(/(font-size\s*:\s*)(\d{1,2})px/gi, (m, head, n) => {
+        const px = Number(n)
+        if (px < 8 || px > 34) return m
+        return `${head}${snapToScale(px, typeScale)}px`
+      })
+    }
     if (spacingMap.size > 0 && /\b(padding|margin|gap|top|right|bottom|left|inset|row-gap|column-gap)\s*:/i.test(trimmed)) {
       for (const [px, varRef] of spacingEntries) {
         line = line.replace(new RegExp(`\\b${px.replace('.', '\\.')}\\b`, 'g'), varRef)
@@ -2164,10 +2194,36 @@ function auditSpacingTokens(html: string, contract: DesignRhythmContract | null)
   if (!contract) return html
   const spacingMap = buildReverseTokenMap(contract.spacing, 'spacing')
   const roundedMap = buildReverseTokenMap(contract.rounded, 'rounded')
-  if (spacingMap.size === 0 && roundedMap.size === 0) return html
+  const typeScale = [...new Set(
+    Object.values(contract.typography ?? {})
+      .map(t => Number(String(t.size).match(/^(\d+)px$/)?.[1]))
+      .filter((n): n is number => Number.isFinite(n))
+  )].sort((a, b) => a - b)
+  if (spacingMap.size === 0 && roundedMap.size === 0 && typeScale.length === 0) return html
   return html.replace(/(<style[^>]*>)([\s\S]*?)(<\/style>)/gi, (_, open, css, close) =>
-    open + patchCssTokens(css, spacingMap, roundedMap) + close
+    open + patchCssTokens(css, spacingMap, roundedMap, typeScale) + close
   )
+}
+
+/**
+ * The .btn-* snippets size themselves from --aide-button-height / the type scale.
+ * The model still writes inline height/min-height/font-size on button elements
+ * (measured: <button class="btn-primary" style="height: 34px; font-size: 12px">),
+ * which wins over the stylesheet. Drop just those three inline props on btn-* tags;
+ * everything else in the style attribute is left intact.
+ */
+function stripButtonInlineOverrides(html: string): string {
+  return html.replace(/<(?:button|a)\b[^>]*\bclass=["'][^"']*\bbtn-[^"']*["'][^>]*>/gi, tag => {
+    if (!/\bstyle=["'][^"']*["']/i.test(tag)) return tag
+    return tag.replace(/(\bstyle=["'])([^"']*)(["'])/i, (_m, open, decls, close) => {
+      const kept = decls
+        .split(';')
+        .map((d: string) => d.trim())
+        .filter((d: string) => d && !/^(height|min-height|font-size)\s*:/i.test(d))
+        .join('; ')
+      return kept ? `${open}${kept}${close}` : ''
+    })
+  })
 }
 
 const AIDE_LOGO_SLOT_HTML = '<span class="aide-logo-slot" aria-label="brand logo"></span>'
@@ -4882,6 +4938,7 @@ ${effectivePlatform === 'web' ? `
   html = ensureRequiredVariantVisuals(html, { variantStyle, sharedVisualSubject: effectiveSharedVisualSubject, heroImagePrompt: visual3dPrompt, visualPolicy: effectiveVisualPolicy })
   html = injectDesignContractStyle(html, effectiveDesignMd, hasBrandColors)
   html = auditSpacingTokens(html, designContract)
+  html = stripButtonInlineOverrides(html)
   html = applyLogoDataUrlOnce(html, logoDataUrl)
   html = injectLayoutEssentialsGuard(html)
 
