@@ -1650,10 +1650,10 @@ export default function Home() {
           {/* Input card */}
           <div className="hero-brief-card" style={{
             width: '100%', maxWidth: 'var(--aui-content-narrow)', borderRadius: "var(--aui-radius-overlay)",
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            background: 'linear-gradient(rgba(255,255,255,0.6), rgba(255,255,255,0.6)) padding-box, linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.8)) border-box',
             backdropFilter: 'blur(var(--aui-blur-glass-strong))',
             WebkitBackdropFilter: 'blur(var(--aui-blur-glass-strong))',
-            border: 'none',
+            border: '1px solid transparent',
             padding: `var(--aui-space-6) var(--aui-space-6) var(--aui-space-4)`,
             boxShadow: 'none',
           }}>
@@ -1930,9 +1930,9 @@ export default function Home() {
             <div style={{
               width: '100%', maxWidth: '700px', marginTop: '8px',
               borderRadius: "var(--aui-radius-overlay)",
-              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              background: 'linear-gradient(rgba(255,255,255,0.6), rgba(255,255,255,0.6)) padding-box, linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.8)) border-box',
               backdropFilter: 'blur(var(--aui-blur-glass-strong))', WebkitBackdropFilter: 'blur(var(--aui-blur-glass-strong))',
-              border: 'none', padding: "var(--aui-space-4)",
+              border: '1px solid transparent', padding: "var(--aui-space-4)",
             }}>
               <input ref={fileInputRef} type="file" accept=".md,.txt" onChange={handleFileUpload} style={{ display: 'none' }} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: "var(--aui-space-2)", marginBottom: '14px' }}>
@@ -2049,9 +2049,9 @@ export default function Home() {
             <div style={{
               width: '100%', maxWidth: '700px', marginTop: '8px',
               borderRadius: "var(--aui-radius-overlay)",
-              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              background: 'linear-gradient(rgba(255,255,255,0.6), rgba(255,255,255,0.6)) padding-box, linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.8)) border-box',
               backdropFilter: 'blur(var(--aui-blur-glass-strong))', WebkitBackdropFilter: 'blur(var(--aui-blur-glass-strong))',
-              border: 'none', padding: "var(--aui-space-4)",
+              border: '1px solid transparent', padding: "var(--aui-space-4)",
             }}>
               <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
 
@@ -2168,9 +2168,9 @@ export default function Home() {
             <div style={{
               width: '100%', maxWidth: '700px', marginTop: '8px',
               borderRadius: "var(--aui-radius-overlay)",
-              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              background: 'linear-gradient(rgba(255,255,255,0.6), rgba(255,255,255,0.6)) padding-box, linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.8)) border-box',
               backdropFilter: 'blur(var(--aui-blur-glass-strong))', WebkitBackdropFilter: 'blur(var(--aui-blur-glass-strong))',
-              border: 'none', padding: "var(--aui-space-4)",
+              border: '1px solid transparent', padding: "var(--aui-space-4)",
             }}>
               <input ref={refImageInputRef} type="file" accept="image/*" onChange={handleRefImageUpload} style={{ display: 'none' }} />
               <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />

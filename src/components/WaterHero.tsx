@@ -85,10 +85,17 @@ void main(){
   vec2 swirl = (vec2(fbm(auv * 0.7 + t * 0.02),
                      fbm(auv * 0.7 - t * 0.017 + 9.0)) - 0.5) * 0.30;
 
-  // ---- ripple rings: many thin concentric refractive wavefronts ----
-  vec2  rippleSlope = vec2(0.0);
-  float ringLight = 0.0;
-  float ringWarp = 0.0;
+  // ---- ripple rings: refractive wavefronts — each ring lenses the water
+  //      behind it (bright meniscus + dark leading trough) and carries fine
+  //      capillary shimmer on the crest, so it reads as glass, not a drawn line
+  vec2  rippleSlope  = vec2(0.0);   // low-freq slope → feeds the caustic warp
+  vec2  ringRefract  = vec2(0.0);   // screen-space lensing of the background
+  float ringSpec     = 0.0;         // bright glassy meniscus
+  float ringShade    = 0.0;         // dark leading trough
+  float ringGlint    = 0.0;         // sharp light glint on steep crests
+  // one high-frequency capillary-shimmer sample for this pixel, shared by every
+  // ring — keeps the loop cheap (no per-ripple fbm)
+  float pxShimmer = fbm(auv * 44.0 + vec2(t * 1.6, -t * 1.9)) - 0.5;
   for (int k = 0; k < ${MAX_RIPPLES}; k++){
     if (float(k) >= uRippleCount) break;
     vec4 r = uRipples[k];
@@ -108,15 +115,24 @@ void main(){
     // narrow gaussian envelope + matched frequency → just two rings per wave
     float env = exp(-band * band * (620.0 + vr * 320.0)) * life;
     float phase = band * (122.0 + vr * 28.0) - age * (5.0 + vr2 * 4.0);
-    float wave = sin(phase);
-    vec2 dir = d > 1e-4 ? to / d : vec2(0.0);
-    rippleSlope += dir * cos(phase) * env * r.w * 0.05;
-    ringLight   += max(wave, 0.0) * env * r.w;
-    ringWarp    += wave * env * r.w;
-  }
+    float slope = cos(phase);                       // surface tilt along the radius
+    vec2  dir   = d > 1e-4 ? to / d : vec2(0.0);
+    float shimmer = pxShimmer;
 
-  // ---- caustic web, warped by the swirl and the ripple slope ----
-  vec2 cuv = auv * 1.35 + swirl + rippleSlope + vec2(t * 0.011, t * 0.019);
+    float crest = clamp(slope, 0.0, 1.0);
+    float c2 = crest * crest;
+    rippleSlope += dir * slope * env * r.w * 0.05;
+    ringRefract += dir * (slope + shimmer * 0.7) * env * r.w * 0.05;
+    ringSpec    += (crest + shimmer * 0.5) * env * r.w;
+    ringShade   += clamp(-slope, 0.0, 1.0) * env * r.w;
+    // tight sparkle where the wave is steepest and near its peak
+    ringGlint   += c2 * c2 * crest * (0.7 + shimmer * 0.6) * env * r.w;
+  }
+  ringSpec  = max(ringSpec, 0.0);
+  ringGlint = max(ringGlint, 0.0);
+
+  // ---- caustic web, warped by the swirl and lensed through the ripple rings ----
+  vec2 cuv = auv * 1.35 + swirl + rippleSlope + ringRefract * 2.4 + vec2(t * 0.011, t * 0.019);
   float web = causticWeb(cuv, t);
   web += causticWeb(cuv * 1.9 + 11.0, t * 1.35) * 0.5;
   web *= uCaustic;
@@ -124,7 +140,7 @@ void main(){
   // ---- base colour: deep cobalt mass (top) → luminous cyan (bottom) ----
   // premium soft-focus gradient: deep blue holds through most of the frame,
   // cyan reads as a glow only near the lower edge
-  float gy = clamp(uv.y + ringWarp * 0.012
+  float gy = clamp(uv.y + ringRefract.y * 0.5
                  + (fbm(auv * 1.3 + swirl * 2.0 + t * 0.03) - 0.5) * 0.06, 0.0, 1.0);
   float gg = pow(gy, 0.62);
   vec3 base = mix(uColorBot, uColorTop, gg);
@@ -132,7 +148,7 @@ void main(){
 
   // one big soft light bloom drifting low, like an abstract gradient wallpaper
   vec2 bc = vec2(0.40 + 0.06 * sin(t * 0.05), 0.10 + 0.04 * sin(t * 0.037 + 2.0));
-  float bloom = exp(-pow(length((uv - bc) * vec2(1.0, 1.35)), 1.6) * 3.2);
+  float bloom = exp(-pow(length((uv - bc + ringRefract * 0.7) * vec2(1.0, 1.35)), 1.6) * 3.2);
   base = mix(base, uColorBot * 1.04 + vec3(0.05), bloom * 0.42);
 
   // very gentle drift in tone — smooth, not mottled
@@ -143,7 +159,21 @@ void main(){
   vec3 col = base;
   vec3 causticTint = mix(vec3(0.46, 0.68, 0.80), vec3(0.70, 0.90, 0.94), uv.y);
   col += causticTint * web * mix(0.22, 0.09, uv.y);   // subtle, richer near the bottom
-  col += vec3(0.72, 0.87, 0.97) * ringLight * 0.22;   // the two ring crests
+
+  // ---- refractive ring: a glassy meniscus that brightens by pulling the
+  //      water behind it toward a desaturated sheen (never opaque paint),
+  //      a darker leading trough, and a faint prismatic edge ----
+  float behind = dot(base, vec3(0.3333));
+  vec3  sheen  = mix(vec3(behind), vec3(0.82, 0.91, 0.99), 0.6);
+  float spec   = clamp(ringSpec * 0.7, 0.0, 1.0);
+  col = mix(col, mix(col, sheen, 0.75), spec);
+  col *= 1.0 - clamp(ringShade * 0.16, 0.0, 0.45);    // trough sits lower / darker
+  float disp = spec * 0.025;                          // chromatic dispersion on the crest
+  col.r += disp;
+  col.b -= disp * 0.65;
+  // light shining through the crest — brighter where a caustic thread crosses it
+  float gln = clamp(ringGlint * (0.55 + web * 1.6), 0.0, 1.0);
+  col += vec3(0.90, 0.97, 1.0) * gln * 0.55;
 
   // ---- vignette: deeper cobalt corners, luminous lower centre ----
   vec2 vd = uv - vec2(0.5, 0.28);
@@ -165,6 +195,7 @@ interface Ripple { x: number; y: number; birth: number; strength: number; }
 
 interface Koi {
   x: number; y: number;
+  tx: number; ty: number; // personal roaming waypoint — re-picked on arrival
   angle: number;      // current facing (rendered)
   dir: number;        // target bearing — evolves as a damped random walk
   dirVel: number;     // angular velocity of that target
@@ -196,7 +227,10 @@ const WaterHero = ({
     if (!host) return;
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    // both layers are drawn soft-focus (CSS blur), so rendering above ~1.25x
+    // device pixels just burns memory and fill rate for no visible gain
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+    const koiDpr = Math.min(dpr, 1);
     const t0 = performance.now();
     const now = () => (performance.now() - t0) * 0.001;
 
@@ -230,7 +264,7 @@ const WaterHero = ({
 
     // ---------- 2D koi overlay ----------
     const koiCanvas = document.createElement('canvas');
-    koiCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(2px);';
+    koiCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(2.8px);';
     host.appendChild(koiCanvas);
     const kctx = koiCanvas.getContext('2d')!;
 
@@ -238,17 +272,22 @@ const WaterHero = ({
     const koi: Koi[] = [];
     const seedKoi = () => {
       koi.length = 0;
-      const n = reduceMotion ? 0 : 2;
+      const n = reduceMotion ? 0 : 4;
       for (let i = 0; i < n; i++) {
         const heading = Math.random() * Math.PI * 2;
+        // spread the starting points across the whole canvas
+        const gx = ((i % 2) + 0.2 + Math.random() * 0.6) / 2;
+        const gy = (Math.floor(i / 2) + 0.2 + Math.random() * 0.6) / 2;
         koi.push({
-          x: cssW * (0.45 + Math.random() * 0.45),
-          y: cssH * (0.22 + Math.random() * 0.42),   // reference: koi roam the right side
+          x: cssW * gx,
+          y: cssH * gy,
+          tx: cssW * (0.08 + Math.random() * 0.84),
+          ty: cssH * (0.1 + Math.random() * 0.78),
           angle: heading,
           dir: heading,
           dirVel: 0,
-          speed: 40 + Math.random() * 22,
-          len: 130 + Math.random() * 70,
+          speed: 69 + Math.random() * 39,
+          len: 164 + Math.random() * 76,
           phase: Math.random() * Math.PI * 2,
           tint: Math.random(),
         });
@@ -263,9 +302,9 @@ const WaterHero = ({
       const res = program.uniforms.iResolution.value as Float32Array;
       res[0] = gl.drawingBufferWidth;
       res[1] = gl.drawingBufferHeight;
-      koiCanvas.width = Math.floor(cssW * dpr);
-      koiCanvas.height = Math.floor(cssH * dpr);
-      kctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      koiCanvas.width = Math.floor(cssW * koiDpr);
+      koiCanvas.height = Math.floor(cssH * koiDpr);
+      kctx.setTransform(koiDpr, 0, 0, koiDpr, 0, 0);
       if (koi.length === 0) seedKoi();
       renderer.render({ scene: mesh });
     };
@@ -330,31 +369,59 @@ const WaterHero = ({
     let onScreen = true;
     let pageVisible = !document.hidden;
 
+    // reusable spine scratch buffers — sized to the koi vertex count, never
+    // reallocated per frame (keeps GC quiet)
+    const KOI_N = 13;
+    const sx = new Array<number>(KOI_N);
+    const sy = new Array<number>(KOI_N);
+    const nX = new Array<number>(KOI_N);
+    const nY = new Array<number>(KOI_N);
+
     const drawKoi = (dt: number) => {
       // fade previous frame → long motion-blur smears
       kctx.globalCompositeOperation = 'destination-out';
-      kctx.fillStyle = 'rgba(0,0,0,0.14)';
+      kctx.fillStyle = 'rgba(0,0,0,0.2)';
       kctx.fillRect(0, 0, cssW, cssH);
       kctx.globalCompositeOperation = 'source-over';
 
       for (const k of koi) {
-        // tail beats a little faster when swimming faster
-        k.phase += dt * (3.2 + k.speed * 0.04);
+        // tail beats a little faster when swimming faster — kept slow + graceful
+        k.phase += dt * (2.5 + k.speed * 0.03);
 
-        // heading target evolves as a damped random walk → smooth, lazy turns
-        k.dirVel += (Math.random() - 0.5) * dt * 0.5;
-        k.dirVel *= Math.pow(0.5, dt * 1.5);
-        k.dirVel = Math.max(-0.5, Math.min(0.5, k.dirVel));
+        // gentle damped random walk on top of everything → organic wiggle
+        k.dirVel += (Math.random() - 0.5) * dt * 0.25;
+        k.dirVel *= Math.pow(0.5, dt * 1.6);
+        k.dirVel = Math.max(-0.3, Math.min(0.3, k.dirVel));
         k.dir += k.dirVel * dt;
 
-        // soft containment — steer the target back toward the roaming zone
-        // well before a koi reaches the edge, so they stay in frame
-        const cx = cssW * 0.64, cy = cssH * 0.42;
-        const off = Math.hypot((k.x - cx) / (cssW * 0.44), (k.y - cy) / (cssH * 0.34));
-        if (off > 0.8) {
-          const toCentre = Math.atan2(cy - k.y, cx - k.x);
-          k.dir += angleDelta(k.dir, toCentre) * Math.min(0.16, (off - 0.8) * 0.5);
+        // head for a personal waypoint; on arrival pick a fresh one anywhere on
+        // the canvas → the koi roam the whole area independently, never clump
+        const wdx = k.tx - k.x, wdy = k.ty - k.y;
+        if (Math.hypot(wdx, wdy) < cssW * 0.09) {
+          k.tx = cssW * (0.06 + Math.random() * 0.88);
+          k.ty = cssH * (0.08 + Math.random() * 0.82);
+        } else {
+          k.dir += angleDelta(k.dir, Math.atan2(wdy, wdx)) * Math.min(1, dt * 1.3);
         }
+
+        // firm turn-away from the real edges
+        const edge = cssW * 0.05;
+        if (k.x < edge) k.dir += angleDelta(k.dir, 0) * Math.min(1, dt * 5);
+        if (k.x > cssW - edge) k.dir += angleDelta(k.dir, Math.PI) * Math.min(1, dt * 5);
+        if (k.y < edge) k.dir += angleDelta(k.dir, Math.PI * 0.5) * Math.min(1, dt * 5);
+        if (k.y > cssH - edge) k.dir += angleDelta(k.dir, -Math.PI * 0.5) * Math.min(1, dt * 5);
+
+        // gentle separation so two koi don't overlap
+        for (const o of koi) {
+          if (o === k) continue;
+          const sdx = k.x - o.x, sdy = k.y - o.y;
+          const sd = Math.hypot(sdx, sdy);
+          const near = k.len * 1.3;
+          if (sd > 1e-3 && sd < near) {
+            k.dir += angleDelta(k.dir, Math.atan2(sdy, sdx)) * (1 - sd / near) * 0.5 * Math.min(1, dt * 3);
+          }
+        }
+
         // barely-there veer away from a passing cursor
         if (pointer.active && now() - pointer.lastMove < 0.9) {
           const px = pointer.x * cssW;
@@ -368,69 +435,154 @@ const WaterHero = ({
           }
         }
 
-        // ease the visible facing toward the target bearing
-        k.angle += angleDelta(k.angle, k.dir) * Math.min(1, dt * 1.1);
+        // ease the visible facing toward the target bearing — brisk enough that
+        // a faster koi actually completes its turns
+        k.angle += angleDelta(k.angle, k.dir) * Math.min(1, dt * 2.6);
 
-        // glide-and-surge: a touch faster on each tail push
-        const surge = 0.8 + 0.35 * Math.max(0, Math.sin(k.phase));
+        // glide-and-surge: each tail stroke clearly pushes the body forward
+        const surge = 0.7 + 0.55 * Math.max(0, Math.sin(k.phase));
         k.x += Math.cos(k.angle) * k.speed * surge * dt;
         k.y += Math.sin(k.angle) * k.speed * surge * dt;
 
-        // wrap with margin
-        const m = k.len * 1.5;
+        // wrap with margin — a rare fallback; edge steering normally prevents it
+        const m = k.len * 0.8;
         if (k.x < -m) k.x = cssW + m;
         if (k.x > cssW + m) k.x = -m;
         if (k.y < -m) k.y = cssH + m;
         if (k.y > cssH + m) k.y = -m;
 
         const L = k.len;
-        const bend = Math.sin(k.phase) * L * 0.05;          // slight body curve
-        const tail = Math.sin(k.phase - 1.0) * L * 0.17;    // tail sweep
-        const core = k.tint < 0.5 ? '236,40,18' : '246,66,24';
+        const N = KOI_N;
+        const WAVES = 2.3;
+        const core = k.tint < 0.5 ? '232,44,20' : '244,70,26';
+
+        // undulating spine: a travelling wave whose amplitude ramps toward the tail
+        for (let i = 0; i < N; i++) {
+          const s = i / (N - 1);
+          sx[i] = L * 0.5 - s * L * 0.99;
+          sy[i] = L * (0.015 + 0.17 * s * s) * Math.sin(k.phase - s * WAVES);
+        }
+        // per-vertex normal from the local tangent
+        for (let i = 0; i < N; i++) {
+          const a = i > 0 ? i - 1 : 0;
+          const b = i < N - 1 ? i + 1 : N - 1;
+          const tx = sx[b] - sx[a];
+          const ty = sy[b] - sy[a];
+          const tl = Math.hypot(tx, ty) || 1;
+          nX[i] = -ty / tl;
+          nY[i] = tx / tl;
+        }
+        const halfW = (i: number) => {
+          const s = i / (N - 1);
+          return Math.max(L * 0.018 * (1 - s), L * 0.185 * Math.sin(Math.pow(s, 0.6) * Math.PI));
+        };
+
         kctx.save();
         kctx.translate(k.x, k.y);
-        kctx.rotate(k.angle);
-        kctx.filter = 'blur(2px)';
-        kctx.globalAlpha = 0.82;
-        // warm glow haze bleeding into the water
-        kctx.shadowColor = 'rgba(255,120,44,0.5)';
-        kctx.shadowBlur = L * 0.3;
+        kctx.rotate(k.angle + Math.sin(k.phase) * 0.04); // subtle head-wag with the beat
+        kctx.globalAlpha = 0.85;
+        kctx.lineJoin = 'round';
 
-        // ---- caudal fin: soft fork trailing behind, blends into the body ----
-        kctx.beginPath();
-        kctx.moveTo(-L * 0.32, bend * 0.4);
-        kctx.quadraticCurveTo(-L * 0.55, tail - L * 0.04, -L * 0.66, tail - L * 0.17);
-        kctx.quadraticCurveTo(-L * 0.5, tail, -L * 0.66, tail + L * 0.17);
-        kctx.quadraticCurveTo(-L * 0.55, tail + L * 0.04, -L * 0.32, bend * 0.4);
-        kctx.closePath();
-        kctx.fillStyle = `rgba(${core},0.45)`;
-        kctx.fill();
+        // ---- caudal fin: wide translucent fork, swung by the tail-tip slope ----
+        {
+          const hx = sx[N - 1];
+          const hy = sy[N - 1];
+          const ang = Math.atan2(sy[N - 1] - sy[N - 4], sx[N - 1] - sx[N - 4]);
+          const dx = Math.cos(ang);
+          const dy = Math.sin(ang);
+          const ex = -dy;
+          const ey = dx;
+          const fl = L * 0.36;
+          const sp = L * 0.26 * (0.8 + 0.35 * Math.sin(k.phase - 1.5));
+          const tx = hx + dx * fl;
+          const ty = hy + dy * fl;
+          const kx = hx + dx * fl * 0.46;
+          const ky = hy + dy * fl * 0.46;
+          kctx.beginPath();
+          kctx.moveTo(hx, hy);
+          kctx.quadraticCurveTo(hx + dx * fl * 0.5 + ex * sp * 0.6, hy + dy * fl * 0.5 + ey * sp * 0.6, tx + ex * sp, ty + ey * sp);
+          kctx.quadraticCurveTo(kx + ex * sp * 0.25, ky + ey * sp * 0.25, kx, ky);
+          kctx.quadraticCurveTo(tx - ex * sp * 0.25, ty - ey * sp * 0.25, tx - ex * sp, ty - ey * sp);
+          kctx.quadraticCurveTo(hx + dx * fl * 0.5 - ex * sp * 0.6, hy + dy * fl * 0.5 - ey * sp * 0.6, hx, hy);
+          kctx.closePath();
+          const fg = kctx.createLinearGradient(hx, hy, tx, ty);
+          fg.addColorStop(0, `rgba(${core},0.55)`);
+          fg.addColorStop(1, 'rgba(255,150,80,0)');
+          kctx.fillStyle = fg;
+          kctx.fill();
+        }
 
-        // ---- body: smooth teardrop — crisp red head → warm rim → smeary tail ----
-        const bg = kctx.createLinearGradient(L * 0.5, 0, -L * 0.42, 0);
-        bg.addColorStop(0, 'rgba(255,118,52,0.9)');   // head tip catches the light
-        bg.addColorStop(0.16, `rgba(${core},1)`);
-        bg.addColorStop(0.55, `rgba(${core},1)`);
-        bg.addColorStop(0.82, 'rgba(246,78,30,0.78)');
-        bg.addColorStop(1, 'rgba(255,150,70,0)');     // tail dissolves into motion blur
+        // ---- dorsal fin: low translucent sail over the mid-back ----
+        {
+          const a = Math.round(0.28 * (N - 1));
+          const b = Math.round(0.6 * (N - 1));
+          kctx.beginPath();
+          kctx.moveTo(sx[a] + nX[a] * halfW(a) * 0.5, sy[a] + nY[a] * halfW(a) * 0.5);
+          for (let i = a; i <= b; i++) {
+            const lift = halfW(i) * 0.5 + L * 0.055 * Math.sin(((i - a) / (b - a)) * Math.PI);
+            kctx.lineTo(sx[i] + nX[i] * lift, sy[i] + nY[i] * lift);
+          }
+          for (let i = b; i >= a; i--) {
+            kctx.lineTo(sx[i] + nX[i] * halfW(i) * 0.5, sy[i] + nY[i] * halfW(i) * 0.5);
+          }
+          kctx.closePath();
+          kctx.fillStyle = `rgba(${core},0.32)`;
+          kctx.fill();
+        }
+
+        // ---- pectoral fins: small flutter flappers behind the head ----
+        {
+          const gi = Math.round(0.22 * (N - 1));
+          for (const side of [-1, 1] as const) {
+            const flu = 0.55 + 0.45 * Math.sin(k.phase * 0.8 + (side > 0 ? 0 : Math.PI));
+            const ox = nX[gi] * side;
+            const oy = nY[gi] * side;
+            const ax = sx[gi] + ox * halfW(gi) * 0.7;
+            const ay = sy[gi] + oy * halfW(gi) * 0.7;
+            const tx = ax - L * (0.09 + 0.05 * flu) + ox * L * (0.05 + 0.05 * flu);
+            const ty = ay + oy * L * (0.09 + 0.05 * flu);
+            kctx.beginPath();
+            kctx.moveTo(ax, ay);
+            kctx.quadraticCurveTo(ax + ox * L * 0.02 - L * 0.01, ay + oy * L * 0.03, tx, ty);
+            kctx.quadraticCurveTo(ax - L * 0.07 + ox * L * 0.01, ay + oy * L * 0.01, ax - L * 0.03, ay);
+            kctx.closePath();
+            kctx.fillStyle = 'rgba(255,140,80,0.3)';
+            kctx.fill();
+          }
+        }
+
+        // ---- body: filled ribbon around the undulating spine ----
+        //      the one place the warm glow-haze shadow is worth paying for
+        const bg = kctx.createLinearGradient(L * 0.5, 0, -L * 0.5, 0);
+        bg.addColorStop(0, 'rgba(255,120,56,0.92)');   // lit head
+        bg.addColorStop(0.14, `rgba(${core},1)`);
+        bg.addColorStop(0.6, `rgba(${core},1)`);
+        bg.addColorStop(0.86, 'rgba(244,78,30,0.8)');
+        bg.addColorStop(1, 'rgba(255,150,70,0)');       // tail melts into blur
         kctx.fillStyle = bg;
+        kctx.shadowColor = 'rgba(255,120,44,0.5)';
+        kctx.shadowBlur = L * 0.32;
         kctx.beginPath();
-        kctx.moveTo(L * 0.5, bend);
-        kctx.quadraticCurveTo(L * 0.14, -L * 0.17 + bend, -L * 0.2, -L * 0.07 + bend * 0.5);
-        kctx.quadraticCurveTo(-L * 0.36, 0, -L * 0.2, L * 0.07 + bend * 0.5);
-        kctx.quadraticCurveTo(L * 0.14, L * 0.17 + bend, L * 0.5, bend);
+        kctx.moveTo(sx[0] + nX[0] * halfW(0), sy[0] + nY[0] * halfW(0));
+        for (let i = 1; i < N; i++) kctx.lineTo(sx[i] + nX[i] * halfW(i), sy[i] + nY[i] * halfW(i));
+        for (let i = N - 1; i >= 0; i--) kctx.lineTo(sx[i] - nX[i] * halfW(i), sy[i] - nY[i] * halfW(i));
         kctx.closePath();
         kctx.fill();
-
-        // ---- warm chromatic rim along the trailing lower edge ----
         kctx.shadowBlur = 0;
-        kctx.globalAlpha = 0.5;
-        kctx.strokeStyle = 'rgba(255,196,96,0.6)';
-        kctx.lineWidth = Math.max(1.5, L * 0.028);
+
+        // ---- head highlight + warm dorsal rim ----
+        kctx.globalAlpha = 0.55;
+        kctx.fillStyle = 'rgba(255,190,120,0.5)';
+        kctx.beginPath();
+        kctx.ellipse(sx[1] - L * 0.02, sy[1], L * 0.07, L * 0.05, 0, 0, Math.PI * 2);
+        kctx.fill();
+
+        kctx.strokeStyle = 'rgba(255,198,110,0.55)';
+        kctx.lineWidth = Math.max(1.5, L * 0.026);
         kctx.lineCap = 'round';
         kctx.beginPath();
-        kctx.moveTo(L * 0.4, bend + L * 0.02);
-        kctx.quadraticCurveTo(L * 0.08, L * 0.18 + bend, -L * 0.22, L * 0.07 + bend * 0.5);
+        kctx.moveTo(sx[2] + nX[2] * halfW(2), sy[2] + nY[2] * halfW(2));
+        for (let i = 3; i < N - 2; i++) kctx.lineTo(sx[i] + nX[i] * halfW(i), sy[i] + nY[i] * halfW(i));
         kctx.stroke();
 
         kctx.restore();
