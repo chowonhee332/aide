@@ -1528,7 +1528,7 @@ export default function Home() {
                 variant="ghost"
                 className="h-auto p-0 hover:bg-transparent"
               >
-                <img src="/logo_aide_wh.png" alt="Aide" style={{ height: 32, width: 'auto', display: 'block', objectFit: 'contain' }} />
+                <img src="/logo_aide_wh.png" alt="Aide" style={{ height: 35, width: 'auto', display: 'block', objectFit: 'contain' }} />
               </Button>
             </div>
 
@@ -1537,7 +1537,7 @@ export default function Home() {
               <Button
                 onClick={() => setBuilderOpen(true)}
                 variant="ghost"
-                className="text-[var(--aui-text-strong)] hover:bg-white/25"
+                className="text-white hover:bg-white/15"
               >
                 Playground
               </Button>
@@ -1556,11 +1556,11 @@ export default function Home() {
                 <MenuTrigger
                   aria-label="메뉴"
                   title="메뉴"
-                  className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'text-[var(--aui-text-strong)] hover:bg-white/25' })}
+                  className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'text-white hover:bg-white/15' })}
                 >
                   <MenuIcon size={20} />
                 </MenuTrigger>
-                <MenuContent>
+                <MenuContent className="min-w-[184px] bg-white p-1.5">
                   <MenuItem onClick={() => { setUsageLoading(true); setUsageModalOpen(true) }}>
                     <Coins size={16} /> Price
                   </MenuItem>
@@ -1582,7 +1582,7 @@ export default function Home() {
 
         <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 pt-24" style={{ paddingBottom: '100px' }}>
           <h1 style={{
-            fontSize: 'clamp(40px, 6.5vw, var(--aui-type-display-hero-size))', fontWeight: "var(--aui-type-display-hero-weight)", color: 'var(--aui-on-dark)',
+            fontSize: 'clamp(52px, 8.5vw, 92px)', fontWeight: "var(--aui-type-display-hero-weight)", color: 'var(--aui-on-dark)',
             textAlign: 'center', lineHeight: "var(--aui-type-display-hero-leading)", letterSpacing: "var(--aui-type-display-hero-tracking)",
             fontFamily: 'inherit',
             marginBottom: '24px', maxWidth: 'var(--aui-hero-title-max)',
