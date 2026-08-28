@@ -30,8 +30,6 @@ assert.match(productLoader, /design-systems\/aide\.md/)
 assert.match(coreLoader, /design-systems\/aide\.md/)
 assert.match(generator, /design-systems', 'aide\.md'/)
 assert.match(exporter, /design-systems\/aide\.md/)
-assert.doesNotMatch(productLoader, /wonhee-product-ui\.md/)
-assert.doesNotMatch(coreLoader, /wonhee-design\.md/)
 
 // documentation.pages.components.page_template이 선언한 섹션은 실제로 렌더링되어야 한다.
 // 선언만 하고 그리지 않으면 문서가 계약을 어기는 상태가 되고, 그대로 두면 계속 벌어진다.

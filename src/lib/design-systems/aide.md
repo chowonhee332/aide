@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: Aide Design System
-description: Aide default DESIGN.md. Based on Wanted Montage tokens, optimized for AI-generated HTML screens. Use Aide brand identity, Google Material Symbols, compact mobile-app rhythm, fixed top navigation, scrollable content, bottom navigation or bottom action area, content-dense sections, and stable variant archetype fidelity.
+description: Aide unified design-system contract for product UI, documentation, Playground, and default generated screens. Use Aide brand identity, Google Material Symbols, compact product rhythm, deterministic navigation and shell assembly, content-dense sections, and stable variant archetype fidelity.
 principles:
   - "App-native, not landing-page-first: build the usable product screen immediately."
   - "Compact and content-dense: every screen must feel like a real service with enough data, states, and actions."
@@ -12,10 +12,7 @@ brand:
   name: Aide
   logoSlot: <span class="aide-logo-slot" aria-label="brand logo"></span>
   forbiddenNames:
-    - Wanted
-    - Montage
     - WDS
-    - 원티드
   iconSystem: Google Material Symbols only
   iconExample: <span class="material-symbols-rounded">home</span>
 schema_version: "3.2"
@@ -348,13 +345,13 @@ contract:
       $type: color
       primary:
         $value: "#0066FF"
-        $description: Montage Primary Normal — primary action, selected control, focus indicator
+        $description: Primary Normal — primary action, selected control, focus indicator
       primary-strong:
         $value: "#005EEB"
-        $description: Montage Primary Strong — hover emphasis
+        $description: Primary Strong — hover emphasis
       primary-pressed:
         $value: "#0054D1"
-        $description: Montage Primary Heavy — pressed emphasis
+        $description: Primary Heavy — pressed emphasis
       primary-soft:
         $value: rgba(0, 102, 255, 0.08)
         $description: Selected and informative tinted surface
@@ -363,37 +360,37 @@ contract:
         $description: Text and icon on primary action
       page:
         $value: "#F7F7F8"
-        $description: Montage Background Normal Alternative — workspace and application background
+        $description: Background Normal Alternative — workspace and application background
       surface:
         $value: "#FFFFFF"
         $description: Panel, card, control, dialog
       surface-muted:
         $value: rgba(112, 115, 124, 0.08)
-        $description: Montage Fill Normal — grouped region and secondary control
+        $description: Fill Normal — grouped region and secondary control
       surface-raised:
         $value: rgba(255, 255, 255, 0.96)
         $description: Floating toolbar and panel chrome
       text:
         $value: "#171719"
-        $description: Montage Label Normal — primary text
+        $description: Label Normal — primary text
       text-muted:
         $value: rgba(55, 56, 60, 0.61)
-        $description: Montage Label Alternative — description and metadata
+        $description: Label Alternative — description and metadata
       text-assistive:
         $value: rgba(55, 56, 60, 0.28)
-        $description: Montage Label Assistive — placeholder and nonessential hint
+        $description: Label Assistive — placeholder and nonessential hint
       text-disabled:
         $value: rgba(55, 56, 60, 0.16)
-        $description: Montage Label Disable — disabled content
+        $description: Label Disable — disabled content
       border:
         $value: rgba(112, 115, 124, 0.22)
-        $description: Montage Line Normal Normal — control and panel boundary
+        $description: Line Normal Normal — control and panel boundary
       border-subtle:
         $value: rgba(112, 115, 124, 0.08)
-        $description: Montage Line Normal Alternative — divider and quiet boundary
+        $description: Line Normal Alternative — divider and quiet boundary
       fill-subtle:
         $value: rgba(112, 115, 124, 0.05)
-        $description: Montage low-emphasis component fill
+        $description: low-emphasis component fill
       positive:
         $value: "#00BF40"
         $description: Success icon and accent
@@ -414,7 +411,7 @@ contract:
         $description: Focus ring and subtle state layer
       primary-outline:
         $value: rgba(0, 102, 255, 0.43)
-        $description: Montage selected outline emphasis
+        $description: selected outline emphasis
       primary-disabled:
         $value: "#F4F4F5"
         $description: Disabled primary control only
@@ -511,7 +508,7 @@ contract:
           fontWeight: "700"
           lineHeight: 44px
           letterSpacing: -0.0253em
-        $description: Montage Title 1 — product introduction and compact display
+        $description: Title 1 — product introduction and compact display
       page-title:
         $value:
           fontFamily: var(--font-pretendard)
@@ -519,7 +516,7 @@ contract:
           fontWeight: "700"
           lineHeight: 32px
           letterSpacing: -0.023em
-        $description: Montage Title 3 — page title
+        $description: Title 3 — page title
       section-title:
         $value:
           fontFamily: var(--font-pretendard)
@@ -527,7 +524,7 @@ contract:
           fontWeight: "700"
           lineHeight: 26px
           letterSpacing: -0.002em
-        $description: Montage Headline 1 — section title
+        $description: Headline 1 — section title
       heading:
         $value:
           fontFamily: var(--font-pretendard)
@@ -535,7 +532,7 @@ contract:
           fontWeight: "700"
           lineHeight: 28px
           letterSpacing: -0.012em
-        $description: Montage Heading 2 — component heading
+        $description: Heading 2 — component heading
       body:
         $value:
           fontFamily: var(--font-pretendard)
@@ -543,7 +540,7 @@ contract:
           fontWeight: "400"
           lineHeight: 22px
           letterSpacing: 0.0096em
-        $description: Montage Body 2 Normal — default product body
+        $description: Body 2 Normal — default product body
       body-small:
         $value:
           fontFamily: var(--font-pretendard)
@@ -551,7 +548,7 @@ contract:
           fontWeight: "400"
           lineHeight: 20px
           letterSpacing: 0.0145em
-        $description: Montage Label 1 Normal — compact body
+        $description: Label 1 Normal — compact body
       label:
         $value:
           fontFamily: var(--font-pretendard)
@@ -559,7 +556,7 @@ contract:
           fontWeight: "600"
           lineHeight: 20px
           letterSpacing: 0.0145em
-        $description: Montage Label 1 Normal — control label
+        $description: Label 1 Normal — control label
       caption:
         $value:
           fontFamily: var(--font-pretendard)
@@ -567,7 +564,7 @@ contract:
           fontWeight: "400"
           lineHeight: 16px
           letterSpacing: 0.0252em
-        $description: Montage Caption 1 — metadata and supporting copy
+        $description: Caption 1 — metadata and supporting copy
       display-hero:
         $value:
           fontFamily: var(--font-pretendard)
@@ -575,7 +572,7 @@ contract:
           fontWeight: "800"
           lineHeight: 72px
           letterSpacing: -0.0319em
-        $description: Montage Display 1 — landing hero maximum
+        $description: Display 1 — landing hero maximum
       display-large:
         $value:
           fontFamily: var(--font-pretendard)
@@ -583,7 +580,7 @@ contract:
           fontWeight: "700"
           lineHeight: 52px
           letterSpacing: -0.0282em
-        $description: Montage Display 2 — showcase and marketing hero
+        $description: Display 2 — showcase and marketing hero
       compact:
         $value:
           fontFamily: var(--font-pretendard)
@@ -591,7 +588,7 @@ contract:
           fontWeight: "600"
           lineHeight: 18px
           letterSpacing: 0.0194em
-        $description: Montage Label 2 — compact desktop control
+        $description: Label 2 — compact desktop control
       micro:
         $value:
           fontFamily: var(--font-pretendard)
@@ -599,7 +596,7 @@ contract:
           fontWeight: "500"
           lineHeight: 14px
           letterSpacing: 0.0311em
-        $description: Montage Caption 2 — dense tool hint and item description
+        $description: Caption 2 — dense tool hint and item description
       meta:
         $value:
           fontFamily: var(--font-pretendard)
@@ -607,7 +604,7 @@ contract:
           fontWeight: "700"
           lineHeight: 14px
           letterSpacing: 0.0311em
-        $description: Montage Caption 2 emphasized — metadata badge and source label
+        $description: Caption 2 emphasized — metadata badge and source label
       nano:
         $value:
           fontFamily: var(--font-pretendard)
@@ -615,7 +612,7 @@ contract:
           fontWeight: "600"
           lineHeight: 14px
           letterSpacing: 0.0311em
-        $description: Legacy alias of Montage Caption 2; 11px is the minimum UI type size
+        $description: Legacy alias of Caption 2; 11px is the minimum UI type size
     radius:
       $type: dimension
       # 4px 간격의 한 스케일. control이 8px 기준이고 위로 두 단계가 카드와 오버레이다.
@@ -624,7 +621,7 @@ contract:
         $description: Compact toolbar control
       control:
         $value: 10px
-        $description: Montage default button and field radius
+        $description: default button and field radius
       card:
         $value: 16px
         $description: Card and grouped content surface
@@ -638,16 +635,16 @@ contract:
       $type: shadow
       resting:
         $value: 0 1px 2px -1px rgba(23, 23, 23, 0.10)
-        $description: Montage Shadow Normal XSmall — subtle resting separation
+        $description: Shadow Normal XSmall — subtle resting separation
       raised:
         $value: 0 2px 4px -2px rgba(23, 23, 23, 0.06), 0 4px 6px -1px rgba(23, 23, 23, 0.06)
-        $description: Montage Shadow Normal Small — card and hovering surface
+        $description: Shadow Normal Small — card and hovering surface
       floating:
         $value: 0 4px 6px -2px rgba(23, 23, 23, 0.07), 0 10px 15px -3px rgba(23, 23, 23, 0.07)
-        $description: Montage Shadow Normal Medium — dropdown, popover, drag preview
+        $description: Shadow Normal Medium — dropdown, popover, drag preview
       modal:
         $value: 0 10px 15px -5px rgba(23, 23, 23, 0.10), 0 24px 38px -10px rgba(23, 23, 23, 0.12)
-        $description: Montage Shadow Normal XLarge — dialog and sheet
+        $description: Shadow Normal XLarge — dialog and sheet
       card:
         $value: 0 2px 4px -2px rgba(23, 23, 23, 0.06), 0 4px 6px -1px rgba(23, 23, 23, 0.06)
         $description: Raised card only; plain cards remain borderless
@@ -1102,6 +1099,20 @@ contract:
         - focus-visible
         - disabled
         - loading
+      behavior:
+        loading:
+          - preserve the button width and readable label context
+          - set aria-busy and prevent duplicate activation
+          - announce completion or failure outside the button when the result is not otherwise visible
+        destructive:
+          - use destructive only for actions that remove, revoke, or irreversibly discard
+          - require confirmation when the effect is difficult to undo or affects shared work
+        toggle:
+          - use aria-pressed and a stable label when one button switches a persistent state
+          - use switch instead when the control represents an immediate on-or-off setting
+        action-group:
+          - order recovery or cancel before the primary action in left-to-right layouts
+          - keep destructive and primary actions visually distinct when both are required
       responsive:
         compact: touch or prominent
         medium: default or touch
@@ -1112,6 +1123,9 @@ contract:
         - MUST use verb-first concise label
         - MUST NOT place two primary actions in one local action group
         - MUST NOT present more than one primary action in a view
+        - loading MUST preserve enough label context to identify the action
+        - destructive MUST NOT be used merely to make an action visually prominent
+        - toggle buttons MUST expose pressed state programmatically
     icon-button:
       purpose: trigger one action with an icon alone
       anatomy:
@@ -1409,11 +1423,37 @@ contract:
         - empty
         - error
         - populated
+      behavior:
+        sorting:
+          - sortable headers MUST be buttons and expose ascending, descending, or none
+          - sorting MUST preserve filters and row selection unless the data itself changes
+        filtering:
+          - active filters MUST remain visible, removable, and reflected in the result count
+          - no-result after filtering MUST preserve the filters and provide a clear-all action
+        selection:
+          - select-all MUST state whether it applies to the page or the full result set
+          - bulk actions MUST appear only when at least one row is selected
+          - selection MUST survive sorting and pagination only when rows have stable identifiers
+        scrolling:
+          - sticky headers MUST preserve column alignment and accessible header relationships
+          - virtualization MUST retain keyboard reachability and announce the represented row count
+      alignment:
+        text: start
+        numeric: end with tabular figures
+        status: start unless comparison requires a centered matrix
+        actions: end
+      density:
+        compact: operational data with frequent scanning
+        default: general product data
+        comfortable: descriptive or touch-first rows
       rules:
         - MUST provide a caption
         - numeric values SHOULD use tabular figures
         - sortable headers MUST expose direction
         - MUST NOT drop columns on compact viewports without an alternative view
+        - row selection MUST have an accessible name independent of row position
+        - bulk actions MUST state the selected item count
+        - sticky or virtualized tables MUST preserve header-to-cell relationships
     navigation:
       purpose: move among primary or secondary product destinations
       variants:
@@ -1642,9 +1682,18 @@ contract:
         - current step MUST use aria-current
         - step labels SHOULD remain visible on compact screens
         - MUST NOT allow skipping a step that later steps depend on
+        - SHOULD use three to seven visible steps; longer flows SHOULD group milestones
+        - labels SHOULD be concise noun or verb phrases and MUST NOT wrap beyond two lines
+        - completed steps MAY be clickable only when returning does not invalidate dependent work
+        - compact layouts SHOULD show current step, total step count, and the next label when all labels do not fit
       variants:
         - horizontal
         - vertical
+        - compact
+      interaction:
+        clickable-step: completed and revisitable only
+        current-step: not clickable
+        upcoming-step: not clickable unless the flow explicitly allows non-linear navigation
     list-section:
       purpose: group a titled set of related list rows
       anatomy:
@@ -1828,9 +1877,24 @@ contract:
         - filled
         - loading
         - disabled
+        - no-results
+        - error
+      lifecycle:
+        idle: show scope, recent queries, or suggestions only when they are useful
+        typing: preserve the query and distinguish local filtering from submitted search
+        loading: retain previous results when they remain valid and mark the region busy
+        results: announce the result count and keep active filters visible
+        no-results: repeat the query, preserve filters, and offer correction or clear-filter actions
+        error: preserve query and filters and offer a retry
+      coordination:
+        - query and filters MUST share one visible result count
+        - clearing the query MUST NOT silently clear filters
+        - recent queries MUST be user-relevant, removable, and omitted for sensitive input
       rules:
         - MUST show clear action when a non-empty query can be cleared
         - MUST NOT clear the query on result updates
+        - result changes SHOULD use a polite live region without moving focus
+        - no-results MUST distinguish an unmatched query from an empty data set
     checkbox:
       anatomy:
         - control
@@ -2015,6 +2079,10 @@ contract:
         - success
         - warning
         - error
+      placements:
+        page-banner: service-wide or page-wide condition affecting most content
+        section-message: persistent condition affecting one nearby region
+        field-message: validation tied to one input; use field error instead of alert
       usage:
         when:
           - the status must stay visible in place
@@ -2028,6 +2096,8 @@ contract:
       rules:
         - MUST combine icon or explicit label with color
         - MUST NOT auto-dismiss
+        - page banners MUST appear before the affected page content in reading order
+        - urgent errors requiring immediate attention MUST use role alert; ordinary updates SHOULD use role status
     toast:
       purpose: confirm a completed action with a brief temporary message
       anatomy:
@@ -2050,6 +2120,12 @@ contract:
         - critical errors MUST remain visible elsewhere until resolved
         - MUST NOT stack more than three messages at once
         - MUST NOT carry the only control for a required action
+        - SHOULD use a polite live region and MUST NOT move focus on arrival
+        - repeated confirmations SHOULD update or coalesce instead of flooding the stack
+      selection:
+        toast: brief confirmation that needs no response
+        alert: persistent status tied to visible content
+        dialog: blocking decision or required response
     loading:
       purpose: hold attention while an operation is in flight
       anatomy:
@@ -2059,6 +2135,20 @@ contract:
         - spinner
         - progress
         - skeleton
+      skeleton:
+        shapes:
+          text: match the expected line count and approximate line lengths
+          image: match the final media aspect ratio and radius
+          list-or-table: repeat the final row rhythm without implying real values
+          card: mirror only stable structural regions
+        motion:
+          default: subtle pulse or shimmer with no layout movement
+          reduced-motion: static tonal placeholder with no shimmer
+        avoid_when:
+          - content is already visible and usable
+          - the final structure is unknown or likely to shift substantially
+          - the wait is an explicit background operation better described by status text
+          - an error or empty state is known
       usage:
         when:
           - the duration is unknown and content is not ready
@@ -2070,6 +2160,9 @@ contract:
         - MUST describe the operation when waiting is not obvious
         - skeleton SHOULD mirror final content structure
         - MUST NOT replace content that is already visible and usable
+        - loading regions MUST expose aria-busy and a readable status when the wait is meaningful
+        - animated indicators MUST honor reduced-motion preferences
+        - skeleton MUST NOT include convincing fake data or interactive controls
     empty-state:
       purpose: explain an absent result and offer one next action
       anatomy:
@@ -2077,6 +2170,19 @@ contract:
         - title
         - description
         - optional-primary-action
+      variants:
+        first-use:
+          message: explain the value and the first meaningful action
+          action: one creation or setup action
+        no-results:
+          message: repeat the search intent and suggest a correction
+          action: clear or revise the query
+        filtered-empty:
+          message: explain that active filters exclude all items
+          action: clear all filters or remove a named filter
+        permission-empty:
+          message: explain the missing access without implying that no data exists
+          action: request access or contact the responsible role when available
       usage:
         when:
           - a container has no content yet
@@ -2088,6 +2194,8 @@ contract:
       rules:
         - SHOULD explain what is absent and provide one useful next action
         - MUST NOT be shown while data is still loading
+        - MUST distinguish absent data from failed loading, hidden data, and filtered results
+        - optional visual MUST support the message and MUST NOT dominate the next action
     dialog:
       purpose: interrupt the flow for a focused decision or task
       anatomy:
@@ -2759,10 +2867,34 @@ contract:
         - complete
         - error
         - disabled
+        - analyzing
+        - partial
+      analysis:
+        accepted-input:
+          - show supported file types, per-file size, total size, and file-count limits before selection
+          - identify encrypted, corrupted, duplicate, or unsupported files separately
+        privacy:
+          - state how sensitive files are processed before upload
+          - warn before sending files that may contain personal or confidential information when policy requires it
+        per-file-lifecycle:
+          - queued
+          - uploading
+          - analyzing
+          - needs-review
+          - complete
+          - error
+        recovery:
+          - preserve successful files when another file fails
+          - allow retry or replacement for the affected file only
+          - explain whether reupload replaces or adds to existing analysis
+          - partial completion MUST summarize accepted, failed, and review-required files
       rules:
         - MUST state accepted types and size limits
         - MUST expose upload progress and failures as text
         - MUST allow removing an attached file
+        - drag and drop MUST have an equivalent browse action operable by keyboard
+        - analysis status MUST be exposed per file and announced without stealing focus
+        - removing or replacing a file MUST explain any downstream analysis that will be invalidated
     anchor:
       purpose: navigate to another document or location
       anatomy:
@@ -3108,6 +3240,147 @@ contract:
         - feature-sections
         - final-cta
         - footer
+    prompt-to-variants:
+      purpose: turn one grounded brief into comparable design directions without changing the shared content basis
+      recipe:
+        - context-summary
+        - prompt-composer
+        - generation-process
+        - variant-set
+        - comparison-entry
+      states:
+        - ready
+        - generating
+        - partial
+        - complete
+        - error
+      composition:
+        prompt-composer:
+          - field-or-textarea
+          - optional-file-uploader
+          - contextual-actions
+          - submit-action
+        generation-process:
+          - loading-or-progress
+          - current-step-label
+          - optional-cancel-action
+      rules:
+        - MUST disclose which brief, files, and design system are in context
+        - variants MUST share the same contentSeed and requirement basis
+        - partial success MUST preserve completed variants and identify unfinished variants
+        - MUST NOT present placeholder cards or invented palettes as generated results
+      accessibility:
+        - generation updates MUST use a polite live region
+        - errors MUST identify the failed step and a recoverable next action
+    variant-comparison:
+      purpose: compare generated directions on equivalent content and select one direction for expansion
+      recipe:
+        - comparison-header
+        - equivalent-variant-previews
+        - difference-summary
+        - selection-control
+        - primary-selection-action
+      states:
+        - ready
+        - selected
+        - unavailable-variant
+      rules:
+        - MUST preserve equal viewport, content scope, and shell treatment across compared variants
+        - differences SHOULD explain hierarchy, density, layout, and visual direction rather than model identity
+        - selection MUST remain reversible until prototype expansion starts
+        - MUST NOT rank a variant using fabricated evidence
+      accessibility:
+        - preview labels MUST have accessible names independent of color
+        - selection MUST expose the selected variant programmatically
+    selection-to-prototype:
+      purpose: expand the selected direction into additional screens while preserving its home screen and deterministic shell
+      recipe:
+        - selected-variant-summary
+        - screen-plan
+        - expansion-process
+        - generated-screen-set
+        - validation-summary
+      states:
+        - planning
+        - generating
+        - partial
+        - validating
+        - complete
+        - error
+      rules:
+        - selected home HTML MUST remain unchanged
+        - shell assembly MUST use deterministic code
+        - failed screens MUST be retryable without regenerating completed screens
+        - validation findings MUST link to the affected screen or requirement
+      accessibility:
+        - progress and validation changes MUST be announced without stealing focus
+        - focus MUST move to the first actionable error only after an explicit review action
+    file-analysis:
+      purpose: inspect uploaded project material and expose what was accepted, excluded, or needs review before generation
+      recipe:
+        - file-uploader
+        - file-list
+        - analysis-process
+        - extraction-summary
+        - review-required-items
+      states:
+        - empty
+        - uploading
+        - analyzing
+        - partial
+        - complete
+        - error
+      rules:
+        - MUST state accepted formats and size limits before upload
+        - MUST preserve successfully analyzed files when another file fails
+        - extracted requirements MUST retain source labels
+        - sensitive or unsupported content MUST show a concrete next action
+      accessibility:
+        - per-file status MUST be available as text
+        - upload and analysis progress MUST not be communicated by animation alone
+    requirement-traceability:
+      purpose: connect source requirements to screens, backlog items, acceptance criteria, and validation evidence
+      recipe:
+        - requirement-summary
+        - filter-and-search
+        - trace-table-or-list
+        - coverage-status
+        - unresolved-items
+      states:
+        - loading
+        - complete
+        - partial
+        - uncovered
+        - error
+      rules:
+        - every derived item MUST retain a source requirement identifier
+        - coverage status MUST distinguish covered, partial, unresolved, and out-of-scope
+        - compact layouts MUST provide a prioritized list alternative to a wide table
+        - MUST NOT infer final acceptance for an unresolved requirement
+      accessibility:
+        - status MUST use text in addition to color
+        - sortable trace columns MUST expose direction
+    generation-recovery:
+      purpose: recover from a failed or interrupted generation step without losing valid input or completed output
+      recipe:
+        - failure-summary
+        - preserved-work-summary
+        - affected-step
+        - recovery-actions
+        - optional-diagnostic-details
+      states:
+        - recoverable
+        - retrying
+        - blocked
+        - recovered
+      rules:
+        - MUST preserve original input and completed outputs
+        - retry MUST target only the failed or invalidated step
+        - blocked state MUST explain what user or external action is required
+        - diagnostic details MUST be secondary to a clear recovery action
+      accessibility:
+        - failure MUST use an assertive announcement only when immediate action is required
+        - retry status MUST use a polite live region
   develop:
     source_order:
       - design-contract
@@ -3189,6 +3462,13 @@ contract:
       - prefer stable components and explicit composition over new markup
       - cite token and component ids in the generated plan
       - do not imitate reference-brand trade dress
+    interaction_principles:
+      - show which requirements, files, design system, and selected screens are in context
+      - state the current and completed generation steps without implying work that has not happened
+      - distinguish model-generated content from deterministic shell assembly
+      - expose uncertainty at the screen or requirement that needs human review
+      - preserve a selected variant instead of regenerating or rewriting it
+      - preserve valid input and completed output when retrying a failed step
     generation_output:
       required:
         - intent
@@ -3359,26 +3639,26 @@ contract:
         $description: Compact horizontal padding
       default-padding-x:
         $value: "{dimension.space-5}"
-        $description: Montage default button horizontal padding
+        $description: default button horizontal padding
       prominent-padding-x:
         $value: "{dimension.space-5}"
         $description: Prominent horizontal padding
       radius:
         $value: 10px
-        $description: Montage Button radius
+        $description: Button radius
       gap:
         $value: 5px
-        $description: Montage Button icon-to-label gap
+        $description: Button icon-to-label gap
     field:
       compact-height:
         $value: "{dimension.control-compact}"
         $description: Dense desktop field height
       default-height:
         $value: "{dimension.control-prominent}"
-        $description: Montage Text Field default height
+        $description: Text Field default height
       touch-height:
         $value: "{dimension.control-prominent}"
-        $description: Montage Text Field touch height
+        $description: Text Field touch height
       label-gap:
         $value: "{dimension.space-2}"
         $description: Field label to control spacing
@@ -3390,10 +3670,10 @@ contract:
         $description: Field control horizontal inset
       radius:
         $value: 12px
-        $description: Montage Text Field radius
+        $description: Text Field radius
       control-gap:
         $value: "{dimension.space-2}"
-        $description: Montage Text Field internal gap
+        $description: Text Field internal gap
       textarea-min-height:
         $value: 96px
         $description: Default multiline field minimum height
@@ -3425,26 +3705,26 @@ contract:
         $description: Card title to description gap
       radius:
         $value: 20px
-        $description: Montage Card radius
+        $description: Card radius
     chip:
       height:
         $value: 24px
-        $description: Montage Chip default height
+        $description: Chip default height
       padding-inline:
         $value: 7px
-        $description: Montage Chip horizontal padding
+        $description: Chip horizontal padding
       gap:
         $value: 2px
-        $description: Montage Chip content gap
+        $description: Chip content gap
       radius:
         $value: 6px
-        $description: Montage Chip radius
+        $description: Chip radius
       outlined-active-border:
         $value: "{color.primary-outline}"
-        $description: Montage Chip outlined active inset border
+        $description: Chip outlined active inset border
       solid-active-content:
         $value: "{color.page}"
-        $description: Montage Chip solid active foreground
+        $description: Chip solid active foreground
     overlay:
       dialog-width:
         $value: 420px
@@ -3478,13 +3758,13 @@ contract:
     selection:
       indicator-size:
         $value: 24px
-        $description: Montage Checkbox and Radio default indicator size
+        $description: Checkbox and Radio default indicator size
       compact-indicator-size:
         $value: 20px
-        $description: Montage compact Checkbox indicator size
+        $description: compact Checkbox indicator size
       checkbox-radius:
         $value: 5px
-        $description: Montage Checkbox radius
+        $description: Checkbox radius
       switch-width:
         $value: 40px
         $description: Switch track width
@@ -3645,13 +3925,13 @@ contract:
     tabs:
       trigger-padding-inline:
         $value: 0px
-        $description: Montage hug Tab has no internal horizontal inset
+        $description: hug Tab has no internal horizontal inset
       list-height:
         $value: 52px
-        $description: Montage Tab default height
+        $description: Tab default height
       list-gap:
         $value: "{dimension.space-5}"
-        $description: Montage hug Tab item gap
+        $description: hug Tab item gap
       indicator-height:
         $value: 2px
         $description: Selected tab indicator thickness
@@ -5059,6 +5339,12 @@ contract:
           - loading
           - empty
           - error-and-recovery
+          - prompt-to-variants
+          - variant-comparison
+          - selection-to-prototype
+          - file-analysis
+          - requirement-traceability
+          - generation-recovery
         page_template:
           - purpose
           - composition
@@ -5178,19 +5464,13 @@ contract:
 
 ## Source
 
-This DESIGN.md condenses Wanted Montage source code for Aide generation:
-
-- web: `montage-web/packages/wds-theme/src/theme`
-- android: `montage-android/library/src/main/res/values`
-- iOS: `montage-ios/packages/montage-mcp/data`
-
-The output must look like Aide, not Wanted/Montage. Use the Montage visual grammar only as the foundation.
+This contract is maintained as Aide's own canonical design-system source. Product code, documentation, Playground, and default generation must use the declared Aide tokens, components, patterns, and deterministic assembly rules without depending on another brand's identity or undocumented conventions.
 
 ## Must Follow
 
 1. Use `Aide` as the design system name.
 2. Put `aide-logo-slot` in the top app/header area.
-3. Use Google Material Symbols. Do not invent Montage icon names.
+3. Use Google Material Symbols. Do not invent icon names.
 4. Use a sticky/fixed top navigation on mobile.
 5. Make the content body scrollable.
 6. Add bottom padding when bottom nav or action area exists.
@@ -5530,7 +5810,7 @@ Aide UI에서 사용하는 한국어 카피의 어조와 규칙.
 
 ## Do Not
 
-- Do not use Montage icon names.
+- Do not use icon names.
 - Do not use logo text instead of `aide-logo-slot`.
 - Do not create a landing page unless explicitly requested.
 - Do not let content be clipped behind fixed bottom chrome.

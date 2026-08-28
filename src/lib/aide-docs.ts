@@ -84,6 +84,7 @@ const NAVIGATION_GROUPS: Record<string, Array<[string, string[]]>> = {
     patterns: [
       ['Screen patterns', ['landing', 'list-screen', 'detail-screen', 'form-screen', 'dashboard', 'workspace']],
       ['State patterns', ['loading', 'empty', 'error-and-recovery']],
+      ['AI workflows', ['prompt-to-variants', 'variant-comparison', 'selection-to-prototype', 'file-analysis', 'requirement-traceability', 'generation-recovery']],
     ],
     develop: [
       ['Setup', ['installation', 'react', 'css-variables']],

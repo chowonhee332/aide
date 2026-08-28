@@ -37,8 +37,8 @@ brief
 
 ## Playground contract
 
-- Playground의 기본 디자인 시스템은 `wonhee-design.md` + `wonhee-product-ui.md`이며 `/aide-ui`와 동일한 `component_registry`를 사용한다.
-- `src/lib/wonhee-playground-components.ts`는 현재 선택된 계약을 Builder schema와 정적 export serializer로 연결한다. 컴포넌트 ID와 category를 별도로 재정의하지 말라.
+- Playground의 기본 디자인 시스템은 `src/lib/design-systems/aide.md`이며 `/aide-ui`와 동일한 `component_registry`를 사용한다.
+- `src/lib/aide-playground-components.ts`는 현재 선택된 계약을 Builder schema와 정적 export serializer로 연결한다. 컴포넌트 ID와 category를 별도로 재정의하지 말라.
 - Playground의 팔레트·캔버스·drag overlay는 `/aide-ui`와 같은 `ComponentPreview` React renderer를 사용한다. 인터랙티브 preview를 `renderHTML` 또는 `dangerouslySetInnerHTML`로 되돌리지 말라.
 - `src/lib/builder-components.ts`는 활성 카탈로그 조회와 device defaults만 담당한다. 두 번째 레지스트리를 만들지 말라.
 - 향후 다른 DESIGN.md는 같은 `ComponentDefinition[]` adapter를 통해 교체하며 BuilderView에 디자인 시스템별 조건문을 추가하지 말라.
@@ -48,15 +48,14 @@ brief
 
 ## Design rules
 
-- Aide 서비스 UI의 canonical product token source는 `src/lib/design-systems/wonhee-product-ui.md`의 첫 번째 `yaml` fenced block에 있는 `contract.tokens`다. 구조·컴포넌트·반응형·접근성의 기반 계약은 `wonhee-design.md`다.
+- Aide 서비스 UI의 canonical source는 `src/lib/design-systems/aide.md`의 첫 번째 `yaml` fenced block이다. 제품 token은 `contract.tokens`와 `contract.component_tokens`, 구조·컴포넌트·반응형·접근성은 같은 contract의 해당 section을 따른다.
 - `src/lib/aide-product-tokens.ts`가 `contract.tokens`와 `contract.component_tokens`를 `--aui-*`로 컴파일하고 `src/app/layout.tsx`가 전역 `:root`에 주입한다. 제품 토큰과 공용 컴포넌트 크기·간격 값을 바꿀 때 `globals.css`나 JSX class만 수정하지 말라.
 - `src/app/globals.css`의 `--aui-*` 선언은 fallback과 framework semantic mapping이다. MD 계약과 같은 이름의 값은 런타임 주입값이 우선한다.
 - 새 token group이나 naming rule을 추가하면 `GROUP_PREFIX`, showcase grouping, `/aide-ui` 노출, 실제 consumer를 함께 확인한다. 알 수 없는 group을 조용히 무시하는 상태로 두지 말라.
 - `{group.token}` alias 해석은 `src/lib/design-token-alias.mjs` 하나뿐이다. runtime compiler(`aide-product-tokens.ts`)와 build script(`scripts/design-system.mjs`)가 같은 모듈을 import하므로 alias 로직을 어느 한쪽에 다시 구현하지 말라.
 - `contract.components`의 모든 항목은 `purpose`를 가진다. 새 컴포넌트를 추가하면 `purpose`를 함께 쓴다. `/aide-ui`와 `llms.txt`가 이 값을 그대로 노출한다.
-- `/aide-ui`의 token 값과 section navigation/title/description/order는 `wonhee-product-ui.md`의 `contract.visualization.sections`에서 파생한다. 새 section id에는 실제 shared primitive를 보여주는 renderer가 필요하며, MD manifest와 renderer가 다르면 production build를 실패시켜 불일치를 허용하지 않는다.
-- `src/lib/design-systems/aide.md`는 DESIGN.md를 선택하지 않았을 때 AI 생성 결과물에 적용되는 기본값이다. Aide 서비스 크롬에 적용하지 말라.
-- `src/lib/design-systems/wonhee-design.md`는 새 프로젝트에 복사 가능한 범용 responsive DESIGN.md다. 공통 anatomy·state·responsive·accessibility 기준을 정의하며, Aide 제품 chrome의 실제 값은 `wonhee-product-ui.md`가 우선한다.
+- `/aide-ui`의 token 값과 section navigation/title/description/order는 `aide.md`의 `contract.visualization.sections`에서 파생한다. 새 section id에는 실제 shared primitive를 보여주는 renderer가 필요하며, MD manifest와 renderer가 다르면 production build를 실패시켜 불일치를 허용하지 않는다.
+- `src/lib/design-systems/aide.md`는 Aide 제품 chrome, `/aide-ui`, Playground, DESIGN.md를 선택하지 않은 기본 생성 결과의 단일 원본이다. 업로드된 DESIGN.md는 고객 생성 화면에만 적용한다.
 - 화면 컴포넌트에 새 hex 색을 추가하지 말고 `--aui-*` 또는 `AIDE_UI`를 사용한다.
 - `AIDE_UI`는 runtime inline style용 TypeScript bridge다. 정적 스타일과 새 canonical token을 `src/lib/aide-ui.ts`에만 추가하지 말라.
 - `#ff385c`는 생성 시안의 기본 브랜드 색이다. Aide 앱 UI 색으로 치환하지 말라.
@@ -74,8 +73,9 @@ brief
 ## Docs
 
 - `AGENTS.md`가 Claude와 Codex를 포함한 프로젝트 agent 공통 규칙의 canonical source다. `CLAUDE.md`는 `@AGENTS.md`를 참조만 하며 별도 규칙을 중복해서 유지하지 않는다.
+- `MISSION.md`는 병렬 세션(기획·디자인·개발·검증)의 공동 목표와 상태 공유판이다. **규칙은 이 파일, 상태는 `MISSION.md`** 로 나눈다. 역할별 파일 소유권과 진행 상태는 거기서 확인한다.
 - `docs/archive/`: 과거 구현 계획·스펙. **현재 상태가 아니다.** 히스토리 참고용이며 현행 규칙과 충돌하면 이 파일이 우선한다.
-- `src/lib/design-systems/*.md`: 런타임 디자인 계약이다. `wonhee-product-ui.md`는 제품 chrome 전용이며 생성 preset이 아니다. 나머지 생성용 문서 중 `-test` 접미사 파일은 UI 선택지에서 자동 제외된다.
+- `src/lib/design-systems/*.md`: 런타임 디자인 계약이다. `aide.md`는 Aide 단일 원본이며, 나머지 생성용 문서 중 `-test` 접미사 파일은 UI 선택지에서 자동 제외된다.
 - `/aide-ui/llms.txt`는 AI retrieval 진입점이며 `src/app/aide-ui/llms.txt/route.ts`가 계약에서 전부 파생해 생성한다. 컴포넌트 목록이나 설명을 이 파일에 손으로 쓰지 말라. 섹션 구성은 `contract.ai.llms_txt.contents`가 정하고, 선언과 renderer가 다르면 빌드를 실패시킨다.
 - `src/lib/design-systems/generated/*`는 `npm run design:export` 산출물이다. `prebuild`가 매 빌드마다 재생성하므로 직접 수정하지 말라.
 

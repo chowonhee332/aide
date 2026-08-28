@@ -69,7 +69,7 @@ const RICH_META: Record<string, Omit<DesignPresetMeta, 'md'>> = {
   aide: {
     label: 'Aide',
     color: '#0066ff',
-    description: 'Aide 기본 디자인 시스템 — Montage 기반 토큰, Material Symbols, 모바일 앱 구조',
+    description: 'Aide 기본 디자인 시스템 — 통합 토큰, Material Symbols, 반응형 제품 구조',
     palette: [
       { name: 'Primary', hex: '#0066ff' },
       { name: 'Surface', hex: '#ffffff' },

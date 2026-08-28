@@ -123,15 +123,15 @@
       "$type": "color",
       "primary": {
         "$value": "#0066FF",
-        "$description": "Montage Primary Normal — primary action, selected control, focus indicator"
+        "$description": "Primary Normal — primary action, selected control, focus indicator"
       },
       "primary-strong": {
         "$value": "#005EEB",
-        "$description": "Montage Primary Strong — hover emphasis"
+        "$description": "Primary Strong — hover emphasis"
       },
       "primary-pressed": {
         "$value": "#0054D1",
-        "$description": "Montage Primary Heavy — pressed emphasis"
+        "$description": "Primary Heavy — pressed emphasis"
       },
       "primary-soft": {
         "$value": "rgba(0, 102, 255, 0.08)",
@@ -143,7 +143,7 @@
       },
       "page": {
         "$value": "#F7F7F8",
-        "$description": "Montage Background Normal Alternative — workspace and application background"
+        "$description": "Background Normal Alternative — workspace and application background"
       },
       "surface": {
         "$value": "#FFFFFF",
@@ -151,7 +151,7 @@
       },
       "surface-muted": {
         "$value": "rgba(112, 115, 124, 0.08)",
-        "$description": "Montage Fill Normal — grouped region and secondary control"
+        "$description": "Fill Normal — grouped region and secondary control"
       },
       "surface-raised": {
         "$value": "rgba(255, 255, 255, 0.96)",
@@ -159,31 +159,31 @@
       },
       "text": {
         "$value": "#171719",
-        "$description": "Montage Label Normal — primary text"
+        "$description": "Label Normal — primary text"
       },
       "text-muted": {
         "$value": "rgba(55, 56, 60, 0.61)",
-        "$description": "Montage Label Alternative — description and metadata"
+        "$description": "Label Alternative — description and metadata"
       },
       "text-assistive": {
         "$value": "rgba(55, 56, 60, 0.28)",
-        "$description": "Montage Label Assistive — placeholder and nonessential hint"
+        "$description": "Label Assistive — placeholder and nonessential hint"
       },
       "text-disabled": {
         "$value": "rgba(55, 56, 60, 0.16)",
-        "$description": "Montage Label Disable — disabled content"
+        "$description": "Label Disable — disabled content"
       },
       "border": {
         "$value": "rgba(112, 115, 124, 0.22)",
-        "$description": "Montage Line Normal Normal — control and panel boundary"
+        "$description": "Line Normal Normal — control and panel boundary"
       },
       "border-subtle": {
         "$value": "rgba(112, 115, 124, 0.08)",
-        "$description": "Montage Line Normal Alternative — divider and quiet boundary"
+        "$description": "Line Normal Alternative — divider and quiet boundary"
       },
       "fill-subtle": {
         "$value": "rgba(112, 115, 124, 0.05)",
-        "$description": "Montage low-emphasis component fill"
+        "$description": "low-emphasis component fill"
       },
       "positive": {
         "$value": "#00BF40",
@@ -211,7 +211,7 @@
       },
       "primary-outline": {
         "$value": "rgba(0, 102, 255, 0.43)",
-        "$description": "Montage selected outline emphasis"
+        "$description": "selected outline emphasis"
       },
       "primary-disabled": {
         "$value": "#F4F4F5",
@@ -340,7 +340,7 @@
           "lineHeight": "44px",
           "letterSpacing": "-0.0253em"
         },
-        "$description": "Montage Title 1 — product introduction and compact display"
+        "$description": "Title 1 — product introduction and compact display"
       },
       "page-title": {
         "$value": {
@@ -350,7 +350,7 @@
           "lineHeight": "32px",
           "letterSpacing": "-0.023em"
         },
-        "$description": "Montage Title 3 — page title"
+        "$description": "Title 3 — page title"
       },
       "section-title": {
         "$value": {
@@ -360,7 +360,7 @@
           "lineHeight": "26px",
           "letterSpacing": "-0.002em"
         },
-        "$description": "Montage Headline 1 — section title"
+        "$description": "Headline 1 — section title"
       },
       "heading": {
         "$value": {
@@ -370,7 +370,7 @@
           "lineHeight": "28px",
           "letterSpacing": "-0.012em"
         },
-        "$description": "Montage Heading 2 — component heading"
+        "$description": "Heading 2 — component heading"
       },
       "body": {
         "$value": {
@@ -380,7 +380,7 @@
           "lineHeight": "22px",
           "letterSpacing": "0.0096em"
         },
-        "$description": "Montage Body 2 Normal — default product body"
+        "$description": "Body 2 Normal — default product body"
       },
       "body-small": {
         "$value": {
@@ -390,7 +390,7 @@
           "lineHeight": "20px",
           "letterSpacing": "0.0145em"
         },
-        "$description": "Montage Label 1 Normal — compact body"
+        "$description": "Label 1 Normal — compact body"
       },
       "label": {
         "$value": {
@@ -400,7 +400,7 @@
           "lineHeight": "20px",
           "letterSpacing": "0.0145em"
         },
-        "$description": "Montage Label 1 Normal — control label"
+        "$description": "Label 1 Normal — control label"
       },
       "caption": {
         "$value": {
@@ -410,7 +410,7 @@
           "lineHeight": "16px",
           "letterSpacing": "0.0252em"
         },
-        "$description": "Montage Caption 1 — metadata and supporting copy"
+        "$description": "Caption 1 — metadata and supporting copy"
       },
       "display-hero": {
         "$value": {
@@ -420,7 +420,7 @@
           "lineHeight": "72px",
           "letterSpacing": "-0.0319em"
         },
-        "$description": "Montage Display 1 — landing hero maximum"
+        "$description": "Display 1 — landing hero maximum"
       },
       "display-large": {
         "$value": {
@@ -430,7 +430,7 @@
           "lineHeight": "52px",
           "letterSpacing": "-0.0282em"
         },
-        "$description": "Montage Display 2 — showcase and marketing hero"
+        "$description": "Display 2 — showcase and marketing hero"
       },
       "compact": {
         "$value": {
@@ -440,7 +440,7 @@
           "lineHeight": "18px",
           "letterSpacing": "0.0194em"
         },
-        "$description": "Montage Label 2 — compact desktop control"
+        "$description": "Label 2 — compact desktop control"
       },
       "micro": {
         "$value": {
@@ -450,7 +450,7 @@
           "lineHeight": "14px",
           "letterSpacing": "0.0311em"
         },
-        "$description": "Montage Caption 2 — dense tool hint and item description"
+        "$description": "Caption 2 — dense tool hint and item description"
       },
       "meta": {
         "$value": {
@@ -460,7 +460,7 @@
           "lineHeight": "14px",
           "letterSpacing": "0.0311em"
         },
-        "$description": "Montage Caption 2 emphasized — metadata badge and source label"
+        "$description": "Caption 2 emphasized — metadata badge and source label"
       },
       "nano": {
         "$value": {
@@ -470,7 +470,7 @@
           "lineHeight": "14px",
           "letterSpacing": "0.0311em"
         },
-        "$description": "Legacy alias of Montage Caption 2; 11px is the minimum UI type size"
+        "$description": "Legacy alias of Caption 2; 11px is the minimum UI type size"
       }
     },
     "radius": {
@@ -481,7 +481,7 @@
       },
       "control": {
         "$value": "10px",
-        "$description": "Montage default button and field radius"
+        "$description": "default button and field radius"
       },
       "card": {
         "$value": "16px",
@@ -500,19 +500,19 @@
       "$type": "shadow",
       "resting": {
         "$value": "0 1px 2px -1px rgba(23, 23, 23, 0.10)",
-        "$description": "Montage Shadow Normal XSmall — subtle resting separation"
+        "$description": "Shadow Normal XSmall — subtle resting separation"
       },
       "raised": {
         "$value": "0 2px 4px -2px rgba(23, 23, 23, 0.06), 0 4px 6px -1px rgba(23, 23, 23, 0.06)",
-        "$description": "Montage Shadow Normal Small — card and hovering surface"
+        "$description": "Shadow Normal Small — card and hovering surface"
       },
       "floating": {
         "$value": "0 4px 6px -2px rgba(23, 23, 23, 0.07), 0 10px 15px -3px rgba(23, 23, 23, 0.07)",
-        "$description": "Montage Shadow Normal Medium — dropdown, popover, drag preview"
+        "$description": "Shadow Normal Medium — dropdown, popover, drag preview"
       },
       "modal": {
         "$value": "0 10px 15px -5px rgba(23, 23, 23, 0.10), 0 24px 38px -10px rgba(23, 23, 23, 0.12)",
-        "$description": "Montage Shadow Normal XLarge — dialog and sheet"
+        "$description": "Shadow Normal XLarge — dialog and sheet"
       },
       "card": {
         "$value": "0 2px 4px -2px rgba(23, 23, 23, 0.06), 0 4px 6px -1px rgba(23, 23, 23, 0.06)",
@@ -695,7 +695,7 @@
       },
       "default-padding-x": {
         "$value": "20px",
-        "$description": "Montage default button horizontal padding"
+        "$description": "default button horizontal padding"
       },
       "prominent-padding-x": {
         "$value": "20px",
@@ -703,11 +703,11 @@
       },
       "radius": {
         "$value": "10px",
-        "$description": "Montage Button radius"
+        "$description": "Button radius"
       },
       "gap": {
         "$value": "5px",
-        "$description": "Montage Button icon-to-label gap"
+        "$description": "Button icon-to-label gap"
       }
     },
     "field": {
@@ -717,11 +717,11 @@
       },
       "default-height": {
         "$value": "48px",
-        "$description": "Montage Text Field default height"
+        "$description": "Text Field default height"
       },
       "touch-height": {
         "$value": "48px",
-        "$description": "Montage Text Field touch height"
+        "$description": "Text Field touch height"
       },
       "label-gap": {
         "$value": "8px",
@@ -737,11 +737,11 @@
       },
       "radius": {
         "$value": "12px",
-        "$description": "Montage Text Field radius"
+        "$description": "Text Field radius"
       },
       "control-gap": {
         "$value": "8px",
-        "$description": "Montage Text Field internal gap"
+        "$description": "Text Field internal gap"
       },
       "textarea-min-height": {
         "$value": "96px",
@@ -785,33 +785,33 @@
       },
       "radius": {
         "$value": "20px",
-        "$description": "Montage Card radius"
+        "$description": "Card radius"
       }
     },
     "chip": {
       "height": {
         "$value": "24px",
-        "$description": "Montage Chip default height"
+        "$description": "Chip default height"
       },
       "padding-inline": {
         "$value": "7px",
-        "$description": "Montage Chip horizontal padding"
+        "$description": "Chip horizontal padding"
       },
       "gap": {
         "$value": "2px",
-        "$description": "Montage Chip content gap"
+        "$description": "Chip content gap"
       },
       "radius": {
         "$value": "6px",
-        "$description": "Montage Chip radius"
+        "$description": "Chip radius"
       },
       "outlined-active-border": {
         "$value": "rgba(0, 102, 255, 0.43)",
-        "$description": "Montage Chip outlined active inset border"
+        "$description": "Chip outlined active inset border"
       },
       "solid-active-content": {
         "$value": "#F7F7F8",
-        "$description": "Montage Chip solid active foreground"
+        "$description": "Chip solid active foreground"
       }
     },
     "overlay": {
@@ -859,15 +859,15 @@
     "selection": {
       "indicator-size": {
         "$value": "24px",
-        "$description": "Montage Checkbox and Radio default indicator size"
+        "$description": "Checkbox and Radio default indicator size"
       },
       "compact-indicator-size": {
         "$value": "20px",
-        "$description": "Montage compact Checkbox indicator size"
+        "$description": "compact Checkbox indicator size"
       },
       "checkbox-radius": {
         "$value": "5px",
-        "$description": "Montage Checkbox radius"
+        "$description": "Checkbox radius"
       },
       "switch-width": {
         "$value": "40px",
@@ -1089,15 +1089,15 @@
     "tabs": {
       "trigger-padding-inline": {
         "$value": "0px",
-        "$description": "Montage hug Tab has no internal horizontal inset"
+        "$description": "hug Tab has no internal horizontal inset"
       },
       "list-height": {
         "$value": "52px",
-        "$description": "Montage Tab default height"
+        "$description": "Tab default height"
       },
       "list-gap": {
         "$value": "20px",
-        "$description": "Montage hug Tab item gap"
+        "$description": "hug Tab item gap"
       },
       "indicator-height": {
         "$value": "2px",
