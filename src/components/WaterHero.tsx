@@ -24,11 +24,13 @@ const hexToRgb = (hex: string): [number, number, number] => {
 // same way as the default blue one: a genuinely dark deep tone at the top of the
 // frame easing to a luminous, saturated tone at the bottom — so every flooded
 // palette reads as depth-and-glow, not one flat tint.
-interface KoiKind { body: string; water: [string, string, string]; }
+// body = core fill · rim = the glowing back-lit edge (subsurface scatter) ·
+// deep = dark tone for the volume patches that give the body form
+interface KoiKind { body: string; rim: string; deep: string; water: [string, string, string]; }
 const KOI_KINDS: KoiKind[] = [
-  { body: '226,74,42', water: ['#8a2410', '#e0431f', '#ff9a6b'] }, // vermilion (Kohaku)
-  { body: '236,182,78', water: ['#7a4708', '#e0982a', '#ffe0a0'] }, // gold (Yamabuki Ogon)
-  { body: '104,146,214', water: ['#0068ff', '#0e9dfa', '#1dd2f6'] }, // blue (Asagi) — default pool
+  { body: '226,74,42', rim: '255,186,96', deep: '112,22,10', water: ['#8a2410', '#e0431f', '#ff9a6b'] }, // vermilion (Kohaku)
+  { body: '236,182,78', rim: '255,234,160', deep: '146,88,14', water: ['#7a4708', '#e0982a', '#ffe0a0'] }, // gold (Yamabuki Ogon)
+  { body: '104,146,214', rim: '178,214,248', deep: '32,62,132', water: ['#0068ff', '#0e9dfa', '#1dd2f6'] }, // blue (Asagi) — default pool
 ];
 
 const vertex = `#version 300 es
@@ -419,7 +421,7 @@ const WaterHero = ({
     const drawKoi = (dt: number) => {
       // fade previous frame → long motion-blur smears
       kctx.globalCompositeOperation = 'destination-out';
-      kctx.fillStyle = 'rgba(0,0,0,0.2)';
+      kctx.fillStyle = 'rgba(0,0,0,0.14)';
       kctx.fillRect(0, 0, cssW, cssH);
       kctx.globalCompositeOperation = 'source-over';
 
@@ -493,7 +495,10 @@ const WaterHero = ({
         const L = k.len;
         const N = KOI_N;
         const WAVES = 2.3;
-        const core = KOI_KINDS[k.kind].body;
+        const kind = KOI_KINDS[k.kind];
+        const core = kind.body;
+        const rim = kind.rim;
+        const deep = kind.deep;
 
         // undulating spine: a travelling wave whose amplitude ramps toward the tail
         for (let i = 0; i < N; i++) {
@@ -544,6 +549,25 @@ const WaterHero = ({
         kctx.globalAlpha = 0.85;
         kctx.lineJoin = 'round';
 
+        // ---- back-lit rim: an inflated body silhouette in the warm rim colour,
+        //      blurred, so the whole fish is wrapped in a glowing edge that
+        //      bleeds into the water (subsurface scatter) ----
+        {
+          kctx.save();
+          kctx.filter = 'blur(4px)';
+          kctx.globalAlpha = 0.6;
+          const grow = L * 0.05;
+          const rw = (i: number) => halfW(i) + grow;
+          kctx.beginPath();
+          kctx.moveTo(sx[0] + nX[0] * rw(0), sy[0] + nY[0] * rw(0));
+          for (let i = 1; i < N; i++) kctx.lineTo(sx[i] + nX[i] * rw(i), sy[i] + nY[i] * rw(i));
+          for (let i = N - 1; i >= 0; i--) kctx.lineTo(sx[i] - nX[i] * rw(i), sy[i] - nY[i] * rw(i));
+          kctx.closePath();
+          kctx.fillStyle = `rgba(${rim},0.7)`;
+          kctx.fill();
+          kctx.restore();
+        }
+
         // ---- caudal fin: broad translucent fork, swung by the tail-tip slope ----
         {
           const hx = sx[N - 1];
@@ -568,7 +592,8 @@ const WaterHero = ({
           kctx.closePath();
           const fg = kctx.createLinearGradient(hx, hy, tx, ty);
           fg.addColorStop(0, `rgba(${core},0.55)`);
-          fg.addColorStop(1, `rgba(${core},0)`);
+          fg.addColorStop(0.55, `rgba(${rim},0.32)`);
+          fg.addColorStop(1, `rgba(${rim},0)`);
           kctx.fillStyle = fg;
           kctx.fill();
         }
@@ -612,39 +637,64 @@ const WaterHero = ({
           }
         }
 
-        // ---- body: filled ribbon around the undulating spine ----
-        //      the one place the warm glow-haze shadow is worth paying for
+        // ---- body: filled ribbon — warm-lit at head & tail, deep core in the
+        //      middle, wrapped in a warm glow-haze that bleeds into the water ----
+        const bodyPath = () => {
+          kctx.beginPath();
+          kctx.moveTo(sx[0] + nX[0] * halfW(0), sy[0] + nY[0] * halfW(0));
+          for (let i = 1; i < N; i++) kctx.lineTo(sx[i] + nX[i] * halfW(i), sy[i] + nY[i] * halfW(i));
+          for (let i = N - 1; i >= 0; i--) kctx.lineTo(sx[i] - nX[i] * halfW(i), sy[i] - nY[i] * halfW(i));
+          kctx.closePath();
+        };
         const bg = kctx.createLinearGradient(L * 0.5, 0, -L * 0.5, 0);
-        bg.addColorStop(0, `rgba(${core},0.9)`);        // head
-        bg.addColorStop(0.14, `rgba(${core},1)`);
-        bg.addColorStop(0.6, `rgba(${core},1)`);
-        bg.addColorStop(0.86, `rgba(${core},0.8)`);
-        bg.addColorStop(1, `rgba(${core},0)`);          // tail melts into blur
+        bg.addColorStop(0, `rgba(${rim},0.95)`);        // lit nose
+        bg.addColorStop(0.13, `rgba(${core},1)`);
+        bg.addColorStop(0.55, `rgba(${core},1)`);
+        bg.addColorStop(0.8, `rgba(${rim},0.75)`);      // tail catches the light again
+        bg.addColorStop(1, `rgba(${core},0)`);          // then melts into blur
         kctx.fillStyle = bg;
-        kctx.shadowColor = `rgba(${core},0.5)`;
-        kctx.shadowBlur = L * 0.32;
-        kctx.beginPath();
-        kctx.moveTo(sx[0] + nX[0] * halfW(0), sy[0] + nY[0] * halfW(0));
-        for (let i = 1; i < N; i++) kctx.lineTo(sx[i] + nX[i] * halfW(i), sy[i] + nY[i] * halfW(i));
-        for (let i = N - 1; i >= 0; i--) kctx.lineTo(sx[i] - nX[i] * halfW(i), sy[i] - nY[i] * halfW(i));
-        kctx.closePath();
+        kctx.shadowColor = `rgba(${rim},0.6)`;
+        kctx.shadowBlur = L * 0.42;
+        bodyPath();
         kctx.fill();
         kctx.shadowBlur = 0;
 
-        // ---- head highlight + light rim (white → reads on any body colour) ----
-        kctx.globalAlpha = 0.55;
-        kctx.fillStyle = 'rgba(255,255,255,0.42)';
-        kctx.beginPath();
-        kctx.ellipse(sx[1] - L * 0.02, sy[1], L * 0.07, L * 0.05, 0, 0, Math.PI * 2);
-        kctx.fill();
+        // ---- volume: two soft dark patches where the flank turns away ----
+        kctx.save();
+        bodyPath();
+        kctx.clip();
+        kctx.filter = 'blur(5px)';
+        kctx.fillStyle = `rgba(${deep},0.34)`;
+        for (const [sp, off] of [[0.34, 0.4], [0.62, -0.2]] as const) {
+          const i = Math.round(sp * (N - 1));
+          kctx.beginPath();
+          kctx.ellipse(sx[i], sy[i] + off * halfW(i), L * 0.16, halfW(i) * 0.9, 0, 0, Math.PI * 2);
+          kctx.fill();
+        }
+        kctx.restore();
 
-        kctx.strokeStyle = 'rgba(255,255,255,0.4)';
-        kctx.lineWidth = Math.max(1.5, L * 0.026);
+        // ---- roundness: bright dorsal edge + dark belly edge ----
         kctx.lineCap = 'round';
+        kctx.globalAlpha = 0.5;
+        kctx.strokeStyle = `rgba(255,255,255,0.45)`;
+        kctx.lineWidth = Math.max(1.5, L * 0.03);
         kctx.beginPath();
         kctx.moveTo(sx[2] + nX[2] * halfW(2), sy[2] + nY[2] * halfW(2));
         for (let i = 3; i < N - 2; i++) kctx.lineTo(sx[i] + nX[i] * halfW(i), sy[i] + nY[i] * halfW(i));
         kctx.stroke();
+        kctx.strokeStyle = `rgba(${deep},0.4)`;
+        kctx.lineWidth = Math.max(1.2, L * 0.024);
+        kctx.beginPath();
+        kctx.moveTo(sx[2] - nX[2] * halfW(2), sy[2] - nY[2] * halfW(2));
+        for (let i = 3; i < N - 2; i++) kctx.lineTo(sx[i] - nX[i] * halfW(i), sy[i] - nY[i] * halfW(i));
+        kctx.stroke();
+
+        // ---- head: a small warm-white catchlight right at the nose ----
+        kctx.globalAlpha = 0.6;
+        kctx.fillStyle = 'rgba(255,246,232,0.5)';
+        kctx.beginPath();
+        kctx.ellipse(sx[1] + L * 0.02, sy[1], L * 0.09, L * 0.06, 0, 0, Math.PI * 2);
+        kctx.fill();
 
         kctx.restore();
       }
