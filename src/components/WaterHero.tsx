@@ -57,20 +57,13 @@ float fbm(vec2 p){
   return v;
 }
 
-// organic water caustic — domain-warped ridged fbm, irregular light veins
-float caustic(vec2 p, float t){
-  float c = 0.0;
-  float amp = 0.5;
-  for (int i = 0; i < 3; i++){
-    vec2 q = p * (1.8 + float(i) * 1.25);
-    // swirl the sample point so veins curve naturally
-    q += (vec2(fbm(q * 0.5 + t * 0.09),
-               fbm(q * 0.5 - t * 0.11 + 3.7)) - 0.5) * 1.6;
-    float n = fbm(q + t * 0.13);
-    c += amp * pow(1.0 - abs(2.0 * n - 1.0), 3.5);
-    amp *= 0.55;
-  }
-  return c;
+// broad, soft, low-contrast caustic blobs (a defocused pool, not a sharp net)
+float softCaustic(vec2 p, float t){
+  vec2 q = p;
+  q += (vec2(fbm(q * 0.6 + t * 0.05),
+             fbm(q * 0.6 - t * 0.04 + 5.0)) - 0.5) * 1.3;
+  float n = fbm(q * 1.25 + t * 0.07);
+  return pow(smoothstep(0.24, 0.86, n), 1.5);
 }
 
 void main(){
@@ -78,74 +71,72 @@ void main(){
   float aspect = iResolution.x / iResolution.y;
   vec2 auv = vec2(uv.x * aspect, uv.y);
 
-  // ---- ripple field: damped wavefronts (ambient + cursor wake) ----
-  float height = 0.0;   // surface height, drives refraction + shading
+  // ---- ripple field: large soft concentric rings (ambient + cursor wake) ----
+  float height = 0.0;
   vec2  grad = vec2(0.0);
-  float ringLight = 0.0; // visible crest light — the "water kick"
+  float ringLight = 0.0;
   for (int i = 0; i < ${MAX_RIPPLES}; i++){
     if (float(i) >= uRippleCount) break;
     vec4 r = uRipples[i];
     float age = iTime - r.z;
-    if (age < 0.0 || age > 4.2) continue;
+    if (age < 0.0 || age > 7.0) continue;
     vec2 cc = vec2(r.x * aspect, r.y);
     float d = distance(auv, cc);
-    float radius = age * 0.42;
-    float life = 1.0 - age / 4.2;
+    float radius = age * 0.34;                    // slow → rings grow large
+    float life = 1.0 - age / 7.0;
     float band = d - radius;
-    // window holds ~3 trailing waves behind the front
-    float envelope = exp(-abs(band) * 2.8) * exp(-max(band, 0.0) * 1.6) * life;
-    float phase = band * 28.0 - age * 4.5;
+    // broad window: several concentric wavefronts visible together
+    float env = exp(-abs(band) * 2.2) * exp(-max(band, 0.0) * 1.0) * life;
+    float phase = band * 22.0 - age * 3.2;
     float wave = sin(phase);
-    height += wave * envelope * r.w;
+    height += wave * env * r.w;
     vec2 dir = d > 1e-4 ? (auv - cc) / d : vec2(0.0);
-    grad += dir * cos(phase) * envelope * r.w;
-    // trailing crests + a slightly brighter leading edge
-    float front = exp(-abs(band) * 9.0) * life;
-    ringLight += (max(wave, 0.0) * envelope * 0.7 + front * 0.5) * life * r.w;
+    grad += dir * cos(phase) * env * r.w;
+    ringLight += max(wave, 0.0) * env * life * r.w;
   }
 
-  // ---- surface: slow organic swell + ripple slope → refraction offset ----
-  float swell = fbm(auv * 1.4 + iTime * 0.025);
-  vec2 slope = (vec2(fbm(auv * 2.6 + iTime * 0.04) - 0.5,
-                     fbm(auv * 2.6 - iTime * 0.037 + 7.0) - 0.5)) * 0.09
-             + grad * 0.16;
+  // ---- surface: gentle swell + ripple slope → refraction ----
+  float swell = fbm(auv * 1.1 + iTime * 0.02);
+  vec2 slope = (vec2(fbm(auv * 2.0 + iTime * 0.03) - 0.5,
+                     fbm(auv * 2.0 - iTime * 0.028 + 7.0) - 0.5)) * 0.07
+             + grad * 0.20;
 
-  // ---- caustics: two octaves, bent by the surface slope ----
-  vec2 wuv = (auv + slope) * 3.6 + vec2(iTime * 0.045, iTime * 0.07);
-  float ca = caustic(wuv, iTime) * 0.9 + caustic(wuv * 2.1 - 4.0, iTime * 1.3) * 0.4;
+  // ---- soft caustics ----
+  vec2 wuv = (auv + slope) * 2.2 + vec2(iTime * 0.03, iTime * 0.05);
+  float ca = softCaustic(wuv, iTime) * 0.7 + softCaustic(wuv * 1.9 - 3.0, iTime * 0.8) * 0.4;
   ca *= uCaustic;
 
-  // broad slow light/shadow patches for depth
-  float shade = fbm(auv * 1.5 - iTime * 0.02 + slope * 3.0) - 0.5;
+  // ---- vertical light pillars in the upper water ----
+  vec2 sc = vec2(auv.x * 5.0 + slope.x * 3.0, auv.y * 0.7 + iTime * 0.015);
+  float streak = pow(smoothstep(0.35, 0.9, fbm(sc)), 2.0) * smoothstep(0.1, 0.85, uv.y);
 
-  // ---- base water colour: deep at top → bright cyan at bottom ----
-  float g = clamp(uv.y + (swell - 0.5) * 0.13 + height * 0.05, 0.0, 1.0);
-  vec3 base = g < 0.42
-    ? mix(uColorBot, uColorMid, g / 0.42)
-    : mix(uColorMid, uColorTop, pow((g - 0.42) / 0.58, 0.85));
-  base += vec3(0.10, 0.20, 0.26) * shade * 0.5;
-  // light entering the water, a touch stronger up-screen
-  base += vec3(0.04, 0.07, 0.09) * smoothstep(1.5, -0.1, uv.x + uv.y);
+  // ---- base colour: deep cobalt (top) → bright cyan (bottom), smooth ----
+  float g = clamp(uv.y + (swell - 0.5) * 0.10 + height * 0.04, 0.0, 1.0);
+  float gg = g * g * g * (g * (g * 6.0 - 15.0) + 10.0);   // smootherstep
+  vec3 base = mix(uColorBot, uColorTop, gg);
+  base = mix(base, uColorMid, (1.0 - abs(g - 0.5) * 2.0) * 0.35);
+  base = mix(base, vec3(0.80, 0.94, 0.99), smoothstep(0.14, 0.0, uv.y) * 0.5);
 
-  // caustic light — soft cyan-white, stronger where the water is shallower
-  float causticMix = ca * mix(0.14, 0.40, 1.0 - uv.y);
-  vec3 col = base + vec3(0.55, 0.88, 1.0) * causticMix;
+  float shade = fbm(auv * 1.2 - iTime * 0.015 + slope * 2.0) - 0.5;
+  base += vec3(0.06, 0.14, 0.20) * shade * 0.6;
 
-  // ripple shading: refraction shades troughs/crests, soft wake on the crests
-  col += vec3(0.28, 0.52, 0.75) * height * 0.16;
-  col += vec3(0.82, 0.94, 1.0) * ringLight * 0.42;
+  // ---- compose ----
+  vec3 col = base;
+  col += vec3(0.42, 0.78, 0.95) * ca * mix(0.10, 0.30, 1.0 - uv.y);
+  col += vec3(0.55, 0.80, 1.0) * streak * 0.10;
+  col += vec3(0.75, 0.92, 1.0) * ringLight * 0.55;
+  col += vec3(0.25, 0.50, 0.75) * height * 0.14;
 
-  // gentle depth vignette
-  vec2 vd = uv - 0.5;
-  col *= 1.0 - dot(vd, vd) * 0.28;
+  // vignette + top darken for nav legibility
+  vec2 vd = uv - vec2(0.5, 0.52);
+  col *= 1.0 - dot(vd, vd) * 0.45;
+  col *= 1.0 - smoothstep(0.82, 1.0, uv.y) * 0.18;
 
-  // mild saturation lift, nothing garish
+  // keep it photographic, not neon
   float luma = dot(col, vec3(0.299, 0.587, 0.114));
-  col = mix(vec3(luma), col, 1.10);
+  col = mix(vec3(luma), col, 1.08);
 
-  // very fine grain
-  col += (hash1(gl_FragCoord.xy + iTime) - 0.5) * 0.014;
-
+  col += (hash1(gl_FragCoord.xy + iTime) - 0.5) * 0.012;
   fragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }
 `;
@@ -170,9 +161,9 @@ interface WaterHeroProps {
 }
 
 const WaterHero = ({
-  colorTop = '#0a44cf',
-  colorMid = '#1577dc',
-  colorBot = '#37b9ec',
+  colorTop = '#0836bf',
+  colorMid = '#1466d6',
+  colorBot = '#3fc8ee',
   caustic = 1.0,
   className = '',
 }: WaterHeroProps) => {
@@ -191,7 +182,8 @@ const WaterHero = ({
     const renderer = new Renderer({ webgl: 2, alpha: false, antialias: false, dpr });
     const gl = renderer.gl;
     const glCanvas = gl.canvas;
-    glCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(1.8px);transform:scale(1.05);';
+    // heavy defocus — the reference is a shallow-DoF pool shot, not a sharp render
+    glCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(6px);transform:scale(1.08);';
     host.appendChild(glCanvas);
 
     // plain Array (not Float32Array): ogl only uploads array uniforms whose
@@ -215,7 +207,7 @@ const WaterHero = ({
 
     // ---------- 2D koi overlay ----------
     const koiCanvas = document.createElement('canvas');
-    koiCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
+    koiCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(2.5px);';
     host.appendChild(koiCanvas);
     const kctx = koiCanvas.getContext('2d')!;
 
@@ -223,14 +215,14 @@ const WaterHero = ({
     const koi: Koi[] = [];
     const seedKoi = () => {
       koi.length = 0;
-      const n = reduceMotion ? 0 : 4;
+      const n = reduceMotion ? 0 : 3;
       for (let i = 0; i < n; i++) {
         koi.push({
           x: Math.random() * cssW,
-          y: cssH * (0.25 + Math.random() * 0.65),
+          y: cssH * (0.2 + Math.random() * 0.7),
           angle: Math.random() * Math.PI * 2,
-          speed: 44 + Math.random() * 30,
-          len: 56 + Math.random() * 30,
+          speed: 52 + Math.random() * 34,
+          len: 100 + Math.random() * 70,
           wander: Math.random() * 100,
           phase: Math.random() * Math.PI * 2,
         });
@@ -278,25 +270,25 @@ const WaterHero = ({
       pointer.y = 1 - ny; // gl y-up
       pointer.active = true;
       pointer.lastMove = now();
-      if (now() - lastPointerRipple > 0.09) {
+      if (now() - lastPointerRipple > 0.08) {
         lastPointerRipple = now();
-        addRipple(nx, 1 - ny, 0.6);
+        addRipple(nx, 1 - ny, 0.85);
       }
     };
     const onPointerDown = (e: PointerEvent) => {
       const rect = host.getBoundingClientRect();
-      addRipple((e.clientX - rect.left) / rect.width, 1 - (e.clientY - rect.top) / rect.height, 1.3);
+      addRipple((e.clientX - rect.left) / rect.width, 1 - (e.clientY - rect.top) / rect.height, 1.7);
     };
     window.addEventListener('pointermove', onPointerMove, { passive: true });
     window.addEventListener('pointerdown', onPointerDown, { passive: true });
 
-    // seed a couple of fading rings so the surface isn't dead on load
-    for (let i = 0; i < 4; i++) {
+    // seed staggered ring systems so a wake is always on screen
+    for (let i = 0; i < 7; i++) {
       const r = ripples[writeIdx] ?? ({} as Ripple);
-      r.x = Math.random();
-      r.y = Math.random() * 0.8;
-      r.birth = -i * 0.7;
-      r.strength = 0.6;
+      r.x = 0.45 + Math.random() * 0.5;   // biased to the right, like the reference
+      r.y = 0.35 + Math.random() * 0.55;
+      r.birth = -i * 0.9;
+      r.strength = 0.75;
       ripples[writeIdx] = r;
       writeIdx = (writeIdx + 1) % MAX_RIPPLES;
     }
@@ -309,30 +301,30 @@ const WaterHero = ({
     let pageVisible = !document.hidden;
 
     const drawKoi = (dt: number) => {
-      // fade previous frame → motion-blur trails
+      // fade previous frame → long motion-blur smears
       kctx.globalCompositeOperation = 'destination-out';
-      kctx.fillStyle = 'rgba(0,0,0,0.09)';
+      kctx.fillStyle = 'rgba(0,0,0,0.055)';
       kctx.fillRect(0, 0, cssW, cssH);
       kctx.globalCompositeOperation = 'source-over';
 
       for (const k of koi) {
-        k.wander += dt * 0.6;
-        k.phase += dt * 9;
+        k.wander += dt * 0.45;
+        k.phase += dt * 8;
         // gentle noise-ish heading drift
-        let desired = k.angle + Math.sin(k.wander) * 0.9 + Math.sin(k.wander * 0.37) * 0.5;
+        let desired = k.angle + Math.sin(k.wander) * 0.8 + Math.sin(k.wander * 0.37) * 0.45;
         // lean toward the pointer when it is near and recently moved
-        if (pointer.active && now() - pointer.lastMove < 1.6) {
+        if (pointer.active && now() - pointer.lastMove < 1.8) {
           const px = pointer.x * cssW;
           const py = (1 - pointer.y) * cssH;
           const dx = px - k.x, dy = py - k.y;
           const dist = Math.hypot(dx, dy);
-          if (dist < cssW * 0.34) {
+          if (dist < cssW * 0.42) {
             const toPointer = Math.atan2(dy, dx);
-            const pull = (1 - dist / (cssW * 0.34)) * 0.6;
+            const pull = (1 - dist / (cssW * 0.42)) * 0.7;
             desired = k.angle + angleDelta(k.angle, toPointer) * pull;
           }
         }
-        k.angle += angleDelta(k.angle, desired) * Math.min(1, dt * 1.6);
+        k.angle += angleDelta(k.angle, desired) * Math.min(1, dt * 1.4);
         k.x += Math.cos(k.angle) * k.speed * dt;
         k.y += Math.sin(k.angle) * k.speed * dt;
 
@@ -343,39 +335,43 @@ const WaterHero = ({
         if (k.y < -m) k.y = cssH + m;
         if (k.y > cssH + m) k.y = -m;
 
-        const wag = Math.sin(k.phase) * 0.16;
-        const tailSwing = Math.sin(k.phase - 0.8) * k.len * 0.16;
+        const wag = Math.sin(k.phase) * 0.14;
+        const tailSwing = Math.sin(k.phase - 0.8) * k.len * 0.14;
         kctx.save();
         kctx.translate(k.x, k.y);
         kctx.rotate(k.angle + wag);
-        kctx.filter = 'blur(2.5px)';
-        kctx.globalAlpha = 0.82;
+        kctx.filter = 'blur(4px)';
+        kctx.globalAlpha = 0.7;
+        // soft orange glow around the fish
+        kctx.shadowColor = 'rgba(255,110,50,0.55)';
+        kctx.shadowBlur = k.len * 0.5;
         // caudal fin — split tail sweeping behind
         kctx.beginPath();
-        kctx.moveTo(-k.len * 0.34, 0);
-        kctx.quadraticCurveTo(-k.len * 0.62, tailSwing - k.len * 0.05, -k.len * 0.78, tailSwing - k.len * 0.24);
-        kctx.quadraticCurveTo(-k.len * 0.58, tailSwing, -k.len * 0.78, tailSwing + k.len * 0.24);
-        kctx.quadraticCurveTo(-k.len * 0.62, tailSwing + k.len * 0.05, -k.len * 0.34, 0);
+        kctx.moveTo(-k.len * 0.32, 0);
+        kctx.quadraticCurveTo(-k.len * 0.62, tailSwing - k.len * 0.05, -k.len * 0.80, tailSwing - k.len * 0.22);
+        kctx.quadraticCurveTo(-k.len * 0.58, tailSwing, -k.len * 0.80, tailSwing + k.len * 0.22);
+        kctx.quadraticCurveTo(-k.len * 0.62, tailSwing + k.len * 0.05, -k.len * 0.32, 0);
         kctx.closePath();
-        kctx.fillStyle = 'rgba(255,96,44,0.55)';
+        kctx.fillStyle = 'rgba(255,90,40,0.5)';
         kctx.fill();
-        // body — tapered teardrop
+        // body — tapered teardrop, vivid orange-red
         const grad = kctx.createLinearGradient(-k.len * 0.4, 0, k.len * 0.5, 0);
-        grad.addColorStop(0, 'rgba(255,88,38,0.15)');
-        grad.addColorStop(0.35, 'rgba(255,74,32,0.98)');
-        grad.addColorStop(0.72, 'rgba(255,122,52,0.95)');
+        grad.addColorStop(0, 'rgba(255,80,34,0.10)');
+        grad.addColorStop(0.32, 'rgba(255,66,26,1.0)');
+        grad.addColorStop(0.7, 'rgba(255,116,44,0.96)');
         grad.addColorStop(1, 'rgba(255,190,110,0)');
         kctx.fillStyle = grad;
         kctx.beginPath();
-        kctx.moveTo(-k.len * 0.36, 0);
-        kctx.quadraticCurveTo(-k.len * 0.05, -k.len * 0.19, k.len * 0.32, -k.len * 0.08);
-        kctx.quadraticCurveTo(k.len * 0.52, 0, k.len * 0.32, k.len * 0.08);
-        kctx.quadraticCurveTo(-k.len * 0.05, k.len * 0.19, -k.len * 0.36, 0);
+        kctx.moveTo(-k.len * 0.34, 0);
+        kctx.quadraticCurveTo(-k.len * 0.05, -k.len * 0.17, k.len * 0.32, -k.len * 0.07);
+        kctx.quadraticCurveTo(k.len * 0.52, 0, k.len * 0.32, k.len * 0.07);
+        kctx.quadraticCurveTo(-k.len * 0.05, k.len * 0.17, -k.len * 0.34, 0);
         kctx.closePath();
         kctx.fill();
         kctx.restore();
       }
       kctx.filter = 'none';
+      kctx.shadowBlur = 0;
       kctx.globalAlpha = 1;
     };
 
@@ -386,16 +382,16 @@ const WaterHero = ({
 
       // ambient ripples, biased to the lower half
       ambientAcc += dt;
-      if (ambientAcc > 1.4) {
+      if (ambientAcc > 1.6) {
         ambientAcc = 0;
-        addRipple(Math.random(), Math.random() * 0.8, 0.25 + Math.random() * 0.25);
+        addRipple(0.3 + Math.random() * 0.65, 0.3 + Math.random() * 0.6, 0.4 + Math.random() * 0.35);
       }
 
       // pack ripple uniforms
       let count = 0;
       for (const r of ripples) {
         if (!r) continue;
-        if (time - r.birth > 4.2) continue;
+        if (time - r.birth > 7.0) continue;
         const o = count * 4;
         ripplesBuf[o] = r.x;
         ripplesBuf[o + 1] = r.y;

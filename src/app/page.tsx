@@ -5,7 +5,7 @@ import {
   ArrowUp, FileText, Upload, X,
   Check, ChevronDown, Palette, Share2,
   Clock, Trash2, ExternalLink, Link2, KeyRound,
-  Download, Eye, EyeOff, Coins,
+  Download, Eye, EyeOff, Coins, Menu as MenuIcon,
 } from '@/components/ui/material-icon'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import WaterHero from '@/components/WaterHero'
@@ -18,6 +18,7 @@ import StudioView from '@/components/StudioView'
 import BuilderView from '@/components/BuilderView'
 import { AIDE_UI } from '@/lib/aide-ui'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { Menu, MenuTrigger, MenuContent, MenuItem } from '@/components/ui/menu'
 
 const CircularGallery = dynamic(() => import('@/components/CircularGallery'), { ssr: false })
 
@@ -1507,15 +1508,16 @@ export default function Home() {
           maxWidth: 'calc(100% - 32px)',
         }}>
           <div style={{
-            backgroundColor: 'var(--aui-on-dark-subtle)',
-            backdropFilter: 'blur(var(--aui-blur-glass))',
-            border: '1px solid var(--aui-on-dark-faint)',
+            backgroundColor: 'rgba(255, 255, 255, 0.14)',
+            backdropFilter: 'blur(20px) saturate(1.4)',
+            WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
+            border: '1px solid rgba(255, 255, 255, 0.28)',
             borderRadius: 'var(--aui-radius-pill)',
             padding: '8px 8px 8px 20px',
             display: 'flex',
             alignItems: 'center',
             gap: "var(--aui-space-6)",
-            boxShadow: "var(--aui-shadow-floating)",
+            boxShadow: "0 8px 32px rgba(8, 30, 90, 0.22)",
           }}>
             {/* 좌측: 로고 */}
             <div style={{ display: 'flex', flexShrink: 0 }}>
@@ -1531,50 +1533,11 @@ export default function Home() {
             </div>
 
             {/* 우측: 액션 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}>
-                <Button
-                  onClick={openApiKeyModal}
-                  aria-label="API Key 설정"
-                  variant="ghost"
-                  size="icon"
-                  className="text-[var(--aui-text-strong)]"
-                  title="API Key 설정"
-                >
-                  <KeyRound size={20} />
-                </Button>
-                <Button
-                  onClick={() => setHistoryModalOpen(true)}
-                  aria-label="히스토리"
-                  variant="ghost"
-                  size="icon"
-                  className="text-[var(--aui-text-strong)]"
-                  title="히스토리"
-                >
-                  <Clock size={20} />
-                </Button>
-                <Button
-                  onClick={() => { setUsageLoading(true); setUsageModalOpen(true) }}
-                  aria-label="Gemini 사용량"
-                  variant="ghost"
-                  size="icon"
-                  className="text-[var(--aui-text-strong)]"
-                  title="Gemini 사용량"
-                >
-                  <Coins size={20} />
-                </Button>
-                <Link
-                  href="/aide-ui"
-                  aria-label="Aide UI 컴포넌트"
-                  title="Aide UI 컴포넌트"
-                  className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'text-[var(--aui-text-strong)]' })}
-                >
-                  <Palette size={20} />
-                </Link>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", flexShrink: 0 }}>
               <Button
                 onClick={() => setBuilderOpen(true)}
                 variant="ghost"
+                className="text-[var(--aui-text-strong)] hover:bg-white/25"
               >
                 Playground
               </Button>
@@ -1589,6 +1552,29 @@ export default function Home() {
               >
                 Studio
               </Button>
+              <Menu>
+                <MenuTrigger
+                  aria-label="메뉴"
+                  title="메뉴"
+                  className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'text-[var(--aui-text-strong)] hover:bg-white/25' })}
+                >
+                  <MenuIcon size={20} />
+                </MenuTrigger>
+                <MenuContent>
+                  <MenuItem onClick={() => { setUsageLoading(true); setUsageModalOpen(true) }}>
+                    <Coins size={16} /> Price
+                  </MenuItem>
+                  <MenuItem onClick={() => setHistoryModalOpen(true)}>
+                    <Clock size={16} /> History
+                  </MenuItem>
+                  <MenuItem onClick={openApiKeyModal}>
+                    <KeyRound size={16} /> API
+                  </MenuItem>
+                  <MenuItem render={<Link href="/aide-ui" />}>
+                    <Palette size={16} /> Design System
+                  </MenuItem>
+                </MenuContent>
+              </Menu>
             </div>
           </div>
         </header>
