@@ -31,7 +31,7 @@ function functionSpan(name) {
 // ratcheted down as each slimming step lands. Never raise without a written
 // reason in the commit message.
 const CEILINGS = {
-  buildQualityRules: 17450, // step A: injected CSS out; step B: 3D role taxonomy -> hero layer; step E: checklists out
+  buildQualityRules: 17000, // step A: injected CSS out; step B: 3D role taxonomy -> hero layer; step E: checklists out; step 1a: token/:root rules deferred to Contract Rules
   buildArtDirectionLayer: 2050,
   buildMediaLayoutSafetyLayer: 4100,
   buildBrandAndChromeLayer: 3250,
@@ -106,6 +106,18 @@ assert.ok(
 assert.ok(
   !/시각 계층 체크리스트/.test(qualityRules),
   'buildQualityRules "시각 계층 체크리스트" is back — restatement only',
+)
+
+// Step 1a: token/shadow/:root rules live once, in the Contract Rules block.
+// buildQualityRules must not re-instruct the model to declare :root brand vars
+// (contradicts "Aide injects them, reference with var() only").
+assert.ok(
+  !/:root\s*\{\s*--color-primary:\s*<[^>]*>/.test(qualityRules),
+  'buildQualityRules tells the model to declare :root brand vars — Contract Rules owns token policy, injection owns :root',
+)
+assert.ok(
+  !/디자인 시스템 토큰 100% 동적 상속/.test(qualityRules),
+  'buildQualityRules re-states the token-inheritance rule — defer to Contract Rules',
 )
 
 console.log('Prompt budget OK. Measured builder span total:', total, 'chars')
