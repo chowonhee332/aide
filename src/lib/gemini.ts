@@ -1256,6 +1256,7 @@ type DesignRhythmContract = {
   spacing: DesignTokenMap
   rounded: DesignTokenMap
   typographyKeys: string[]
+  typography: Record<string, { size: string; line: string; weight: string }>
   components: ComponentContract
   layoutRhythm: {
     pagePadding: string
@@ -1477,6 +1478,7 @@ function buildDesignRhythmContract(designMd: string, hasBrandColors = false): De
     spacing,
     rounded,
     typographyKeys: (Array.isArray(typeKeys) ? typeKeys : Object.keys(typeKeys)).slice(0, 16),
+    typography: fenced?.typography ?? {},
     components,
     layoutRhythm: {
       pagePadding,
@@ -1506,7 +1508,10 @@ function buildDesignSystemContract(
   const contract = buildDesignRhythmContract(designMd, hasBrandColors)
   if (!contract) return 'No external DESIGN.md was provided. Use the default Aide design system contract.'
 
-  const { systemName: name, colors, spacing, rounded, typographyKeys: typeKeys, components, layoutRhythm } = contract
+  const { systemName: name, colors, spacing, rounded, typographyKeys: typeKeys, typography, components, layoutRhythm } = contract
+  const typeScaleLine = Object.entries(typography)
+    .map(([role, t]) => `${role} ${t.size}`)
+    .join(' / ')
   const colorLines = Object.entries(colors).slice(0, 24).map(([key, value]) => `    "${key}": "${value}"`)
   const spacingLines = Object.entries(spacing).slice(0, 18).map(([key, value]) => `    "${key}": "${value}"`)
   const roundedLines = Object.entries(rounded).slice(0, 14).map(([key, value]) => `    "${key}": "${value}"`)
@@ -1590,7 +1595,8 @@ ${componentLines.length ? componentLines.join(',\n') : '    "note": "No explicit
   --aide-card-gap = ${layoutRhythm.cardGap} (카드 내부 아이템 간격)
   --aide-item-gap = ${layoutRhythm.itemGap} (인라인 요소 간격)
   --aide-card-radius = ${layoutRhythm.cardRadius} (카드 모서리)
-  ⛔ NEVER write: padding: 16px / gap: 12px / margin-top: 24px → ALWAYS write: var(--aide-card-padding, ${layoutRhythm.cardPadding}) / var(--aide-card-gap, ${layoutRhythm.cardGap}) / var(--aide-section-gap, ${layoutRhythm.sectionGap})`
+  ⛔ NEVER write: padding: 16px / gap: 12px / margin-top: 24px → ALWAYS write: var(--aide-card-padding, ${layoutRhythm.cardPadding}) / var(--aide-card-gap, ${layoutRhythm.cardGap}) / var(--aide-section-gap, ${layoutRhythm.sectionGap})
+- Aide also injects the typography scale as --aide-text-{role}-size / -line / -weight${typeScaleLine ? ` (${typeScaleLine})` : ''}. Every font-size MUST be a scale value: reference var(--aide-text-body-size) etc., or use exactly one of the scale px values. Body text ≥ 14px, captions ≥ 12px. NEVER 9/10px or off-scale sizes like 17/19/22px.`
 }
 
 function cssVarDeclaration(key: string, value: string): string {
@@ -1612,6 +1618,23 @@ function buildAideContractStyle(contract: DesignRhythmContract | null): string {
   const spacingVars = Object.entries(spacing).map(([k, v]) => `  --spacing-${k}: ${v};`).join('\n')
   const roundedVars = Object.entries(rounded).map(([k, v]) => `  --rounded-${k}: ${v};`).join('\n')
 
+  // Typography scale → --aide-text-{role}-{size,line,weight}. The model otherwise
+  // free-picks font-size (measured: 11 distinct values, a third of them 10-11px).
+  const TEXT_ROLES = ['display', 'page-title', 'heading', 'section-title', 'body', 'body-small', 'label', 'caption', 'micro']
+  const type = contract.typography ?? {}
+  const textVars = TEXT_ROLES.flatMap(role => {
+    const t = type[role]
+    if (!t) return []
+    return [
+      `  --aide-text-${role}-size: ${t.size};`,
+      t.line ? `  --aide-text-${role}-line: ${t.line};` : '',
+      t.weight ? `  --aide-text-${role}-weight: ${t.weight};` : '',
+    ].filter(Boolean)
+  }).join('\n')
+  const hasType = textVars.length > 0
+  const bodySize = type['body']?.size ?? '15px'
+  const bodyLine = type['body']?.line ?? '22px'
+
   return `<style data-aide-contract="1">
 :root {
 ${cssVarDeclaration('--aide-page-padding', layoutRhythm.pagePadding)}
@@ -1628,6 +1651,7 @@ ${cssVarDeclaration('--aide-page-padding-web', layoutRhythm.pagePaddingWeb)}
 ${cssVarDeclaration('--aide-tabbar-height', layoutRhythm.tabbarHeight)}
 ${cssVarDeclaration('--aide-header-height', layoutRhythm.headerHeight)}
   --aide-section-label-gap: 8px;
+${textVars ? `\n  /* Typography scale from selected DESIGN.md */\n${textVars}` : ''}
 ${colorVars ? `\n  /* Design token overrides from selected DESIGN.md */\n${colorVars}` : ''}
 ${spacingVars ? `${spacingVars}` : ''}
 ${roundedVars ? `${roundedVars}` : ''}
@@ -1659,6 +1683,21 @@ div.aide-page {
   border: var(--aide-card-border);
   box-shadow: var(--aide-card-shadow);
 }
+${hasType ? `/* Typography baseline: un-styled text lands on the scale instead of a free-picked size */
+.aide-page { font-size: var(--aide-text-body-size, ${bodySize}); line-height: var(--aide-text-body-line, ${bodyLine}); }
+.aide-section > h2:first-child,
+.aide-section > .section-title:first-child,
+.aide-section > [class*="section-title"]:first-child {
+  font-size: var(--aide-text-section-title-size, 18px);
+  line-height: var(--aide-text-section-title-line, 26px);
+  font-weight: var(--aide-text-section-title-weight, 700);
+}
+.aide-card h3, .aide-card h4 {
+  font-size: var(--aide-text-heading-size, 20px);
+  line-height: var(--aide-text-heading-line, 28px);
+  font-weight: var(--aide-text-heading-weight, 700);
+}
+.aide-card p, .aide-card li { font-size: var(--aide-text-body-size, ${bodySize}); line-height: var(--aide-text-body-line, ${bodyLine}); }` : ''}
 /* Universal safety net: normalize section stacking when aide-page is used */
 .aide-page > section > * { margin-top: 0; margin-bottom: 0; }
 .aide-page > section > * + * { margin-top: var(--aide-card-gap); }

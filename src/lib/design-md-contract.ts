@@ -25,6 +25,11 @@ export interface FlatDesignContract {
    * 토큰(예: `control-prominent` 48px)을 페이지 여백으로 뽑는다.
    */
   layout: Record<string, string>
+  /**
+   * `contract.tokens.typography` 역할별 스케일. `flattenTokenGroup`은 스칼라만 펴므로
+   * composite typography($value가 객체) 토큰은 여기서 따로 뽑는다. 값은 `size/line/weight`.
+   */
+  typography: Record<string, { size: string; line: string; weight: string }>
 }
 
 /** DTCG 그룹(`{ key: { $value, $description } }`)을 평면 `key: value`로 편다. */
@@ -107,7 +112,26 @@ export function parseFencedDesignContract(designMd: string): FlatDesignContract 
     rounded: flattenTokenGroup(tokens.radius),
     components,
     layout,
+    typography: flattenTypography(tokens.typography),
   }
+}
+
+/** composite typography 토큰(`$value: { fontSize, fontWeight, lineHeight }`)을 role → {size,line,weight}로 편다. */
+function flattenTypography(group: unknown): Record<string, { size: string; line: string; weight: string }> {
+  const result: Record<string, { size: string; line: string; weight: string }> = {}
+  if (typeof group !== 'object' || group === null) return result
+  for (const [key, leaf] of Object.entries(group as Record<string, unknown>)) {
+    if (key.startsWith('$') || typeof leaf !== 'object' || leaf === null) continue
+    const value = (leaf as { $value?: unknown }).$value
+    if (typeof value !== 'object' || value === null) continue
+    const v = value as Record<string, unknown>
+    const size = v.fontSize ?? v['font-size']
+    if (typeof size !== 'string' && typeof size !== 'number') continue
+    const line = v.lineHeight ?? v['line-height'] ?? ''
+    const weight = v.fontWeight ?? v['font-weight'] ?? ''
+    result[key] = { size: String(size), line: String(line), weight: String(weight) }
+  }
+  return result
 }
 
 /**
