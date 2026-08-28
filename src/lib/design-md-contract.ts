@@ -30,6 +30,8 @@ export interface FlatDesignContract {
    * composite typography($value가 객체) 토큰은 여기서 따로 뽑는다. 값은 `size/line/weight`.
    */
   typography: Record<string, { size: string; line: string; weight: string }>
+  /** `contract.tokens.shadow` — role → box-shadow value. Model otherwise inlines raw rgba(). */
+  shadow: Record<string, string>
 }
 
 /** DTCG 그룹(`{ key: { $value, $description } }`)을 평면 `key: value`로 편다. */
@@ -113,6 +115,7 @@ export function parseFencedDesignContract(designMd: string): FlatDesignContract 
     components,
     layout,
     typography: flattenTypography(tokens.typography),
+    shadow: flattenTokenGroup(tokens.shadow),
   }
 }
 

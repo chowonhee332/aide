@@ -1257,6 +1257,7 @@ type DesignRhythmContract = {
   rounded: DesignTokenMap
   typographyKeys: string[]
   typography: Record<string, { size: string; line: string; weight: string }>
+  shadow: Record<string, string>
   components: ComponentContract
   layoutRhythm: {
     pagePadding: string
@@ -1462,7 +1463,9 @@ function buildDesignRhythmContract(designMd: string, hasBrandColors = false): De
     ?? '[derive from input component in DESIGN.md]'
   const cardBorder = pickComponentValue(components, ['card'], ['border', 'borderColor'])
     ?? '[derive from card component in DESIGN.md]'
+  const shadow = fenced?.shadow ?? {}
   const cardShadow = pickComponentValue(components, ['card'], ['shadow', 'boxShadow'])
+    ?? shadow['card'] ?? shadow['raised'] ?? shadow['resting']
     ?? '[derive from card/elevation rules in DESIGN.md]'
   const pagePaddingWeb = layout['page-padding-web'] ?? spacing['page-padding-web'] ?? pagePadding
   const itemGap = layout['item-gap']
@@ -1479,6 +1482,7 @@ function buildDesignRhythmContract(designMd: string, hasBrandColors = false): De
     rounded,
     typographyKeys: (Array.isArray(typeKeys) ? typeKeys : Object.keys(typeKeys)).slice(0, 16),
     typography: fenced?.typography ?? {},
+    shadow,
     components,
     layoutRhythm: {
       pagePadding,
@@ -1508,7 +1512,7 @@ function buildDesignSystemContract(
   const contract = buildDesignRhythmContract(designMd, hasBrandColors)
   if (!contract) return 'No external DESIGN.md was provided. Use the default Aide design system contract.'
 
-  const { systemName: name, colors, spacing, rounded, typographyKeys: typeKeys, typography, components, layoutRhythm } = contract
+  const { systemName: name, colors, spacing, rounded, typographyKeys: typeKeys, typography, shadow, components, layoutRhythm } = contract
   const typeScaleLine = Object.entries(typography)
     .map(([role, t]) => `${role} ${t.size}`)
     .join(' / ')
@@ -1596,7 +1600,8 @@ ${componentLines.length ? componentLines.join(',\n') : '    "note": "No explicit
   --aide-item-gap = ${layoutRhythm.itemGap} (인라인 요소 간격)
   --aide-card-radius = ${layoutRhythm.cardRadius} (카드 모서리)
   ⛔ NEVER write: padding: 16px / gap: 12px / margin-top: 24px → ALWAYS write: var(--aide-card-padding, ${layoutRhythm.cardPadding}) / var(--aide-card-gap, ${layoutRhythm.cardGap}) / var(--aide-section-gap, ${layoutRhythm.sectionGap})
-- Aide also injects the typography scale as --aide-text-{role}-size / -line / -weight${typeScaleLine ? ` (${typeScaleLine})` : ''}. Every font-size MUST be a scale value: reference var(--aide-text-body-size) etc., or use exactly one of the scale px values. Body text ≥ 14px, captions ≥ 12px. NEVER 9/10px or off-scale sizes like 17/19/22px.`
+- Aide also injects the typography scale as --aide-text-{role}-size / -line / -weight${typeScaleLine ? ` (${typeScaleLine})` : ''}. Every font-size MUST be a scale value: reference var(--aide-text-body-size) etc., or use exactly one of the scale px values. Body text ≥ 14px, captions ≥ 12px. NEVER 9/10px or off-scale sizes like 17/19/22px.
+- Aide injects the shadow scale as --shadow-{role}${Object.keys(shadow).length ? ` (${Object.keys(shadow).join(', ')})` : ''}. For box-shadow use var(--shadow-card) / var(--shadow-raised) etc. — do NOT inline raw rgba() shadows.`
 }
 
 function cssVarDeclaration(key: string, value: string): string {
@@ -1617,6 +1622,7 @@ function buildAideContractStyle(contract: DesignRhythmContract | null): string {
   const colorVars = colorEntries.map(([k, v]) => `  --color-${k}: ${v};`).join('\n')
   const spacingVars = Object.entries(spacing).map(([k, v]) => `  --spacing-${k}: ${v};`).join('\n')
   const roundedVars = Object.entries(rounded).map(([k, v]) => `  --rounded-${k}: ${v};`).join('\n')
+  const shadowVars = Object.entries(contract.shadow ?? {}).map(([k, v]) => `  --shadow-${k}: ${v};`).join('\n')
 
   // Typography scale → --aide-text-{role}-{size,line,weight}. The model otherwise
   // free-picks font-size (measured: 11 distinct values, a third of them 10-11px).
@@ -1655,6 +1661,7 @@ ${textVars ? `\n  /* Typography scale from selected DESIGN.md */\n${textVars}` :
 ${colorVars ? `\n  /* Design token overrides from selected DESIGN.md */\n${colorVars}` : ''}
 ${spacingVars ? `${spacingVars}` : ''}
 ${roundedVars ? `${roundedVars}` : ''}
+${shadowVars ? `${shadowVars}` : ''}
 }
 /* Page container: flex column so direct child sections get uniform gap */
 .aide-page,
