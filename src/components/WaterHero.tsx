@@ -304,8 +304,8 @@ const WaterHero = ({
           angle: heading,
           dir: heading,
           dirVel: 0,
-          speed: 82 + Math.random() * 50,
-          len: 164 + Math.random() * 76,
+          speed: 98 + Math.random() * 54,
+          len: 131 + Math.random() * 61,
           phase: Math.random() * Math.PI * 2,
           kind: i % KOI_KINDS.length,
         });
@@ -421,13 +421,13 @@ const WaterHero = ({
     const drawKoi = (dt: number) => {
       // fade previous frame → long motion-blur smears
       kctx.globalCompositeOperation = 'destination-out';
-      kctx.fillStyle = 'rgba(0,0,0,0.14)';
+      kctx.fillStyle = 'rgba(0,0,0,0.17)';
       kctx.fillRect(0, 0, cssW, cssH);
       kctx.globalCompositeOperation = 'source-over';
 
       for (const k of koi) {
         // tail beats a little faster when swimming faster — kept slow + graceful
-        k.phase += dt * (2.8 + k.speed * 0.035);
+        k.phase += dt * (1.7 + k.speed * 0.02);
 
         // gentle damped random walk on top of everything → organic wiggle
         k.dirVel += (Math.random() - 0.5) * dt * 0.25;
@@ -481,7 +481,7 @@ const WaterHero = ({
         k.angle += angleDelta(k.angle, k.dir) * Math.min(1, dt * 3.0);
 
         // glide-and-surge: each tail stroke drives a clear forward burst
-        const surge = 0.5 + 0.75 * Math.max(0, Math.sin(k.phase));
+        const surge = 0.72 + 0.55 * Math.max(0, Math.sin(k.phase));
         k.x += Math.cos(k.angle) * k.speed * surge * dt;
         k.y += Math.sin(k.angle) * k.speed * surge * dt;
 
@@ -504,7 +504,7 @@ const WaterHero = ({
         for (let i = 0; i < N; i++) {
           const s = i / (N - 1);
           sx[i] = L * 0.5 - s * L * 0.99;
-          sy[i] = L * (0.015 + 0.23 * s * s) * Math.sin(k.phase - s * WAVES);
+          sy[i] = L * (0.012 + 0.14 * s * s) * Math.sin(k.phase - s * WAVES);
         }
         // per-vertex normal from the local tangent
         for (let i = 0; i < N; i++) {
@@ -545,28 +545,9 @@ const WaterHero = ({
 
         kctx.save();
         kctx.translate(k.x, k.y);
-        kctx.rotate(k.angle + Math.sin(k.phase) * 0.06); // head-wag with the beat
+        kctx.rotate(k.angle + Math.sin(k.phase) * 0.035); // slight head-wag with the beat
         kctx.globalAlpha = 0.85;
         kctx.lineJoin = 'round';
-
-        // ---- back-lit rim: an inflated body silhouette in the warm rim colour,
-        //      blurred, so the whole fish is wrapped in a glowing edge that
-        //      bleeds into the water (subsurface scatter) ----
-        {
-          kctx.save();
-          kctx.filter = 'blur(4px)';
-          kctx.globalAlpha = 0.6;
-          const grow = L * 0.05;
-          const rw = (i: number) => halfW(i) + grow;
-          kctx.beginPath();
-          kctx.moveTo(sx[0] + nX[0] * rw(0), sy[0] + nY[0] * rw(0));
-          for (let i = 1; i < N; i++) kctx.lineTo(sx[i] + nX[i] * rw(i), sy[i] + nY[i] * rw(i));
-          for (let i = N - 1; i >= 0; i--) kctx.lineTo(sx[i] - nX[i] * rw(i), sy[i] - nY[i] * rw(i));
-          kctx.closePath();
-          kctx.fillStyle = `rgba(${rim},0.7)`;
-          kctx.fill();
-          kctx.restore();
-        }
 
         // ---- caudal fin: broad translucent fork, swung by the tail-tip slope ----
         {
@@ -578,7 +559,7 @@ const WaterHero = ({
           const ex = -dy;
           const ey = dx;
           const fl = L * 0.48;
-          const sp = L * 0.34 * (0.8 + 0.38 * Math.sin(k.phase - 1.5));
+          const sp = L * 0.3 * (0.85 + 0.2 * Math.sin(k.phase - 1.5));
           const tx = hx + dx * fl;
           const ty = hy + dy * fl;
           const kx = hx + dx * fl * 0.46;
@@ -653,25 +634,11 @@ const WaterHero = ({
         bg.addColorStop(0.8, `rgba(${rim},0.75)`);      // tail catches the light again
         bg.addColorStop(1, `rgba(${core},0)`);          // then melts into blur
         kctx.fillStyle = bg;
-        kctx.shadowColor = `rgba(${rim},0.6)`;
-        kctx.shadowBlur = L * 0.42;
+        kctx.shadowColor = `rgba(${core},0.35)`;
+        kctx.shadowBlur = L * 0.24;
         bodyPath();
         kctx.fill();
         kctx.shadowBlur = 0;
-
-        // ---- volume: two soft dark patches where the flank turns away ----
-        kctx.save();
-        bodyPath();
-        kctx.clip();
-        kctx.filter = 'blur(5px)';
-        kctx.fillStyle = `rgba(${deep},0.34)`;
-        for (const [sp, off] of [[0.34, 0.4], [0.62, -0.2]] as const) {
-          const i = Math.round(sp * (N - 1));
-          kctx.beginPath();
-          kctx.ellipse(sx[i], sy[i] + off * halfW(i), L * 0.16, halfW(i) * 0.9, 0, 0, Math.PI * 2);
-          kctx.fill();
-        }
-        kctx.restore();
 
         // ---- roundness: bright dorsal edge + dark belly edge ----
         kctx.lineCap = 'round';
@@ -688,13 +655,6 @@ const WaterHero = ({
         kctx.moveTo(sx[2] - nX[2] * halfW(2), sy[2] - nY[2] * halfW(2));
         for (let i = 3; i < N - 2; i++) kctx.lineTo(sx[i] - nX[i] * halfW(i), sy[i] - nY[i] * halfW(i));
         kctx.stroke();
-
-        // ---- head: a small warm-white catchlight right at the nose ----
-        kctx.globalAlpha = 0.6;
-        kctx.fillStyle = 'rgba(255,246,232,0.5)';
-        kctx.beginPath();
-        kctx.ellipse(sx[1] + L * 0.02, sy[1], L * 0.09, L * 0.06, 0, 0, Math.PI * 2);
-        kctx.fill();
 
         kctx.restore();
       }
