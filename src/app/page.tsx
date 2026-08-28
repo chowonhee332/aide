@@ -2682,10 +2682,6 @@ export default function Home() {
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-4)", marginTop: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <p style={{ color: 'var(--aui-on-dark-muted)', fontSize: "var(--aui-type-compact-size)", letterSpacing: "var(--aui-tracking-tight)", margin: 0 }}>
-              Enter로 줄바꿈 · Cmd/Ctrl+Enter로 생성
-            </p>
-            <div style={{ width: '1px', height: '12px', backgroundColor: 'var(--aui-on-dark-faint)' }} />
             <button
               onClick={() => setGenMdModalOpen(true)}
               style={{
