@@ -30,9 +30,9 @@ precision highp float;
 
 uniform vec2  iResolution;
 uniform float iTime;
-uniform vec3  uColorTop;   // deep blue  (top of screen)
+uniform vec3  uColorTop;   // azure   (top of screen)
 uniform vec3  uColorMid;   // mid blue
-uniform vec3  uColorBot;   // pale cyan  (bottom of screen)
+uniform vec3  uColorBot;   // aqua    (bottom of screen)
 uniform float uCaustic;
 uniform float uRippleCount;
 uniform vec4  uRipples[${MAX_RIPPLES}]; // xy=center(0..1), z=birthTime, w=strength
@@ -53,90 +53,100 @@ float vnoise(vec2 p){
 
 float fbm(vec2 p){
   float v = 0.0, a = 0.5;
-  for (int i = 0; i < 4; i++){ v += a * vnoise(p); p = p * 2.02; a *= 0.5; }
+  for (int i = 0; i < 4; i++){ v += a * vnoise(p); p = p * 2.03; a *= 0.5; }
   return v;
 }
 
-// broad, soft, low-contrast caustic blobs (a defocused pool, not a sharp net)
-float softCaustic(vec2 p, float t){
-  vec2 q = p;
-  q += (vec2(fbm(q * 0.6 + t * 0.05),
-             fbm(q * 0.6 - t * 0.04 + 5.0)) - 0.5) * 1.3;
-  float n = fbm(q * 1.25 + t * 0.07);
-  return pow(smoothstep(0.24, 0.86, n), 1.5);
+// pool caustic web — bright sinuous light threads that shift over time.
+// Adapted from the classic iterative tileable-caustic technique.
+float causticWeb(vec2 uvw, float t){
+  vec2 p = mod(uvw * 6.2831853, 6.2831853) - 250.0;
+  vec2 i = p;
+  float c = 1.0;
+  float inten = 0.0045;
+  for (int n = 0; n < 4; n++){
+    float tt = t * 0.32 * (1.0 - 3.5 / float(n + 1));
+    i = p + vec2(cos(tt - i.x) + sin(tt + i.y),
+                 sin(tt - i.y) + cos(tt + i.x));
+    c += 1.0 / length(vec2(p.x / (sin(i.x + tt) / inten),
+                           p.y / (cos(i.y + tt) / inten)));
+  }
+  c = 1.17 - pow(c * 0.25, 1.4);
+  return clamp(pow(abs(c), 5.0), 0.0, 1.0);
 }
 
 void main(){
   vec2 uv = gl_FragCoord.xy / iResolution.xy;
   float aspect = iResolution.x / iResolution.y;
   vec2 auv = vec2(uv.x * aspect, uv.y);
+  float t = iTime;
 
-  // ---- ripple field: large soft concentric rings (ambient + cursor wake) ----
-  float height = 0.0;
-  vec2  grad = vec2(0.0);
+  // ---- slow large-scale swirl (the whole body of water turning) ----
+  vec2 swirl = (vec2(fbm(auv * 0.7 + t * 0.02),
+                     fbm(auv * 0.7 - t * 0.017 + 9.0)) - 0.5) * 0.30;
+
+  // ---- ripple rings: many thin concentric refractive wavefronts ----
+  vec2  rippleSlope = vec2(0.0);
   float ringLight = 0.0;
-  for (int i = 0; i < ${MAX_RIPPLES}; i++){
-    if (float(i) >= uRippleCount) break;
-    vec4 r = uRipples[i];
-    float age = iTime - r.z;
-    if (age < 0.0 || age > 7.0) continue;
+  float ringWarp = 0.0;
+  for (int k = 0; k < ${MAX_RIPPLES}; k++){
+    if (float(k) >= uRippleCount) break;
+    vec4 r = uRipples[k];
+    float age = t - r.z;
+    if (age < 0.0 || age > 9.0) continue;
     vec2 cc = vec2(r.x * aspect, r.y);
-    float d = distance(auv, cc);
-    float radius = age * 0.34;                    // slow → rings grow large
-    float life = 1.0 - age / 7.0;
+    vec2 to = auv - cc;
+    float d = length(to);
+    float radius = 0.03 + age * 0.14;           // expands outward, slowly
     float band = d - radius;
-    // broad window: several concentric wavefronts visible together
-    float env = exp(-abs(band) * 2.2) * exp(-max(band, 0.0) * 1.0) * life;
-    float phase = band * 22.0 - age * 3.2;
+    float life = 1.0 - age / 9.0;
+    // tight leading edge + long inward-trailing train → 6-10 visible rings
+    float env = (exp(-abs(band) * 7.0)
+              + 0.7 * exp(-abs(band) * 2.1) * step(band, 0.0)) * life;
+    float phase = band * 115.0 - age * 8.0;
     float wave = sin(phase);
-    height += wave * env * r.w;
-    vec2 dir = d > 1e-4 ? (auv - cc) / d : vec2(0.0);
-    grad += dir * cos(phase) * env * r.w;
-    ringLight += max(wave, 0.0) * env * life * r.w;
+    vec2 dir = d > 1e-4 ? to / d : vec2(0.0);
+    rippleSlope += dir * cos(phase) * env * r.w * 0.028;
+    ringLight   += max(wave, 0.0) * env * r.w;
+    ringWarp    += wave * env * r.w;
   }
 
-  // ---- surface: gentle swell + ripple slope → refraction ----
-  float swell = fbm(auv * 1.1 + iTime * 0.02);
-  vec2 slope = (vec2(fbm(auv * 2.0 + iTime * 0.03) - 0.5,
-                     fbm(auv * 2.0 - iTime * 0.028 + 7.0) - 0.5)) * 0.07
-             + grad * 0.20;
+  // ---- caustic web, warped by the swirl and the ripple slope ----
+  vec2 cuv = auv * 1.35 + swirl + rippleSlope + vec2(t * 0.011, t * 0.019);
+  float web = causticWeb(cuv, t);
+  web += causticWeb(cuv * 1.9 + 11.0, t * 1.35) * 0.5;
+  web *= uCaustic;
 
-  // ---- soft caustics ----
-  vec2 wuv = (auv + slope) * 2.2 + vec2(iTime * 0.03, iTime * 0.05);
-  float ca = softCaustic(wuv, iTime) * 0.7 + softCaustic(wuv * 1.9 - 3.0, iTime * 0.8) * 0.4;
-  ca *= uCaustic;
-
-  // ---- vertical light pillars in the upper water ----
-  vec2 sc = vec2(auv.x * 5.0 + slope.x * 3.0, auv.y * 0.7 + iTime * 0.015);
-  float streak = pow(smoothstep(0.35, 0.9, fbm(sc)), 2.0) * smoothstep(0.1, 0.85, uv.y);
-
-  // ---- base colour: deep cobalt (top) → bright cyan (bottom), smooth ----
-  float g = clamp(uv.y + (swell - 0.5) * 0.10 + height * 0.04, 0.0, 1.0);
-  float gg = g * g * g * (g * (g * 6.0 - 15.0) + 10.0);   // smootherstep
+  // ---- base colour: bright azure (top) → aqua (bottom) ----
+  float gy = clamp(uv.y + ringWarp * 0.015
+                 + (fbm(auv * 1.3 + swirl * 2.0 + t * 0.03) - 0.5) * 0.12, 0.0, 1.0);
+  float gg = gy * gy * (3.0 - 2.0 * gy);
   vec3 base = mix(uColorBot, uColorTop, gg);
-  base = mix(base, uColorMid, (1.0 - abs(g - 0.5) * 2.0) * 0.35);
-  base = mix(base, vec3(0.80, 0.94, 0.99), smoothstep(0.14, 0.0, uv.y) * 0.5);
+  base = mix(base, uColorMid, (1.0 - abs(gg - 0.5) * 2.0) * 0.28);
 
-  float shade = fbm(auv * 1.2 - iTime * 0.015 + slope * 2.0) - 0.5;
-  base += vec3(0.06, 0.14, 0.20) * shade * 0.6;
+  // broad light / shade patches drifting across the surface (kept gentle so
+  // the water stays clean, not muddy)
+  float shade = fbm(auv * 1.05 + swirl * 2.2 - t * 0.02);
+  base *= 0.93 + shade * 0.22;
 
   // ---- compose ----
   vec3 col = base;
-  col += vec3(0.42, 0.78, 0.95) * ca * mix(0.10, 0.30, 1.0 - uv.y);
-  col += vec3(0.55, 0.80, 1.0) * streak * 0.10;
-  col += vec3(0.75, 0.92, 1.0) * ringLight * 0.55;
-  col += vec3(0.25, 0.50, 0.75) * height * 0.14;
+  vec3 causticTint = mix(vec3(0.62, 0.90, 0.99), vec3(0.90, 1.0, 0.99), uv.y);
+  col += causticTint * web * mix(0.46, 0.20, uv.y);   // stronger near the bottom
+  col += vec3(0.82, 0.96, 1.0) * ringLight * 0.24;    // bright ripple crests
 
-  // vignette + top darken for nav legibility
-  vec2 vd = uv - vec2(0.5, 0.52);
-  col *= 1.0 - dot(vd, vd) * 0.45;
-  col *= 1.0 - smoothstep(0.82, 1.0, uv.y) * 0.18;
+  // ---- vignette: gently darker blurred top corners, luminous lower centre ----
+  vec2 vd = uv - vec2(0.5, 0.32);
+  float vig = clamp(1.0 - dot(vd, vd) * 0.72, 0.0, 1.0);
+  col *= mix(0.80, 1.0, vig);
+  col *= 1.0 - smoothstep(0.82, 1.0, uv.y) * 0.08;    // slight top nudge for nav
 
-  // keep it photographic, not neon
+  // clean, vivid, slightly lifted — not neon, not murky
   float luma = dot(col, vec3(0.299, 0.587, 0.114));
-  col = mix(vec3(luma), col, 1.08);
+  col = mix(vec3(luma), col, 1.22);
+  col = pow(clamp(col * 1.06, 0.0, 1.0), vec3(0.90));
 
-  col += (hash1(gl_FragCoord.xy + iTime) - 0.5) * 0.012;
+  col += (hash1(gl_FragCoord.xy + t) - 0.5) * 0.012;
   fragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }
 `;
@@ -161,10 +171,10 @@ interface WaterHeroProps {
 }
 
 const WaterHero = ({
-  colorTop = '#0836bf',
-  colorMid = '#1466d6',
-  colorBot = '#3fc8ee',
-  caustic = 1.0,
+  colorTop = '#1f6fd8',
+  colorMid = '#2ea6e4',
+  colorBot = '#63deec',
+  caustic = 1.1,
   className = '',
 }: WaterHeroProps) => {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -182,8 +192,9 @@ const WaterHero = ({
     const renderer = new Renderer({ webgl: 2, alpha: false, antialias: false, dpr });
     const gl = renderer.gl;
     const glCanvas = gl.canvas;
-    // heavy defocus — the reference is a shallow-DoF pool shot, not a sharp render
-    glCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(6px);transform:scale(1.08);';
+    // moderate defocus — the reference is a shallow-DoF pool shot that still
+    // keeps mid-frequency ripple/caustic detail readable
+    glCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(3.5px);transform:scale(1.06);';
     host.appendChild(glCanvas);
 
     // plain Array (not Float32Array): ogl only uploads array uniforms whose
@@ -207,7 +218,7 @@ const WaterHero = ({
 
     // ---------- 2D koi overlay ----------
     const koiCanvas = document.createElement('canvas');
-    koiCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(2.5px);';
+    koiCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(2px);';
     host.appendChild(koiCanvas);
     const kctx = koiCanvas.getContext('2d')!;
 
@@ -215,14 +226,14 @@ const WaterHero = ({
     const koi: Koi[] = [];
     const seedKoi = () => {
       koi.length = 0;
-      const n = reduceMotion ? 0 : 3;
+      const n = reduceMotion ? 0 : 2;
       for (let i = 0; i < n; i++) {
         koi.push({
-          x: Math.random() * cssW,
-          y: cssH * (0.2 + Math.random() * 0.7),
+          x: cssW * (0.4 + Math.random() * 0.55),
+          y: cssH * (0.4 + Math.random() * 0.55),   // reference: koi swim lower-right
           angle: Math.random() * Math.PI * 2,
-          speed: 52 + Math.random() * 34,
-          len: 100 + Math.random() * 70,
+          speed: 42 + Math.random() * 26,
+          len: 130 + Math.random() * 70,
           wander: Math.random() * 100,
           phase: Math.random() * Math.PI * 2,
         });
@@ -270,28 +281,31 @@ const WaterHero = ({
       pointer.y = 1 - ny; // gl y-up
       pointer.active = true;
       pointer.lastMove = now();
-      if (now() - lastPointerRipple > 0.08) {
+      if (now() - lastPointerRipple > 0.34) {
         lastPointerRipple = now();
-        addRipple(nx, 1 - ny, 0.85);
+        addRipple(nx, 1 - ny, 0.13);
       }
     };
     const onPointerDown = (e: PointerEvent) => {
       const rect = host.getBoundingClientRect();
-      addRipple((e.clientX - rect.left) / rect.width, 1 - (e.clientY - rect.top) / rect.height, 1.7);
+      addRipple((e.clientX - rect.left) / rect.width, 1 - (e.clientY - rect.top) / rect.height, 0.5);
     };
     window.addEventListener('pointermove', onPointerMove, { passive: true });
     window.addEventListener('pointerdown', onPointerDown, { passive: true });
 
-    // seed staggered ring systems so a wake is always on screen
-    for (let i = 0; i < 7; i++) {
+    // one persistent ring source, right-of-centre like the reference —
+    // staggered births so a full concentric train is always on screen
+    const SRC_X = 0.63, SRC_Y = 0.46;
+    for (let i = 0; i < 5; i++) {
       const r = ripples[writeIdx] ?? ({} as Ripple);
-      r.x = 0.45 + Math.random() * 0.5;   // biased to the right, like the reference
-      r.y = 0.35 + Math.random() * 0.55;
-      r.birth = -i * 0.9;
-      r.strength = 0.75;
+      r.x = SRC_X + (Math.random() - 0.5) * 0.04;
+      r.y = SRC_Y + (Math.random() - 0.5) * 0.04;
+      r.birth = -i * 1.5;
+      r.strength = 0.42;
       ripples[writeIdx] = r;
       writeIdx = (writeIdx + 1) % MAX_RIPPLES;
     }
+    let srcAcc = 0;
 
     // ---------- loop ----------
     let raf = 0;
@@ -303,7 +317,7 @@ const WaterHero = ({
     const drawKoi = (dt: number) => {
       // fade previous frame → long motion-blur smears
       kctx.globalCompositeOperation = 'destination-out';
-      kctx.fillStyle = 'rgba(0,0,0,0.055)';
+      kctx.fillStyle = 'rgba(0,0,0,0.09)';
       kctx.fillRect(0, 0, cssW, cssH);
       kctx.globalCompositeOperation = 'source-over';
 
@@ -312,19 +326,21 @@ const WaterHero = ({
         k.phase += dt * 8;
         // gentle noise-ish heading drift
         let desired = k.angle + Math.sin(k.wander) * 0.8 + Math.sin(k.wander * 0.37) * 0.45;
-        // lean toward the pointer when it is near and recently moved
-        if (pointer.active && now() - pointer.lastMove < 1.8) {
+        // a barely-there veer away from the pointer when it passes close by —
+        // koi notice the disturbance, they don't chase the cursor
+        if (pointer.active && now() - pointer.lastMove < 0.9) {
           const px = pointer.x * cssW;
           const py = (1 - pointer.y) * cssH;
-          const dx = px - k.x, dy = py - k.y;
+          const dx = k.x - px, dy = k.y - py;
           const dist = Math.hypot(dx, dy);
-          if (dist < cssW * 0.42) {
-            const toPointer = Math.atan2(dy, dx);
-            const pull = (1 - dist / (cssW * 0.42)) * 0.7;
-            desired = k.angle + angleDelta(k.angle, toPointer) * pull;
+          const reach = cssW * 0.16;
+          if (dist < reach) {
+            const away = Math.atan2(dy, dx);
+            const push = (1 - dist / reach) * 0.22;
+            desired = k.angle + angleDelta(k.angle, away) * push;
           }
         }
-        k.angle += angleDelta(k.angle, desired) * Math.min(1, dt * 1.4);
+        k.angle += angleDelta(k.angle, desired) * Math.min(1, dt * 0.8);
         k.x += Math.cos(k.angle) * k.speed * dt;
         k.y += Math.sin(k.angle) * k.speed * dt;
 
@@ -335,39 +351,53 @@ const WaterHero = ({
         if (k.y < -m) k.y = cssH + m;
         if (k.y > cssH + m) k.y = -m;
 
-        const wag = Math.sin(k.phase) * 0.14;
-        const tailSwing = Math.sin(k.phase - 0.8) * k.len * 0.14;
+        const wag = Math.sin(k.phase) * 0.16;
+        const tailSwing = Math.sin(k.phase - 0.8) * k.len * 0.16;
         kctx.save();
         kctx.translate(k.x, k.y);
         kctx.rotate(k.angle + wag);
-        kctx.filter = 'blur(4px)';
+        kctx.filter = 'blur(3px)';
         kctx.globalAlpha = 0.7;
-        // soft orange glow around the fish
-        kctx.shadowColor = 'rgba(255,110,50,0.55)';
-        kctx.shadowBlur = k.len * 0.5;
+        // warm glow haze bleeding into the water
+        kctx.shadowColor = 'rgba(255,120,44,0.45)';
+        kctx.shadowBlur = k.len * 0.38;
         // caudal fin — split tail sweeping behind
         kctx.beginPath();
-        kctx.moveTo(-k.len * 0.32, 0);
-        kctx.quadraticCurveTo(-k.len * 0.62, tailSwing - k.len * 0.05, -k.len * 0.80, tailSwing - k.len * 0.22);
-        kctx.quadraticCurveTo(-k.len * 0.58, tailSwing, -k.len * 0.80, tailSwing + k.len * 0.22);
-        kctx.quadraticCurveTo(-k.len * 0.62, tailSwing + k.len * 0.05, -k.len * 0.32, 0);
+        kctx.moveTo(-k.len * 0.30, 0);
+        kctx.quadraticCurveTo(-k.len * 0.60, tailSwing - k.len * 0.05, -k.len * 0.82, tailSwing - k.len * 0.24);
+        kctx.quadraticCurveTo(-k.len * 0.56, tailSwing, -k.len * 0.82, tailSwing + k.len * 0.24);
+        kctx.quadraticCurveTo(-k.len * 0.60, tailSwing + k.len * 0.05, -k.len * 0.30, 0);
         kctx.closePath();
-        kctx.fillStyle = 'rgba(255,90,40,0.5)';
+        kctx.fillStyle = 'rgba(240,70,34,0.55)';
         kctx.fill();
-        // body — tapered teardrop, vivid orange-red
-        const grad = kctx.createLinearGradient(-k.len * 0.4, 0, k.len * 0.5, 0);
-        grad.addColorStop(0, 'rgba(255,80,34,0.10)');
-        grad.addColorStop(0.32, 'rgba(255,66,26,1.0)');
-        grad.addColorStop(0.7, 'rgba(255,116,44,0.96)');
-        grad.addColorStop(1, 'rgba(255,190,110,0)');
+        // body — tapered teardrop, deep vermilion core → orange edge
+        const grad = kctx.createLinearGradient(-k.len * 0.4, 0, k.len * 0.52, 0);
+        grad.addColorStop(0, 'rgba(230,52,24,0.12)');
+        grad.addColorStop(0.30, 'rgba(224,40,20,1.0)');
+        grad.addColorStop(0.62, 'rgba(255,92,36,1.0)');
+        grad.addColorStop(0.86, 'rgba(255,150,74,0.85)');
+        grad.addColorStop(1, 'rgba(255,205,130,0)');
         kctx.fillStyle = grad;
         kctx.beginPath();
         kctx.moveTo(-k.len * 0.34, 0);
-        kctx.quadraticCurveTo(-k.len * 0.05, -k.len * 0.17, k.len * 0.32, -k.len * 0.07);
-        kctx.quadraticCurveTo(k.len * 0.52, 0, k.len * 0.32, k.len * 0.07);
-        kctx.quadraticCurveTo(-k.len * 0.05, k.len * 0.17, -k.len * 0.34, 0);
+        kctx.quadraticCurveTo(-k.len * 0.05, -k.len * 0.19, k.len * 0.34, -k.len * 0.075);
+        kctx.quadraticCurveTo(k.len * 0.54, 0, k.len * 0.34, k.len * 0.075);
+        kctx.quadraticCurveTo(-k.len * 0.05, k.len * 0.19, -k.len * 0.34, 0);
         kctx.closePath();
         kctx.fill();
+        // faint segment ticks so the body reads as a fish, not a smear
+        kctx.shadowBlur = 0;
+        kctx.globalAlpha = 0.28;
+        kctx.strokeStyle = 'rgba(150,20,12,0.9)';
+        kctx.lineWidth = Math.max(1, k.len * 0.012);
+        for (let s = -1; s <= 3; s++) {
+          const bx = s * k.len * 0.11;
+          const bh = k.len * 0.12 * (1 - Math.abs(bx) / (k.len * 0.5));
+          kctx.beginPath();
+          kctx.moveTo(bx, -bh);
+          kctx.quadraticCurveTo(bx - k.len * 0.04, 0, bx, bh);
+          kctx.stroke();
+        }
         kctx.restore();
       }
       kctx.filter = 'none';
@@ -380,11 +410,17 @@ const WaterHero = ({
       const dt = Math.min(0.05, time - prev || 0.016);
       prev = time;
 
-      // ambient ripples, biased to the lower half
+      // keep the main ring source alive
+      srcAcc += dt;
+      if (srcAcc > 3.2) {
+        srcAcc = 0;
+        addRipple(SRC_X + (Math.random() - 0.5) * 0.05, SRC_Y + (Math.random() - 0.5) * 0.05, 0.36 + Math.random() * 0.14);
+      }
+      // occasional faint ripple elsewhere
       ambientAcc += dt;
-      if (ambientAcc > 1.6) {
+      if (ambientAcc > 5.0) {
         ambientAcc = 0;
-        addRipple(0.3 + Math.random() * 0.65, 0.3 + Math.random() * 0.6, 0.4 + Math.random() * 0.35);
+        addRipple(0.3 + Math.random() * 0.55, 0.3 + Math.random() * 0.55, 0.16 + Math.random() * 0.12);
       }
 
       // pack ripple uniforms
