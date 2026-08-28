@@ -21,16 +21,12 @@ const hexToRgb = (hex: string): [number, number, number] => {
   return [parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255];
 };
 
-// Each koi is a plausible real koi colour, paired with a pool palette built the
-// same way as the default blue one: a genuinely dark deep tone at the top of the
-// frame easing to a luminous, saturated tone at the bottom — so every flooded
-// palette reads as depth-and-glow, not one flat tint.
-// body = core fill · rim = the glowing back-lit edge (subsurface scatter) ·
-// deep = dark tone for the volume patches that give the body form
-interface KoiKind { body: string; rim: string; deep: string; water: [string, string, string]; }
+// Each koi is a plausible real koi colour.
+// body = core fill · rim = the glowing warm edge (subsurface scatter / fins)
+interface KoiKind { body: string; rim: string; }
 const KOI_KINDS: KoiKind[] = [
-  { body: '230,58,36', rim: '255,150,60', deep: '120,20,8', water: ['#8a2410', '#e0431f', '#ff9a6b'] }, // vermilion — the video's redder fish
-  { body: '234,120,40', rim: '255,196,96', deep: '150,72,12', water: ['#7a4708', '#e0982a', '#ffe0a0'] }, // amber — the video's more orange fish
+  { body: '230,58,36', rim: '255,150,60' }, // vermilion — the video's redder fish
+  { body: '234,120,40', rim: '255,196,96' }, // amber — the video's more orange fish
 ];
 const KOI_HOT = '255,206,104'; // shared hot yellow-orange leading edge / head glow
 
@@ -50,11 +46,6 @@ uniform vec3  uColorBot;   // aqua    (bottom of screen)
 uniform float uCaustic;
 uniform float uRippleCount;
 uniform vec4  uRipples[${MAX_RIPPLES}]; // xy=center(0..1), z=birthTime, w=strength
-uniform vec3  uInkTop;      // palette the ink-spread is transitioning toward
-uniform vec3  uInkMid;
-uniform vec3  uInkBot;
-uniform vec2  uInkOrigin;   // click point, uv (y-up); ignored when uInkProgress <= 0
-uniform float uInkProgress; // radius of the spreading ink front, uv units
 uniform vec4  uKoi[${MAX_KOI}]; // xy = head (uv, y-up) · zw = heading * stroke speed (0..1)
 
 out vec4 fragColor;
@@ -180,30 +171,19 @@ void main(){
   web *= 1.0 + ringField * 0.85 + min(wakeField, 2.0) * 0.7;
   web = max(web, 0.0);
 
-  // ---- ink spread: a clicked koi's palette floods out from the click point,
-  //      warped by the ripple lens so the edge dissolves like real ink ----
-  float inkMask = 0.0;
-  if (uInkProgress > 0.0) {
-    float dist = length((uv - uInkOrigin) * vec2(aspect, 1.0)) + rippleWarp.x * 0.6;
-    inkMask = 1.0 - smoothstep(uInkProgress - 0.22, uInkProgress, dist);
-  }
-  vec3 cTop = mix(uColorTop, uInkTop, inkMask);
-  vec3 cMid = mix(uColorMid, uInkMid, inkMask);
-  vec3 cBot = mix(uColorBot, uInkBot, inkMask);
-
   // ---- base colour: deep mass (top) → luminous glow (bottom) ----
   // premium soft-focus gradient: the deep tone holds through most of the frame,
   // the bright tone reads as a glow only near the lower edge
   float gy = clamp(uv.y + rippleWarp.y * 0.35
                  + (fbm(auv * 1.3 + swirl * 2.0 + t * 0.03) - 0.5) * 0.06, 0.0, 1.0);
   float gg = pow(gy, 0.62);
-  vec3 base = mix(cBot, cTop, gg);
-  base = mix(base, cMid, (1.0 - abs(gg - 0.5) * 2.0) * 0.30);
+  vec3 base = mix(uColorBot, uColorTop, gg);
+  base = mix(base, uColorMid, (1.0 - abs(gg - 0.5) * 2.0) * 0.30);
 
   // one big soft light bloom drifting low, like an abstract gradient wallpaper
   vec2 bc = vec2(0.40 + 0.06 * sin(t * 0.05), 0.10 + 0.04 * sin(t * 0.037 + 2.0));
   float bloom = exp(-pow(length((uv - bc + rippleWarp * 0.5) * vec2(1.0, 1.35)), 1.6) * 3.2);
-  base = mix(base, cBot * 1.04 + vec3(0.05), bloom * 0.42);
+  base = mix(base, uColorBot * 1.04 + vec3(0.05), bloom * 0.42);
 
   // very gentle drift in tone — smooth, not mottled
   float shade = fbm(auv * 0.9 + swirl * 1.8 - t * 0.02);
@@ -253,7 +233,7 @@ interface Koi {
   len: number;                 // rest body length
   hist: Float64Array;          // ring buffer of past head positions [x,y,x,y,…]
   histHead: number; histN: number;        // newest-sample slot · samples written
-  kind: number;                // index into KOI_KINDS — body colour + ink palette
+  kind: number;                // index into KOI_KINDS — body colour
 }
 
 interface WaterHeroProps {
@@ -312,11 +292,6 @@ const WaterHero = ({
         uCaustic: { value: caustic },
         uRippleCount: { value: 0 },
         uRipples: { value: ripplesBuf },
-        uInkTop: { value: new Float32Array(hexToRgb(colorTop)) },
-        uInkMid: { value: new Float32Array(hexToRgb(colorMid)) },
-        uInkBot: { value: new Float32Array(hexToRgb(colorBot)) },
-        uInkOrigin: { value: new Float32Array([0.5, 0.5]) },
-        uInkProgress: { value: 0 },
         uKoi: { value: koiBuf },
       },
     });
@@ -429,40 +404,6 @@ const WaterHero = ({
       pointer.lastMove = now();
     };
     window.addEventListener('pointermove', onPointerMove, { passive: true });
-
-    // ---------- ink spread ---------- clicking a koi floods the pool with that
-    // koi's palette from the click point; when the front covers the frame the
-    // new palette is baked into the live colour uniforms
-    const liveTop = program.uniforms.uColorTop.value as Float32Array;
-    const liveMid = program.uniforms.uColorMid.value as Float32Array;
-    const liveBot = program.uniforms.uColorBot.value as Float32Array;
-    const inkTop = program.uniforms.uInkTop.value as Float32Array;
-    const inkMid = program.uniforms.uInkMid.value as Float32Array;
-    const inkBot = program.uniforms.uInkBot.value as Float32Array;
-    const inkOrigin = program.uniforms.uInkOrigin.value as Float32Array;
-    let inkProgress = 0;   // > 0 while a spread is animating
-    const onPointerDown = (e: PointerEvent) => {
-      if (inkProgress > 0) return;                 // one spread at a time
-      const rect = host.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      let hit: Koi | null = null;
-      let best = Infinity;
-      for (const k of koi) {
-        const dd = Math.hypot(k.x - mx, k.y - my);
-        if (dd < k.len && dd < best) { best = dd; hit = k; }
-      }
-      if (!hit) return;
-      const w = KOI_KINDS[hit.kind].water;
-      inkTop.set(hexToRgb(w[0]));
-      inkMid.set(hexToRgb(w[1]));
-      inkBot.set(hexToRgb(w[2]));
-      inkOrigin[0] = mx / rect.width;
-      inkOrigin[1] = 1 - my / rect.height;        // gl y-up
-      inkProgress = 0.0001;
-      program.uniforms.uInkProgress.value = inkProgress;
-    };
-    window.addEventListener('pointerdown', onPointerDown, { passive: true });
 
     // a drifting ring source, right-of-centre like the reference. Seeded
     // irregularly (varied age, offset, strength) so it never reads as a loop.
@@ -805,16 +746,6 @@ const WaterHero = ({
         koiBuf[o + 3] = -Math.sin(k.heading) * sf;
       }
 
-      // advance an in-flight ink spread; bake the palette once it covers the frame
-      if (inkProgress > 0) {
-        inkProgress += dt * 0.9;
-        if (inkProgress >= 2.2) {
-          liveTop.set(inkTop); liveMid.set(inkMid); liveBot.set(inkBot);
-          inkProgress = 0;
-        }
-        program.uniforms.uInkProgress.value = inkProgress;
-      }
-
       renderer.render({ scene: mesh });
 
       drawKoi(dt);
@@ -847,7 +778,6 @@ const WaterHero = ({
       io.disconnect();
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerdown', onPointerDown);
       try { host.removeChild(glCanvas); } catch { /* ignore */ }
       try { host.removeChild(koiCanvas); } catch { /* ignore */ }
       const lose = gl.getExtension('WEBGL_lose_context');
