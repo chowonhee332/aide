@@ -625,7 +625,7 @@ const WaterHero = ({
         const core = kind.body;
         const edge = kind.rim;
         const L = k.len;
-        const half = (s: number) => L * (0.1 * Math.sin(Math.pow(s, 0.62) * Math.PI) + 0.009 * (1 - s));
+        const half = (s: number) => L * (0.132 * Math.sin(Math.pow(s, 0.62) * Math.PI) + 0.012 * (1 - s));
         const ribbon = (grow: number, ox: number, oy: number) => {
           kctx.beginPath();
           kctx.moveTo(wx[0] + rnx[0] * half(0) * grow + ox, wy[0] + rny[0] * half(0) * grow + oy);
@@ -651,17 +651,88 @@ const WaterHero = ({
         }
         kctx.filter = 'none';
 
+        // tail-tip frame (points tail-ward) for the caudal fin
+        const tipX = wx[RIB_N - 1], tipY = wy[RIB_N - 1];
+        const tdx = wx[RIB_N - 1] - wx[RIB_N - 3], tdy = wy[RIB_N - 1] - wy[RIB_N - 3];
+        const tdl = Math.hypot(tdx, tdy) || 1;
+        const fX = tdx / tdl, fY = tdy / tdl;
+        const sX = -fY, sY = fX;
+        const beat = Math.sin(k.phase - WAVES);
+
+        // ---- caudal fin: translucent forked fan, swept by the tail stroke ----
+        {
+          const finL = L * (0.32 + 0.06 * thr);
+          const spr = L * 0.145 * (0.85 + 0.3 * beat);
+          const bX = sX * L * 0.05 * beat, bY = sY * L * 0.05 * beat;
+          const g = kctx.createLinearGradient(tipX, tipY, tipX + fX * finL, tipY + fY * finL);
+          g.addColorStop(0, `rgba(${core},0.5)`);
+          g.addColorStop(0.5, `rgba(${edge},0.2)`);
+          g.addColorStop(1, `rgba(${edge},0)`);
+          kctx.fillStyle = g;
+          kctx.globalAlpha = 0.9;
+          kctx.beginPath();
+          kctx.moveTo(tipX, tipY);
+          kctx.quadraticCurveTo(
+            tipX + fX * finL * 0.5 + sX * spr * 0.7 + bX, tipY + fY * finL * 0.5 + sY * spr * 0.7 + bY,
+            tipX + fX * finL + sX * spr + bX, tipY + fY * finL + sY * spr + bY);
+          kctx.quadraticCurveTo(
+            tipX + fX * finL * 0.55 + bX, tipY + fY * finL * 0.55 + bY,
+            tipX + fX * finL - sX * spr + bX, tipY + fY * finL - sY * spr + bY);
+          kctx.quadraticCurveTo(
+            tipX + fX * finL * 0.5 - sX * spr * 0.7 + bX, tipY + fY * finL * 0.5 - sY * spr * 0.7 + bY,
+            tipX, tipY);
+          kctx.closePath();
+          kctx.fill();
+        }
+
+        // ---- pectoral fins: small translucent flappers just behind the head ----
+        {
+          const pi = Math.round(0.22 * (RIB_N - 1));
+          const pfx = rx[pi + 1] - rx[pi - 1], pfy = ry[pi + 1] - ry[pi - 1];
+          const pfl = Math.hypot(pfx, pfy) || 1;
+          const bx = pfx / pfl, by = pfy / pfl; // tail-ward
+          for (const sgn of [-1, 1] as const) {
+            const nx = -by * sgn, ny = bx * sgn;
+            const flu = 0.6 + 0.4 * Math.sin(k.phase * 0.7 + (sgn > 0 ? 0 : Math.PI));
+            const rx0 = wx[pi] + nx * half(0.22) * 0.6, ry0 = wy[pi] + ny * half(0.22) * 0.6;
+            const fl = L * (0.11 + 0.05 * flu);
+            const tx = rx0 + bx * fl * 0.5 + nx * fl * 0.75;
+            const ty = ry0 + by * fl * 0.5 + ny * fl * 0.75;
+            kctx.fillStyle = `rgba(${core},0.3)`;
+            kctx.globalAlpha = 0.85;
+            kctx.beginPath();
+            kctx.moveTo(rx0 + bx * L * 0.02, ry0 + by * L * 0.02);
+            kctx.quadraticCurveTo(rx0 + nx * fl * 0.45, ry0 + ny * fl * 0.45, tx, ty);
+            kctx.quadraticCurveTo(rx0 + bx * fl * 0.9 + nx * fl * 0.15, ry0 + by * fl * 0.9 + ny * fl * 0.15, rx0 + bx * fl * 0.55, ry0 + by * fl * 0.55);
+            kctx.closePath();
+            kctx.fill();
+          }
+        }
+
         // ---- body: hot yellow nose → vermilion core → tail dissolving to water ----
         kctx.globalAlpha = 0.92;
         const bg = kctx.createLinearGradient(wx[0], wy[0], wx[RIB_N - 1], wy[RIB_N - 1]);
         bg.addColorStop(0, `rgba(${KOI_HOT},0.95)`);
         bg.addColorStop(0.12, `rgba(${core},1)`);
         bg.addColorStop(0.5, `rgba(${core},0.98)`);
-        bg.addColorStop(0.8, `rgba(${core},0.55)`);
-        bg.addColorStop(1, `rgba(${edge},0)`);
+        bg.addColorStop(0.82, `rgba(${core},0.7)`);
+        bg.addColorStop(1, `rgba(${edge},0.12)`);
         kctx.fillStyle = bg;
         ribbon(1, 0, 0);
         kctx.fill();
+
+        // ---- belly: a soft gold rim along the ventral edge ----
+        kctx.globalAlpha = 0.5;
+        kctx.strokeStyle = `rgba(${KOI_HOT},0.42)`;
+        kctx.lineWidth = Math.max(1.5, L * 0.02);
+        kctx.lineCap = 'round';
+        kctx.beginPath();
+        for (let i = 3; i < RIB_N - 2; i++) {
+          const s = i / (RIB_N - 1);
+          const x = wx[i] - rnx[i] * half(s) * 0.9, y = wy[i] - rny[i] * half(s) * 0.9;
+          if (i === 3) kctx.moveTo(x, y); else kctx.lineTo(x, y);
+        }
+        kctx.stroke();
 
         // hot head glow bleeding into the water
         kctx.globalAlpha = 1;
