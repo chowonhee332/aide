@@ -100,16 +100,24 @@ src/lib/design-systems/
 
 ## 4. 실행 순서 (단계 → 검증)
 
-| # | 변경 | 파일 | 검증 |
-|---|---|---|---|
-| **0** | **여백 파생 버그 수정** — `buildDesignRhythmContract`가 `responsive.modes.{compact,wide}.page-padding`을 먼저 읽기. `pickSpacingToken` 폴백 풀에서 `control-*`·`content-*`·`side-panel`·`dialog-*` 제외 + 유계값 상한(page-padding ≤ 24, section-gap ≤ 28) | `gemini.ts` | `npm run lint` + `build` + 스모크(파생값 콘솔 출력) + 실 생성 1회 (사용자) |
-| 1 | `_base/guardrails.yaml` + `_base/layout.md` 추출 — 흩어진 "Do Not"/"Must Follow"/`buildQualityRules` 하드코딩 규칙을 한곳으로 | `design-systems/_base/*`, `gemini.ts` 로더 | `verify_prompt_budget.mjs`에 "산문 don't 중복 0" 불변식 |
-| 2 | `aide/` 디렉토리로 aide.md 분해 (tokens 3계층 = `design-system-upgrade-plan` Phase 1 흡수). grid를 semantic 토큰 + `--aide-grid-*` 주입 + `.aide-grid` 유틸 | `design-systems/aide/*`, `gemini.ts` | `npm test` + build + 조립 문자열 동치 확인 + 실 생성 무변화 |
-| 3 | `structure-lint`가 `_base/guardrails.yaml` 읽기 + off-grid 간격 위반 카운트. `spacing-rule`에서 "2px optical" 포괄 예외 삭제 | `structure-lint.ts` | `gap:6px` 픽스처 유닛 테스트 |
-| 4 | 결정론 정규화 주입기 — 모델 `<style>` 잔여 bare `gap/padding/margin:Npx` → 4px 스텝 스냅, `.btn-*` 인라인 height 제거 | `gemini.ts` | 실 생성: off-grid 카운트 ≈ 0 |
+| # | 변경 | 상태 |
+|---|---|---|
+| **0** | 여백 파생 버그 — `buildDesignRhythmContract`가 `responsive.modes.*.page-padding`을 읽고, `pickSpacingToken` 폴백 풀에서 `control-*`/`content-*`/`icon-*`/`*-height` 제외 + 유계 상한 | ✅ `2174bf2` |
+| **0b** | 좌우 마진 규칙 — 모바일·태블릿 16px / PC(≥1200) 24px. `buildAideContractStyle`에 `@media(min-width:1200px)` | ✅ `e35b4a4` |
+| **P2** | 모델 `:root` 재선언 중단 — `gemini.ts:1585` 지시문을 "참조만"으로 | ✅ `243dca1` |
+| **P1** | 타이포 스케일 주입 — `parseFencedDesignContract`가 `typography` 추출, `--aide-text-{role}-*` 주입 + baseline 규칙 + 프롬프트 가드 | ✅ `e37f1fe` |
+| **4** | 결정론 정규화 — `patchCssTokens`에 off-grid gap→4px 스냅 + off-scale font-size→스케일 스냅, `stripButtonInlineOverrides` | ✅ `4e01a30` |
+| **P3** | shadow 스케일 주입 — `--shadow-{role}` + `cardShadow` 폴백 + 프롬프트 가드 | ✅ `c9eef04` |
+| 1 | `_base/guardrails.yaml` + `_base/layout.md` 추출 — 흩어진 "Do Not"/"Must Follow"/`buildQualityRules` 하드코딩 규칙을 한곳으로. **무손실 이관** | ⬜ 남음 |
+| 2 | `aide/` 디렉토리로 aide.md 물리 분해 (tokens 3계층). grid를 semantic + `--aide-grid-*` 주입 | ⬜ 남음 (실 생성 검증 필요) |
+| 3 | `structure-lint` off-grid 카운트 (telemetry) + `_base/guardrails.yaml` 읽기 | ⬜ 남음 (선택) |
 
-각 단계 **독립 커밋**. 0단계는 나머지와 무관하게 먼저 — 안 고치면 주입기가 계속
-48/64px를 박아 1~4단계 효과를 측정할 수 없다.
+**완료분(0·0b·P1·P2·P3·4)은 전부 정적 검증됨** — lint + build + `npm test` + 캡처본 대조.
+실 렌더 확인은 마지막 실 생성 1회에서.
+
+**남은 1·2·3은 "조직/정리" 작업.** 1(무손실 규칙 이관)과 2(물리 파일 분해)는 실 생성
+체크포인트와 함께 하는 게 안전 — 서두르면 규칙 누락 위험. 3은 정규화가 이미 교정하므로
+telemetry 가치만 있음.
 
 ---
 
