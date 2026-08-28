@@ -109,26 +109,33 @@ void main(){
     if (age < 0.0) continue;
     float vr  = fract(sin(r.z * 78.233 + r.x * 41.71 + r.y * 12.13) * 43758.5453);
     float vr2 = fract(vr * 197.31 + 0.5);
-    float maxAge = 7.0 + vr2 * 6.0;
+    float maxAge = 8.0 + vr2 * 6.0;
     if (age > maxAge) continue;
     vec2 cc = vec2(r.x * aspect, r.y);
     vec2 to = auv - cc;
     float d = length(to);
     vec2  dir = d > 1e-4 ? to / d : vec2(0.0);
-    float life = 1.0 - age / maxAge;
 
-    // energy rides out in an expanding annulus that widens and fades with age
-    float front = age * (0.15 + vr * 0.09);
-    float aw = front * 0.5 + 0.08;
-    float annulus = exp(-pow((d - front * 0.62) / aw, 2.0)) * life * r.w;
+    // front-loaded envelope: full strength the instant it is born, then eases
+    // the whole ring system away to nothing — clamped cleanly to 0 at maxAge
+    float life = exp(-age * 0.32) * (1.0 - age / maxAge);
+
+    // expands fast at first, then slows (√t), like a real spreading ring
+    float front = sqrt(age) * (0.17 + vr * 0.08);
+
+    // a bright leading wavefront + a decaying train of rings trailing inside it
+    float wdf = d - front;                                   // <0 inside the front
+    float win = exp(-wdf * wdf * 46.0)                       // the sharp bright wavefront
+              + 0.55 * exp(wdf * 5.5) * step(wdf, 0.0);      // rings trailing inward
+    float annulus = min(win, 1.3) * life * r.w;
 
     // a whole train of tight concentric rings, not just two
-    float wl = 78.0 + vr * 46.0;
-    float wave = sin(d * wl - age * (7.0 + vr2 * 4.0));
+    float wl = 70.0 + vr * 40.0;
+    float wave = sin(d * wl - age * (5.5 + vr2 * 3.0));
 
     ringField  += wave * annulus;
-    rippleWarp += dir * wave * annulus * (2.2 / wl);
-    centrePlop += exp(-d * d * 950.0) * exp(-age * 6.0) * r.w;
+    rippleWarp += dir * wave * annulus * (2.6 / wl);
+    centrePlop += exp(-d * d * 900.0) * exp(-age * 5.0) * r.w;
   }
 
   // ---- koi wake: a swimming fish parts the water — a bright bow crest at the
@@ -168,7 +175,7 @@ void main(){
   web *= uCaustic;
   // crests concentrate that caustic light into rings, troughs dim it → the
   // ripple shows in the water's own texture and colour, not as a separate line
-  web *= 1.0 + ringField * 0.85 + min(wakeField, 2.0) * 0.7;
+  web *= 1.0 + ringField * 0.8 + min(wakeField, 2.0) * 0.7;
   web = max(web, 0.0);
 
   // ---- base colour: deep mass (top) → luminous glow (bottom) ----
@@ -197,8 +204,9 @@ void main(){
   // the ripple's only direct contribution: a faint broad lift on the crests and
   // a small rebound dot at a fresh impact — both in the caustic's own colour, so
   // the rings never separate from the surface
-  col += causticTint * clamp(ringField, 0.0, 1.0) * 0.05;
-  col += causticTint * centrePlop * 0.35;
+  col += causticTint * max(ringField, 0.0) * 0.15;      // bright ring crests, on their own
+  col -= causticTint * max(-ringField, 0.0) * 0.05;     // troughs read as thin dark gaps
+  col += causticTint * centrePlop * 0.4;
   col += causticTint * clamp(wakeField, 0.0, 1.0) * 0.09;
 
   // ---- vignette: deeper cobalt corners, luminous lower centre ----
@@ -441,23 +449,23 @@ const WaterHero = ({
         k.burstIn -= dt;
         if (k.burstIn <= 0) {
           k.throttleGoal = 1;
-          k.burstDur = 0.42 + Math.random() * 0.7;
-          k.burstIn = 2.4 + Math.random() * 4.6;
+          k.burstDur = 0.4 + Math.random() * 0.55;
+          k.burstIn = 3.2 + Math.random() * 5.0;
         }
         if (k.burstDur > 0) { k.burstDur -= dt; if (k.burstDur <= 0) k.throttleGoal = 0; }
-        k.throttle += (k.throttleGoal - k.throttle) * Math.min(1, dt * (k.throttleGoal > k.throttle ? 7 : 1.6));
+        k.throttle += (k.throttleGoal - k.throttle) * Math.min(1, dt * (k.throttleGoal > k.throttle ? 7 : 2.4));
         const thr = smooth(k.throttle);
         const tgtSpeed = k.cruise + (k.burst - k.cruise) * thr;
         k.speed += (tgtSpeed - k.speed) * Math.min(1, dt * 4);
 
-        // ---- steering: commit to a bank for a stretch; sharper turns at cruise,
-        //      near-straight while rocketing (matches the video's arcs) ----
+        // ---- steering: commit to a bank for a long stretch so the body curls
+        //      into a real C through the turn; near-straight while rocketing ----
         k.turnHold -= dt;
         if (k.turnHold <= 0) {
-          k.turnHold = 0.7 + Math.random() * 2.4;
-          k.turnGoal = (Math.random() - 0.5) * 2.6 * (0.32 + 0.68 * (1 - k.throttle));
+          k.turnHold = 1.1 + Math.random() * 3.4;
+          k.turnGoal = (Math.random() - 0.5) * 3.1 * (0.28 + 0.72 * (1 - k.throttle));
         }
-        k.turn += (k.turnGoal - k.turn) * Math.min(1, dt * 3);
+        k.turn += (k.turnGoal - k.turn) * Math.min(1, dt * 2.4);
         k.heading += k.turn * dt;
 
         // weak pull back once it has strayed well past the frame
@@ -566,7 +574,13 @@ const WaterHero = ({
         const core = kind.body;
         const edge = kind.rim;
         const L = k.len;
-        const half = (s: number) => L * (0.132 * Math.sin(Math.pow(s, 0.62) * Math.PI) + 0.012 * (1 - s));
+        // blunt rounded head, widest ~1/4 back, long even taper to a small tail
+        // stub where the fin takes over — a fish silhouette, not a diamond
+        const sstep = (e0: number, e1: number, x: number) => {
+          const u = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+          return u * u * (3 - 2 * u);
+        };
+        const half = (s: number) => L * 0.132 * (0.42 + 0.58 * sstep(0, 0.26, s)) * (1 - 0.9 * sstep(0.26, 1, s));
         const ribbon = (grow: number, ox: number, oy: number) => {
           kctx.beginPath();
           kctx.moveTo(wx[0] + rnx[0] * half(0) * grow + ox, wy[0] + rny[0] * half(0) * grow + oy);
@@ -650,14 +664,14 @@ const WaterHero = ({
           }
         }
 
-        // ---- body: hot yellow nose → vermilion core → tail dissolving to water ----
+        // ---- body: small warm tip → vermilion core → tail dissolving to water ----
         kctx.globalAlpha = 0.92;
         const bg = kctx.createLinearGradient(wx[0], wy[0], wx[RIB_N - 1], wy[RIB_N - 1]);
-        bg.addColorStop(0, `rgba(${KOI_HOT},0.95)`);
-        bg.addColorStop(0.12, `rgba(${core},1)`);
-        bg.addColorStop(0.5, `rgba(${core},0.98)`);
-        bg.addColorStop(0.82, `rgba(${core},0.7)`);
-        bg.addColorStop(1, `rgba(${edge},0.12)`);
+        bg.addColorStop(0, `rgba(255,140,74,0.8)`);
+        bg.addColorStop(0.06, `rgba(${core},1)`);
+        bg.addColorStop(0.55, `rgba(${core},1)`);
+        bg.addColorStop(0.85, `rgba(${core},0.68)`);
+        bg.addColorStop(1, `rgba(${edge},0.1)`);
         kctx.fillStyle = bg;
         ribbon(1, 0, 0);
         kctx.fill();
@@ -675,11 +689,11 @@ const WaterHero = ({
         }
         kctx.stroke();
 
-        // hot head glow bleeding into the water
+        // faint warm head glow bleeding into the water
         kctx.globalAlpha = 1;
-        const hgR = L * 0.11;
+        const hgR = L * 0.09;
         const hg = kctx.createRadialGradient(wx[0], wy[0], 0, wx[0], wy[0], hgR);
-        hg.addColorStop(0, `rgba(${KOI_HOT},0.5)`);
+        hg.addColorStop(0, `rgba(${KOI_HOT},0.34)`);
         hg.addColorStop(1, `rgba(${KOI_HOT},0)`);
         kctx.fillStyle = hg;
         kctx.beginPath();
@@ -705,16 +719,16 @@ const WaterHero = ({
       if (srcAcc > srcNext) {
         srcAcc = 0;
         srcNext = 1.8 + Math.random() * 3.8;
-        addRipple(src.x + (Math.random() - 0.5) * 0.06, src.y + (Math.random() - 0.5) * 0.06, 0.36 + Math.random() * 0.24);
+        addRipple(src.x + (Math.random() - 0.5) * 0.06, src.y + (Math.random() - 0.5) * 0.06, 0.55 + Math.random() * 0.35);
         if (Math.random() < 0.35) {
-          addRipple(src.x + (Math.random() - 0.5) * 0.14, src.y + (Math.random() - 0.5) * 0.14, 0.24 + Math.random() * 0.18);
+          addRipple(src.x + (Math.random() - 0.5) * 0.14, src.y + (Math.random() - 0.5) * 0.14, 0.34 + Math.random() * 0.24);
         }
       }
       // occasional faint ripple somewhere else entirely
       ambientAcc += dt;
       if (ambientAcc > 3.5 + Math.random() * 4.0) {
         ambientAcc = 0;
-        addRipple(0.15 + Math.random() * 0.75, 0.25 + Math.random() * 0.6, 0.12 + Math.random() * 0.16);
+        addRipple(0.15 + Math.random() * 0.75, 0.25 + Math.random() * 0.6, 0.18 + Math.random() * 0.2);
       }
 
       // pack ripple uniforms
