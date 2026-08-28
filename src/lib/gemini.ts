@@ -1359,13 +1359,24 @@ function parseNumericPx(value?: string): number | null {
   return null
 }
 
-function pickSpacingToken(spacing: DesignTokenMap, preferred: string[], fallbackIndexRatio: number): string {
+// 리듬 폴백 풀에서 제외할 토큰 그룹. `dimension` 스케일에는 간격 스텝(`space-*`)뿐 아니라
+// 컨트롤 높이(`control-*` 32~48px)·콘텐츠 폭(`content-*` 700~1440px)·패널 폭 등이 섞여 있어서,
+// px 순 위치 폴백이 이걸 페이지 여백/섹션 간격으로 뽑으면 레이아웃이 부풀어 오른다.
+const NON_RHYTHM_TOKEN_KEY = /^(control|content|side-panel|panel|dialog|sheet|drawer|modal|width|height|size|breakpoint|container|icon|target|toolbar|header|footer|nav|appbar|tabbar|hero|max-|min-)|-(height|width|max|min)$/
+
+function pickSpacingToken(
+  spacing: DesignTokenMap,
+  preferred: string[],
+  fallbackIndexRatio: number,
+  ceilingPx = Infinity,
+): string {
   for (const key of preferred) {
     if (spacing[key]) return `var(--spacing-${key})`
   }
   const entries = Object.entries(spacing)
     .map(([key, value]) => ({ key, value, px: parseNumericPx(value) }))
     .filter((item): item is { key: string; value: string; px: number } => item.px !== null)
+    .filter(item => !NON_RHYTHM_TOKEN_KEY.test(item.key) && item.px <= ceilingPx)
     .sort((a, b) => a.px - b.px)
   if (entries.length === 0) return '[derive from DESIGN.md spacing]'
   const index = Math.min(entries.length - 1, Math.max(0, Math.round((entries.length - 1) * fallbackIndexRatio)))
@@ -1423,23 +1434,25 @@ function buildDesignRhythmContract(designMd: string, hasBrandColors = false): De
   const frontmatterComponents = parseComponentContract(yaml)
   const components = fenced?.components ?? frontmatterComponents
 
-  const layout = parseSimpleTokenMap(yaml, 'layout')
+  // 평면 `layout:` 맵(레거시 DESIGN.md)과 fenced contract의 `responsive`에서 뽑은
+  // 레이아웃 값을 합친다. 평면 맵이 우선. aide.md는 후자에서 page-padding(20px)이 온다.
+  const layout = { ...(fenced?.layout ?? {}), ...parseSimpleTokenMap(yaml, 'layout') }
   const chrome = parseSimpleTokenMap(yaml, 'chrome')
 
   const cardPadding = layout['card-padding']
     ?? spacing['card-padding']
     ?? pickComponentValue(components, ['card'], ['padding', 'paddingX', 'paddingY'])
-    ?? pickSpacingToken(spacing, ['lg', 'md', 'base'], 0.58)
+    ?? pickSpacingToken(spacing, ['space-4', 'space-5', 'lg', 'md', 'base'], 0.58, 24)
   const cardGap = layout['card-gap']
     ?? spacing['card-gap']
     ?? pickComponentValue(components, ['card'], ['gap', 'rowGap', 'columnGap'])
-    ?? pickSpacingToken(spacing, ['md', 'base', 'sm'], 0.42)
+    ?? pickSpacingToken(spacing, ['space-3', 'space-4', 'md', 'base', 'sm'], 0.42, 20)
   const sectionGap = layout['section-gap']
     ?? spacing['section-gap']
-    ?? pickSpacingToken(spacing, ['lg', 'xl', 'section'], 0.65)
+    ?? pickSpacingToken(spacing, ['space-6', 'space-5', 'lg', 'xl', 'section'], 0.65, 28)
   const pagePadding = layout['page-padding']
     ?? spacing['page-padding']
-    ?? pickSpacingToken(spacing, ['lg', 'md', 'gutter', 'base'], 0.58)
+    ?? pickSpacingToken(spacing, ['space-5', 'space-4', 'lg', 'md', 'gutter', 'base'], 0.58, 24)
   const cardRadius = pickComponentValue(components, ['card'], ['radius', 'rounded', 'borderRadius'])
     ?? pickRoundedToken(rounded, ['md', 'lg', 'card'], 0.58)
   const buttonHeight = pickComponentValue(components, ['button-primary', 'button'], ['height', 'minHeight'])
@@ -1453,7 +1466,7 @@ function buildDesignRhythmContract(designMd: string, hasBrandColors = false): De
   const pagePaddingWeb = layout['page-padding-web'] ?? spacing['page-padding-web'] ?? pagePadding
   const itemGap = layout['item-gap']
     ?? spacing['item-gap']
-    ?? pickSpacingToken(spacing, ['xs', 'xxs', 'sm'], 0.25)
+    ?? pickSpacingToken(spacing, ['space-2', 'space-1', 'xs', 'xxs', 'sm'], 0.25, 16)
   const headerHeight = layout['header-height'] ?? layout['nav-height'] ?? layout['appbar-height'] ?? chrome['header-height'] ?? '56px'
   const tabbarHeight = layout['tabbar-height'] ?? layout['tab-bar-height'] ?? layout['bottom-nav-height'] ?? chrome['tabbar-height'] ?? '72px'
 

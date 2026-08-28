@@ -18,6 +18,13 @@ export interface FlatDesignContract {
   spacing: Record<string, string>
   rounded: Record<string, string>
   components: Record<string, Record<string, string>>
+  /**
+   * `contract.responsive`에서 뽑은 레이아웃 리듬 값. 평면 `layout:` 맵과 같은 키를 쓴다
+   * (`page-padding`, `page-padding-web`, `gutter`). aide.md는 이 값을 토큰 스케일이 아니라
+   * `responsive.modes.*`에 두므로, 이게 없으면 소비자가 `dimension` 스케일에서 엉뚱한
+   * 토큰(예: `control-prominent` 48px)을 페이지 여백으로 뽑는다.
+   */
+  layout: Record<string, string>
 }
 
 /** DTCG 그룹(`{ key: { $value, $description } }`)을 평면 `key: value`로 편다. */
@@ -71,6 +78,7 @@ export function parseFencedDesignContract(designMd: string): FlatDesignContract 
   const rawTokens = contract.tokens as Record<string, unknown> | undefined
   if (!rawTokens) return null
   const rawComponentTokens = (contract.component_tokens ?? {}) as Record<string, unknown>
+  const layout = flattenResponsiveLayout(contract)
 
   let tokens: Record<string, unknown>
   let componentTokens: Record<string, unknown>
@@ -98,5 +106,27 @@ export function parseFencedDesignContract(designMd: string): FlatDesignContract 
     spacing: flattenTokenGroup(tokens.dimension),
     rounded: flattenTokenGroup(tokens.radius),
     components,
+    layout,
   }
+}
+
+/**
+ * `contract.responsive.modes.{compact,wide}.page-padding`와 `responsive.grid.gutter`를
+ * 평면 `layout:` 맵 키로 정규화한다. 값이 없으면 빈 맵을 돌려주고, 소비자는 기존
+ * 토큰 스케일 폴백을 계속 쓴다.
+ */
+function flattenResponsiveLayout(contract: Record<string, unknown>): Record<string, string> {
+  const result: Record<string, string> = {}
+  const responsive = contract.responsive as Record<string, unknown> | undefined
+  if (!responsive) return result
+  const str = (value: unknown): string | undefined =>
+    typeof value === 'string' || typeof value === 'number' ? String(value) : undefined
+  const modes = responsive.modes as Record<string, Record<string, unknown>> | undefined
+  const compact = str(modes?.compact?.['page-padding'])
+  if (compact) result['page-padding'] = compact
+  const wide = str(modes?.wide?.['page-padding'] ?? modes?.medium?.['page-padding'])
+  if (wide) result['page-padding-web'] = wide
+  const gutter = str((responsive.grid as Record<string, unknown> | undefined)?.gutter)
+  if (gutter) result['gutter'] = gutter
+  return result
 }
