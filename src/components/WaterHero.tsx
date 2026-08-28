@@ -12,7 +12,7 @@ import { Renderer, Program, Mesh, Triangle } from 'ogl';
  * Replaces <Grainient> on the landing hero. Self-contained and reversible.
  */
 
-const MAX_RIPPLES = 28; // ripple pool — enough for a trailing cursor wake
+const MAX_RIPPLES = 18; // ripple pool — enough for a trailing cursor wake
 
 const hexToRgb = (hex: string): [number, number, number] => {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -272,7 +272,7 @@ const WaterHero = ({
     const koi: Koi[] = [];
     const seedKoi = () => {
       koi.length = 0;
-      const n = reduceMotion ? 0 : 4;
+      const n = reduceMotion ? 0 : 3;
       for (let i = 0; i < n; i++) {
         const heading = Math.random() * Math.PI * 2;
         // spread the starting points across the whole canvas
