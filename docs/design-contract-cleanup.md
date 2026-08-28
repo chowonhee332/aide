@@ -108,16 +108,17 @@ src/lib/design-systems/
 | **P1** | 타이포 스케일 주입 — `parseFencedDesignContract`가 `typography` 추출, `--aide-text-{role}-*` 주입 + baseline 규칙 + 프롬프트 가드 | ✅ `e37f1fe` |
 | **4** | 결정론 정규화 — `patchCssTokens`에 off-grid gap→4px 스냅 + off-scale font-size→스케일 스냅, `stripButtonInlineOverrides` | ✅ `4e01a30` |
 | **P3** | shadow 스케일 주입 — `--shadow-{role}` + `cardShadow` 폴백 + 프롬프트 가드 | ✅ `c9eef04` |
-| 1 | `_base/guardrails.yaml` + `_base/layout.md` 추출 — 흩어진 "Do Not"/"Must Follow"/`buildQualityRules` 하드코딩 규칙을 한곳으로. **무손실 이관** | ⬜ 남음 |
-| 2 | `aide/` 디렉토리로 aide.md 물리 분해 (tokens 3계층). grid를 semantic + `--aide-grid-*` 주입 | ⬜ 남음 (실 생성 검증 필요) |
-| 3 | `structure-lint` off-grid 카운트 (telemetry) + `_base/guardrails.yaml` 읽기 | ⬜ 남음 (선택) |
+| **P4** | 콘텐츠 그룹을 `.aide-card`/`.aide-section`으로 — 주입 리듬 커버리지 12%→대부분, 정규화 부담 축소 | ✅ `e3e8a1c` |
+| **1a** | `buildQualityRules` §1·§2 dedup — 토큰/:root 규칙을 Contract Rules로 일원화, P2와 모순되던 `:root{--color-primary}` 지시 삭제. 17362→16891자 | ✅ `7618c71` |
+| **3** | `structure-lint` off-grid telemetry (`off-grid-rhythm`, minor) — `.aide-logs`에 기록만, 재생성 트리거 안 함 | ✅ `685a9a9` |
+| 1b | `_base/guardrails.yaml` + `_base/layout.md` 신규 — aide.md 산문(`Do Not`/`Must Follow`/`Layout Contract`) 무손실 통합 + 로더 배선 | ⬜ 남음 (실 생성 게이트) |
+| 2 | `aide/` 디렉토리로 aide.md 물리 분해 (tokens 3계층). grid를 semantic + `--aide-grid-*` 주입 | ⬜ 남음 (실 생성 게이트) |
 
-**완료분(0·0b·P1·P2·P3·4)은 전부 정적 검증됨** — lint + build + `npm test` + 캡처본 대조.
-실 렌더 확인은 마지막 실 생성 1회에서.
+**완료분(0·0b·P1·P2·P3·4·P4·1a·3)은 전부 정적 검증** — lint + build + `npm test` + 캡처본 대조.
 
-**남은 1·2·3은 "조직/정리" 작업.** 1(무손실 규칙 이관)과 2(물리 파일 분해)는 실 생성
-체크포인트와 함께 하는 게 안전 — 서두르면 규칙 누락 위험. 3은 정규화가 이미 교정하므로
-telemetry 가치만 있음.
+**남은 1b·2만 미완.** 둘 다 무손실 이관 + aide.md(디자인 롤) 편집이고, 재직렬화/규칙누락이
+정적 검증에 안 잡히므로 **다음 실 생성 1회와 묶어서** 한다. 그 실 생성이 (a) 8커밋 튜닝값
+검증 + (b) 1b·2 착수 게이트를 동시에 처리.
 
 ---
 
