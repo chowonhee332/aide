@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect, startTransition } from 'react'
 import {
-  ArrowUp, FileText, Upload, X,
+  ArrowUp, ArrowRight, FileText, Upload, X,
   Check, ChevronDown, Palette, Share2,
   Clock, Trash2, ExternalLink, Link2, KeyRound,
   Download, Eye, EyeOff, Coins, Menu as MenuIcon,
@@ -351,6 +351,16 @@ export default function Home() {
 
   useEffect(() => {
     loadHistory().then(items => startTransition(() => setHistoryItems(items)))
+  }, [])
+
+  // GNB: full-width transparent bar at the top, collapses to a floating
+  // frosted pill once the page is scrolled
+  const [navScrolled, setNavScrolled] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setNavScrolled(window.scrollY > 24)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   useEffect(() => {
@@ -1498,26 +1508,31 @@ export default function Home() {
           <WaterHero />
         </div>
 
-        <header style={{
-          position: 'fixed',
-          top: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 50,
-          width: 'auto',
-          maxWidth: 'calc(100% - 32px)',
-        }}>
+        <header
+          style={{
+            position: 'fixed',
+            top: navScrolled ? '20px' : '0',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 50,
+            width: navScrolled ? 'auto' : '100%',
+            maxWidth: navScrolled ? 'calc(100% - 32px)' : '1240px',
+            transition: 'top .32s cubic-bezier(.4,0,.2,1), max-width .32s cubic-bezier(.4,0,.2,1)',
+          }}
+        >
           <div style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.14)',
-            backdropFilter: 'blur(20px) saturate(1.4)',
-            WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
-            border: '1px solid rgba(255, 255, 255, 0.28)',
+            backgroundColor: navScrolled ? 'rgba(255, 255, 255, 0.16)' : 'transparent',
+            backdropFilter: navScrolled ? 'blur(24px) saturate(1.5)' : 'none',
+            WebkitBackdropFilter: navScrolled ? 'blur(24px) saturate(1.5)' : 'none',
+            border: navScrolled ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid transparent',
             borderRadius: 'var(--aui-radius-pill)',
-            padding: '8px 8px 8px 20px',
+            padding: navScrolled ? '8px 8px 8px 20px' : '24px 24px',
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-between',
             gap: "var(--aui-space-6)",
-            boxShadow: "0 8px 32px rgba(8, 30, 90, 0.22)",
+            boxShadow: navScrolled ? "0 8px 32px rgba(8, 30, 90, 0.2)" : 'none',
+            transition: 'background-color .32s ease, padding .32s ease, box-shadow .32s ease, border-color .32s ease',
           }}>
             {/* 좌측: 로고 */}
             <div style={{ display: 'flex', flexShrink: 0 }}>
@@ -1528,19 +1543,45 @@ export default function Home() {
                 variant="ghost"
                 className="h-auto p-0 hover:bg-transparent"
               >
-                <img src="/logo_aide_wh.png" alt="Aide" style={{ height: 35, width: 'auto', display: 'block', objectFit: 'contain' }} />
+                <img src="/logo_aide_wh.png" alt="Aide" style={{ height: 42, width: 'auto', display: 'block', objectFit: 'contain' }} />
               </Button>
             </div>
 
             {/* 우측: 액션 */}
             <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", flexShrink: 0 }}>
+              {!navScrolled && (
+                <>
+                  <Button onClick={() => { setUsageLoading(true); setUsageModalOpen(true) }} variant="ghost" size="icon" aria-label="Price" title="Price" className="rounded-[var(--aui-radius-pill)] text-white hover:bg-white/15 hover:text-white">
+                    <Coins size={18} />
+                  </Button>
+                  <Button onClick={() => setHistoryModalOpen(true)} variant="ghost" size="icon" aria-label="History" title="History" className="rounded-[var(--aui-radius-pill)] text-white hover:bg-white/15 hover:text-white">
+                    <Clock size={18} />
+                  </Button>
+                  <Button onClick={openApiKeyModal} variant="ghost" size="icon" aria-label="API" title="API" className="rounded-[var(--aui-radius-pill)] text-white hover:bg-white/15 hover:text-white">
+                    <KeyRound size={18} />
+                  </Button>
+                  <Link href="/aide-ui" className={buttonVariants({ variant: 'ghost', className: 'group/ds relative rounded-[var(--aui-radius-pill)] text-white hover:bg-white/15 hover:text-white' })}>
+                    <span className="inline-block transition-transform duration-200 group-hover/ds:-translate-x-1.5">Design System</span>
+                    <ArrowRight
+                      size={16}
+                      className="pointer-events-none absolute right-1.5 top-1/2 -translate-x-1 -translate-y-1/2 opacity-0 transition-[opacity,transform] duration-200 group-hover/ds:translate-x-0 group-hover/ds:opacity-100"
+                    />
+                  </Link>
+                </>
+              )}
+
               <Button
                 onClick={() => setBuilderOpen(true)}
                 variant="ghost"
-                className="text-white hover:bg-white/15"
+                className="group/pg relative rounded-[var(--aui-radius-pill)] text-white hover:bg-white/15 hover:text-white"
               >
-                Playground
+                <span className="inline-block transition-transform duration-200 group-hover/pg:-translate-x-1.5">Playground</span>
+                <ArrowRight
+                  size={16}
+                  className="pointer-events-none absolute right-1.5 top-1/2 -translate-x-1 -translate-y-1/2 opacity-0 transition-[opacity,transform] duration-200 group-hover/pg:translate-x-0 group-hover/pg:opacity-100"
+                />
               </Button>
+
               <Button
                 onClick={async () => {
                   const items = await loadHistory()
@@ -1548,33 +1589,40 @@ export default function Home() {
                     setStudioTrigger({ brief: '', historyId: items[0].id })
                   }
                 }}
-                className="rounded-[var(--aui-radius-pill)] bg-white text-[var(--aui-text-strong)] shadow-[var(--aui-shadow-raised)] hover:bg-white/90"
+                className="group/st relative rounded-[var(--aui-radius-pill)] bg-white text-[var(--aui-text-strong)] shadow-[var(--aui-shadow-raised)] hover:bg-white/90"
               >
-                Studio
+                <span className="inline-block transition-transform duration-200 group-hover/st:-translate-x-1.5">Studio</span>
+                <ArrowRight
+                  size={16}
+                  className="pointer-events-none absolute right-1.5 top-1/2 -translate-x-1 -translate-y-1/2 opacity-0 transition-[opacity,transform] duration-200 group-hover/st:translate-x-0 group-hover/st:opacity-100"
+                />
               </Button>
-              <Menu>
-                <MenuTrigger
-                  aria-label="메뉴"
-                  title="메뉴"
-                  className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'text-white hover:bg-white/15' })}
-                >
-                  <MenuIcon size={20} />
-                </MenuTrigger>
-                <MenuContent className="min-w-[184px] bg-white p-1.5">
-                  <MenuItem onClick={() => { setUsageLoading(true); setUsageModalOpen(true) }}>
-                    <Coins size={16} /> Price
-                  </MenuItem>
-                  <MenuItem onClick={() => setHistoryModalOpen(true)}>
-                    <Clock size={16} /> History
-                  </MenuItem>
-                  <MenuItem onClick={openApiKeyModal}>
-                    <KeyRound size={16} /> API
-                  </MenuItem>
-                  <MenuItem render={<Link href="/aide-ui" />}>
-                    <Palette size={16} /> Design System
-                  </MenuItem>
-                </MenuContent>
-              </Menu>
+
+              {navScrolled && (
+                <Menu>
+                  <MenuTrigger
+                    aria-label="메뉴"
+                    title="메뉴"
+                    className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'rounded-[var(--aui-radius-pill)] text-white hover:bg-white/15 hover:text-white' })}
+                  >
+                    <MenuIcon size={20} />
+                  </MenuTrigger>
+                  <MenuContent className="min-w-[184px] bg-white p-1.5">
+                    <MenuItem onClick={() => { setUsageLoading(true); setUsageModalOpen(true) }}>
+                      <Coins size={16} /> Price
+                    </MenuItem>
+                    <MenuItem onClick={() => setHistoryModalOpen(true)}>
+                      <Clock size={16} /> History
+                    </MenuItem>
+                    <MenuItem onClick={openApiKeyModal}>
+                      <KeyRound size={16} /> API
+                    </MenuItem>
+                    <MenuItem render={<Link href="/aide-ui" />}>
+                      <Palette size={16} /> Design System
+                    </MenuItem>
+                  </MenuContent>
+                </Menu>
+              )}
             </div>
           </div>
         </header>
@@ -1603,12 +1651,12 @@ export default function Home() {
           {/* Input card */}
           <div style={{
             width: '100%', maxWidth: 'var(--aui-content-narrow)', borderRadius: "var(--aui-radius-overlay)",
-            backgroundColor: 'rgba(255, 255, 255, 0.62)',
-            backdropFilter: 'blur(28px) saturate(1.6)',
-            WebkitBackdropFilter: 'blur(28px) saturate(1.6)',
-            border: '1px solid rgba(255, 255, 255, 0.55)',
+            backgroundColor: 'rgba(255, 255, 255, 0.55)',
+            backdropFilter: 'blur(24px) saturate(1.5)',
+            WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
+            border: '1px solid rgba(255, 255, 255, 0.4)',
             padding: `var(--aui-space-6) var(--aui-space-6) var(--aui-space-4)`,
-            boxShadow: "var(--aui-shadow-floating)",
+            boxShadow: "0 8px 32px rgba(8, 30, 90, 0.2)",
           }}>
             {(designPreset !== 'none' || designButtonLabel) && (() => {
               const isUrl = !!designButtonLabel && (designButtonLabel.startsWith('http://') || designButtonLabel.startsWith('https://'))
