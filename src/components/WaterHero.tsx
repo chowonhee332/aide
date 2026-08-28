@@ -12,13 +12,24 @@ import { Renderer, Program, Mesh, Triangle } from 'ogl';
  * Replaces <Grainient> on the landing hero. Self-contained and reversible.
  */
 
-const MAX_RIPPLES = 18; // ripple pool — enough for a trailing cursor wake
+const MAX_RIPPLES = 18; // ripple pool — enough for an ambient pool disturbance
 
 const hexToRgb = (hex: string): [number, number, number] => {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!m) return [1, 1, 1];
   return [parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255];
 };
+
+// Each koi has its own body colour and the pool palette its "ink" spreads on a
+// click. The first kind is tuned to sit near the default blue water.
+interface KoiKind { body: string; water: [string, string, string]; }
+const KOI_KINDS: KoiKind[] = [
+  { body: '58,120,246', water: ['#0068ff', '#0e9dfa', '#1dd2f6'] }, // blue — matches default
+  { body: '236,58,42', water: ['#c81e28', '#f0483c', '#ff8a5a'] }, // vermilion
+  { body: '34,198,150', water: ['#0a6b5f', '#15a88c', '#2fd6a6'] }, // jade
+  { body: '255,176,32', water: ['#c9760f', '#f0a52e', '#ffd166'] }, // amber
+  { body: '150,96,240', water: ['#4b2fae', '#7b5be8', '#b08bff'] }, // violet
+];
 
 const vertex = `#version 300 es
 in vec2 position;
@@ -36,6 +47,11 @@ uniform vec3  uColorBot;   // aqua    (bottom of screen)
 uniform float uCaustic;
 uniform float uRippleCount;
 uniform vec4  uRipples[${MAX_RIPPLES}]; // xy=center(0..1), z=birthTime, w=strength
+uniform vec3  uInkTop;      // palette the ink-spread is transitioning toward
+uniform vec3  uInkMid;
+uniform vec3  uInkBot;
+uniform vec2  uInkOrigin;   // click point, uv (y-up); ignored when uInkProgress <= 0
+uniform float uInkProgress; // radius of the spreading ink front, uv units
 
 out vec4 fragColor;
 
@@ -85,71 +101,75 @@ void main(){
   vec2 swirl = (vec2(fbm(auv * 0.7 + t * 0.02),
                      fbm(auv * 0.7 - t * 0.017 + 9.0)) - 0.5) * 0.30;
 
-  // ---- ripple rings: refractive wavefronts — each ring lenses the water
-  //      behind it (bright meniscus + dark leading trough) and carries fine
-  //      capillary shimmer on the crest, so it reads as glass, not a drawn line
-  vec2  rippleSlope  = vec2(0.0);   // low-freq slope → feeds the caustic warp
-  vec2  ringRefract  = vec2(0.0);   // screen-space lensing of the background
-  float ringSpec     = 0.0;         // bright glassy meniscus
-  float ringShade    = 0.0;         // dark leading trough
-  float ringGlint    = 0.0;         // sharp light glint on steep crests
-  // one high-frequency capillary-shimmer sample for this pixel, shared by every
-  // ring — keeps the loop cheap (no per-ripple fbm)
-  float pxShimmer = fbm(auv * 44.0 + vec2(t * 1.6, -t * 1.9)) - 0.5;
+  // ---- ripple rings: every disturbance organises the pool-caustic light into
+  //      a train of many concentric rings and bends the caustic texture beneath
+  //      them. The rings ARE the water's own light, never a painted overlay ----
+  vec2  rippleWarp = vec2(0.0);   // displaces the caustic sample — the lensing
+  float ringField  = 0.0;         // signed surface-height field → caustic gain
+  float centrePlop = 0.0;         // tiny bright rebound at a fresh impact
   for (int k = 0; k < ${MAX_RIPPLES}; k++){
     if (float(k) >= uRippleCount) break;
     vec4 r = uRipples[k];
     float age = t - r.z;
     if (age < 0.0) continue;
-    // per-ripple randomness so no two rings look alike
     float vr  = fract(sin(r.z * 78.233 + r.x * 41.71 + r.y * 12.13) * 43758.5453);
     float vr2 = fract(vr * 197.31 + 0.5);
-    float maxAge = 6.0 + vr2 * 5.5;
+    float maxAge = 7.0 + vr2 * 6.0;
     if (age > maxAge) continue;
     vec2 cc = vec2(r.x * aspect, r.y);
     vec2 to = auv - cc;
     float d = length(to);
-    float radius = 0.02 + age * (0.085 + vr * 0.11);   // each grows at its own rate
-    float band = d - radius;
+    vec2  dir = d > 1e-4 ? to / d : vec2(0.0);
     float life = 1.0 - age / maxAge;
-    // narrow gaussian envelope + matched frequency → just two rings per wave
-    float env = exp(-band * band * (620.0 + vr * 320.0)) * life;
-    float phase = band * (122.0 + vr * 28.0) - age * (5.0 + vr2 * 4.0);
-    float slope = cos(phase);                       // surface tilt along the radius
-    vec2  dir   = d > 1e-4 ? to / d : vec2(0.0);
-    float shimmer = pxShimmer;
 
-    float crest = clamp(slope, 0.0, 1.0);
-    float c2 = crest * crest;
-    rippleSlope += dir * slope * env * r.w * 0.05;
-    ringRefract += dir * (slope + shimmer * 0.7) * env * r.w * 0.05;
-    ringSpec    += (crest + shimmer * 0.5) * env * r.w;
-    ringShade   += clamp(-slope, 0.0, 1.0) * env * r.w;
-    // tight sparkle where the wave is steepest and near its peak
-    ringGlint   += c2 * c2 * crest * (0.7 + shimmer * 0.6) * env * r.w;
+    // energy rides out in an expanding annulus that widens and fades with age
+    float front = age * (0.15 + vr * 0.09);
+    float aw = front * 0.5 + 0.08;
+    float annulus = exp(-pow((d - front * 0.62) / aw, 2.0)) * life * r.w;
+
+    // a whole train of tight concentric rings, not just two
+    float wl = 78.0 + vr * 46.0;
+    float wave = sin(d * wl - age * (7.0 + vr2 * 4.0));
+
+    ringField  += wave * annulus;
+    rippleWarp += dir * wave * annulus * (2.2 / wl);
+    centrePlop += exp(-d * d * 950.0) * exp(-age * 6.0) * r.w;
   }
-  ringSpec  = max(ringSpec, 0.0);
-  ringGlint = max(ringGlint, 0.0);
 
   // ---- caustic web, warped by the swirl and lensed through the ripple rings ----
-  vec2 cuv = auv * 1.35 + swirl + rippleSlope + ringRefract * 2.4 + vec2(t * 0.011, t * 0.019);
+  vec2 cuv = auv * 1.35 + swirl + rippleWarp * 2.2 + vec2(t * 0.011, t * 0.019);
   float web = causticWeb(cuv, t);
   web += causticWeb(cuv * 1.9 + 11.0, t * 1.35) * 0.5;
   web *= uCaustic;
+  // crests concentrate that caustic light into rings, troughs dim it → the
+  // ripple shows in the water's own texture and colour, not as a separate line
+  web *= 1.0 + ringField * 0.85;
+  web = max(web, 0.0);
 
-  // ---- base colour: deep cobalt mass (top) → luminous cyan (bottom) ----
-  // premium soft-focus gradient: deep blue holds through most of the frame,
-  // cyan reads as a glow only near the lower edge
-  float gy = clamp(uv.y + ringRefract.y * 0.5
+  // ---- ink spread: a clicked koi's palette floods out from the click point,
+  //      warped by the ripple lens so the edge dissolves like real ink ----
+  float inkMask = 0.0;
+  if (uInkProgress > 0.0) {
+    float dist = length((uv - uInkOrigin) * vec2(aspect, 1.0)) + rippleWarp.x * 0.6;
+    inkMask = 1.0 - smoothstep(uInkProgress - 0.22, uInkProgress, dist);
+  }
+  vec3 cTop = mix(uColorTop, uInkTop, inkMask);
+  vec3 cMid = mix(uColorMid, uInkMid, inkMask);
+  vec3 cBot = mix(uColorBot, uInkBot, inkMask);
+
+  // ---- base colour: deep mass (top) → luminous glow (bottom) ----
+  // premium soft-focus gradient: the deep tone holds through most of the frame,
+  // the bright tone reads as a glow only near the lower edge
+  float gy = clamp(uv.y + rippleWarp.y * 0.35
                  + (fbm(auv * 1.3 + swirl * 2.0 + t * 0.03) - 0.5) * 0.06, 0.0, 1.0);
   float gg = pow(gy, 0.62);
-  vec3 base = mix(uColorBot, uColorTop, gg);
-  base = mix(base, uColorMid, (1.0 - abs(gg - 0.5) * 2.0) * 0.30);
+  vec3 base = mix(cBot, cTop, gg);
+  base = mix(base, cMid, (1.0 - abs(gg - 0.5) * 2.0) * 0.30);
 
   // one big soft light bloom drifting low, like an abstract gradient wallpaper
   vec2 bc = vec2(0.40 + 0.06 * sin(t * 0.05), 0.10 + 0.04 * sin(t * 0.037 + 2.0));
-  float bloom = exp(-pow(length((uv - bc + ringRefract * 0.7) * vec2(1.0, 1.35)), 1.6) * 3.2);
-  base = mix(base, uColorBot * 1.04 + vec3(0.05), bloom * 0.42);
+  float bloom = exp(-pow(length((uv - bc + rippleWarp * 0.5) * vec2(1.0, 1.35)), 1.6) * 3.2);
+  base = mix(base, cBot * 1.04 + vec3(0.05), bloom * 0.42);
 
   // very gentle drift in tone — smooth, not mottled
   float shade = fbm(auv * 0.9 + swirl * 1.8 - t * 0.02);
@@ -160,20 +180,11 @@ void main(){
   vec3 causticTint = mix(vec3(0.46, 0.68, 0.80), vec3(0.70, 0.90, 0.94), uv.y);
   col += causticTint * web * mix(0.22, 0.09, uv.y);   // subtle, richer near the bottom
 
-  // ---- refractive ring: a glassy meniscus that brightens by pulling the
-  //      water behind it toward a desaturated sheen (never opaque paint),
-  //      a darker leading trough, and a faint prismatic edge ----
-  float behind = dot(base, vec3(0.3333));
-  vec3  sheen  = mix(vec3(behind), vec3(0.82, 0.91, 0.99), 0.6);
-  float spec   = clamp(ringSpec * 0.7, 0.0, 1.0);
-  col = mix(col, mix(col, sheen, 0.75), spec);
-  col *= 1.0 - clamp(ringShade * 0.16, 0.0, 0.45);    // trough sits lower / darker
-  float disp = spec * 0.025;                          // chromatic dispersion on the crest
-  col.r += disp;
-  col.b -= disp * 0.65;
-  // light shining through the crest — brighter where a caustic thread crosses it
-  float gln = clamp(ringGlint * (0.55 + web * 1.6), 0.0, 1.0);
-  col += vec3(0.90, 0.97, 1.0) * gln * 0.55;
+  // the ripple's only direct contribution: a faint broad lift on the crests and
+  // a small rebound dot at a fresh impact — both in the caustic's own colour, so
+  // the rings never separate from the surface
+  col += causticTint * clamp(ringField, 0.0, 1.0) * 0.05;
+  col += causticTint * centrePlop * 0.35;
 
   // ---- vignette: deeper cobalt corners, luminous lower centre ----
   vec2 vd = uv - vec2(0.5, 0.28);
@@ -202,7 +213,7 @@ interface Koi {
   speed: number;
   len: number;
   phase: number;      // tail-beat phase
-  tint: number;       // 0 = deep vermilion, 1 = warmer orange
+  kind: number;       // index into KOI_KINDS — body colour + ink palette
 }
 
 interface WaterHeroProps {
@@ -258,6 +269,11 @@ const WaterHero = ({
         uCaustic: { value: caustic },
         uRippleCount: { value: 0 },
         uRipples: { value: ripplesBuf },
+        uInkTop: { value: new Float32Array(hexToRgb(colorTop)) },
+        uInkMid: { value: new Float32Array(hexToRgb(colorMid)) },
+        uInkBot: { value: new Float32Array(hexToRgb(colorBot)) },
+        uInkOrigin: { value: new Float32Array([0.5, 0.5]) },
+        uInkProgress: { value: 0 },
       },
     });
     const mesh = new Mesh(gl, { geometry: new Triangle(gl), program });
@@ -289,7 +305,7 @@ const WaterHero = ({
           speed: 69 + Math.random() * 39,
           len: 164 + Math.random() * 76,
           phase: Math.random() * Math.PI * 2,
-          tint: Math.random(),
+          kind: i % KOI_KINDS.length,
         });
       }
     };
@@ -324,27 +340,50 @@ const WaterHero = ({
       writeIdx = (writeIdx + 1) % MAX_RIPPLES;
     };
 
-    // ---------- pointer ----------
+    // ---------- pointer ---------- (tracked only so the koi can veer around it —
+    // the cursor no longer stamps ripples into the water)
     const pointer = { x: 0.5, y: 0.5, active: false, lastMove: -10 };
-    let lastPointerRipple = -10;
     const onPointerMove = (e: PointerEvent) => {
       const rect = host.getBoundingClientRect();
-      const nx = (e.clientX - rect.left) / rect.width;
-      const ny = (e.clientY - rect.top) / rect.height;
-      pointer.x = nx;
-      pointer.y = 1 - ny; // gl y-up
+      pointer.x = (e.clientX - rect.left) / rect.width;
+      pointer.y = 1 - (e.clientY - rect.top) / rect.height; // gl y-up
       pointer.active = true;
       pointer.lastMove = now();
-      if (now() - lastPointerRipple > 0.4) {
-        lastPointerRipple = now();
-        addRipple(nx, 1 - ny, 0.2);
-      }
-    };
-    const onPointerDown = (e: PointerEvent) => {
-      const rect = host.getBoundingClientRect();
-      addRipple((e.clientX - rect.left) / rect.width, 1 - (e.clientY - rect.top) / rect.height, 0.7);
     };
     window.addEventListener('pointermove', onPointerMove, { passive: true });
+
+    // ---------- ink spread ---------- clicking a koi floods the pool with that
+    // koi's palette from the click point; when the front covers the frame the
+    // new palette is baked into the live colour uniforms
+    const liveTop = program.uniforms.uColorTop.value as Float32Array;
+    const liveMid = program.uniforms.uColorMid.value as Float32Array;
+    const liveBot = program.uniforms.uColorBot.value as Float32Array;
+    const inkTop = program.uniforms.uInkTop.value as Float32Array;
+    const inkMid = program.uniforms.uInkMid.value as Float32Array;
+    const inkBot = program.uniforms.uInkBot.value as Float32Array;
+    const inkOrigin = program.uniforms.uInkOrigin.value as Float32Array;
+    let inkProgress = 0;   // > 0 while a spread is animating
+    const onPointerDown = (e: PointerEvent) => {
+      if (inkProgress > 0) return;                 // one spread at a time
+      const rect = host.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      let hit: Koi | null = null;
+      let best = Infinity;
+      for (const k of koi) {
+        const dd = Math.hypot(k.x - mx, k.y - my);
+        if (dd < k.len * 0.6 && dd < best) { best = dd; hit = k; }
+      }
+      if (!hit) return;
+      const w = KOI_KINDS[hit.kind].water;
+      inkTop.set(hexToRgb(w[0]));
+      inkMid.set(hexToRgb(w[1]));
+      inkBot.set(hexToRgb(w[2]));
+      inkOrigin[0] = mx / rect.width;
+      inkOrigin[1] = 1 - my / rect.height;        // gl y-up
+      inkProgress = 0.0001;
+      program.uniforms.uInkProgress.value = inkProgress;
+    };
     window.addEventListener('pointerdown', onPointerDown, { passive: true });
 
     // a drifting ring source, right-of-centre like the reference. Seeded
@@ -454,7 +493,7 @@ const WaterHero = ({
         const L = k.len;
         const N = KOI_N;
         const WAVES = 2.3;
-        const core = k.tint < 0.5 ? '232,44,20' : '244,70,26';
+        const core = KOI_KINDS[k.kind].body;
 
         // undulating spine: a travelling wave whose amplitude ramps toward the tail
         for (let i = 0; i < N; i++) {
@@ -507,7 +546,7 @@ const WaterHero = ({
           kctx.closePath();
           const fg = kctx.createLinearGradient(hx, hy, tx, ty);
           fg.addColorStop(0, `rgba(${core},0.55)`);
-          fg.addColorStop(1, 'rgba(255,150,80,0)');
+          fg.addColorStop(1, `rgba(${core},0)`);
           kctx.fillStyle = fg;
           kctx.fill();
         }
@@ -546,7 +585,7 @@ const WaterHero = ({
             kctx.quadraticCurveTo(ax + ox * L * 0.02 - L * 0.01, ay + oy * L * 0.03, tx, ty);
             kctx.quadraticCurveTo(ax - L * 0.07 + ox * L * 0.01, ay + oy * L * 0.01, ax - L * 0.03, ay);
             kctx.closePath();
-            kctx.fillStyle = 'rgba(255,140,80,0.3)';
+            kctx.fillStyle = `rgba(${core},0.32)`;
             kctx.fill();
           }
         }
@@ -554,13 +593,13 @@ const WaterHero = ({
         // ---- body: filled ribbon around the undulating spine ----
         //      the one place the warm glow-haze shadow is worth paying for
         const bg = kctx.createLinearGradient(L * 0.5, 0, -L * 0.5, 0);
-        bg.addColorStop(0, 'rgba(255,120,56,0.92)');   // lit head
+        bg.addColorStop(0, `rgba(${core},0.9)`);        // head
         bg.addColorStop(0.14, `rgba(${core},1)`);
         bg.addColorStop(0.6, `rgba(${core},1)`);
-        bg.addColorStop(0.86, 'rgba(244,78,30,0.8)');
-        bg.addColorStop(1, 'rgba(255,150,70,0)');       // tail melts into blur
+        bg.addColorStop(0.86, `rgba(${core},0.8)`);
+        bg.addColorStop(1, `rgba(${core},0)`);          // tail melts into blur
         kctx.fillStyle = bg;
-        kctx.shadowColor = 'rgba(255,120,44,0.5)';
+        kctx.shadowColor = `rgba(${core},0.5)`;
         kctx.shadowBlur = L * 0.32;
         kctx.beginPath();
         kctx.moveTo(sx[0] + nX[0] * halfW(0), sy[0] + nY[0] * halfW(0));
@@ -570,14 +609,14 @@ const WaterHero = ({
         kctx.fill();
         kctx.shadowBlur = 0;
 
-        // ---- head highlight + warm dorsal rim ----
+        // ---- head highlight + light rim (white → reads on any body colour) ----
         kctx.globalAlpha = 0.55;
-        kctx.fillStyle = 'rgba(255,190,120,0.5)';
+        kctx.fillStyle = 'rgba(255,255,255,0.42)';
         kctx.beginPath();
         kctx.ellipse(sx[1] - L * 0.02, sy[1], L * 0.07, L * 0.05, 0, 0, Math.PI * 2);
         kctx.fill();
 
-        kctx.strokeStyle = 'rgba(255,198,110,0.55)';
+        kctx.strokeStyle = 'rgba(255,255,255,0.4)';
         kctx.lineWidth = Math.max(1.5, L * 0.026);
         kctx.lineCap = 'round';
         kctx.beginPath();
@@ -634,6 +673,17 @@ const WaterHero = ({
       }
       program.uniforms.uRippleCount.value = count;
       program.uniforms.iTime.value = time;
+
+      // advance an in-flight ink spread; bake the palette once it covers the frame
+      if (inkProgress > 0) {
+        inkProgress += dt * 0.9;
+        if (inkProgress >= 2.2) {
+          liveTop.set(inkTop); liveMid.set(inkMid); liveBot.set(inkBot);
+          inkProgress = 0;
+        }
+        program.uniforms.uInkProgress.value = inkProgress;
+      }
+
       renderer.render({ scene: mesh });
 
       drawKoi(dt);
