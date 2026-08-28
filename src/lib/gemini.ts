@@ -1582,15 +1582,15 @@ ${componentLines.length ? componentLines.join(',\n') : '    "note": "No explicit
 - Do not hardcode arbitrary px values in padding/gap/margin. Choose the closest token and expose as a CSS variable.
 - Same component type = same padding/gap/radius. Cards in the same list/grid must not have random internal spacing.
 - Brand color override is ${hasBrandColors ? 'enabled, but only for primary/action/accent roles. Neutral, surface, background, border, disabled, status, spacing, radius, and typography remain from DESIGN.md.' : 'disabled. Use the selected DESIGN.md color system exactly.'}
-- ⛔ The final HTML MUST declare ALL layout rhythm variables in :root and use them exclusively:
-  --aide-page-padding = ${layoutRhythm.pagePadding} (모바일 좌우 여백)
-  --aide-page-padding-web = ${layoutRhythm.pagePaddingWeb} (웹 좌우 여백)
+- Aide injects a <style> block that declares ALL layout rhythm variables in :root. Do NOT redeclare them — reference with var() only. The injected values are:
+  --aide-page-padding = ${layoutRhythm.pagePadding} (모바일·태블릿 좌우 여백)
+  --aide-page-padding-web = ${layoutRhythm.pagePaddingWeb} (데스크탑 ≥1200px 좌우 여백, Aide가 @media로 적용)
   --aide-section-gap = ${layoutRhythm.sectionGap} (섹션 간 간격)
   --aide-card-padding = ${layoutRhythm.cardPadding} (카드 내부 패딩)
   --aide-card-gap = ${layoutRhythm.cardGap} (카드 내부 아이템 간격)
   --aide-item-gap = ${layoutRhythm.itemGap} (인라인 요소 간격)
   --aide-card-radius = ${layoutRhythm.cardRadius} (카드 모서리)
-  ⛔ NEVER write: padding: 16px / gap: 12px / margin-top: 24px → ALWAYS write: var(--aide-card-padding) / var(--aide-card-gap) / var(--aide-section-gap)`
+  ⛔ NEVER write: padding: 16px / gap: 12px / margin-top: 24px → ALWAYS write: var(--aide-card-padding, ${layoutRhythm.cardPadding}) / var(--aide-card-gap, ${layoutRhythm.cardGap}) / var(--aide-section-gap, ${layoutRhythm.sectionGap})`
 }
 
 function cssVarDeclaration(key: string, value: string): string {
