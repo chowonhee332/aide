@@ -307,7 +307,7 @@ const WaterHero = ({
 
     // ---------- 2D koi overlay ----------
     const koiCanvas = document.createElement('canvas');
-    koiCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(3.4px);';
+    koiCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(4.5px);';
     host.appendChild(koiCanvas);
     const kctx = koiCanvas.getContext('2d')!;
 
@@ -325,6 +325,10 @@ const WaterHero = ({
     const wx = new Float64Array(RIB_N);   // spine + body undulation
     const wy = new Float64Array(RIB_N);
     const smooth = (v: number) => v * v * (3 - 2 * v);
+    const sstep = (e0: number, e1: number, x: number) => {
+      const u = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+      return u * u * (3 - 2 * u);
+    };
 
     // lay the history straight back from the head so the body is full-length at
     // spawn and never streaks across a wrap-around teleport
@@ -576,10 +580,6 @@ const WaterHero = ({
         const L = k.len;
         // blunt rounded head, widest ~1/4 back, long even taper to a small tail
         // stub where the fin takes over — a fish silhouette, not a diamond
-        const sstep = (e0: number, e1: number, x: number) => {
-          const u = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
-          return u * u * (3 - 2 * u);
-        };
         const half = (s: number) => L * 0.132 * (0.42 + 0.58 * sstep(0, 0.26, s)) * (1 - 0.9 * sstep(0.26, 1, s));
         const ribbon = (grow: number, ox: number, oy: number) => {
           kctx.beginPath();
@@ -595,16 +595,17 @@ const WaterHero = ({
           kctx.closePath();
         };
 
-        // ---- cast shadow on the pool floor: the same undulating ribbon, larger,
-        //      murkier, offset toward the floor, in two feathered layers ----
+        // ---- cast shadow on the pool floor: the same undulating ribbon, offset
+        //      toward the floor, built from a few nested low-alpha layers that
+        //      feather out — no per-path canvas blur filter (it reallocates an
+        //      offscreen surface every frame); the canvas-wide CSS blur softens
+        //      the layer edges for free ----
         kctx.fillStyle = 'rgb(10,26,24)';
-        for (const [blurPx, a, grow] of [[24, 0.05, 1.7], [12, 0.09, 1.35]] as const) {
-          kctx.filter = `blur(${blurPx}px)`;
+        for (const [grow, a] of [[2.5, 0.04], [1.75, 0.055], [1.2, 0.07]] as const) {
           kctx.globalAlpha = a;
-          ribbon(grow, L * 0.12, L * 0.24);
+          ribbon(grow, L * 0.13, L * 0.26);
           kctx.fill();
         }
-        kctx.filter = 'none';
 
         // tail-tip frame (points tail-ward) for the caudal fin
         const tipX = wx[RIB_N - 1], tipY = wy[RIB_N - 1];
@@ -700,7 +701,6 @@ const WaterHero = ({
         kctx.arc(wx[0], wy[0], hgR, 0, Math.PI * 2);
         kctx.fill();
       }
-      kctx.filter = 'none';
       kctx.globalAlpha = 1;
     };
 
