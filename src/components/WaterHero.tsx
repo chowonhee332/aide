@@ -302,7 +302,7 @@ const WaterHero = ({
           angle: heading,
           dir: heading,
           dirVel: 0,
-          speed: 69 + Math.random() * 39,
+          speed: 82 + Math.random() * 50,
           len: 164 + Math.random() * 76,
           phase: Math.random() * Math.PI * 2,
           kind: i % KOI_KINDS.length,
@@ -425,7 +425,7 @@ const WaterHero = ({
 
       for (const k of koi) {
         // tail beats a little faster when swimming faster — kept slow + graceful
-        k.phase += dt * (2.5 + k.speed * 0.03);
+        k.phase += dt * (2.8 + k.speed * 0.035);
 
         // gentle damped random walk on top of everything → organic wiggle
         k.dirVel += (Math.random() - 0.5) * dt * 0.25;
@@ -476,10 +476,10 @@ const WaterHero = ({
 
         // ease the visible facing toward the target bearing — brisk enough that
         // a faster koi actually completes its turns
-        k.angle += angleDelta(k.angle, k.dir) * Math.min(1, dt * 2.6);
+        k.angle += angleDelta(k.angle, k.dir) * Math.min(1, dt * 3.0);
 
-        // glide-and-surge: each tail stroke clearly pushes the body forward
-        const surge = 0.7 + 0.55 * Math.max(0, Math.sin(k.phase));
+        // glide-and-surge: each tail stroke drives a clear forward burst
+        const surge = 0.5 + 0.75 * Math.max(0, Math.sin(k.phase));
         k.x += Math.cos(k.angle) * k.speed * surge * dt;
         k.y += Math.sin(k.angle) * k.speed * surge * dt;
 
@@ -499,7 +499,7 @@ const WaterHero = ({
         for (let i = 0; i < N; i++) {
           const s = i / (N - 1);
           sx[i] = L * 0.5 - s * L * 0.99;
-          sy[i] = L * (0.015 + 0.17 * s * s) * Math.sin(k.phase - s * WAVES);
+          sy[i] = L * (0.015 + 0.23 * s * s) * Math.sin(k.phase - s * WAVES);
         }
         // per-vertex normal from the local tangent
         for (let i = 0; i < N; i++) {
@@ -516,13 +516,27 @@ const WaterHero = ({
           return Math.max(L * 0.018 * (1 - s), L * 0.185 * Math.sin(Math.pow(s, 0.6) * Math.PI));
         };
 
+        // ---- cast shadow on the pool floor — sells "suspended in deep water" ----
+        {
+          kctx.save();
+          kctx.translate(k.x + L * 0.16, k.y + L * 0.24);
+          kctx.rotate(k.angle);
+          kctx.filter = 'blur(9px)';
+          kctx.globalAlpha = 0.24;
+          kctx.fillStyle = 'rgb(5,14,32)';
+          kctx.beginPath();
+          kctx.ellipse(0, 0, L * 0.48, L * 0.17, 0, 0, Math.PI * 2);
+          kctx.fill();
+          kctx.restore();
+        }
+
         kctx.save();
         kctx.translate(k.x, k.y);
-        kctx.rotate(k.angle + Math.sin(k.phase) * 0.04); // subtle head-wag with the beat
+        kctx.rotate(k.angle + Math.sin(k.phase) * 0.06); // head-wag with the beat
         kctx.globalAlpha = 0.85;
         kctx.lineJoin = 'round';
 
-        // ---- caudal fin: wide translucent fork, swung by the tail-tip slope ----
+        // ---- caudal fin: broad translucent fork, swung by the tail-tip slope ----
         {
           const hx = sx[N - 1];
           const hy = sy[N - 1];
@@ -531,8 +545,8 @@ const WaterHero = ({
           const dy = Math.sin(ang);
           const ex = -dy;
           const ey = dx;
-          const fl = L * 0.36;
-          const sp = L * 0.26 * (0.8 + 0.35 * Math.sin(k.phase - 1.5));
+          const fl = L * 0.48;
+          const sp = L * 0.34 * (0.8 + 0.38 * Math.sin(k.phase - 1.5));
           const tx = hx + dx * fl;
           const ty = hy + dy * fl;
           const kx = hx + dx * fl * 0.46;
@@ -551,14 +565,14 @@ const WaterHero = ({
           kctx.fill();
         }
 
-        // ---- dorsal fin: low translucent sail over the mid-back ----
+        // ---- dorsal fin: translucent sail over the mid-back ----
         {
-          const a = Math.round(0.28 * (N - 1));
-          const b = Math.round(0.6 * (N - 1));
+          const a = Math.round(0.24 * (N - 1));
+          const b = Math.round(0.64 * (N - 1));
           kctx.beginPath();
           kctx.moveTo(sx[a] + nX[a] * halfW(a) * 0.5, sy[a] + nY[a] * halfW(a) * 0.5);
           for (let i = a; i <= b; i++) {
-            const lift = halfW(i) * 0.5 + L * 0.055 * Math.sin(((i - a) / (b - a)) * Math.PI);
+            const lift = halfW(i) * 0.5 + L * 0.1 * Math.sin(((i - a) / (b - a)) * Math.PI);
             kctx.lineTo(sx[i] + nX[i] * lift, sy[i] + nY[i] * lift);
           }
           for (let i = b; i >= a; i--) {
@@ -569,7 +583,7 @@ const WaterHero = ({
           kctx.fill();
         }
 
-        // ---- pectoral fins: small flutter flappers behind the head ----
+        // ---- pectoral fins: broad flutter flappers behind the head ----
         {
           const gi = Math.round(0.22 * (N - 1));
           for (const side of [-1, 1] as const) {
@@ -578,14 +592,14 @@ const WaterHero = ({
             const oy = nY[gi] * side;
             const ax = sx[gi] + ox * halfW(gi) * 0.7;
             const ay = sy[gi] + oy * halfW(gi) * 0.7;
-            const tx = ax - L * (0.09 + 0.05 * flu) + ox * L * (0.05 + 0.05 * flu);
-            const ty = ay + oy * L * (0.09 + 0.05 * flu);
+            const tx = ax - L * (0.14 + 0.08 * flu) + ox * L * (0.08 + 0.08 * flu);
+            const ty = ay + oy * L * (0.14 + 0.08 * flu);
             kctx.beginPath();
             kctx.moveTo(ax, ay);
-            kctx.quadraticCurveTo(ax + ox * L * 0.02 - L * 0.01, ay + oy * L * 0.03, tx, ty);
-            kctx.quadraticCurveTo(ax - L * 0.07 + ox * L * 0.01, ay + oy * L * 0.01, ax - L * 0.03, ay);
+            kctx.quadraticCurveTo(ax + ox * L * 0.03 - L * 0.02, ay + oy * L * 0.05, tx, ty);
+            kctx.quadraticCurveTo(ax - L * 0.1 + ox * L * 0.02, ay + oy * L * 0.02, ax - L * 0.04, ay);
             kctx.closePath();
-            kctx.fillStyle = `rgba(${core},0.32)`;
+            kctx.fillStyle = `rgba(${core},0.34)`;
             kctx.fill();
           }
         }
