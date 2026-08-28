@@ -78,4 +78,11 @@ assert.match(coverageSource, /export function previewCaseProps\(\)/, 'previewCas
 const docsPageSource = read('src/components/aide-docs/DocsPage.tsx')
 assert.match(docsPageSource, /previewCaseProps\(\)\.get\(componentId\)/, 'component page must filter panel props per component')
 
+// The "## Audit Checklist" prose was a restatement of Must Follow + Layout
+// Contract + Content Density and shipped to the model as extra tokens. It was
+// removed; the rules it listed live in those sections + structure-lint.
+assert.doesNotMatch(aide, /##\s*Audit Checklist/, 'aide.md Audit Checklist is back — it only restates Must Follow / Layout Contract / Content Density')
+assert.match(aide, /##\s*Must Follow/, 'Must Follow section (source of the audit rules) must remain')
+assert.match(aide, /##\s*Content Density/, 'Content Density section (4+ sections / 9+ units) must remain')
+
 console.log('Unified Aide design-system contract checks passed.')

@@ -5434,22 +5434,6 @@ Good: hero + simulator + quick actions + ranked cards + recent history + bottom 
 - Use media queries.
 - Avoid fixed-only widths. Use `max-width`, `%`, `minmax`, `auto-fit`, and `clamp`.
 
-## Audit Checklist
-
-Before final answer, the generated HTML must pass:
-
-- Aide logo slot exists and is visible in top navigation.
-- No Wanted/Montage/WDS brand leak.
-- Material Symbols are used for icons.
-- Top navigation remains visible on scroll.
-- Main content scrolls.
-- Bottom nav/action does not cover content.
-- Variant layout strategy is preserved.
-- Hero image/3D appears when the strategy requires it.
-- CTA is bottom-aligned within its section/card/action area.
-- Minimum 4 sections and 9 UI units.
-- Responsive CSS exists.
-
 ## Primary Color Hierarchy
 
 `--color-primary: #0066FF` has four distinct roles — apply only the role that matches the context:
