@@ -20,15 +20,15 @@ const hexToRgb = (hex: string): [number, number, number] => {
   return [parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255];
 };
 
-// Each koi has its own body colour and the pool palette its "ink" spreads on a
-// click. The first kind is tuned to sit near the default blue water.
+// Each koi is a plausible real koi colour, paired with a pool palette built the
+// same way as the default blue one: a genuinely dark deep tone at the top of the
+// frame easing to a luminous, saturated tone at the bottom — so every flooded
+// palette reads as depth-and-glow, not one flat tint.
 interface KoiKind { body: string; water: [string, string, string]; }
 const KOI_KINDS: KoiKind[] = [
-  { body: '58,120,246', water: ['#0068ff', '#0e9dfa', '#1dd2f6'] }, // blue — matches default
-  { body: '236,58,42', water: ['#c81e28', '#f0483c', '#ff8a5a'] }, // vermilion
-  { body: '34,198,150', water: ['#0a6b5f', '#15a88c', '#2fd6a6'] }, // jade
-  { body: '255,176,32', water: ['#c9760f', '#f0a52e', '#ffd166'] }, // amber
-  { body: '150,96,240', water: ['#4b2fae', '#7b5be8', '#b08bff'] }, // violet
+  { body: '226,74,42', water: ['#8a2410', '#e0431f', '#ff9a6b'] }, // vermilion (Kohaku)
+  { body: '236,182,78', water: ['#7a4708', '#e0982a', '#ffe0a0'] }, // gold (Yamabuki Ogon)
+  { body: '104,146,214', water: ['#0068ff', '#0e9dfa', '#1dd2f6'] }, // blue (Asagi) — default pool
 ];
 
 const vertex = `#version 300 es
