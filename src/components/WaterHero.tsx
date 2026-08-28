@@ -13,7 +13,7 @@ import { Renderer, Program, Mesh, Triangle } from 'ogl';
  */
 
 const MAX_RIPPLES = 18; // ripple pool — enough for an ambient pool disturbance
-const MAX_KOI = 2;      // koi count — also the wake-emitter count fed to the shader
+const MAX_KOI = 2;      // koi count
 
 const hexToRgb = (hex: string): [number, number, number] => {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -46,7 +46,6 @@ uniform vec3  uColorBot;   // aqua    (bottom of screen)
 uniform float uCaustic;
 uniform float uRippleCount;
 uniform vec4  uRipples[${MAX_RIPPLES}]; // xy=center(0..1), z=birthTime, w=strength
-uniform vec4  uKoi[${MAX_KOI}]; // xy = head (uv, y-up) · zw = heading * stroke speed (0..1)
 
 out vec4 fragColor;
 
@@ -138,44 +137,14 @@ void main(){
     centrePlop += exp(-d * d * 900.0) * exp(-age * 5.0) * r.w;
   }
 
-  // ---- koi wake: a swimming fish parts the water — a bright bow crest at the
-  //      head and a trailing V of feathered, shimmering caustic light behind it.
-  //      Same rule as the rings: it IS the water's own light, never a drawn line ----
-  vec2  wakeWarp  = vec2(0.0);
-  float wakeField = 0.0;
-  for (int k = 0; k < ${MAX_KOI}; k++){
-    float spd = length(uKoi[k].zw);
-    if (spd < 1e-3) continue;
-    vec2 kp  = vec2(uKoi[k].x * aspect, uKoi[k].y);
-    vec2 fwd = normalize(vec2(uKoi[k].z * aspect, uKoi[k].w));
-    vec2 rel = auv - kp;
-    float along  = dot(rel, fwd);
-    float across = dot(rel, vec2(-fwd.y, fwd.x));
-    float behind = max(0.0, -along);
-
-    // bow crest — a tight bright arc hugging the front of the head
-    float bx  = (along - 0.02) / 0.032;
-    float by  = across / 0.055;
-    wakeField += exp(-bx * bx) * exp(-by * by) * spd * 1.1;
-
-    // trailing V — two feathered arms opening out behind at a fixed half-angle,
-    // carrying transverse wavelets that travel outward along the arm
-    float ax    = (abs(across) - behind * 0.42) / (0.012 + behind * 0.06);
-    float arm   = exp(-ax * ax);
-    float fade  = exp(-behind * 3.0) * spd;
-    float lines = sin((behind * 58.0 + length(rel) * 36.0) - t * 6.0);
-    wakeField += arm * fade * (0.6 + 0.4 * lines) * 0.9;
-    wakeWarp  += normalize(rel + vec2(1e-4)) * arm * fade * lines * 0.006;
-  }
-
-  // ---- caustic web, warped by the swirl and lensed through the ripple rings + wake ----
-  vec2 cuv = auv * 1.35 + swirl + (rippleWarp + wakeWarp) * 2.2 + vec2(t * 0.011, t * 0.019);
+  // ---- caustic web, warped by the swirl and lensed through the ripple rings ----
+  vec2 cuv = auv * 1.35 + swirl + rippleWarp * 2.2 + vec2(t * 0.011, t * 0.019);
   float web = causticWeb(cuv, t);
   web += causticWeb(cuv * 1.9 + 11.0, t * 1.35) * 0.5;
   web *= uCaustic;
   // crests concentrate that caustic light into rings, troughs dim it → the
   // ripple shows in the water's own texture and colour, not as a separate line
-  web *= 1.0 + ringField * 0.8 + min(wakeField, 2.0) * 0.7;
+  web *= 1.0 + ringField * 0.8;
   web = max(web, 0.0);
 
   // ---- base colour: deep mass (top) → luminous glow (bottom) ----
@@ -207,7 +176,6 @@ void main(){
   col += causticTint * max(ringField, 0.0) * 0.15;      // bright ring crests, on their own
   col -= causticTint * max(-ringField, 0.0) * 0.05;     // troughs read as thin dark gaps
   col += causticTint * centrePlop * 0.4;
-  col += causticTint * clamp(wakeField, 0.0, 1.0) * 0.09;
 
   // ---- vignette: deeper cobalt corners, luminous lower centre ----
   vec2 vd = uv - vec2(0.5, 0.28);
@@ -266,10 +234,11 @@ const WaterHero = ({
     if (!host) return;
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    // both layers are drawn soft-focus (CSS blur), so rendering above ~1.25x
-    // device pixels just burns memory and fill rate for no visible gain
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
-    const koiDpr = Math.min(dpr, 1);
+    // both layers are drawn soft-focus (CSS blur + 1.06x scale), so 1 device
+    // pixel per CSS pixel is already past what survives the blur — anything more
+    // just burns framebuffer memory and fragment-shader fill rate
+    const dpr = 1;
+    const koiDpr = 1;
     const t0 = performance.now();
     const now = () => (performance.now() - t0) * 0.001;
 
@@ -285,9 +254,6 @@ const WaterHero = ({
     // plain Array (not Float32Array): ogl only uploads array uniforms whose
     // value passes Array.isArray()
     const ripplesBuf: number[] = new Array(MAX_RIPPLES * 4).fill(0);
-    // plain Array for the same reason — repacked every frame with each koi's head
-    // position (uv, y-up) and heading scaled by its live stroke speed
-    const koiBuf: number[] = new Array(MAX_KOI * 4).fill(0);
     const program = new Program(gl, {
       vertex,
       fragment,
@@ -300,7 +266,6 @@ const WaterHero = ({
         uCaustic: { value: caustic },
         uRippleCount: { value: 0 },
         uRipples: { value: ripplesBuf },
-        uKoi: { value: koiBuf },
       },
     });
     const mesh = new Mesh(gl, { geometry: new Triangle(gl), program });
@@ -746,19 +711,6 @@ const WaterHero = ({
       }
       program.uniforms.uRippleCount.value = count;
       program.uniforms.iTime.value = time;
-
-      // pack koi wake sources — head position (uv, y-up) + heading scaled by the
-      // live speed, so the wake spikes on each burst and fades on the glide
-      for (let i = 0; i < MAX_KOI; i++) {
-        const k = koi[i];
-        const o = i * 4;
-        if (!k) { koiBuf[o] = koiBuf[o + 1] = koiBuf[o + 2] = koiBuf[o + 3] = 0; continue; }
-        const sf = Math.min(1, k.speed / 380);
-        koiBuf[o] = (k.x + Math.cos(k.heading) * k.len * 0.5) / cssW;
-        koiBuf[o + 1] = 1 - (k.y + Math.sin(k.heading) * k.len * 0.5) / cssH;
-        koiBuf[o + 2] = Math.cos(k.heading) * sf;
-        koiBuf[o + 3] = -Math.sin(k.heading) * sf;
-      }
 
       renderer.render({ scene: mesh });
 
