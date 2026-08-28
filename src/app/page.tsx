@@ -1522,18 +1522,17 @@ export default function Home() {
           }}
         >
           <div style={{
-            backgroundColor: navScrolled ? 'rgba(255, 255, 255, 0.04)' : 'transparent',
-            backgroundImage: navScrolled ? 'linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0) 22%, rgba(255,255,255,0) 76%, rgba(255,255,255,0.08))' : 'none',
-            backdropFilter: navScrolled ? 'blur(7px) saturate(1.1)' : 'none',
-            WebkitBackdropFilter: navScrolled ? 'blur(7px) saturate(1.1)' : 'none',
-            border: navScrolled ? '1px solid rgba(255, 255, 255, 0.34)' : '1px solid transparent',
+            backgroundColor: navScrolled ? 'rgba(255, 255, 255, 0.16)' : 'transparent',
+            backdropFilter: navScrolled ? 'blur(24px) saturate(1.5)' : 'none',
+            WebkitBackdropFilter: navScrolled ? 'blur(24px) saturate(1.5)' : 'none',
+            border: navScrolled ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid transparent',
             borderRadius: 'var(--aui-radius-pill)',
             padding: navScrolled ? '10px 14px 10px 16px' : '24px 24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: navScrolled ? '64px' : "var(--aui-space-6)",
-            boxShadow: navScrolled ? "0 12px 34px rgba(6, 22, 60, 0.22), inset 0 1.5px 2px rgba(255,255,255,0.55), inset 0 -1.5px 4px rgba(255,255,255,0.2)" : 'none',
+            boxShadow: navScrolled ? "0 8px 32px rgba(8, 30, 90, 0.2)" : 'none',
             transition: 'background-color .32s ease, padding .32s ease, box-shadow .32s ease, border-color .32s ease, gap .32s ease',
           }}>
             {/* 좌측: 로고 */}
@@ -1651,10 +1650,10 @@ export default function Home() {
           {/* Input card */}
           <div className="hero-brief-card" style={{
             width: '100%', maxWidth: 'var(--aui-content-narrow)', borderRadius: "var(--aui-radius-overlay)",
-            backgroundColor: 'var(--aui-on-dark-strong)',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
             backdropFilter: 'blur(var(--aui-blur-glass-strong))',
             WebkitBackdropFilter: 'blur(var(--aui-blur-glass-strong))',
-            border: '1px solid var(--aui-on-dark-subtle)',
+            border: 'none',
             padding: `var(--aui-space-6) var(--aui-space-6) var(--aui-space-4)`,
             boxShadow: 'none',
           }}>
@@ -1930,8 +1929,10 @@ export default function Home() {
           {designPanelOpen && (
             <div style={{
               width: '100%', maxWidth: '700px', marginTop: '8px',
-              borderRadius: "var(--aui-radius-card)", backgroundColor: F.surface1,
-              border: `1px solid ${F.hairline}`, padding: "var(--aui-space-4)",
+              borderRadius: "var(--aui-radius-overlay)",
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              backdropFilter: 'blur(var(--aui-blur-glass-strong))', WebkitBackdropFilter: 'blur(var(--aui-blur-glass-strong))',
+              border: 'none', padding: "var(--aui-space-4)",
             }}>
               <input ref={fileInputRef} type="file" accept=".md,.txt" onChange={handleFileUpload} style={{ display: 'none' }} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: "var(--aui-space-2)", marginBottom: '14px' }}>
@@ -2047,8 +2048,10 @@ export default function Home() {
           {brandPanelOpen && (
             <div style={{
               width: '100%', maxWidth: '700px', marginTop: '8px',
-              borderRadius: "var(--aui-radius-card)", backgroundColor: F.surface1,
-              border: `1px solid ${F.hairline}`, padding: "var(--aui-space-4)",
+              borderRadius: "var(--aui-radius-overlay)",
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              backdropFilter: 'blur(var(--aui-blur-glass-strong))', WebkitBackdropFilter: 'blur(var(--aui-blur-glass-strong))',
+              border: 'none', padding: "var(--aui-space-4)",
             }}>
               <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
 
@@ -2164,8 +2167,10 @@ export default function Home() {
           {refPanelOpen && (
             <div style={{
               width: '100%', maxWidth: '700px', marginTop: '8px',
-              borderRadius: "var(--aui-radius-card)", backgroundColor: F.surface1,
-              border: `1px solid ${F.hairline}`, padding: "var(--aui-space-4)",
+              borderRadius: "var(--aui-radius-overlay)",
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              backdropFilter: 'blur(var(--aui-blur-glass-strong))', WebkitBackdropFilter: 'blur(var(--aui-blur-glass-strong))',
+              border: 'none', padding: "var(--aui-space-4)",
             }}>
               <input ref={refImageInputRef} type="file" accept="image/*" onChange={handleRefImageUpload} style={{ display: 'none' }} />
               <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
