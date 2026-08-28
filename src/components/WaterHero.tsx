@@ -329,13 +329,12 @@ const WaterHero = ({
     const kctx = koiCanvas.getContext('2d')!;
 
     // ---------- koi model ----------
-    // Each koi is rendered as a ribbon laid along its own recent head-position
-    // history: on a fast burst the samples spread out → a long stretched streak;
-    // at cruise they bunch → a compact crescent. This is what gives the video's
-    // "segmented red comet when fast, clean fish when slow" without any extra
-    // trail buffer or per-fin geometry.
-    const HIST = 40;            // head-position ring depth (~0.7 s at 60 fps)
-    const RIB_N = 16;           // ribbon sample points, head → tail
+    // Each koi is a long, fixed-length body rendered as a ribbon laid along its
+    // own recent head-position history — so the body bends and whips through
+    // turns like a real fish following its path. Speed changes the tail-beat and
+    // the motion-blur smear, NOT the body length (it's a long koi either way).
+    const HIST = 44;            // head-position ring depth (~0.7 s at 60 fps)
+    const RIB_N = 18;           // ribbon sample points, head → tail
     const rx = new Float64Array(RIB_N);   // resampled spine (world px)
     const ry = new Float64Array(RIB_N);
     const rnx = new Float64Array(RIB_N);  // per-point unit normal
@@ -378,7 +377,7 @@ const WaterHero = ({
           burstIn: 1.2 + Math.random() * 3.5,
           burstDur: 0,
           phase: Math.random() * Math.PI * 2,
-          len: 122 + Math.random() * 48,
+          len: 205 + Math.random() * 72,
           hist: new Float64Array(HIST * 2),
           histHead: 0,
           histN: HIST,
@@ -488,7 +487,12 @@ const WaterHero = ({
     let pageVisible = !document.hidden;
 
     const drawKoi = (dt: number) => {
-      kctx.clearRect(0, 0, cssW, cssH);
+      // light frame-persistence → a fast fish smears into a motion-blur streak,
+      // a slow one stays crisp (it barely moves between frames)
+      kctx.globalCompositeOperation = 'destination-out';
+      kctx.fillStyle = 'rgba(0,0,0,0.32)';
+      kctx.fillRect(0, 0, cssW, cssH);
+      kctx.globalCompositeOperation = 'source-over';
       kctx.lineJoin = 'round';
 
       for (const k of koi) {
@@ -530,7 +534,7 @@ const WaterHero = ({
           if (o === k) continue;
           const dx = k.x - o.x, dy = k.y - o.y;
           const d = Math.hypot(dx, dy);
-          const near = (k.len + o.len) * 0.55;
+          const near = (k.len + o.len) * 0.4;
           if (d > 1e-3 && d < near) {
             k.heading += angleDelta(k.heading, Math.atan2(dy, dx)) * (1 - d / near) * 0.4 * Math.min(1, dt * 3);
           }
@@ -549,7 +553,7 @@ const WaterHero = ({
         k.x += Math.cos(k.heading) * k.speed * dt;
         k.y += Math.sin(k.heading) * k.speed * dt;
 
-        const m = k.len * 3;
+        const m = k.len * 1.4;
         let wrapped = false;
         if (k.x < -m) { k.x = cssW + m; wrapped = true; }
         else if (k.x > cssW + m) { k.x = -m; wrapped = true; }
@@ -565,9 +569,9 @@ const WaterHero = ({
         }
 
         // ---- resample the recent trail into an even ribbon spine, head → tail.
-        //      Trail length tracks throttle: a compact crescent at cruise, a long
-        //      stretched streak on a burst — the video's core motion cue ----
-        const trailLen = k.len * (0.5 + 2.7 * thr);
+        //      Fixed long body; a hint longer on a hard burst as it stretches
+        //      into the stroke, never a comet ----
+        const trailLen = k.len * (0.92 + 0.22 * thr);
         const step = trailLen / (RIB_N - 1);
         rx[0] = k.hist[k.histHead * 2];
         ry[0] = k.hist[k.histHead * 2 + 1];
@@ -607,12 +611,12 @@ const WaterHero = ({
         }
 
         // body undulation — travelling wave, deeper toward the tail and when the
-        // fish is working hard
-        const WAVES = 2.6;
-        const ampK = k.len * (0.35 + 0.75 * thr);
+        // fish is working hard (this, not the length, is what sells "fast")
+        const WAVES = 2.9;
+        const ampK = k.len * (0.16 + 0.42 * thr);
         for (let i = 0; i < RIB_N; i++) {
           const s = i / (RIB_N - 1);
-          const w = (0.02 + 0.12 * s) * ampK * Math.sin(k.phase - s * WAVES);
+          const w = (0.03 + 0.1 * s) * ampK * Math.sin(k.phase - s * WAVES);
           wx[i] = rx[i] + rnx[i] * w;
           wy[i] = ry[i] + rny[i] * w;
         }
@@ -621,7 +625,7 @@ const WaterHero = ({
         const core = kind.body;
         const edge = kind.rim;
         const L = k.len;
-        const half = (s: number) => L * (0.145 * Math.sin(Math.pow(s, 0.6) * Math.PI) + 0.012 * (1 - s));
+        const half = (s: number) => L * (0.1 * Math.sin(Math.pow(s, 0.62) * Math.PI) + 0.009 * (1 - s));
         const ribbon = (grow: number, ox: number, oy: number) => {
           kctx.beginPath();
           kctx.moveTo(wx[0] + rnx[0] * half(0) * grow + ox, wy[0] + rny[0] * half(0) * grow + oy);
@@ -659,31 +663,15 @@ const WaterHero = ({
         ribbon(1, 0, 0);
         kctx.fill();
 
-        // on a hard burst, carve the streak into beads at the wave troughs —
-        // the video's segmented red comet
-        if (thr > 0.4) {
-          kctx.globalCompositeOperation = 'destination-out';
-          for (let i = 2; i < RIB_N - 2; i++) {
-            const s = i / (RIB_N - 1);
-            const g = Math.sin(k.phase - s * WAVES);
-            if (g < -0.2) {
-              kctx.globalAlpha = (thr - 0.4) * 1.3 * -g;
-              kctx.beginPath();
-              kctx.ellipse(wx[i], wy[i], half(s) * 0.55, half(s) * 1.5, Math.atan2(rny[i], rnx[i]), 0, Math.PI * 2);
-              kctx.fill();
-            }
-          }
-          kctx.globalCompositeOperation = 'source-over';
-        }
-
         // hot head glow bleeding into the water
         kctx.globalAlpha = 1;
-        const hg = kctx.createRadialGradient(wx[0], wy[0], 0, wx[0], wy[0], L * 0.15);
+        const hgR = L * 0.11;
+        const hg = kctx.createRadialGradient(wx[0], wy[0], 0, wx[0], wy[0], hgR);
         hg.addColorStop(0, `rgba(${KOI_HOT},0.5)`);
         hg.addColorStop(1, `rgba(${KOI_HOT},0)`);
         kctx.fillStyle = hg;
         kctx.beginPath();
-        kctx.arc(wx[0], wy[0], L * 0.15, 0, Math.PI * 2);
+        kctx.arc(wx[0], wy[0], hgR, 0, Math.PI * 2);
         kctx.fill();
       }
       kctx.filter = 'none';
