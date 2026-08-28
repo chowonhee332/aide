@@ -1582,7 +1582,7 @@ export default function Home() {
 
         <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 pt-24" style={{ paddingBottom: '100px' }}>
           <h1 style={{
-            fontSize: 'clamp(52px, 8.5vw, 92px)', fontWeight: "var(--aui-type-display-hero-weight)", color: 'var(--aui-on-dark)',
+            fontSize: 'clamp(44px, 6.8vw, 76px)', fontWeight: "var(--aui-type-display-hero-weight)", color: 'var(--aui-on-dark)',
             textAlign: 'center', lineHeight: "var(--aui-type-display-hero-leading)", letterSpacing: "var(--aui-type-display-hero-tracking)",
             fontFamily: 'inherit',
             marginBottom: '24px', maxWidth: 'var(--aui-hero-title-max)',
@@ -1603,9 +1603,10 @@ export default function Home() {
           {/* Input card */}
           <div style={{
             width: '100%', maxWidth: 'var(--aui-content-narrow)', borderRadius: "var(--aui-radius-overlay)",
-            backgroundColor: 'var(--aui-on-dark-strong)',
-            backdropFilter: 'blur(var(--aui-blur-glass-strong))',
-            border: '1px solid var(--aui-on-dark-subtle)',
+            backgroundColor: 'rgba(255, 255, 255, 0.62)',
+            backdropFilter: 'blur(28px) saturate(1.6)',
+            WebkitBackdropFilter: 'blur(28px) saturate(1.6)',
+            border: '1px solid rgba(255, 255, 255, 0.55)',
             padding: `var(--aui-space-6) var(--aui-space-6) var(--aui-space-4)`,
             boxShadow: "var(--aui-shadow-floating)",
           }}>
