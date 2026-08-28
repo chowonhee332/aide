@@ -23,6 +23,7 @@ export type StructureViolation = {
     | 'missing-bottom-nav'    // 모바일 하단 네비 누락
     | 'center-floating-cta'   // design system 금지 패턴: center-floating CTA
     | 'invalid-icon'          // 존재하지 않는 Material Symbols 이름 (자동 교정됨)
+    | 'off-grid-rhythm'       // telemetry: 정규화 밴드 밖 off-grid 간격/off-scale 타입
   severity: 'severe' | 'minor'
   detail: string
 }
@@ -238,6 +239,23 @@ export function lintStructure(html: string, ir: UIStructureIR): StructureViolati
     /style=["'][^"']*(?:left|right)\s*:\s*50%[^"']*position\s*:\s*(?:fixed|absolute)/i.test(html)
   if (hasCenterFloatingCta) {
     violations.push({ code: 'center-floating-cta', severity: 'severe', detail: 'center-floating CTA 감지 — design system 금지 패턴' })
+  }
+
+  // 5) off-grid 간격/타입 — telemetry only (minor). 결정론 정규화가 대부분 교정하므로
+  //    여기 남는 건 정규화 밴드 밖(padding/margin, 큰 값, 인라인 style)이다. 반복되면
+  //    정규화 확장 또는 계약 승격 신호. (severe 아님 → 재생성 유발 안 함)
+  const offGridSpacing = [...html.matchAll(/(?:gap|row-gap|column-gap|padding|margin)(?:-(?:top|right|bottom|left))?\s*:\s*([^;{}"']*?\b\d+px\b[^;{}"']*)/gi)]
+    .flatMap(m => [...m[1].matchAll(/\b(\d+)px\b/g)].map(x => Number(x[1])))
+    .filter(n => n > 0 && n % 4 !== 0)
+  const offScaleType = [...html.matchAll(/font-size\s*:\s*(\d+)px/gi)]
+    .map(m => Number(m[1]))
+    .filter(n => ![11, 12, 13, 14, 15, 18, 20, 24, 32, 40, 56].includes(n))
+  if (offGridSpacing.length + offScaleType.length > 0) {
+    violations.push({
+      code: 'off-grid-rhythm',
+      severity: 'minor',
+      detail: `off-grid 간격 ${offGridSpacing.length}건(${[...new Set(offGridSpacing)].sort((a, b) => a - b).join(',')}) · off-scale font-size ${offScaleType.length}건(${[...new Set(offScaleType)].sort((a, b) => a - b).join(',')})`,
+    })
   }
 
   return violations
