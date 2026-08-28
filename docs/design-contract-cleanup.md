@@ -58,7 +58,12 @@ const pagePadding = layout['page-padding']        // undefined — aide.md는 pa
   비율 0.58 → `control-prominent`(48px) 선택
 - `sectionGap`도 동일: preferred `lg/xl/section` 전멸 → 비율 0.65 → `space-16`(64px) 선택
 
-계약엔 정답이 있다 — `responsive.modes.compact.page-padding: 20px`. 파생 로직이 안 읽을 뿐.
+계약엔 정답이 있다 — `responsive.modes.*.page-padding` (2026-08-28 기준 compact/medium 16px,
+wide 24px). 파생 로직이 안 읽을 뿐.
+
+**0단계 완료(`2174bf2` + 후속):** 파생이 `responsive.modes`를 읽고, `buildAideContractStyle`이
+`@media (min-width:1200px)`에서 `--aide-page-padding-web`(24px)로 좌우 여백을 올린다.
+모바일·태블릿 16px, PC 24px.
 
 ---
 

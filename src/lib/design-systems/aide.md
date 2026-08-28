@@ -770,21 +770,21 @@ contract:
         input: touch-first
         density: comfortable
         columns: 2
-        page-padding: 20px
+        page-padding: 16px
         control-min: 44px
       medium:
         range: 768px..1199px
         input: touch-or-pointer
         density: comfortable
         columns: 3
-        page-padding: 20px
+        page-padding: 16px
         control-min: 40px
       wide:
         range: 1200px+
         input: pointer-and-keyboard
         density: compact-or-comfortable
         columns: 12
-        page-padding: 20px
+        page-padding: 24px
         control-min: 32px dense, 40px general
     rules:
       - MUST design all three modes; desktop wrap alone is not responsive behavior

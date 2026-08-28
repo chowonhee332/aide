@@ -1732,6 +1732,15 @@ div.aide-page {
     display: none !important;
   }
 }
+/* Desktop (wide, >=1200px) takes a larger edge margin; mobile+tablet keep --aide-page-padding */
+@media (min-width: 1200px) {
+  .aide-page,
+  main.aide-page,
+  div.aide-page {
+    padding-left: var(--aide-page-padding-web);
+    padding-right: var(--aide-page-padding-web);
+  }
+}
 </style>`
 }
 
