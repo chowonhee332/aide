@@ -1590,6 +1590,7 @@ ${componentLines.length ? componentLines.join(',\n') : '    "note": "No explicit
 - A/B/C may differ in layout intent, section order, density, and visual strategy, but **spacing rhythm, component sizing, radius, border/shadow policy, typography scale, and color tokens must stay consistent**.
 - Do not hardcode arbitrary px values in padding/gap/margin. Choose the closest token and expose as a CSS variable.
 - Same component type = same padding/gap/radius. Cards in the same list/grid must not have random internal spacing.
+- Every content group is a <div class="aide-card"> (or a semantic tag with class="aide-card") so Aide's injected rule gives it padding/radius/border/shadow. Every top-level group on the page is a direct child of <section class="aide-section"> so the injected flex-gap handles vertical rhythm. Do NOT put padding / border / border-radius / box-shadow on your own custom classes — put the class="aide-card" on that element instead. Custom classes are only for non-container styling (grid-template-columns, colors, alignment).
 - Brand color override is ${hasBrandColors ? 'enabled, but only for primary/action/accent roles. Neutral, surface, background, border, disabled, status, spacing, radius, and typography remain from DESIGN.md.' : 'disabled. Use the selected DESIGN.md color system exactly.'}
 - Aide injects a <style> block that declares ALL layout rhythm variables in :root. Do NOT redeclare them — reference with var() only. The injected values are:
   --aide-page-padding = ${layoutRhythm.pagePadding} (모바일·태블릿 좌우 여백)
