@@ -73,7 +73,7 @@ brief
 ## Docs
 
 - `AGENTS.md`가 Claude와 Codex를 포함한 프로젝트 agent 공통 규칙의 canonical source다. `CLAUDE.md`는 `@AGENTS.md`를 참조만 하며 별도 규칙을 중복해서 유지하지 않는다.
-- `MISSION.md`는 Brain 1개 + 실행 셀 5개(기획·디자인·아키텍처·개발·검증)의 공동 목표와 상태 공유판이다. **규칙은 이 파일, 상태는 `MISSION.md`** 로 나눈다. 사용자는 Brain하고만 대화하고, Brain이 목표를 분해해 각 셀에 배정·통합한다. 역할별 파일 소유권·worktree 위치·진행 상태는 거기서 확인한다.
+- `MISSION.md`는 Brain 1개가 사용자와 대화하고 병렬 서브에이전트에게 일을 시키는 공동 목표·상태 공유판이다. **규칙은 이 파일, 상태는 `MISSION.md`** 로 나눈다. 사용자는 Brain하고만 대화하고, Brain이 목표를 분해해 서브에이전트에 배정·통합한다. 역할별 파일 소유권과 진행 상태는 거기서 확인한다.
 - `docs/archive/`: 과거 구현 계획·스펙. **현재 상태가 아니다.** 히스토리 참고용이며 현행 규칙과 충돌하면 이 파일이 우선한다.
 - `src/lib/design-systems/*.md`: 런타임 디자인 계약이다. `aide.md`는 Aide 단일 원본이며, 나머지 생성용 문서 중 `-test` 접미사 파일은 UI 선택지에서 자동 제외된다.
 - `/aide-ui/llms.txt`는 AI retrieval 진입점이며 `src/app/aide-ui/llms.txt/route.ts`가 계약에서 전부 파생해 생성한다. 컴포넌트 목록이나 설명을 이 파일에 손으로 쓰지 말라. 섹션 구성은 `contract.ai.llms_txt.contents`가 정하고, 선언과 renderer가 다르면 빌드를 실패시킨다.
@@ -93,7 +93,7 @@ brief
 3. 모호한 선택이 결과를 크게 바꾸면 해석과 추천안을 제시하고 확인한다.
 4. 기존 사용자 변경을 보존하고 무관한 코드를 정리하지 말라.
 5. `git push`는 명시적인 요청이 있을 때만 실행한다.
-6. 여러 세션(Brain·실행 셀·사용자)이 동시에 작업할 수 있다. Brain은 `~/Documents/aide`(main)에서 통합을 판단하고, 실행 셀은 각자 `~/Documents/aide-cells/<역할>` worktree(브랜치 `cell/<역할>`)에서 작업한다. 시작 시와 patch 직전에 `git status`/관련 diff를 다시 확인하고, 읽은 뒤 바뀐 파일은 최신 내용을 재확인한 후 수정한다.
+6. Brain·서브에이전트·Codex·사용자가 같은 트리에서 동시에 작업할 수 있다. 코드를 고치는 서브에이전트는 `isolation: worktree`로 격리해 띄운다. 시작 시와 patch 직전에 `git status`/관련 diff를 다시 확인하고, 읽은 뒤 바뀐 파일은 최신 내용을 재확인한 후 수정한다.
 7. 다른 작업자의 변경을 되돌리거나 함께 commit하지 말라. 같은 파일의 변경이 겹치면 최신 diff를 보존한 최소 patch만 적용한다.
 
 ## Completion gate
