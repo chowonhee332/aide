@@ -1,18 +1,19 @@
 # Aide Mission Board
 
-> 4개 병렬 세션(기획·디자인·개발·검증)의 **공동 목표와 상태 공유판**.
+> Brain 1개와 실행 셀 5개(기획·디자인·아키텍처·개발·검증)의 **공동 목표와 상태 공유판**.
 > 규칙은 `AGENTS.md`, 상태는 이 파일. 규칙을 여기 쓰지 말고, 상태를 거기 쓰지 말 것.
 > **150줄을 넘기지 않는다.** 매 세션 컨텍스트에 자동 로드되므로 길어지면 전원이 비용을 낸다.
 > 끝난 항목은 지우고, 큰 덩어리는 `docs/`로 빼고 여기엔 한 줄 링크만 남긴다.
 
-## ⚠️ 격리 없음 — 반드시 읽을 것
+## ⚠️ Brain 중심 worktree 운영 — 반드시 읽을 것
 
-4개 세션이 **같은 워킹 디렉터리 `/Users/wonhee.cho/Documents/aide`, 같은 브랜치 `main`** 을 공유한다.
-git worktree도 브랜치도 분리돼 있지 않다. **동시에 같은 파일을 고치면 조용히 덮어쓴다.**
+`AIDE · BRAIN · 총괄`(이 세션)만 `~/Documents/aide`(main)의 통합 상태를 판단한다. 실행 셀은 각자 `~/Documents/aide-cells/<역할>` worktree(브랜치 `cell/<역할>`)에서 조사·구현하고, Brain이 명시한 작업 범위와 파일 소유권을 따른다.
 
-- 패치 직전에 항상 `git status` + 해당 파일 `git diff`를 다시 본다.
-- 내 소유가 아닌 파일은 **직접 고치지 않는다.** 아래 5절에 요청을 남기고 소유자가 반영한다.
-- 다른 세션의 변경을 되돌리거나 같이 커밋하지 않는다. (`AGENTS.md` Working rules 6·7)
+- 사용자는 Brain과 대화한다. 실행 셀의 질문·판단 요청·완료 보고는 Brain이 수집해 사용자에게 통합한다.
+- Brain만 우선순위, 담당 셀, 변경 경계, 통합 순서, 최종 완료를 결정한다.
+- 실행 셀은 `cell/<역할>` 브랜치에만 커밋한다. main 병합·푸시는 Brain이 한다. 승인 없이 범위를 확장하거나 다른 셀 소유 파일을 건드리지 않는다.
+- 패치 직전에 항상 `git status`와 해당 파일 diff를 다시 확인하며, 결과는 커밋 SHA·검증 증거·잔여 위험과 함께 Brain에 보고한다.
+- worktree 재생성: `git worktree add ~/Documents/aide-cells/<역할> -b cell/<역할>` → `node_modules`·`.model-cache` 심링크 + `.env.local` 복사.
 
 ---
 
@@ -45,18 +46,20 @@ git worktree도 브랜치도 분리돼 있지 않다. **동시에 같은 파일�
 
 **약한 기준 금지.** "품질 좋게"가 아니라 "무엇이 몇 건에서 몇 건으로 줄었는가"로 쓴다.
 
-## 3. 역할 · 소유 파일 (충돌 방어선)
+## 3. 팀 구조 · 소유 파일 (충돌 방어선)
 
 내 소유 파일만 편집한다. 경계를 넘어야 하면 5절에 요청을 남긴다.
 
 | 역할 | 책임 | 소유 파일 |
 |---|---|---|
+| **Brain** | 목표 분해, 우선순위, 작업 배정, 충돌 조정, 통합, 사용자 승인 | 공유 파일과 최종 통합; 직접 구현은 긴급·소규모 변경만 |
 | **기획** | brief 해석, 질문, ServiceAnalysis, contentSeed, 방향 생성 | `src/lib/design-intelligence.ts`, `src/lib/design-direction.ts`, `src/lib/layout-archetypes.ts` |
 | **디자인** | 디자인 계약, 토큰, 컴포넌트 registry, `/aide-ui` | `src/lib/design-systems/*.md`, `src/lib/aide-product-tokens.ts`, `src/lib/design-token-alias.mjs`, `scripts/design-system.mjs`, `src/app/aide-ui/**` |
+| **아키텍처** | IR·API·데이터 경계, 결정론/LLM 책임 분리, 변경 설계 리뷰 | 기본 읽기 전용; 교차 모듈 변경은 Brain이 작업별 소유 파일을 지정 |
 | **개발** | 생성 파이프라인, Studio/Playground UI, API | `src/lib/gemini.ts`, `src/components/StudioView.tsx`, `src/components/BuilderView.tsx`, `src/app/api/**` |
 | **검증** | lint/build/test, 구조 계약, 실측 로그 분석 | `src/lib/structure-lint.ts`, `test/**`, `scripts/check-studio-contract.mjs`, `.aide-logs/` 분석 |
 
-**공유 파일 (단독 편집 금지 — 5절에 먼저 알린다):** `AGENTS.md`, `MISSION.md` 2·4·5절, `package.json`
+**공유 파일 (Brain 배정 없이 편집 금지):** `AGENTS.md`, `MISSION.md`, `package.json`, 공용 type/contract 파일
 
 ## 4. 상태 보드 — **자기 줄만 고친다**
 
@@ -64,8 +67,9 @@ git worktree도 브랜치도 분리돼 있지 않다. **동시에 같은 파일�
 
 - **기획**: 🟡 대기 — 아직 이번 사이클 착수 안 함
 - **디자인**: 🟢 진행 — `docs/design-system-upgrade-plan.md`을 외부 시스템 조사 기반 갭맵으로 갱신하고 `aide.md`에 AI interaction 원칙 + P0 패턴 6개 추가. `design:lint` 0 errors, unified contract test 통과. 다음: pattern retrieval·문서 renderer 확인
+- **아키텍처**: 🟢 감사 — 생성 파이프라인·IR·API·데이터 경계의 안전한 분할과 선행조건 조사
 - **개발**: 🟢 진행 — `docs/design-contract-cleanup.md` 완료분(9커밋): 여백 버그(`2174bf2`)·마진 16/16/24(`e35b4a4`)·:root 재선언 중단(`243dca1`)·타이포 주입(`e37f1fe`)·정규화 주입기(`4e01a30`)·shadow 주입(`c9eef04`)·`.aide-card` 커버리지(`e3e8a1c`)·규칙 dedup(`7618c71`)·off-grid telemetry(`685a9a9`). 전부 정적 검증. 남음: 1b(_base/guardrails 신규 + aide.md 산문 통합)·2(aide.md 물리 분해)는 **다음 실 생성 1회와 묶어서**. Pro 실험 코드는 아직 살아 있음.
-- **검증**: 🟡 대기 — G1 build 미실행
+- **검증**: 🔴 RED — `verify_sales_input_history` 키보드 안내 계약 불일치; clean worktree 의존성 부재로 lint/build 재검증 필요
 
 범례: 🟢 진행 중 · 🟡 대기 · 🔴 막힘 · ✅ 완료(다음 갱신 때 삭제)
 
