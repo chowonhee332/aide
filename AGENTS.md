@@ -93,7 +93,7 @@ brief
 3. 모호한 선택이 결과를 크게 바꾸면 해석과 추천안을 제시하고 확인한다.
 4. 기존 사용자 변경을 보존하고 무관한 코드를 정리하지 말라.
 5. `git push`는 명시적인 요청이 있을 때만 실행한다.
-6. Brain·서브에이전트·Codex·사용자가 같은 트리에서 동시에 작업할 수 있다. 코드를 고치는 서브에이전트는 `isolation: worktree`로 격리해 띄운다. 시작 시와 patch 직전에 `git status`/관련 diff를 다시 확인하고, 읽은 뒤 바뀐 파일은 최신 내용을 재확인한 후 수정한다.
+6. Brain·워커 세션·Codex·사용자가 `~/Documents/aide` 한 트리를 공유한다. 워커는 자기 소유 파일만 편집하고 git(stage·commit·merge·push)은 Brain만 만진다. 아키·검증 서브에이전트는 `isolation: worktree`로 격리해 띄운다. 시작 시와 patch 직전에 `git status`/관련 diff를 다시 확인하고, 읽은 뒤 바뀐 파일은 최신 내용을 재확인한 후 수정한다.
 7. 다른 작업자의 변경을 되돌리거나 함께 commit하지 말라. 같은 파일의 변경이 겹치면 최신 diff를 보존한 최소 patch만 적용한다.
 
 ## Completion gate
