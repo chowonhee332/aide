@@ -50,9 +50,11 @@
 
 내 소유 파일만 편집한다. 경계를 넘어야 하면 5절에 요청을 남긴다.
 
+**상시 셀은 기획·디자인·개발 3개.** 아키텍처·검증은 on-demand — 평소엔 Brain이 겸한다(아키: 설계 리뷰 / 검증: `lint`·`build` 게이트). 깊은 작업이 필요할 때만 해당 `cell/<역할>` worktree 세션을 띄우고, 끝나면 닫는다. worktree 5개는 상시 유지한다.
+
 | 역할 | 책임 | 소유 파일 |
 |---|---|---|
-| **Brain** | 목표 분해, 우선순위, 작업 배정, 충돌 조정, 통합, 사용자 승인 | 공유 파일과 최종 통합; 직접 구현은 긴급·소규모 변경만 |
+| **Brain** | 목표 분해, 우선순위, 작업 배정, 충돌 조정, 통합, 사용자 승인 + 아키·검증 겸임 | 공유 파일과 최종 통합; 직접 구현은 긴급·소규모 변경만 |
 | **기획** | brief 해석, 질문, ServiceAnalysis, contentSeed, 방향 생성 | `src/lib/design-intelligence.ts`, `src/lib/design-direction.ts`, `src/lib/layout-archetypes.ts` |
 | **디자인** | 디자인 계약, 토큰, 컴포넌트 registry, `/aide-ui` | `src/lib/design-systems/*.md`, `src/lib/aide-product-tokens.ts`, `src/lib/design-token-alias.mjs`, `scripts/design-system.mjs`, `src/app/aide-ui/**` |
 | **아키텍처** | IR·API·데이터 경계, 결정론/LLM 책임 분리, 변경 설계 리뷰 | 기본 읽기 전용; 교차 모듈 변경은 Brain이 작업별 소유 파일을 지정 |
