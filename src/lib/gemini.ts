@@ -2,6 +2,7 @@ import { GoogleGenAI, type GenerateContentResponseUsageMetadata } from '@google/
 import fs from 'fs';
 import path from 'path';
 import {
+  GEMINI_ANALYSIS_MODEL,
   GEMINI_DESIGN_MODEL,
   GEMINI_ECONOMY_IMAGE_MODEL,
   GEMINI_ECONOMY_MODEL,
@@ -436,8 +437,8 @@ Rules:
 - Output ONLY the extracted Markdown. No preamble, no code fences around the whole document, no commentary.`
 
   const text = files.length > 1
-    ? await generateProWithMultipleImages(prompt, files, apiKey, GEMINI_DESIGN_MODEL)
-    : await generateProWithImage(prompt, files[0].data, files[0].mimeType, apiKey, GEMINI_DESIGN_MODEL)
+    ? await generateProWithMultipleImages(prompt, files, apiKey, GEMINI_ANALYSIS_MODEL)
+    : await generateProWithImage(prompt, files[0].data, files[0].mimeType, apiKey, GEMINI_ANALYSIS_MODEL)
 
   return text.trim()
 }
@@ -485,8 +486,8 @@ Rules for analysis:
 
   const parts = images.map(image => ({ data: image.data, mimeType: image.mimeType }))
   const text = parts.length > 1
-    ? await generateProWithMultipleImages(prompt, parts, apiKey, GEMINI_DESIGN_MODEL)
-    : await generateProWithImage(prompt, parts[0].data, parts[0].mimeType, apiKey, GEMINI_DESIGN_MODEL)
+    ? await generateProWithMultipleImages(prompt, parts, apiKey, GEMINI_ANALYSIS_MODEL)
+    : await generateProWithImage(prompt, parts[0].data, parts[0].mimeType, apiKey, GEMINI_ANALYSIS_MODEL)
 
   return text.replace(/^```(?:markdown|md)?\n?/, '').replace(/```\s*$/, '').trim()
 }
@@ -527,7 +528,7 @@ Rules for analysis:
 - Capture uncertainty in the prose sections, not by inserting vague token values. Avoid placeholders like "[detected]" in final output; choose the best observed value.
 - Be specific and implementation-ready — this DESIGN.md will be used directly to generate UI.`;
 
-  return generateProWithImage(prompt, screenshotBase64, 'image/png', apiKey, GEMINI_ECONOMY_MODEL);
+  return generateProWithImage(prompt, screenshotBase64, 'image/png', apiKey, GEMINI_ANALYSIS_MODEL);
 }
 
 
@@ -802,7 +803,7 @@ Rules:
 - shellContract is a strict presence/absence contract. Record the exact app-bar title and left/right controls. If no bottom navigation or brand logo is visible, set present:false; absence must not be replaced with an invented element.
 - Output ONLY the JSON object. No code fences, no commentary.`
 
-  const raw = await generateProWithMultipleImages(prompt, images, apiKey, GEMINI_DESIGN_MODEL)
+  const raw = await generateProWithMultipleImages(prompt, images, apiKey, GEMINI_ANALYSIS_MODEL)
   const jsonText = raw.match(/```json\n?([\s\S]*?)```/)?.[1] ?? raw
   const start = jsonText.indexOf('{')
   const end = jsonText.lastIndexOf('}')

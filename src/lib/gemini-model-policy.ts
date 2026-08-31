@@ -11,6 +11,11 @@
 export const GEMINI_DESIGN_MODEL = 'gemini-3.7-flash' as const
 export const GEMINI_ECONOMY_MODEL = 'gemini-3.5-flash-lite' as const
 
+// 파이프라인 입력을 만드는 멀티모달 이해·추출(As-is 화면 분석, RFP/기획서 문서 추출,
+// 스크린샷→DESIGN.md)만 Pro로 둔다. 여기 결과가 틀리면 생성 3안이 전부 어긋난다.
+// 1-shot 저볼륨이라 Pro여도 회당 비용 영향은 작다. 생성(A/B/C HTML)은 Flash 유지.
+export const GEMINI_ANALYSIS_MODEL = 'gemini-3.1-pro-preview' as const
+
 // 이미지 생성은 전 경로 Flash 계열만 쓴다 (pro-image 미사용). 되돌릴 때는 이 상수만
 // 'gemini-3-pro-image'로 바꾸면 된다. 1K·2K 출력 단가가 같아 2K를 기본 보관하고,
 // 화면에는 `gemini.ts`의 결정론적 WebP 후처리 결과를 사용한다.
