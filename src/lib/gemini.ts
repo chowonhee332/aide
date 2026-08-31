@@ -2621,8 +2621,8 @@ function ensureRequiredVariantVisuals(html: string, options: {
   <img class="aide-hero-3d aide-hero-scene-img" src="${requiredPlaceholder}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;" />
   <div class="hero-overlay" style="position:absolute;bottom:0;left:0;right:0;padding:20px 16px;background:linear-gradient(to top,rgba(0,0,0,0.65) 0%,transparent 100%);color:#fff;"></div>
 </div>`
-    : `<div class="aide-visual-stage aide-generated-3d-stage" data-aide-required-visual="creon-object-3d" style="position:relative;overflow:hidden;min-height:200px;">
-  <img class="aide-hero-3d aide-3d-asset" src="${requiredPlaceholder}" alt="" style="position:absolute;right:-6%;bottom:-10%;width:clamp(200px,56%,320px);height:130%;object-fit:contain;display:block;" />
+    : `<div class="aide-visual-stage aide-generated-3d-stage" data-aide-required-visual="creon-object-3d" style="position:relative;display:flex;align-items:center;justify-content:center;min-height:clamp(320px,44vw,480px);overflow:hidden;">
+  <img class="aide-hero-3d aide-3d-asset" src="${requiredPlaceholder}" alt="" style="width:min(100%,520px);height:auto;max-height:100%;object-fit:contain;display:block;margin:0 auto;" />
 </div>`
 
   const heroClassPattern = /(<(?:section|div)\b(?=[^>]*class=(["'])[^"']*(?:hero|visual|main-card|top-card)[^"']*\2)[^>]*>)/i
@@ -2630,6 +2630,42 @@ function ensureRequiredVariantVisuals(html: string, options: {
   if (/<main\b[^>]*>/i.test(html)) return html.replace(/(<main\b[^>]*>)/i, `$1\n${visualHtml}`)
   if (/<body\b[^>]*>/i.test(html)) return html.replace(/(<body\b[^>]*>)/i, `$1\n${visualHtml}`)
   return visualHtml + html
+}
+
+/**
+ * 3D 오브젝트 히어로를 크고 중앙에 세운다. ensureRequiredVariantVisuals는 모델이 이미
+ * placeholder를 넣었으면 모델 마크업을 그대로 두는데, 모델은 히어로를 우측 하단 작은 코너
+ * 장식으로 그리는 일이 잦다(실측: FORMA B안). 여기서 결정론으로 크기·중앙 배치·contain을
+ * 못박는다. scene-3d-card-cover(카드 표지 이미지)는 대상 아님.
+ */
+function injectHeroObjectScale(html: string, visualPolicy?: VariantVisualPolicy): string {
+  if (visualPolicy !== 'creon-object-3d' && visualPolicy !== 'scene-3d') return html
+
+  // 모델이 그린 3D 히어로 <img>(아직 %%…%% placeholder)에 훅 클래스를 붙인다.
+  const result = html.replace(
+    /<img\b([^>]*\bsrc=["'][^"']*%%(?:HERO_3D|SCENE_3D|SHARED_HERO_3D[A-Z_]*|MASCOT_3D|REWARD_OBJECT_3D|HERO_3D_IMAGE|HERO_SCENE_3D)[^"']*["'][^>]*)>/gi,
+    (tag: string, attrs: string) => {
+      if (/\baide-hero-3d\b/.test(tag)) return tag
+      if (/\bclass=["']/.test(attrs)) return `<img${attrs.replace(/\bclass=(["'])/, 'class=$1aide-hero-3d ')}>`
+      return `<img class="aide-hero-3d"${attrs}>`
+    },
+  )
+
+  if (result.includes('data-aide-hero-scale')) return result
+  const guard = `<style data-aide-hero-scale="1">
+:where([data-aide-required-visual="creon-object-3d"],[data-aide-required-visual="scene-3d"]){
+  min-height:clamp(320px,44vw,480px); display:flex; align-items:center; justify-content:center;
+}
+img.aide-hero-3d,.aide-hero-3d img{
+  position:static!important; inset:auto!important; right:auto!important; left:auto!important; top:auto!important; bottom:auto!important;
+  transform:none!important; width:min(100%,560px)!important; height:auto!important; max-height:min(60vh,560px)!important;
+  object-fit:contain!important; object-position:center!important; margin:0 auto!important; display:block!important;
+}
+@media (min-width:1280px){ img.aide-hero-3d,.aide-hero-3d img{ max-height:min(68vh,680px)!important; } }
+</style>`
+  if (/<\/head>/i.test(result)) return result.replace(/<\/head>/i, `${guard}\n</head>`)
+  if (/<body[^>]*>/i.test(result)) return result.replace(/(<body[^>]*>)/i, `$1\n${guard}`)
+  return guard + result
 }
 
 function applyLogoDataUrlOnce(html: string, logoDataUrl?: string | null): string {
@@ -5041,6 +5077,7 @@ ${effectivePlatform === 'web' ? `
   html = sanitizeGeneratedBranding(html, brief, effectiveDesignMd, effectiveLogoDataUrl)
   html = injectMaterialSymbolsFont(html)
   html = ensureRequiredVariantVisuals(html, { variantStyle, sharedVisualSubject: effectiveSharedVisualSubject, heroImagePrompt: visual3dPrompt, visualPolicy: effectiveVisualPolicy })
+  html = injectHeroObjectScale(html, effectiveVisualPolicy)
   html = normalizePageContainer(html)
   html = injectDesignContractStyle(html, effectiveDesignMd, hasBrandColors)
   html = auditSpacingTokens(html, designContract)
