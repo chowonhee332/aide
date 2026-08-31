@@ -84,6 +84,23 @@ interface ElementStyles {
   borderWidth: string; borderRadius: string; backgroundColor: string; backgroundImage: string
 }
 
+/**
+ * Studio 비교 프리뷰용: 앱셸의 고정 높이·내부 스크롤·고정 chrome을 풀어 페이지가
+ * 자연스럽게 흐르게 한다. 이렇게 해야 iframe scrollHeight = 실제 전체 콘텐츠 높이가
+ * 되어 A/B/C 3개가 모두 펼쳐진 상태로 보인다 (앱셸을 쓰면 scrollHeight가 뷰포트 높이로
+ * 측정돼 나머지가 카드의 overflow:hidden에 잘린다).
+ */
+function flattenForPreview(html: string): string {
+  const css = `<style data-aide-preview-flatten="1">
+html,body{height:auto!important;min-height:0!important;overflow:visible!important}
+.app-shell,[data-layout-variant],.app,.screen,.phone-screen,.mobile-shell,.page-shell,.home-screen,.content-scroll,.page-scroll,.aide-page,.scroll-body,.main-content,.content,.scroll-content,main{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important}
+header,.app-header,.top-navigation,.global-nav,.aide-shell-appbar,.bottom-navigation,.mobile-tabbar,.bottom-tabbar,[class*="tabbar"],[class*="bottom-bar"],[class*="fixed-bottom"]{position:static!important}
+</style>`
+  if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, `${css}</head>`)
+  if (/<body[^>]*>/i.test(html)) return html.replace(/(<body[^>]*>)/i, `$1${css}`)
+  return css + html
+}
+
 function patchHeroToScene(html: string, base64: string, mimeType: string): string {
   const dataUrl = `data:${mimeType};base64,${base64}`
   const parser = new DOMParser()
@@ -1356,10 +1373,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
         return changed ? next : prev
       })
     }
-    // 폰트/이미지 로드 대기 후 측정
+    // 폰트/이미지 로드 대기 후 측정 (이미지 많은 페이지는 늦게 커진다)
     const t1 = setTimeout(readHeights, 300)
     const t2 = setTimeout(readHeights, 1000)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
+    const t3 = setTimeout(readHeights, 2500)
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
   }, [mainVariants])
 
   const handleStyleUpdate = useCallback((prop: string, value: string) => {
@@ -3151,7 +3169,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     ) : variant ? (
                       <iframe
                         ref={el => { variantIframeRefs.current[idx] = el }}
-                        srcDoc={letter === 'B' && bHeroStyle === 'scene' && bSceneImage ? patchHeroToScene(variant.html, bSceneImage.base64, bSceneImage.mimeType) : variant.html}
+                        srcDoc={flattenForPreview(letter === 'B' && bHeroStyle === 'scene' && bSceneImage ? patchHeroToScene(variant.html, bSceneImage.base64, bSceneImage.mimeType) : variant.html)}
                         title={`시안 ${letter} 프리뷰`}
                         sandbox="allow-scripts allow-same-origin"
                         scrolling="no"
