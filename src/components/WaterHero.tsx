@@ -101,6 +101,7 @@ void main(){
   vec2  rippleWarp = vec2(0.0);   // displaces the caustic sample — the lensing
   float ringField  = 0.0;         // signed surface-height field → caustic gain
   float centrePlop = 0.0;         // tiny bright rebound at a fresh impact
+  float waveGlint  = 0.0;         // crisp specular skip riding the advancing front
   for (int k = 0; k < ${MAX_RIPPLES}; k++){
     if (float(k) >= uRippleCount) break;
     vec4 r = uRipples[k];
@@ -135,10 +136,11 @@ void main(){
     ringField  += wave * annulus;
     rippleWarp += dir * wave * annulus * (2.6 / wl);
     centrePlop += exp(-d * d * 900.0) * exp(-age * 5.0) * r.w;
+    waveGlint  += exp(-wdf * wdf * 120.0) * life * r.w;   // tight bright band on the wavefront
   }
 
   // ---- caustic web, warped by the swirl and lensed through the ripple rings ----
-  vec2 cuv = auv * 1.35 + swirl + rippleWarp * 2.2 + vec2(t * 0.011, t * 0.019);
+  vec2 cuv = auv * 1.35 + swirl + rippleWarp * 2.5 + vec2(t * 0.011, t * 0.019);
   float web = causticWeb(cuv, t);
   web += causticWeb(cuv * 1.9 + 11.0, t * 1.35) * 0.5;
   web *= uCaustic;
@@ -173,9 +175,10 @@ void main(){
   // the ripple's only direct contribution: a faint broad lift on the crests and
   // a small rebound dot at a fresh impact — both in the caustic's own colour, so
   // the rings never separate from the surface
-  col += causticTint * max(ringField, 0.0) * 0.15;      // bright ring crests, on their own
-  col -= causticTint * max(-ringField, 0.0) * 0.05;     // troughs read as thin dark gaps
+  col += causticTint * max(ringField, 0.0) * 0.20;      // bright ring crests, on their own
+  col -= causticTint * max(-ringField, 0.0) * 0.07;     // troughs read as thin dark gaps
   col += causticTint * centrePlop * 0.4;
+  col += vec3(0.86, 0.95, 1.0) * waveGlint * 0.09;      // cool specular skip on the wavefront
 
   // ---- vignette: deeper cobalt corners, luminous lower centre ----
   vec2 vd = uv - vec2(0.5, 0.28);
@@ -221,9 +224,11 @@ interface WaterHeroProps {
 }
 
 const WaterHero = ({
-  colorTop = '#0068ff',
-  colorMid = '#0e9dfa',
-  colorBot = '#1dd2f6',
+  // arcade.software 히어로 그라디언트에서 샘플링한 블루 패밀리.
+  // deep cobalt(화면 대부분을 채우는 톤) → azure → light cyan(하단)
+  colorTop = '#0a6ae6',
+  colorMid = '#2f8fee',
+  colorBot = '#7fd0f2',
   caustic = 1.0,
   className = '',
 }: WaterHeroProps) => {
@@ -248,7 +253,7 @@ const WaterHero = ({
     const glCanvas = gl.canvas;
     // moderate defocus — the reference is a shallow-DoF pool shot that still
     // keeps mid-frequency ripple/caustic detail readable
-    glCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(3.5px);transform:scale(1.06);';
+    glCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;filter:blur(2.2px);transform:scale(1.05);';
     host.appendChild(glCanvas);
 
     // plain Array (not Float32Array): ogl only uploads array uniforms whose
