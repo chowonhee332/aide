@@ -72,6 +72,7 @@ Brain이 목표를 아래 역할로 쪼개 서브에이전트에 배정한다. �
 - **아키텍처**: 🟢 감사 — 생성 파이프라인·IR·API·데이터 경계의 안전한 분할과 선행조건 조사
 - **개발**: 🟢 진행 — `docs/design-contract-cleanup.md` 완료분(9커밋, 전부 정적 검증). 남음: 1b(_base/guardrails 신규 + aide.md 산문 통합)·2(aide.md 물리 분해)는 **다음 실 생성 1회와 묶어서**.
 - **Brain 직접(2026-08-31)**: 🟢 platform-baseline·셸 강제·모델 라우팅·telco 수정·랜딩 아키타입·데스크 리서치 커밋 완료(`ad2178b`~`d76ed50`+). 6절 참고. 다음: 실제 FORMA/VIP 재생성으로 검증.
+- **Brain 직접(2026-08-31) — /aide-ui 패턴 specimen**: 🟢 `040f904`. `/aide-ui/patterns/*` 15개 전부 실제 primitive 조합 specimen 렌더(기존 4개 → 15개). `component_registry` 70개는 `componentCoverage()` 실측 7축 모두 70/70 — 컴포넌트 쪽 갭 없음 확인. Codex의 미커밋 patternspecimen gate·llms.txt·test 동봉(사용자 승인).
 - **검증**: 🔴 RED — `verify_sales_input_history` 키보드 안내 계약 불일치(`page.tsx` 미변경, 이번 세션 밖). 그 외 신규 test 8종 + lint/build 통과.
 
 범례: 🟢 진행 중 · 🟡 대기 · 🔴 막힘 · ✅ 완료(다음 갱신 때 삭제)
