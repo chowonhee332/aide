@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import type { Browser, Page } from 'puppeteer'
 import { generateUI, resolveImagePlaceholders, extractDesignPaletteHint, generateProWithImage } from '@/lib/gemini'
 import { injectVisualReviewCss, reviewDesignScreenshot } from '@/lib/design-visual-review'
-import { GEMINI_DESIGN_MODEL, GEMINI_ECONOMY_MODEL, GEMINI_ECONOMY_IMAGE_MODEL, GEMINI_IMAGE_FALLBACK_MODEL } from '@/lib/gemini-model-policy'
+import { GEMINI_DESIGN_MODEL, GEMINI_ECONOMY_MODEL } from '@/lib/gemini-model-policy'
 import fs from 'fs'
 import path from 'path'
 
@@ -103,19 +103,23 @@ export async function POST(req: NextRequest) {
         ? (normalizedParams.sharedVisualSubject || normalizedParams.heroSubject || normalizedParams.heroImagePrompt || undefined)
         : (normalizedParams.heroSubject || normalizedParams.heroImagePrompt || undefined)
       const imageWarnings: string[] = []
+      // 히어로가 임팩트 목적일 때 시네마틱 프롬프트로 전환한다.
+      // 씬 정책은 기본 dramatic, 오브젝트 정책은 브리프가 "화려/시네마틱/드라마틱/분해"를 요구할 때만.
+      const briefText = String(normalizedParams.brief ?? '')
+      const heroDramatic =
+        normalizedParams.visualPolicy === 'scene-3d' ||
+        normalizedParams.visualPolicy === 'scene-3d-card-cover' ||
+        /화려|드라마틱|시네마틱|웅장|몰입|임팩트|exploded|분해|입체감|impact|dramatic|cinematic/i.test(briefText)
       let finalHtml = await resolveImagePlaceholders(rawHtml, {
         heroImagePrompt: heroPrompt,
         apiKey,
         unsplashKey,
         imageWarnings,
         paletteHint: extractDesignPaletteHint(normalizedParams.designMd),
-        // pro 이미지 모델(gemini-3-pro-image)은 이 경로에서 쓰지 않는다. 3D 정책은 economy(flash-lite),
-        // 그 외는 flash-image를 상한으로 둔다.
-        sceneImageModel: (normalizedParams.visualPolicy === 'scene-3d' || normalizedParams.visualPolicy === 'scene-3d-card-cover')
-          ? GEMINI_ECONOMY_IMAGE_MODEL
-          : GEMINI_IMAGE_FALLBACK_MODEL,
-        heroImageModel: normalizedParams.visualPolicy === 'creon-object-3d' ? GEMINI_ECONOMY_IMAGE_MODEL : GEMINI_IMAGE_FALLBACK_MODEL,
+        // 3D 히어로는 임팩트가 목적이므로 flash-lite가 아니라 flash-image를 쓴다.
+        // pro 이미지 모델(gemini-3-pro-image)은 이 경로에서 미사용 — generateHeroImage 기본값이 flash-image.
         sceneCardCover: normalizedParams.visualPolicy === 'scene-3d-card-cover',
+        heroDramatic,
         onImageEvent: (label: string) => emit('step', { label }),
       })
       console.log('[generate] step2: html generated, length=', finalHtml.length)

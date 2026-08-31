@@ -2832,10 +2832,12 @@ export async function resolveImagePlaceholders(
     sceneImageModel?: string;
     heroImageModel?: string;
     sceneCardCover?: boolean;
+    /** brand-landing / product-showcase 등 임팩트가 목적인 히어로 — 시네마틱 프롬프트를 쓴다 */
+    heroDramatic?: boolean;
     onImageEvent?: (label: string) => void;
   } = {}
 ): Promise<string> {
-  const { heroImagePrompt, heroImageData, apiKey, unsplashKey, imageWarnings, paletteHint, sceneImageModel, heroImageModel, sceneCardCover, onImageEvent } = options
+  const { heroImagePrompt, heroImageData, apiKey, unsplashKey, imageWarnings, paletteHint, sceneImageModel, heroImageModel, sceneCardCover, heroDramatic, onImageEvent } = options
   let result = html
   const fallbackVisual = (label: string) => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#eef4ff"/><stop offset="1" stop-color="#dbe8ff"/></linearGradient></defs><rect width="900" height="600" rx="48" fill="url(#g)"/><circle cx="690" cy="150" r="92" fill="#ffffff" opacity=".55"/><circle cx="240" cy="390" r="124" fill="#ffffff" opacity=".38"/><rect x="210" y="260" width="480" height="46" rx="23" fill="#ffffff" opacity=".72"/><rect x="285" y="330" width="330" height="28" rx="14" fill="#ffffff" opacity=".55"/><text x="450" y="430" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#6b7da8">${label}</text></svg>`
@@ -2854,7 +2856,7 @@ export async function resolveImagePlaceholders(
     const subject = buildHeroSubjectForScene(sceneKeyword)
     onImageEvent?.('3D 씬 이미지 생성 요청 중...')
     const sceneMode: HeroImageMode = sceneCardCover ? 'scene-card-cover' : 'scene'
-    const generated = await getSharedHeroImage(subject, apiKey, paletteHint, sceneMode, sceneImageModel)
+    const generated = await getSharedHeroImage(subject, apiKey, paletteHint, sceneMode, sceneImageModel, heroDramatic)
     const src = generated ? `data:${generated.mimeType};base64,${generated.base64}` : fallbackVisual('3D scene')
     if (generated) onImageEvent?.('3D 씬 이미지 생성 완료')
     if (!generated) {
@@ -2877,7 +2879,7 @@ export async function resolveImagePlaceholders(
     let heroImg = heroImageData ?? null
     if (!heroImg) {
       onImageEvent?.('3D 히어로 이미지 생성 요청 중...')
-      heroImg = await getSharedHeroImage(heroSubjectPrompt, apiKey, paletteHint, 'transparent', heroImageModel)
+      heroImg = await getSharedHeroImage(heroSubjectPrompt, apiKey, paletteHint, 'transparent', heroImageModel, heroDramatic)
     }
     const heroSrc = heroImg ? `data:${heroImg.mimeType};base64,${heroImg.base64}` : fallbackVisual('3D hero')
     if (heroImg) onImageEvent?.('3D 히어로 이미지 생성 완료')
@@ -3151,11 +3153,12 @@ function getSharedHeroImage(
   paletteHint?: string,
   mode: HeroImageMode = 'transparent',
   modelOverride?: string,
+  dramatic = false,
 ): Promise<{ base64: string; mimeType: string } | null> {
-  const key = `${mode}::${modelOverride ?? 'auto'}::${subject.trim().toLowerCase()}::${paletteHint ?? ''}`.slice(0, 500)
+  const key = `${mode}::${modelOverride ?? 'auto'}::${dramatic ? 'dram' : 'std'}::${subject.trim().toLowerCase()}::${paletteHint ?? ''}`.slice(0, 500)
   const cached = sharedHeroImageCache.get(key)
   if (cached) return cached
-  const promise = generateHeroImage(subject, apiKey, mode, paletteHint, modelOverride)
+  const promise = generateHeroImage(subject, apiKey, mode, paletteHint, modelOverride, dramatic)
   sharedHeroImageCache.set(key, promise)
   return promise
 }
@@ -3179,7 +3182,24 @@ const CREON_STYLE_FALLBACK: Record<string, unknown> = {
   output: "1:1 square composition, transparent background preferred, high quality premium render",
 }
 
-function buildCreon3DPrompt(subject: string, paletteHint?: string): string {
+function buildCreon3DPrompt(subject: string, paletteHint?: string, dramatic = false): string {
+  // dramatic: brand-landing / product-showcase 히어로 — 귀여운 흰 배경 아이콘이 아니라
+  // 시네마틱 제품 렌더. 배경은 여전히 단색(BiRefNet 컷아웃 가능)으로 두되 오브젝트 자체를 극적으로 조명한다.
+  if (dramatic) {
+    return JSON.stringify({
+      subject: subject || 'a premium product object',
+      style: "cinematic 3D product hero render, premium industrial design, photoreal materials (brushed aluminium, glass, matte polymer, anodized metal), crisp micro-detail, high resolution",
+      camera: "slight low-angle three-quarter view, subject fills 80-88% of the frame, tight padding, shallow depth of field on the far edge only",
+      lighting: "dramatic key light plus a strong rim/back light, crisp specular highlights, gentle bloom on the brightest highlights, deep contrast — the drama is ON THE OBJECT",
+      composition: "single hero object, subject-dominant and centered; a tight exploded / floating-parts layout of the SAME product is allowed if it still reads as one object",
+      background: "plain seamless single-tone studio background (near-black OR clean light), NO environment, NO room, NO particles, NO floor plane, NO reflection — the background will be removed",
+      shadows: "no baked ground shadow, no contact shadow, no drop shadow, no oval blob under the object",
+      colors: paletteHint ? `harmonize with app palette: ${paletteHint}; let brand hue live in the highlights and rim light` : "brand-forward, rich saturation in highlights, neutral body",
+      negative: "no cute toy look, no glossy kids-app icon, no clay blob, no low-poly, no dated mobile-game asset, no muddy lighting, no gray plastic",
+      output: "1:1 square, premium cinematic 3D render, high quality. ABSOLUTELY NO text, letters, numbers, prices, or UI labels anywhere.",
+    }, null, 2)
+  }
+
   const fileBase = loadCreonStyleBase()
   // creon-style.md 없거나 비어 있으면 CREON_STYLE_FALLBACK으로 스타일 보장
   const base = Object.keys(fileBase).length > 0 ? fileBase : CREON_STYLE_FALLBACK
@@ -3208,8 +3228,48 @@ function buildCreon3DPrompt(subject: string, paletteHint?: string): string {
   return JSON.stringify(prompt, null, 2)
 }
 
-function buildFreeformScene3DPrompt(subject: string, paletteHint?: string, mode: 'ambient' | 'card-cover' = 'ambient'): string {
+function buildFreeformScene3DPrompt(subject: string, paletteHint?: string, mode: 'ambient' | 'card-cover' = 'ambient', dramatic = false): string {
   const cleanSubject = extractVisualKeyword(subject)
+
+  // dramatic: brand-landing / product-showcase / 브리프가 "화려·시네마틱·드라마틱"을 요구할 때.
+  // 기본 씬 프롬프트의 "밝은 클레이 / cinematic 배경 회피" 지시를 뒤집어 임팩트를 낸다.
+  if (dramatic) {
+    const NOTEXT = `ABSOLUTE RULE — no exceptions:
+Generate a PURE VISUAL image with ZERO text, letters, numbers, prices, UI labels, buttons, icons with labels, or any readable characters. Any text in the output is an immediate failure.`
+    const commonDram = `Art direction — CINEMATIC, high-impact hero (not a cute clay scene):
+- Cinematic 3D render: premium / photoreal-leaning materials, dramatic key light + strong rim/back light, volumetric atmosphere, gentle bloom on highlights, deep contrast, subtle depth of field.
+- Deep moody background — near-black, deep indigo, or brand-dark gradient — with floating light particles / faint light trails and real atmospheric depth. NOT flat studio, NOT bright daylight, NOT pastel clay.
+- The main subject is sharply lit, richly detailed, and dominant. A tight exploded / floating-parts layout of the SAME product is welcome.
+- Lighting: strong directional key + rim, crisp speculars, soft volumetric haze.
+- Avoid: cute clay blobs, gray plastic, low-poly, dated mobile-game asset, generic stock 3D, busy childish scenery, tiny sticker composition, muddy lighting.
+${paletteHint ? `- Let the brand palette live in the highlights and rim light: ${paletteHint}` : ''}`
+    if (mode === 'card-cover') {
+      return `${NOTEXT}
+
+Create a premium full-bleed CINEMATIC 3D scene for a mobile app hero card cover background.
+
+Visual subject and scene context:
+${cleanSubject || 'a premium product in a dramatic dark environment'}
+
+${commonDram}
+- This image IS the full-bleed card background; fill the whole frame. Subject occupies ~45-65% of the height, upper-center or center.
+- The lower 35% must fall to darker tones through atmospheric depth (no hard vignette) — white text will sit on top.
+
+Output: PNG image, 3:4 portrait, high quality, premium cinematic 3D render. NO TEXT anywhere in the image.`
+    }
+    return `${NOTEXT}
+
+Create a bold 16:9 CINEMATIC 3D scene layer for a digital product hero section.
+
+Visual subject and scene context:
+${cleanSubject || 'a premium product in a dramatic dark environment'}
+
+${commonDram}
+- Large integrated centerpiece — it can be anchored right / center / bottom with clean safe space for UI copy and CTA, but it must read as a bold dramatic hero, not a small decoration.
+
+Output: PNG image, 16:9 composition, high quality, premium cinematic 3D render, UI-friendly safe space. NO TEXT anywhere in the image.`
+  }
+
   if (mode === 'card-cover') {
     return `ABSOLUTE RULE — no exceptions:
 Generate a PURE VISUAL image with ZERO text, letters, numbers, prices, UI labels, buttons, icons with labels, or any readable characters. Any text in the output is an immediate failure.
@@ -3309,15 +3369,17 @@ export async function generateHeroImage(
   mode: HeroImageMode = 'transparent',
   paletteHint?: string,
   modelOverride?: string,
+  dramatic = false,
 ): Promise<{ base64: string; mimeType: string } | null> {
   try {
     const ai = getAi(apiKey)
     const prompt = mode === 'scene'
-      ? buildFreeformScene3DPrompt(subject, paletteHint, 'ambient')
+      ? buildFreeformScene3DPrompt(subject, paletteHint, 'ambient', dramatic)
       : mode === 'scene-card-cover'
-        ? buildFreeformScene3DPrompt(subject, paletteHint, 'card-cover')
-        : buildCreon3DPrompt(subject, paletteHint)
-    const refImages = mode === 'transparent' ? loadCreonRefImages() : []
+        ? buildFreeformScene3DPrompt(subject, paletteHint, 'card-cover', dramatic)
+        : buildCreon3DPrompt(subject, paletteHint, dramatic)
+    // dramatic object 렌더는 단색 배경이라 Creon 레퍼런스(귀여운 아이콘)를 섞지 않는다.
+    const refImages = mode === 'transparent' && !dramatic ? loadCreonRefImages() : []
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [
       { text: prompt },
       ...refImages,
