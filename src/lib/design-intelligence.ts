@@ -31,6 +31,21 @@ function includesAny(text: string, patterns: RegExp[]): boolean {
   return patterns.some(pattern => pattern.test(text))
 }
 
+/**
+ * 브리프에서 랜딩 페이지 의도를 감지한다.
+ * 신호: "랜딩|랜딩페이지|브랜드" + "platform=web" 또는
+ *      "제품|제품 소개|제품소개|브랜드" + "platform=web" 또는
+ *      "마케팅|메인 홈|공식 사이트|브랜드 사이트" 등
+ */
+export function detectLandingIntent(brief: string, platform: 'mobile' | 'web'): boolean {
+  if (platform !== 'web') return false
+
+  const normalized = brief.toLowerCase()
+  const landingKeywords = /랜딩|landing page|brand site|브랜드 사이트|브랜드사이트|제품 소개|제품소개|브랜드 소개|마케팅 페이지|marketing site|product page|공식 (웹)?사이트|메인 홈(페이지)?|corporate site/
+
+  return landingKeywords.test(normalized)
+}
+
 export function detectServiceSubtype(brief: string, domain: AppDomain, subtypeHint?: string): string {
   const normalized = brief.toLowerCase()
   if (includesAny(brief, [/피자|pizza|페퍼로니|주문|픽업|스탬프|피자집/])) return 'pizza-order-membership'
@@ -777,7 +792,8 @@ export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
   ]
   const variantBriefs = variantBriefsFor(input.needsScene3d, serviceSubtype, input.domain, contentInventory)
   const componentHints = getSubtypeComponentHints(serviceSubtype, input.domain)
-  const variantArchetypes = assignVariantArchetypes(input.brief, input.domain)
+  const isLandingIntent = detectLandingIntent(input.brief, input.platform)
+  const variantArchetypes = assignVariantArchetypes(input.brief, input.domain, isLandingIntent)
   const variantStructures = buildVariantStructures({
     archetypes: variantArchetypes,
     visualPolicies,
@@ -786,6 +802,7 @@ export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
     serviceSubtype,
     contentInventory,
     shellContract: input.shellContract,
+    isLandingIntent,
   })
 
   return {

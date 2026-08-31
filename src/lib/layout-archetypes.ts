@@ -191,6 +191,20 @@ export const ARCHETYPE_POOL: Record<string, LayoutArchetype> = {
     forbid: ['long feed', 'unstructured card wall'],
     description: '목표 요약 + 단계형 입력 + 선택 칩 + 미리보기. 사용자를 설정/시작 흐름으로 이끄는 화면.',
   },
+  'brand-landing': {
+    id: 'brand-landing', name: '브랜드 랜딩', bestFor: 'any',
+    heroPattern: 'photo-cover', contentPattern: 'two-col-grid', density: 'airy',
+    sectionRecipe: ['brand-hero', 'signature-collection', 'craft-story', 'lifestyle-gallery', 'trust-section', 'cta-footer'],
+    forbid: ['KPI band', 'side navigation', 'bottom navigation', 'dashboard widgets', 'loyalty points', 'membership tiers'],
+    description: '대형 편집 히어로(헤드라인+부제+CTA) + 시그니처 컬렉션 + 스토리텔링 갤러리 + 신뢰 요소 + CTA 풋터. 브랜드 가치·제품 철학을 전달하는 마케팅 랜딩.',
+  },
+  'product-showcase': {
+    id: 'product-showcase', name: '제품 쇼케이스', bestFor: 'any',
+    heroPattern: 'object-3d', contentPattern: 'rail-stack', density: 'balanced',
+    sectionRecipe: ['object-3d-hero', 'key-specs', 'feature-gallery', 'comparison-highlights', 'social-proof', 'cta-footer'],
+    forbid: ['KPI band', 'side navigation', 'bottom navigation', 'dashboard widgets', 'membership tiers'],
+    description: '3D/고해상도 제품 히어로 + 핵심 스펙 요약 + 피처 갤러리 + 비교 강조 + 고객 평가 + CTA 풋터. 제품의 기능·디자인·가치를 집중 조명.',
+  },
 }
 
 // 변형별 후보군 — A=정보/비교, B=전환/행동, C=탐색/브랜드
@@ -198,6 +212,13 @@ const SLOT_CANDIDATES: Record<'A' | 'B' | 'C', string[]> = {
   A: ['kpi-dashboard', 'comparison-decision', 'detail-report', 'wallet-membership', 'feed-stream', 'bento-grid'],
   B: ['object-hero', 'progress-quest', 'companion-status', 'order-commerce', 'search-explore', 'comparison-decision', 'onboarding-wizard'],
   C: ['magazine-editorial', 'card-carousel', 'booking-map', 'bento-grid', 'search-explore', 'feed-stream'],
+}
+
+// 랜딩 페이지 의도 감지 시 사용할 아키타입 풀
+const LANDING_ARCHETYPES: Record<'A' | 'B' | 'C', string[]> = {
+  A: ['brand-landing', 'product-showcase', 'magazine-editorial'],
+  B: ['product-showcase', 'brand-landing', 'card-carousel'],
+  C: ['magazine-editorial', 'brand-landing', 'product-showcase'],
 }
 
 const DOMAIN_PREFERRED: Partial<Record<AppDomain, Record<'A' | 'B' | 'C', string[]>>> = {
@@ -256,15 +277,28 @@ function suitable(id: string, domain: AppDomain): boolean {
  * - brief 해시로 시드 → 같은 서비스는 안정적, 다른 서비스는 다른 조합 (cross-service 다양성)
  * - 도메인 적합 후보 우선, 없으면 전체 후보 폴백
  * - 3개가 절대 겹치지 않게 강제 (anti-collapse)
+ * - isLandingIntent=true면 랜딩 페이지 아키타입 풀을 사용 (대시보드 제외)
  */
 export function assignVariantArchetypes(
   brief: string,
   domain: AppDomain,
+  isLandingIntent: boolean = false,
 ): Record<'A' | 'B' | 'C', LayoutArchetype> {
   const seed = hashString(`${brief}::${domain}`)
   const used = new Set<string>()
 
   const pick = (slot: 'A' | 'B' | 'C', offset: number): LayoutArchetype => {
+    // 랜딩 의도 감지 시 랜딩 아키타입 풀만 사용
+    if (isLandingIntent) {
+      const landingCandidates = LANDING_ARCHETYPES[slot]
+      const fit = landingCandidates.filter(id => suitable(id, domain) && !used.has(id))
+      const pool = fit.length > 0 ? fit : landingCandidates.filter(id => !used.has(id))
+      const list = pool.length > 0 ? pool : landingCandidates
+      const chosen = list[(seed + offset) % list.length]
+      used.add(chosen)
+      return ARCHETYPE_POOL[chosen]
+    }
+
     const preferred = DOMAIN_PREFERRED[domain]?.[slot] ?? []
     const all = [...preferred, ...SLOT_CANDIDATES[slot]].filter((id, index, arr) => arr.indexOf(id) === index)
     const fit = all.filter(id => suitable(id, domain) && !used.has(id))
@@ -359,6 +393,8 @@ export function buildVariantStructures(args: {
     bottomNavigation?: { present?: boolean }
     brandLogo?: { present?: boolean }
   }
+  /** 랜딩 페이지 의도 감지 — true면 sideNav/bottomNav 강제 비활성화 */
+  isLandingIntent?: boolean
 }): Record<'A' | 'B' | 'C', UIStructureIR> {
   const variants = ['A', 'B', 'C'] as const
   const isWeb = args.platform === 'web'
@@ -372,7 +408,8 @@ export function buildVariantStructures(args: {
         rightAction: shell.topAppBar.rightAction ?? 'none',
       }
     : undefined
-  const sideNav = isWeb && ['business', 'productivity'].includes(args.domain)
+  // 랜딩 페이지는 항상 sideNav 비활성화; 그 외는 도메인 기본값
+  const sideNav = args.isLandingIntent ? false : (isWeb && ['business', 'productivity'].includes(args.domain))
 
   return variants.reduce((acc, variant, variantIdx) => {
     const archetype = args.archetypes[variant]
@@ -419,8 +456,9 @@ export function buildVariantStructures(args: {
       ].join('::'),
       chrome: {
         topNav: true,
-        // 아키타입 기본값은 mobile=하단탭바. as-is 셸 계약이 present:false면 그걸 우선한다.
-        bottomNav: !isWeb && shellBottomNav !== false,
+        // 랜딩 페이지는 bottomNav 강제 비활성화. 그 외엔 아키타입 기본값(mobile=하단탭바)이되
+        // as-is 셸 계약이 present:false면 그걸 우선한다.
+        bottomNav: args.isLandingIntent ? false : (!isWeb && shellBottomNav !== false),
         sideNav,
         scrollArea: 'main',
         fixedChrome: true,

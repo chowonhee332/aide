@@ -31,8 +31,8 @@ assert.match(gemini, /const suppressBrandLogo = asIsAnalysis\?\.shellContract\?\
 assert.match(gemini, /const effectiveLogoDataUrl = suppressBrandLogo \? '' : logoDataUrl/)
 assert.match(gemini, /\$\{effectiveLogoDataUrl \? `\\n## ⚠️ 브랜드 로고 슬롯/)
 assert.doesNotMatch(gemini, /html = applyLogoDataUrlOnce\(html, logoDataUrl\)/)
-// B: 아키타입 chrome이 shellContract를 아키타입 기본값보다 우선
-assert.match(archetypes, /bottomNav: !isWeb && shellBottomNav !== false/)
+// B: 아키타입 chrome이 shellContract를 아키타입 기본값보다 우선 (랜딩 의도면 강제 false)
+assert.match(archetypes, /!isWeb && shellBottomNav !== false/)
 assert.match(archetypes, /brandLogo: shellBrandLogo !== false/)
 assert.match(designIntel, /shellContract: input\.shellContract/)
 
