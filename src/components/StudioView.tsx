@@ -4,7 +4,7 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Sparkles, Upload, Download, RefreshCw, ArrowLeft, Check,
   SlidersHorizontal, X, Moon, Sun, Pencil, Send, ChevronDown,
-  CornerUpLeft, CornerUpRight, Image as ImageIcon, Shapes, Zap, ChevronRight, Bell, Settings,
+  CornerUpLeft, CornerUpRight, Image as ImageIcon, Shapes, Zap,
 } from '@/components/ui/material-icon'
 import { cn } from '@/lib/utils'
 import DotField from '@/components/DotField'
@@ -22,7 +22,6 @@ import { Checkbox, Switch } from '@/components/ui/selection-control'
 import { RadioGroup, Radio } from '@/components/ui/radio-group'
 import { SearchField } from '@/components/ui/search-field'
 import { Skeleton } from '@/components/ui/progress'
-import { ListRow, ListRowText } from '@/components/ui/list-row'
 import type { DesignCanvasIR, DesignDirection } from '@/lib/design-canvas-ir'
 import { GEMINI_DESIGN_MODEL } from '@/lib/gemini-model-policy'
 import { compileStudioDesignTheme, type StudioDesignTheme, type UIScreenIR, type UIScreenSection, type UIScreenVariant } from '@/lib/ui-screen-ir'
@@ -2912,11 +2911,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               ]
             }
 
-            function isLightHex(hex: string): boolean {
-              const h = hex.replace('#', '')
-              return parseInt(h.slice(0, 2), 16) * 0.299 + parseInt(h.slice(2, 4), 16) * 0.587 + parseInt(h.slice(4, 6), 16) * 0.114 > 150
-            }
-
             const stylePlanLabel = designSystemDisplayName
 
             return (
@@ -2938,185 +2932,113 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   </div>
                 </div>
 
-                {/* 4-column grid */}
-                <div data-card-scroll="style-plan" style={{ display: 'grid', gridTemplateColumns: '175px 140px 1fr 1fr', gap: 1, backgroundColor: gridLine, flex: 1, overflowY: 'auto' }}>
+                {/* Body: 색상 · 타이포 · 컴포넌트 3밴드 */}
+                <div data-card-scroll="style-plan" style={{ display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: gridLine, flex: 1, overflowY: 'auto' }}>
 
-                  {/* Col 1: Color swatches + tint strips */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {effectivePalette.map(swatch => {
-                      const tints = genTints(swatch.hex)
-                      const onSwatch = isLightHex(swatch.hex) ? 'var(--aui-text)' : 'var(--aui-on-dark)'
+                  {/* 색상 */}
+                  <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-4)`, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
+                    <span style={{ fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-semibold)", color: muted, textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wide)" }}>색상 토큰</span>
+                    <div style={{ display: 'flex', gap: "var(--aui-space-2)" }}>
+                      {effectivePalette.slice(0, 5).map(swatch => (
+                        <div key={swatch.name} style={{ flex: 1, minWidth: 0, borderRadius: "var(--aui-radius-sm)", overflow: 'hidden', border: '1px solid var(--aui-border-subtle)' }}>
+                          <div style={{ backgroundColor: swatch.hex, height: 40 }} />
+                          <div style={{ padding: `var(--aui-space-1) var(--aui-space-2)`, display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: cellBg }}>
+                            <span style={{ fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-semibold)", color: ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{swatch.name}</span>
+                            <span style={{ fontSize: "var(--aui-type-nano-size)", fontFamily: 'monospace', color: muted }}>{swatch.hex.toUpperCase()}</span>
+                          </div>
+                          <div style={{ display: 'flex', height: 6 }}>
+                            {genTints(swatch.hex).map((t, ti) => <div key={ti} style={{ flex: 1, backgroundColor: t }} />)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 타이포그래피 */}
+                  <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-4)`, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
+                    <span style={{ fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-semibold)", color: muted, textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wide)", marginBottom: "var(--aui-space-1)" }}>타이포그래피</span>
+                    {typoRows.map(({ label, font, weight, actualSize }, i) => {
+                      const px = Math.min(actualSize ? parseInt(actualSize) || 20 : 20, 30)
                       return (
-                        <div key={swatch.name} style={{ backgroundColor: cellBg, display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
-                          <div style={{ backgroundColor: swatch.hex, padding: `var(--aui-space-3) var(--aui-space-3)`, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)", flex: 1 }}>
-                            <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)", color: onSwatch }}>{swatch.name}</span>
-                            <span style={{ fontSize: "var(--aui-type-meta-size)", fontFamily: 'monospace', color: onSwatch, opacity: 0.75 }}>{swatch.hex.toUpperCase()}</span>
-                          </div>
-                          <div style={{ display: 'flex', height: 14 }}>
-                            {tints.map((t, ti) => <div key={ti} style={{ flex: 1, backgroundColor: t }} />)}
-                          </div>
+                        <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: "var(--aui-space-3)", padding: `var(--aui-space-1) 0`, borderTop: i ? '1px solid var(--aui-border-subtle)' : 'none' }}>
+                          <span style={{ width: 92, flexShrink: 0, fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-semibold)", color: muted, textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wide)", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+                          <span style={{ width: 70, flexShrink: 0, fontSize: "var(--aui-type-nano-size)", fontFamily: 'monospace', color: isDark ? 'var(--aui-text-neutral)' : 'var(--aui-text-assistive)' }}>{actualSize ?? '—'}{actualSize ? ` · ${weight}` : ''}</span>
+                          <span style={{ flex: 1, minWidth: 0, fontSize: px, fontWeight: weight, fontFamily: font, color: ink, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>가나다 Ag</span>
                         </div>
                       )
                     })}
                   </div>
 
-                  {/* Col 2: Typography — reads from preset.typographyScale */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {typoRows.map(({ label, font, size, weight, actualSize }, i) => (
-                      <div key={i} style={{ backgroundColor: cellBg, padding: `var(--aui-space-2) var(--aui-space-3)`, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: "var(--aui-space-1)", overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: "var(--aui-space-1)" }}>
-                          <span style={{ fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-semibold)", color: muted, textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wide)", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 70 }}>{label}</span>
-                          <span style={{ fontSize: "var(--aui-type-nano-size)", color: isDark ? 'var(--aui-text-neutral)' : 'var(--aui-text-assistive)', flexShrink: 0 }}>{font.split(',')[0].trim()}</span>
+                  {/* 컴포넌트 */}
+                  <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-4)`, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", flex: 1 }}>
+                    <span style={{ fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-semibold)", color: muted, textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wide)" }}>컴포넌트{useRealComponents ? '' : ' · 근사'}</span>
+                    {useRealComponents ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: "var(--aui-space-4)", alignItems: 'start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", minWidth: 0 }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-1)" }}>
+                            <Button size="xs">Primary</Button>
+                            <Button size="xs" variant="secondary">Secondary</Button>
+                            <Button size="xs" variant="outline">Outline</Button>
+                            <Button size="xs" variant="ghost">Ghost</Button>
+                            <Button size="xs" variant="destructive">Negative</Button>
+                          </div>
+                          <Switch defaultChecked>프로토타입 모드</Switch>
+                          <Checkbox defaultChecked>자동 저장</Checkbox>
+                          <RadioGroup name="dsc-preview-vis" label="공개 범위" style={{ display: 'flex', flexDirection: 'row', gap: "var(--aui-space-3)" }}>
+                            <Radio value="a" defaultChecked>공개</Radio>
+                            <Radio value="b">팀만</Radio>
+                          </RadioGroup>
                         </div>
-                        {actualSize && (
-                          <span style={{ fontSize: "var(--aui-type-nano-size)", color: isDark ? 'var(--aui-text-neutral)' : 'var(--aui-text-disabled)', fontFamily: 'monospace', lineHeight: "var(--aui-leading-none)" }}>{actualSize} · {weight}</span>
-                        )}
-                        <div style={{ fontSize: size, fontWeight: weight, color: ink, lineHeight: "var(--aui-leading-none)", fontFamily: font, letterSpacing: "var(--aui-tracking-tight)", overflow: 'hidden', marginTop: 'auto' }}>Aa</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Col 3: default 시스템은 실제 @/components/ui, 그 외는 근사 렌더 */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                   {useRealComponents ? (
-                    <>
-                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: "var(--aui-space-2)", overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-1)" }}>
-                          <Button size="xs">Primary</Button>
-                          <Button size="xs" variant="secondary">Secondary</Button>
-                          <Button size="xs" variant="outline">Outline</Button>
-                          <Button size="xs" variant="ghost">Ghost</Button>
-                        </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-1)" }}>
-                          <Button size="xs" variant="destructive">Negative</Button>
-                          <Button size="xs" disabled>Disabled</Button>
-                        </div>
-                      </div>
-                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: "var(--aui-space-2)", overflow: 'hidden' }}>
-                        <Skeleton className="w-[82%] h-[6px]" />
-                        <Skeleton className="w-[56%] h-[6px]" />
-                      </div>
-                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", justifyContent: 'center', fontSize: "var(--aui-type-caption-size)", overflow: 'hidden' }}>
-                        <Switch defaultChecked>프로토타입 모드</Switch>
-                        <Checkbox defaultChecked>자동 저장</Checkbox>
-                        <RadioGroup name="dsc-preview-vis" label="공개 범위" style={{ display: 'flex', flexDirection: 'row', gap: "var(--aui-space-3)" }}>
-                          <Radio value="a" defaultChecked>공개</Radio>
-                          <Radio value="b">팀만</Radio>
-                        </RadioGroup>
-                      </div>
-                    </>
-                   ) : (
-                    <>
-                    {/* Buttons — radius from radiusTokens.md, negative from statusColors */}
-                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: "var(--aui-space-1)" }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: "var(--aui-space-1)" }}>
-                        <button style={{ backgroundColor: effectiveColor, color: 'var(--aui-on-dark)', border: 'none', borderRadius: btnRadius, padding: `var(--aui-space-2) var(--aui-space-1)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)", cursor: 'default' }}>Primary</button>
-                        <button style={{ backgroundColor: isDark ? 'var(--aui-on-dark-faint)' : 'var(--aui-shadow-line)', color: ink, border: 'none', borderRadius: btnRadius, padding: `var(--aui-space-2) var(--aui-space-1)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'default' }}>Secondary</button>
-                        <button style={{ backgroundColor: 'transparent', color: ink, border: `1px solid ${isDark ? 'var(--aui-on-dark-faint)' : 'var(--aui-scrim-soft)'}`, borderRadius: btnRadius, padding: `var(--aui-space-2) var(--aui-space-1)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'default' }}>Outline</button>
-                        <button style={{ backgroundColor: 'transparent', color: ink, border: 'none', borderRadius: btnRadius, padding: `var(--aui-space-2) var(--aui-space-1)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'default' }}>Ghost</button>
-                      </div>
-                      <button style={{ backgroundColor: negativeColor, color: 'var(--aui-on-dark)', border: 'none', borderRadius: btnRadius, padding: `var(--aui-space-2) var(--aui-space-1)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)", cursor: 'default', width: '100%' }}>Negative</button>
-                    </div>
-
-                    {/* Dividers */}
-                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, display: 'flex', alignItems: 'center', flex: 1 }}>
-                      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
-                        <div style={{ height: 1, backgroundColor: effectiveColor, width: '100%' }} />
-                        <div style={{ height: 1, backgroundColor: gridLine, width: '75%' }} />
-                        <div style={{ height: 1, backgroundColor: gridLine, width: '50%' }} />
-                      </div>
-                    </div>
-
-                    {/* Toggle + checkbox + radio */}
-                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", flex: 1 }}>
-                      <div style={{ width: 32, height: 18, borderRadius: "var(--aui-radius-sm)", backgroundColor: effectiveColor, display: 'flex', alignItems: 'center', padding: `0 var(--aui-space-1)` }}>
-                        <div style={{ width: 14, height: 14, borderRadius: '50%', backgroundColor: 'var(--aui-on-dark)', marginLeft: 'auto' }} />
-                      </div>
-                      <div style={{ width: 14, height: 14, borderRadius: "var(--aui-radius-sm)", backgroundColor: effectiveColor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="var(--aui-on-dark)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      </div>
-                      <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${effectiveColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: effectiveColor }} />
-                      </div>
-                    </div>
-
-                    {/* Nav icons */}
-                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, display: 'flex', alignItems: 'center', justifyContent: 'space-around', flex: 1 }}>
-                      {['M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z', 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'].map((d, i) => (
-                        <div key={i} style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: subtle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={ink} strokeWidth="1.8"><path d={d}/></svg>
-                        </div>
-                      ))}
-                    </div>
-                    </>
-                   )}
-                  </div>
-
-                  {/* Col 4: default 시스템은 실제 @/components/ui, 그 외는 근사 렌더 */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                   {useRealComponents ? (
-                    <>
-                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-                        <div style={{ width: '100%' }}><SearchField placeholder="컴포넌트 검색" defaultValue="Button" /></div>
-                      </div>
-                      <div style={{ backgroundColor: cellBg, padding: `0 var(--aui-space-3)`, flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
-                        {[['프로덕트 랜딩', '2분 전 수정'], ['Studio workspace', '자동 저장됨'], ['Playground', '3개 컴포넌트']].map(([t, d]) => (
-                          <ListRow key={t} contents={<ListRowText title={t} description={d} />} trailing={<ChevronRight size={14} />} />
-                        ))}
-                      </div>
-                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: "var(--aui-space-1)", overflow: 'hidden' }}>
-                        <Chip selected>전체</Chip>
-                        <Chip>레이아웃</Chip>
-                        <Badge variant="success"><Check size={11} />저장됨</Badge>
-                        <Badge variant="neutral">Draft</Badge>
-                      </div>
-                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-around', overflow: 'hidden' }}>
-                        <Button variant="ghost" size="icon-sm" aria-label="홈"><Sparkles size={13} /></Button>
-                        <Button variant="ghost" size="icon-sm" aria-label="알림"><Bell size={13} /></Button>
-                        <Button variant="ghost" size="icon-sm" aria-label="설정"><Settings size={13} /></Button>
-                      </div>
-                    </>
-                   ) : (
-                    <>
-                    {/* Search */}
-                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", backgroundColor: subtle, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-line)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-2) var(--aui-space-2)` }}>
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={muted} strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                        <span style={{ fontSize: "var(--aui-type-meta-size)", color: muted }}>Search</span>
-                      </div>
-                    </div>
-
-                    {/* List rows */}
-                    <div style={{ backgroundColor: cellBg, padding: `0 var(--aui-space-3)`, flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: "var(--aui-space-1)" }}>
-                      {[100, 75, 55].map((w, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", padding: `var(--aui-space-1) 0`, borderBottom: i < 2 ? (isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-border-subtle)') : 'none' }}>
-                          <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: i === 0 ? effectiveColor : subtle, flexShrink: 0 }} />
-                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
-                            <div style={{ height: 6, borderRadius: "var(--aui-radius-sm)", backgroundColor: isDark ? 'var(--aui-inverse-surface-raised)' : 'var(--aui-border)', width: `${w}%` }} />
-                            <div style={{ height: 4, borderRadius: "var(--aui-radius-sm)", backgroundColor: isDark ? 'var(--aui-text)' : 'var(--aui-border-subtle)', width: `${Math.round(w * 0.6)}%` }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", minWidth: 0 }}>
+                          <SearchField placeholder="컴포넌트 검색" defaultValue="Button" />
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-1)", alignItems: 'center' }}>
+                            <Chip selected>전체</Chip>
+                            <Chip>레이아웃</Chip>
+                            <Badge variant="success"><Check size={11} />저장됨</Badge>
+                            <Badge variant="neutral">Draft</Badge>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: "var(--aui-space-1)" }}>
+                            <Skeleton className="w-full h-[8px]" />
+                            <Skeleton className="w-[70%] h-[8px]" />
                           </div>
                         </div>
-                      ))}
-                    </div>
-
-                    {/* Badge + chips — radius from radiusTokens */}
-                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", flexWrap: 'wrap' }}>
-                      <div style={{ backgroundColor: effectiveColor, color: 'var(--aui-on-dark)', borderRadius: badgeRadius, padding: `var(--aui-space-1) var(--aui-space-2)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)" }}>New</div>
-                      <div style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-medium)', borderRadius: chipRadius, padding: `var(--aui-space-1) var(--aui-space-2)`, fontSize: "var(--aui-type-meta-size)" }}>Filter</div>
-                      <div style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-medium)', borderRadius: chipRadius, padding: `var(--aui-space-1) var(--aui-space-2)`, fontSize: "var(--aui-type-meta-size)" }}>Sort</div>
-                    </div>
-
-                    {/* Action icons */}
-                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-around' }}>
-                      {['M12 5v14M5 12l7 7 7-7', 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0', 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'].map((d, i) => (
-                        <div key={i} style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: subtle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={ink} strokeWidth="1.8"><path d={d}/></svg>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: "var(--aui-space-4)", alignItems: 'start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", minWidth: 0 }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-1)" }}>
+                            <span style={{ backgroundColor: effectiveColor, color: 'var(--aui-on-dark)', borderRadius: btnRadius, padding: `var(--aui-space-1) var(--aui-space-3)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)" }}>Primary</span>
+                            <span style={{ backgroundColor: isDark ? 'var(--aui-on-dark-faint)' : 'var(--aui-shadow-line)', color: ink, borderRadius: btnRadius, padding: `var(--aui-space-1) var(--aui-space-3)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-medium)" }}>Secondary</span>
+                            <span style={{ border: `1px solid ${isDark ? 'var(--aui-on-dark-faint)' : 'var(--aui-scrim-soft)'}`, color: ink, borderRadius: btnRadius, padding: `var(--aui-space-1) var(--aui-space-3)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-medium)" }}>Outline</span>
+                            <span style={{ backgroundColor: negativeColor, color: 'var(--aui-on-dark)', borderRadius: btnRadius, padding: `var(--aui-space-1) var(--aui-space-3)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)" }}>Negative</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)" }}>
+                            <div style={{ width: 32, height: 18, borderRadius: "var(--aui-radius-sm)", backgroundColor: effectiveColor, display: 'flex', alignItems: 'center', padding: `0 var(--aui-space-1)` }}>
+                              <div style={{ width: 14, height: 14, borderRadius: '50%', backgroundColor: 'var(--aui-on-dark)', marginLeft: 'auto' }} />
+                            </div>
+                            <div style={{ width: 14, height: 14, borderRadius: "var(--aui-radius-sm)", backgroundColor: effectiveColor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="var(--aui-on-dark)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </div>
+                            <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${effectiveColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: effectiveColor }} />
+                            </div>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                    </>
-                   )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", backgroundColor: subtle, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-line)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-2) var(--aui-space-2)` }}>
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={muted} strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                            <span style={{ fontSize: "var(--aui-type-meta-size)", color: muted }}>Search</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", flexWrap: 'wrap' }}>
+                            <span style={{ backgroundColor: effectiveColor, color: 'var(--aui-on-dark)', borderRadius: badgeRadius, padding: `var(--aui-space-1) var(--aui-space-2)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)" }}>New</span>
+                            <span style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-medium)', borderRadius: chipRadius, padding: `var(--aui-space-1) var(--aui-space-2)`, fontSize: "var(--aui-type-meta-size)" }}>Filter</span>
+                            <span style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-medium)', borderRadius: chipRadius, padding: `var(--aui-space-1) var(--aui-space-2)`, fontSize: "var(--aui-type-meta-size)" }}>Sort</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
+
                 </div>
 
               </div>
