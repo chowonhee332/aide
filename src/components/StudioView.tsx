@@ -2860,7 +2860,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             const effectiveRadiusTokens = preset.radiusTokens
             const effectiveStatusColors = preset.statusColors
 
-            const btnRadius = effectiveRadiusTokens?.find((t: { name: string; value: string }) => t.name === 'md')?.value
+            const btnRadius = effectiveRadiusTokens?.find((t: { name: string; value: string }) => ['control', 'md', 'button'].includes(t.name))?.value
               ?? effectiveRadiusTokens?.find((t: { name: string; value: string }) => t.name === 'sm')?.value
               ?? '6px'
             const hasPill = effectiveRadiusTokens?.some((t: { name: string; value: string }) => t.name === 'pill' || t.value === '9999px' || t.value === '999px') ?? false
@@ -2916,7 +2916,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 <div style={{ padding: `var(--aui-space-3) var(--aui-space-4)`, borderBottom: border, display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", backgroundColor: cellBg }}>
                   <Sparkles size={11} style={{ color: effectiveColor }} />
                   <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: ink }}>{stylePlanLabel} Token Reference</span>
-                  <span style={{ fontSize: "var(--aui-type-nano-size)", color: muted }}>Preview only</span>
+                  <span style={{ fontSize: "var(--aui-type-nano-size)", color: muted }}>
+                    {customDesignMd ? 'DESIGN.md' : designPreset === 'none' ? 'aide.md 계약' : `${designPreset}.md`} · 토큰 실값 / 컴포넌트는 근사
+                  </span>
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: "var(--aui-space-1)", alignItems: 'center' }}>
                     {(['A', 'B', 'C'] as const).map((l, i) => {
                       const v = mainVariants[i]

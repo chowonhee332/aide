@@ -1,3 +1,5 @@
+import { AUI_TOKEN_GROUPS } from './aide-product-tokens'
+
 export type DesignPreset = string
 
 export interface ColorSwatch {
@@ -65,45 +67,50 @@ function deriveLabel(md: string, id: string): string {
 }
 
 // Rich metadata for known presets — palette, fonts, traits, scale, etc.
-const RICH_META: Record<string, Omit<DesignPresetMeta, 'md'>> = {
-  aide: {
+// aide.md 계약(첫 yaml 블록)에서 파생한다. 손으로 유지하면 어긋난다 —
+// 실측: color가 #0066ff로 하드코딩돼 있었으나 계약의 color.primary는 #1a75ff,
+// radius 이름·값(xs/sm/md/lg…)도 계약(sm/control/card/overlay/pill)과 전부 달랐다.
+function buildAideRichMeta(): Omit<DesignPresetMeta, 'md'> {
+  const colorEntries = AUI_TOKEN_GROUPS.color ?? []
+  const radiusEntries = AUI_TOKEN_GROUPS.radius ?? []
+  const typeEntries = AUI_TOKEN_GROUPS.typography ?? []
+  const hex = (key: string): string => {
+    const v = colorEntries.find(e => e.key === key)?.value ?? ''
+    return /^#[0-9a-fA-F]{3,8}$/.test(v) ? v : '' // 카드의 tint 계산은 hex만 받는다
+  }
+
+  const scaleFace = new Map<string, { size?: string; weight?: string }>()
+  for (const e of typeEntries) {
+    const m = e.cssVar.match(/^--aui-type-(.+)-(size|weight)$/)
+    if (!m) continue
+    const face = scaleFace.get(m[1]) ?? {}
+    face[m[2] as 'size' | 'weight'] = e.value
+    scaleFace.set(m[1], face)
+  }
+  const scaleOrder = ['display-hero', 'display-large', 'display', 'page-title', 'section-title', 'heading', 'body', 'body-small', 'label', 'caption']
+  const typographyScale: TypographyStep[] = scaleOrder
+    .filter(name => scaleFace.get(name)?.size)
+    .map(name => ({ name, size: scaleFace.get(name)!.size!, weight: Number(scaleFace.get(name)!.weight ?? 400) }))
+
+  return {
     label: 'Aide',
-    color: '#0066ff',
-    description: 'Aide 기본 디자인 시스템 — 통합 토큰, Material Symbols, 반응형 제품 구조',
-    palette: [
-      { name: 'Primary', hex: '#0066ff' },
-      { name: 'Surface', hex: '#ffffff' },
-      { name: 'Page', hex: '#f7f7f8' },
-      { name: 'Text', hex: '#171719' },
-    ],
+    color: hex('primary') || '#1a75ff',
+    description: 'Aide 기본 디자인 시스템 — aide.md 계약에서 파생, Material Symbols, 반응형 제품 구조',
+    palette: ([['Primary', hex('primary')], ['Surface', hex('surface')], ['Page', hex('page')], ['Text', hex('text')]] as const)
+      .filter(([, v]) => v)
+      .map(([name, v]) => ({ name, hex: v })),
     fonts: { headline: 'Pretendard', body: 'Pretendard' },
     traits: ['mobile app rhythm', 'fixed navigation', 'material symbols', 'content dense'],
-    typographyScale: [
-      { name: 'Display 1', size: '56px', weight: 700 },
-      { name: 'Title 1', size: '32px', weight: 700 },
-      { name: 'Heading 1', size: '22px', weight: 700 },
-      { name: 'Headline 1', size: '18px', weight: 700 },
-      { name: 'Body 1', size: '16px', weight: 400 },
-      { name: 'Body 2', size: '15px', weight: 400 },
-      { name: 'Label 1', size: '14px', weight: 600 },
-      { name: 'Caption 1', size: '12px', weight: 400 },
-    ],
-    statusColors: [
-      { name: 'Positive', hex: '#00bf40' },
-      { name: 'Info', hex: '#0066ff' },
-      { name: 'Caution', hex: '#ff9200' },
-      { name: 'Negative', hex: '#ff4242' },
-    ],
-    radiusTokens: [
-      { name: 'xs', value: '4px' },
-      { name: 'sm', value: '8px' },
-      { name: 'md', value: '10px' },
-      { name: 'lg', value: '12px' },
-      { name: 'xl', value: '16px' },
-      { name: '2xl', value: '20px' },
-      { name: 'full', value: '9999px' },
-    ],
-  },
+    typographyScale: typographyScale.length ? typographyScale : [{ name: 'body', size: '16px', weight: 400 }],
+    statusColors: ([['Positive', hex('positive')], ['Caution', hex('caution')], ['Negative', hex('negative')], ['Info', hex('info')]] as const)
+      .filter(([, v]) => v)
+      .map(([name, v]) => ({ name, hex: v })),
+    radiusTokens: radiusEntries.map(e => ({ name: e.key, value: e.value })),
+  }
+}
+
+const RICH_META: Record<string, Omit<DesignPresetMeta, 'md'>> = {
+  aide: buildAideRichMeta(),
   ktds: {
     label: 'kt ds',
     color: '#1a75ff',
