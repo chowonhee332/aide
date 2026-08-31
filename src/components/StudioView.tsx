@@ -11,7 +11,7 @@ import DotField from '@/components/DotField'
 import type { Question, QuestionnaireResponse, TweakSpec, TweakVariable, AppDomain, AsIsPageAnalysis } from '@/lib/gemini'
 import { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY, DOMAIN_HOME_EMPHASIS_OPTIONS } from '@/lib/domain-constants'
 import { getVariantInfo } from '@/lib/variant-refs'
-import { buildDesignIntelligencePlan } from '@/lib/design-intelligence'
+import { buildDesignIntelligencePlan, detectLandingIntent } from '@/lib/design-intelligence'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import { saveHistoryItem, updateHistoryItem, compressThumbnail, loadHistory, deleteHistoryItem, type HistoryItem } from '@/lib/history'
 import { AIDE_UI, DEFAULT_GENERATED_BRAND_COLOR } from '@/lib/aide-ui'
@@ -1861,6 +1861,31 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
         appendGenerationEvent({ kind: 'artifact', title: '기존 HTML 고품질 엔진으로 생성', detail: 'Node Graph 변환 없이 세 시안을 독립적으로 디자인합니다.', status: 'done' })
         const asIsAnalysis = readStoredAsIsAnalysis()
         const visualPolicies = generationContext.visualPolicies
+
+        // 자동 데스크 리서치: LLM이 실제 레퍼런스 사이트를 지목 → 자체 캡처 → 세 시안 프롬프트에 참고로 주입.
+        // 실패해도 generation을 막지 않는다 (route가 {references:[]} 반환).
+        let deskResearchRefs: Array<{ url: string; rationale: string; screenshotBase64: string }> = []
+        try {
+          appendGenerationEvent({ kind: 'design', title: '데스크 리서치 · 레퍼런스 수집 중', status: 'done' })
+          const drRes = await fetch('/api/desk-research', {
+            method: 'POST', headers, signal: abort.signal,
+            body: JSON.stringify({
+              brief,
+              projectSummary: questionnaire.projectSummary,
+              platform,
+              isLandingIntent: detectLandingIntent(brief, platform === 'web' ? 'web' : 'mobile'),
+            }),
+          })
+          if (drRes.ok) {
+            const drData = await drRes.json() as { references?: Array<{ url: string; rationale: string; screenshotBase64: string }> }
+            deskResearchRefs = drData.references ?? []
+            if (deskResearchRefs.length > 0) {
+              appendGenerationEvent({ kind: 'design', title: `데스크 리서치 · 레퍼런스 ${deskResearchRefs.length}건 확보`, detail: deskResearchRefs.map(r => r.url).join('\n'), status: 'done' })
+            }
+          }
+        } catch (error) {
+          if (!(error instanceof DOMException && error.name === 'AbortError')) console.warn('[desk-research]', error)
+        }
         const htmlResults = await Promise.allSettled(selectedDirections.slice(0, 3).map(async (direction, idx) => {
           const letter = variantLetters[idx]
           const modelId = GEMINI_DESIGN_MODEL
@@ -1885,6 +1910,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               qualityMode: 'draft',
               criticalReview: false,
               asIsAnalysis,
+              deskResearchRefs,
               prdDoc: sessionStorage.getItem('prdDoc') ?? undefined,
               iaImageBase64: sessionStorage.getItem('iaImage') ?? undefined,
               iaText: sessionStorage.getItem('iaText') ?? undefined,

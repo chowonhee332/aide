@@ -70,8 +70,9 @@ Brain이 목표를 아래 역할로 쪼개 서브에이전트에 배정한다. �
 - **기획**: 🟡 대기 — 아직 이번 사이클 착수 안 함
 - **디자인**: 🟢 진행 — `docs/design-system-upgrade-plan.md`을 외부 시스템 조사 기반 갭맵으로 갱신하고 `aide.md`에 AI interaction 원칙 + P0 패턴 6개 추가. `design:lint` 0 errors, unified contract test 통과. 다음: pattern retrieval·문서 renderer 확인
 - **아키텍처**: 🟢 감사 — 생성 파이프라인·IR·API·데이터 경계의 안전한 분할과 선행조건 조사
-- **개발**: 🟢 진행 — `docs/design-contract-cleanup.md` 완료분(9커밋): 여백 버그(`2174bf2`)·마진 16/16/24(`e35b4a4`)·:root 재선언 중단(`243dca1`)·타이포 주입(`e37f1fe`)·정규화 주입기(`4e01a30`)·shadow 주입(`c9eef04`)·`.aide-card` 커버리지(`e3e8a1c`)·규칙 dedup(`7618c71`)·off-grid telemetry(`685a9a9`). 전부 정적 검증. 남음: 1b(_base/guardrails 신규 + aide.md 산문 통합)·2(aide.md 물리 분해)는 **다음 실 생성 1회와 묶어서**. Pro 실험 코드는 아직 살아 있음.
-- **검증**: 🔴 RED — `verify_sales_input_history` 키보드 안내 계약 불일치; clean worktree 의존성 부재로 lint/build 재검증 필요
+- **개발**: 🟢 진행 — `docs/design-contract-cleanup.md` 완료분(9커밋, 전부 정적 검증). 남음: 1b(_base/guardrails 신규 + aide.md 산문 통합)·2(aide.md 물리 분해)는 **다음 실 생성 1회와 묶어서**.
+- **Brain 직접(2026-08-31)**: 🟢 platform-baseline·셸 강제·모델 라우팅·telco 수정·랜딩 아키타입·데스크 리서치 커밋 완료(`ad2178b`~`d76ed50`+). 6절 참고. 다음: 실제 FORMA/VIP 재생성으로 검증.
+- **검증**: 🔴 RED — `verify_sales_input_history` 키보드 안내 계약 불일치(`page.tsx` 미변경, 이번 세션 밖). 그 외 신규 test 8종 + lint/build 통과.
 
 범례: 🟢 진행 중 · 🟡 대기 · 🔴 막힘 · ✅ 완료(다음 갱신 때 삭제)
 
@@ -92,6 +93,11 @@ Brain이 목표를 아래 역할로 쪼개 서브에이전트에 배정한다. �
 - (2026-08-28, `scratchpad/variantA.html` 실측 + `2174bf2` 수정) A/B/C 여백이 넓던 원인은 모델이 아니라 `buildDesignRhythmContract`. `pickSpacingToken` 폴백이 `dimension` 그룹 전체(control-* 48px, content-* 1440px 포함)를 풀에 섞어 page-padding=48px·section-gap=64px를 뽑고, `injectDesignContractStyle`이 `:root`에 주입해 모델의 16px를 덮어썼음. 수정 후(`e35b4a4` 포함) aide.md 기준 page-padding 16(모바일·태블릿)/24(PC ≥1200) · section-gap 24 · card-padding 16 · card-gap 12 · item-gap 8.
 - (2026-08-28, `scratchpad/variantA.html` 실측) 타이포 스케일 미적용: aide.md `tokens.typography`(display-hero 56 … micro 11, 12단계)를 `parseFencedDesignContract`가 안 뽑고 주입도 안 함. 모델 출력 font-size 30곳 하드코딩, 11개 값(9·10·17·19·22px는 스케일 밖), 30개 중 11개가 10~11px. → P1, cleanup 2단계에서 tokens.yaml로 이관 시 주입.
 - (2026-08-28, `scratchpad/variantA.html` 실측 + `243dca1`) 모델 `:root` 커스텀 프로퍼티 50개 중 45개가 주입값과 완전 중복(프롬프트 `gemini.ts:1585`가 재선언을 지시했음). 지시문을 "참조만" 으로 바꿈 → 출력 토큰 ~2KB 절감.
+- (2026-08-31, 커밋 `ad2178b`~`d76ed50`+) **레이아웃 불변식은 `src/lib/platform-baseline.ts` 단일 원본.** 확정값: 좌우 거터 mobile 16 / tablet 20 / desktop 24, breakpoint 768·1280, 터치타깃 44, z-index 사다리, 칩·버튼·배지 줄바꿈 금지. `generateUI`/`expandToPrototype` 마지막 주입, DESIGN.md보다 우선. 회귀 방지 `test/verify_platform_baseline.mjs`.
+- (2026-08-31) **모델 라우팅 전면 Flash.** A/B/C HTML·direction·refine·확장 = Flash 계열, 이미지 = `gemini-3.1-flash-image`(3D는 flash-lite-image). **예외: As-is 분석·문서 추출·DESIGN.md 분석만 `GEMINI_ANALYSIS_MODEL='gemini-3.1-pro-preview'`** (파이프라인 입력 품질, 1-shot 저볼륨). `GEMINI_DESIGN_MODEL_PRO_EXPERIMENT` 제거. `verify_model_routing.mjs`가 강제.
+- (2026-08-31, `.aide-logs/violations.jsonl` 실측) 브리프에 "모바일"·"데이터"만 있어도 `detectServiceSubtype`가 telco로 오분류(현대백화점 VIP 브리프 → 요금제 UI). 정규식을 통신 특화어만 남기게 축소 → `membership-reward`로 정상. `verify_service_subtype.mjs`.
+- (2026-08-31) 하단 앱바 제거는 브리프에 "하단 앱바/탭바 없음"이 있으면 As-is 분석과 무관하게 강제(`effectiveShellContract`), `injectShellContract` 제거기는 `<div>` 중첩까지 깊이 카운팅(`stripElementsByClass`). 3D 오브젝트 히어로는 `injectHeroObjectScale`이 중앙·크게 못박음.
+- (2026-08-31) **랜딩 페이지 = `layout-archetypes.ts`의 `brand-landing`·`product-showcase` 아키타입.** `detectLandingIntent`(web + 키워드) true면 A/B/C가 랜딩 풀에서만 뽑히고 `sideNav`·`bottomNav` 강제 false. **자동 데스크 리서치**(`/api/desk-research`): LLM이 실제 레퍼런스 URL 지목 → 자체 puppeteer 캡처 → 세 시안 프롬프트에 참고 주입(스타일 복사 금지). 외부 API·ToS 의존 없음, 실패는 조용히 스킵.
 
 ## 7. 갱신 규칙
 

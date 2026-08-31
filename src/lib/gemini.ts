@@ -652,6 +652,8 @@ export interface GenerateParams {
   prdDoc?: string;
   iaImageBase64?: string;
   iaText?: string;
+  /** 자동 데스크 리서치 결과 — LLM이 지목한 실제 레퍼런스 사이트의 캡처·근거 (스타일 복사 금지, IA·완성도 참고용) */
+  deskResearchRefs?: Array<{ url: string; rationale: string; screenshotBase64: string }>;
 }
 
 export interface AideGenerationPlan {
@@ -4041,7 +4043,7 @@ function buildFallbackDesignIntentPlan(args: {
 }
 
 export async function generateUI(params: GenerateParams, apiKey?: string): Promise<GenerateUIResult> {
-  const { designMd, brief, answers, projectSummary, logoDataUrl, brandColors, mainOnly = false, variantStyle, referenceImageBase64, referenceImageKind = 'reference', asIsAnalysis, platform, modelId = GEMINI_DESIGN_MODEL, heroImagePrompt, heroSubject, sharedVisualMode, sharedVisualSubject, visualPolicy, generationPlan, domain, onStep, prdDoc, iaImageBase64, iaText } = params;
+  const { designMd, brief, answers, projectSummary, logoDataUrl, brandColors, mainOnly = false, variantStyle, referenceImageBase64, referenceImageKind = 'reference', asIsAnalysis, platform, modelId = GEMINI_DESIGN_MODEL, heroImagePrompt, heroSubject, sharedVisualMode, sharedVisualSubject, visualPolicy, generationPlan, domain, onStep, prdDoc, iaImageBase64, iaText, deskResearchRefs } = params;
   // as-is 셸 계약이 "로고 없음"이면 로고 슬롯 프롬프트·주입을 전부 끈다 (redesign 대상 셸 보존)
   const suppressBrandLogo = asIsAnalysis?.shellContract?.brandLogo?.present === false
   const effectiveLogoDataUrl = suppressBrandLogo ? '' : logoDataUrl
@@ -5040,11 +5042,23 @@ ${effectivePlatform === 'web' ? `
 
   const iaSection = iaImageSection + iaTextSection
 
-  const fullPrompt = prompt + referenceSection + iaSection
+  const validDeskRefs = (deskResearchRefs ?? []).filter(r => r && typeof r.screenshotBase64 === 'string' && r.screenshotBase64.length > 0).slice(0, 3)
+  const deskResearchSection = validDeskRefs.length > 0
+    ? `\n## 🔎 데스크 리서치 레퍼런스 — 정보구조·완성도 참고 (스타일 복사 금지)
+아래는 이 서비스 유형에서 잘 만든 실제 레퍼런스 ${validDeskRefs.length}개의 첫 화면 캡처입니다. 첨부 순서대로:
+${validDeskRefs.map((r, i) => `- 레퍼런스 ${i + 1} (${r.url}): ${r.rationale}`).join('\n')}
+
+**반영할 것**: 히어로의 크기·위계, 섹션 순서와 개수, 정보 밀도, CTA 배치, 콘텐츠를 실제로 채우는 완성도.
+**절대 금지**: 색상·폰트·라운드·그림자·아이콘 스타일 차용(그건 DESIGN.md가 최종), 특정 레퍼런스의 레이아웃 통째 복제, 브랜드명·문구 재사용.
+`
+    : ''
+
+  const fullPrompt = prompt + referenceSection + iaSection + deskResearchSection
 
   const images = [
     ...(iaImageBase64 ? [{ data: iaImageBase64, mimeType: detectImageMimeType(iaImageBase64) }] : []),
     ...(referenceImageBase64 ? [{ data: referenceImageBase64, mimeType: detectImageMimeType(referenceImageBase64) }] : []),
+    ...validDeskRefs.map(r => ({ data: r.screenshotBase64, mimeType: 'image/png' })),
   ]
 
   const { onHtmlChunk } = params

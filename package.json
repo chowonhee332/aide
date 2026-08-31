@@ -7,7 +7,7 @@
 		"prebuild": "npm run design:export",
 		"build": "next build --webpack",
 		"start": "next start",
-    "test": "node test/verify_prompt_contracts.mjs && node test/verify_prompt_budget.mjs && node test/verify_model_routing.mjs && node test/verify_sales_input_history.mjs && node test/verify_unified_aide_design_system.mjs && node test/verify_shared_variant_content.mjs && node test/verify_asis_shell_contract.mjs && node test/verify_service_subtype.mjs && node test/verify_hero_object_scale.mjs && node test/verify_landing_archetype.mjs && NODE_NO_WARNINGS=1 node test/verify_platform_baseline.mjs && NODE_NO_WARNINGS=1 node --experimental-strip-types test/verify_design_direction_roles.mjs && node scripts/check-studio-contract.mjs",
+    "test": "node test/verify_prompt_contracts.mjs && node test/verify_prompt_budget.mjs && node test/verify_model_routing.mjs && node test/verify_sales_input_history.mjs && node test/verify_unified_aide_design_system.mjs && node test/verify_shared_variant_content.mjs && node test/verify_asis_shell_contract.mjs && node test/verify_service_subtype.mjs && node test/verify_hero_object_scale.mjs && node test/verify_landing_archetype.mjs && node test/verify_desk_research.mjs && NODE_NO_WARNINGS=1 node test/verify_platform_baseline.mjs && NODE_NO_WARNINGS=1 node --experimental-strip-types test/verify_design_direction_roles.mjs && node scripts/check-studio-contract.mjs",
 		"lint": "eslint",
 		"design:lint": "node scripts/design-system.mjs lint",
 		"design:export": "node scripts/design-system.mjs export",
