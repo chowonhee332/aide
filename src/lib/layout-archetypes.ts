@@ -52,6 +52,10 @@ export type UIStructureIR = {
     scrollArea: 'main'
     fixedChrome: boolean
     contentMustScroll: boolean
+    /** false only when an as-is shellContract says the redesign target has no brand logo */
+    brandLogo: boolean
+    /** present only when an as-is shellContract pins the top app bar — deterministic shell then reproduces it verbatim */
+    topAppBar?: { title: string; leftAction: string; rightAction: string }
   }
   sections: UIStructureSection[]
   firstViewport: {
@@ -349,9 +353,25 @@ export function buildVariantStructures(args: {
     sectionIdeas: string[]
     requiredAboveFoldUnits: string[]
   }
+  /** as-is 화면 셸 계약 — 있으면 chrome 존재/부재를 아키타입 기본값보다 우선한다 */
+  shellContract?: {
+    topAppBar?: { present?: boolean; title?: string; leftAction?: string; rightAction?: string }
+    bottomNavigation?: { present?: boolean }
+    brandLogo?: { present?: boolean }
+  }
 }): Record<'A' | 'B' | 'C', UIStructureIR> {
   const variants = ['A', 'B', 'C'] as const
   const isWeb = args.platform === 'web'
+  const shell = args.shellContract
+  const shellBottomNav = shell?.bottomNavigation?.present
+  const shellBrandLogo = shell?.brandLogo?.present
+  const pinnedTopAppBar = shell?.topAppBar?.present
+    ? {
+        title: shell.topAppBar.title ?? '',
+        leftAction: shell.topAppBar.leftAction ?? 'none',
+        rightAction: shell.topAppBar.rightAction ?? 'none',
+      }
+    : undefined
   const sideNav = isWeb && ['business', 'productivity'].includes(args.domain)
 
   return variants.reduce((acc, variant, variantIdx) => {
@@ -399,11 +419,14 @@ export function buildVariantStructures(args: {
       ].join('::'),
       chrome: {
         topNav: true,
-        bottomNav: !isWeb,
+        // 아키타입 기본값은 mobile=하단탭바. as-is 셸 계약이 present:false면 그걸 우선한다.
+        bottomNav: !isWeb && shellBottomNav !== false,
         sideNav,
         scrollArea: 'main',
         fixedChrome: true,
         contentMustScroll: true,
+        brandLogo: shellBrandLogo !== false,
+        ...(pinnedTopAppBar ? { topAppBar: pinnedTopAppBar } : {}),
       },
       sections,
       firstViewport: {

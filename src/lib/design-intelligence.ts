@@ -14,6 +14,12 @@ export type DesignIntelligenceInput = {
   needsScene3d: boolean
   /** analyzeAndGenerateQuestions가 추출한 서비스 구조 분석 (Phase 1-A) */
   serviceAnalysis?: ServiceAnalysis
+  /** as-is 캡처에서 뽑은 화면 셸 계약 — chrome 존재/부재를 아키타입 기본값보다 우선한다 */
+  shellContract?: {
+    topAppBar?: { present?: boolean; title?: string; leftAction?: string; rightAction?: string }
+    bottomNavigation?: { present?: boolean }
+    brandLogo?: { present?: boolean }
+  }
 }
 
 type PatternSelection = {
@@ -778,6 +784,7 @@ export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
     domain: input.domain,
     serviceSubtype,
     contentInventory,
+    shellContract: input.shellContract,
   })
 
   return {

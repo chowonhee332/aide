@@ -1664,6 +1664,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       heroPrompt,
       needsScene3d,
       serviceAnalysis: activeQuestionnaire.serviceAnalysis,
+      shellContract: readStoredAsIsAnalysis()?.shellContract,
     })
     return { heroSubject, heroPrompt, effectiveDomain, sharedVisualSubject, generationPlan, visualPolicies }
   }, [answers, brief, platform, questionnaire])

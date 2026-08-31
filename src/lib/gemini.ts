@@ -2494,6 +2494,56 @@ function injectMissingMobileChrome(html: string, ir: import('./layout-archetypes
   return result
 }
 
+/**
+ * As-is 캡처에서 뽑은 shellContract를 결정론으로 강제한다 (1층 승격).
+ * 프롬프트 불릿("그대로 유지하세요")에 의존하면 3안 중 일부만 지켰다 → 여기서 못박는다.
+ * - bottomNavigation.present === false: 모델이 그래도 넣은 하단 탭바를 제거
+ * - topAppBar.present: 헤더를 뒤로가기 · 정확한 제목 · 우측 액션만 있는 앱바로 치환
+ * - brandLogo.present === false: 치환된 앱바에 로고 자리를 두지 않는다
+ */
+function injectShellContract(
+  html: string,
+  shellContract?: {
+    topAppBar?: { present?: boolean; title?: string; leftAction?: string; rightAction?: string }
+    bottomNavigation?: { present?: boolean }
+    brandLogo?: { present?: boolean }
+  },
+): string {
+  if (!shellContract) return html
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  let result = html
+
+  if (shellContract.bottomNavigation?.present === false) {
+    result = result.replace(
+      /<(nav|div|footer)\b[^>]*class=["'][^"']*\b(?:bottom-navigation|mobile-tabbar|tab-bar|tabbar|bottom-nav|nav-bottom|bottom-bar|tab-navigation|bottom-tabs)\b[^"']*["'][^>]*>[\s\S]*?<\/\1>/gi,
+      '',
+    )
+  }
+
+  const bar = shellContract.topAppBar
+  if (bar?.present) {
+    const title = (bar.title ?? '').trim()
+    const wantBack = /back/i.test(bar.leftAction ?? '')
+    const wantSearch = /search/i.test(bar.rightAction ?? '')
+    const wantRight = wantSearch || /menu|hamburger/i.test(bar.rightAction ?? '')
+    const leftSlot = wantBack
+      ? '<button class="aide-appbar-back" aria-label="뒤로가기" style="flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:none;background:none;color:var(--color-text,#111);cursor:pointer;"><span class="material-symbols-rounded">arrow_back_ios_new</span></button>'
+      : '<span style="flex:0 0 auto;width:12px;"></span>'
+    const rightSlot = wantRight
+      ? `<button class="aide-appbar-action" aria-label="${wantSearch ? '검색' : '메뉴'}" style="flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:none;background:none;color:var(--color-text,#111);cursor:pointer;"><span class="material-symbols-rounded">${wantSearch ? 'search' : 'menu'}</span></button>`
+      : '<span style="flex:0 0 auto;width:44px;"></span>'
+    const canonicalBar = `<header class="app-header aide-shell-appbar" style="position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:8px;height:56px;padding:0 4px;background:var(--color-surface,#fff);border-bottom:1px solid var(--color-border,rgba(0,0,0,0.08));">${leftSlot}<h1 class="aide-appbar-title" style="flex:1 1 auto;min-width:0;margin:0;text-align:center;font-size:16px;font-weight:700;color:var(--color-text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(title)}</h1>${rightSlot}</header>`
+
+    const headerRe = /<header\b[\s\S]*?<\/header>/i
+    const navRe = /<(?:div|nav)\b[^>]*class=["'][^"']*\b(?:top-navigation|app-header|global-nav|top-nav|header-bar|navbar|app-bar|nav-header|mobile-header|screen-header)\b[^"']*["'][^>]*>[\s\S]*?<\/(?:div|nav)>/i
+    if (headerRe.test(result)) result = result.replace(headerRe, canonicalBar)
+    else if (navRe.test(result)) result = result.replace(navRe, canonicalBar)
+    else result = result.replace(/(<body[^>]*>)/i, `$1\n${canonicalBar}`)
+  }
+
+  return result
+}
+
 function ensureRequiredVariantVisuals(html: string, options: {
   variantStyle?: string
   sharedVisualSubject?: string
@@ -3917,6 +3967,9 @@ function buildFallbackDesignIntentPlan(args: {
 
 export async function generateUI(params: GenerateParams, apiKey?: string): Promise<GenerateUIResult> {
   const { designMd, brief, answers, projectSummary, logoDataUrl, brandColors, mainOnly = false, variantStyle, referenceImageBase64, referenceImageKind = 'reference', asIsAnalysis, platform, modelId = GEMINI_DESIGN_MODEL, heroImagePrompt, heroSubject, sharedVisualMode, sharedVisualSubject, visualPolicy, generationPlan, domain, onStep, prdDoc, iaImageBase64, iaText } = params;
+  // as-is 셸 계약이 "로고 없음"이면 로고 슬롯 프롬프트·주입을 전부 끈다 (redesign 대상 셸 보존)
+  const suppressBrandLogo = asIsAnalysis?.shellContract?.brandLogo?.present === false
+  const effectiveLogoDataUrl = suppressBrandLogo ? '' : logoDataUrl
   const effectiveHeroImagePrompt = heroSubject || heroImagePrompt
   const effectiveVisualPolicy = visualPolicy ?? (() => {
     if (getVariantLabel(variantStyle) !== 'B') return undefined
@@ -4526,7 +4579,7 @@ ${componentSnippets}
 - design.md가 명시한 componentContract가 있으면 semantic variable보다 componentContract 값을 우선합니다.
 - design.md가 URL에서 생성된 불완전한 문서여도 Contract에서 추출한 rhythm을 우선하고, 부족한 값은 가장 가까운 existing token을 한 번만 선택해 :root에 고정하십시오.
 
-${logoDataUrl ? `\n## ⚠️ 브랜드 로고 슬롯 (CRITICAL)\n- 로고 이미지를 직접 작성하지 마세요. src, data URL, placeholder 이미지, 텍스트 로고를 만들지 마세요.\n- **메인 화면과 모든 서브 화면(탭 목적지, 내부 페이지)의 헤더/앱바 브랜드 위치에 각각 1개씩 슬롯을 삽입하세요.** 화면이 3개면 슬롯도 3개입니다.\n${AIDE_LOGO_SLOT_HTML}\n- Aide가 생성 후 마지막 단계에서 모든 슬롯을 실제 업로드 로고 이미지로 치환합니다.\n- 텍스트 브랜드명(앱 이름, 서비스명 등)으로 대체 금지. 모든 화면의 로고 슬롯이 항상 우선입니다.\n- ❌ 히어로 배경, 대형 이미지, 히어로 카드 안에 슬롯을 넣지 마세요. 헤더/앱바 전용입니다.\n- ❌ 로고를 화면 폭의 큰 영역으로 확대하지 마세요. 헤더/앱바 안의 작은 브랜드 영역만 예약하세요.` : `\n## 브랜드명 표시 규칙\n- 로고 입력이 없습니다. 앱/서비스 브랜드는 텍스트로 표시하세요.\n- <img src="FreshFit">처럼 존재하지 않는 로고 이미지를 만들지 마세요.\n- 선택된 디자인 시스템의 로고나 회사명(예: kt ds)을 최종 서비스 로고로 표시하지 마세요.`}
+${effectiveLogoDataUrl ? `\n## ⚠️ 브랜드 로고 슬롯 (CRITICAL)\n- 로고 이미지를 직접 작성하지 마세요. src, data URL, placeholder 이미지, 텍스트 로고를 만들지 마세요.\n- **메인 화면과 모든 서브 화면(탭 목적지, 내부 페이지)의 헤더/앱바 브랜드 위치에 각각 1개씩 슬롯을 삽입하세요.** 화면이 3개면 슬롯도 3개입니다.\n${AIDE_LOGO_SLOT_HTML}\n- Aide가 생성 후 마지막 단계에서 모든 슬롯을 실제 업로드 로고 이미지로 치환합니다.\n- 텍스트 브랜드명(앱 이름, 서비스명 등)으로 대체 금지. 모든 화면의 로고 슬롯이 항상 우선입니다.\n- ❌ 히어로 배경, 대형 이미지, 히어로 카드 안에 슬롯을 넣지 마세요. 헤더/앱바 전용입니다.\n- ❌ 로고를 화면 폭의 큰 영역으로 확대하지 마세요. 헤더/앱바 안의 작은 브랜드 영역만 예약하세요.` : `\n## 브랜드명 표시 규칙\n- 로고 입력이 없습니다. 앱/서비스 브랜드는 텍스트로 표시하세요.\n- <img src="FreshFit">처럼 존재하지 않는 로고 이미지를 만들지 마세요.\n- 선택된 디자인 시스템의 로고나 회사명(예: kt ds)을 최종 서비스 로고로 표시하지 마세요.`}
 ${hasBrandColors ? `\n## 브랜드 컬러 적용 규칙\n로고에서 추출한 브랜드 컬러는 사용자의 회사 정체성을 반영하기 위한 값입니다. DESIGN.md가 기본 UI 품질과 컴포넌트 구조를 보장하고, 브랜드 컬러는 primary/action/accent 계열만 치환합니다.\n\n메인 브랜드 컬러: ${brandColors![0]}${brandColors![1] ? `\n보조 브랜드 컬러: ${brandColors![1]}` : ''}${brandColors!.length > 2 ? `\n추가 브랜드 컬러: ${brandColors!.slice(2).join(', ')}` : ''}\n\nCSS 변수 선언 규칙:\n- --color-primary, --color-primary-text, --color-primary-fill, --color-primary-border, --color-primary-icon 등 primary/action/accent 계열은 브랜드 컬러 기반으로 선언\n- --color-secondary는 보조 브랜드 컬러가 있을 때만 선언\n- --color-surface, --color-surface-alt, --color-background, --color-text, --color-border, --color-fill, --color-disabled, --color-positive, --color-caution, --color-negative, --color-info 등 neutral/surface/background/border/status 계열은 DESIGN.md 값을 유지\n- spacing, rounded, typography, component height/padding/radius/card rules는 DESIGN.md 값을 유지\n- 브랜드 컬러와 DESIGN.md 토큰 외 임의 hex 사용 금지\n- CTA, 주요 액션, 활성 탭, 링크, primary icon에만 브랜드 컬러를 사용하고 카드 배경/페이지 배경/본문 텍스트를 브랜드 컬러로 덮지 않음` : ''}
 ${asIsAnalysis ? `\n## As-is 화면 구조 분석 — 리디자인 대상 정보 구조 (스타일 금지)\n아래 데이터는 기존 서비스의 정보 구조, 섹션 순서, 주요 CTA, 내비게이션, 콘텐츠 재료를 파악하기 위한 것입니다.\n\n절대 규칙:\n- As-is의 색상, 폰트, 라운드, 카드 그림자, 아이콘 스타일, 시각 톤을 복사하지 마세요.\n- 최종 시각 스타일은 DESIGN.md와 브랜드 규칙만 따릅니다.\n- 기존 화면의 핵심 섹션/CTA/콘텐츠 의미는 유지하되, 정보 위계·스캔성·반응형 레이아웃·CTA 발견성을 개선하세요.\n- shellContract는 바꾸면 안 되는 화면 셸의 존재/부재 계약입니다. topAppBar의 title·leftAction·rightAction을 그대로 유지하세요.\n- shellContract.bottomNavigation.present가 false이면 하단 탭바·하단 내비게이션을 절대 추가하지 마세요.\n- shellContract.brandLogo.present가 false이면 이미지 로고·텍스트 로고·Aide 로고를 절대 추가하지 마세요.\n\n분석 JSON:\n\`\`\`json\n${JSON.stringify(asIsAnalysis, null, 2).slice(0, 12000)}\n\`\`\`` : ''}
 ${prdDoc?.trim() ? `\n## PRD / IA 문서 (기획 문서 원문 — 화면 구조·메뉴·플로우의 근거)\n아래는 사용자가 첨부한 PRD·IA·메뉴 구조 문서입니다.\n- 이 문서에 명시된 메뉴 구조, 화면 목록, 핵심 기능, 유저 플로우를 UI 레이아웃과 네비게이션 설계에 정확히 반영하세요.\n- 기획서 요약(brief)보다 이 문서가 화면 구성의 우선 근거입니다.\n- 스타일·컬러·타이포그래피는 DESIGN.md를 따릅니다.\n- 문서가 HTML 화면기획서라면 기존 HTML의 CSS나 시각 스타일을 복사하지 말고, 표시 텍스트·메뉴명·버튼명·콘텐츠 문구·정보 구조를 원문과 동일하게 유지하세요.\n- 사용자가 제공한 문구와 콘텐츠를 임의로 다시 쓰거나 요약하지 마세요. A/B/C 시안 차이는 레이아웃, 정보 위계, 밀도, CTA 위치, 반응형 배치에서만 만듭니다.\n\`\`\`\n${prdDoc.slice(0, 10000)}\n\`\`\`` : ''}
@@ -4754,7 +4807,7 @@ ${designIntentPlan}
 
 ${buildArtDirectionLayer(effectivePlatform)}
 
-${buildBrandAndChromeLayer(effectivePlatform, Boolean(logoDataUrl))}
+${buildBrandAndChromeLayer(effectivePlatform, Boolean(effectiveLogoDataUrl))}
 
 ${buildHeroVisualIntegrationLayer(visual3dPrompt, variantStyle, domain, effectiveVisualPolicy)}
 
@@ -4935,13 +4988,13 @@ ${effectivePlatform === 'web' ? `
     html = htmlTagMatch ? htmlTagMatch[0] : text
   }
 
-  html = sanitizeGeneratedBranding(html, brief, effectiveDesignMd, logoDataUrl)
+  html = sanitizeGeneratedBranding(html, brief, effectiveDesignMd, effectiveLogoDataUrl)
   html = injectMaterialSymbolsFont(html)
   html = ensureRequiredVariantVisuals(html, { variantStyle, sharedVisualSubject: effectiveSharedVisualSubject, heroImagePrompt: visual3dPrompt, visualPolicy: effectiveVisualPolicy })
   html = injectDesignContractStyle(html, effectiveDesignMd, hasBrandColors)
   html = auditSpacingTokens(html, designContract)
   html = stripButtonInlineOverrides(html)
-  html = applyLogoDataUrlOnce(html, logoDataUrl)
+  html = applyLogoDataUrlOnce(html, effectiveLogoDataUrl)
   html = injectLayoutEssentialsGuard(html)
 
   // ── 1층 승격: chrome 결정론 주입 — LLM이 생략한 경우 코드가 직접 삽입 ──
@@ -4950,6 +5003,9 @@ ${effectivePlatform === 'web' ? `
     // data-ui-section 속성 누락 시 레이아웃 클래스 기반으로 보완 (lint의 section 체크 전에)
     html = injectSectionAttrs(html, variantStructure)
   }
+
+  // ── 1층 승격: as-is 셸 계약을 결정론으로 강제 (헤더 제목·뒤로가기·우측액션, 하단탭바 부재) ──
+  html = injectShellContract(html, asIsAnalysis?.shellContract)
 
   // ── 3층 안전망: 아이콘 자동 교정 → IR 계약 대조 → 로그 적재 → severe만 핀포인트 수정 1회 ──
   // 반복 잡히는 위반은 로그로 확인해 1·2층(결정론/계약)으로 승격하고 여기서 제거한다.
@@ -4973,7 +5029,7 @@ ${effectivePlatform === 'web' ? `
       try {
         onStep?.('구조 계약 위반 수정 중...')
         const repairMessage = buildStructureRepairMessage(severeViolations, variantStructure)
-        const fixedRaw = await refineUI(html, repairMessage, brief, effectiveDesignMd, apiKey, logoDataUrl, domain, GEMINI_ECONOMY_MODEL)
+        const fixedRaw = await refineUI(html, repairMessage, brief, effectiveDesignMd, apiKey, effectiveLogoDataUrl, domain, GEMINI_ECONOMY_MODEL)
         repaired = true
         const fixedIcons = sanitizeMaterialSymbols(fixedRaw)
         fixedIcons.html = ensureMaterialSymbolsFont(fixedIcons.html)
