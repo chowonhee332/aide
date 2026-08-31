@@ -81,6 +81,7 @@ Brain이 목표를 아래 역할로 쪼개 서브에이전트에 배정한다. �
 형식: `[요청자 → 소유자] 내용 (날짜)`
 
 - [디자인 → 검증] 신규 P0 패턴 6개와 `ai.interaction_principles`가 `llms.txt` pattern index에 유지되는 focused contract test 추가 요청 (2026-08-28)
+- [Brain → 디자인] `aide.md` 레이아웃 불변식이 `platform-baseline.ts`와 3중 불일치. 실측: ① `responsive.breakpoints` = 600/1024 (Codex 변경, `gemini.ts:3640`이 프롬프트에 주입), 같은 블록 `sm/md` = 768/769·1024, `platform-baseline` = 768/1280 — 셋 다 다름 ② `responsive.modes.page-padding` 16/16/24 · `responsive.grid.gutter` 20 vs platform-baseline 거터 16/20/24 (tablet 불일치) ③ `component_tokens.button.radius: 10px` vs `tokens.radius.control: 6px` vs `components.button.rules[0]` "MUST use radius.control". AGENTS.md 기준 platform-baseline(768·1280, 거터 16/20/24)이 authority → aide.md를 거기 맞추거나 재진술 제거. `design:export` 재생성 필요. (2026-08-31)
 
 ## 6. 공유 사실 — 재확인 없이 인용 가능
 
