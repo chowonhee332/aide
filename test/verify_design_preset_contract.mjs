@@ -22,4 +22,13 @@ assert.deepEqual(
   ['sm', 'control', 'card', 'overlay', 'pill'],
 )
 
-console.log('design preset derives from aide.md contract verified')
+// Studio 카드: 기본 Aide 시스템일 때는 실제 @/components/ui 인스턴스를 렌더한다.
+const studio = readFileSync(new URL('../src/components/StudioView.tsx', import.meta.url), 'utf8')
+assert.match(studio, /const useRealComponents = !customDesignMd && designPreset === 'none'/)
+assert.match(studio, /import \{ Chip \} from '@\/components\/ui\/chip'/)
+assert.match(studio, /import \{ Checkbox, Switch \} from '@\/components\/ui\/selection-control'/)
+assert.match(studio, /useRealComponents \? \(/)
+assert.match(studio, /<Button size="xs" variant="destructive">Negative<\/Button>/)
+assert.match(studio, /<Chip selected>전체<\/Chip>/)
+
+console.log('design preset derives from aide.md contract + card renders real components verified')

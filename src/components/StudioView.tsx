@@ -4,7 +4,7 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Sparkles, Upload, Download, RefreshCw, ArrowLeft, Check,
   SlidersHorizontal, X, Moon, Sun, Pencil, Send, ChevronDown,
-  CornerUpLeft, CornerUpRight, Image as ImageIcon, Shapes, Zap,
+  CornerUpLeft, CornerUpRight, Image as ImageIcon, Shapes, Zap, ChevronRight, Bell, Settings,
 } from '@/components/ui/material-icon'
 import { cn } from '@/lib/utils'
 import DotField from '@/components/DotField'
@@ -16,6 +16,13 @@ import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import { saveHistoryItem, updateHistoryItem, compressThumbnail, loadHistory, deleteHistoryItem, type HistoryItem } from '@/lib/history'
 import { AIDE_UI, DEFAULT_GENERATED_BRAND_COLOR } from '@/lib/aide-ui'
 import { Button } from '@/components/ui/button'
+import { Chip } from '@/components/ui/chip'
+import { Badge } from '@/components/ui/badge'
+import { Checkbox, Switch } from '@/components/ui/selection-control'
+import { RadioGroup, Radio } from '@/components/ui/radio-group'
+import { SearchField } from '@/components/ui/search-field'
+import { Skeleton } from '@/components/ui/progress'
+import { ListRow, ListRowText } from '@/components/ui/list-row'
 import type { DesignCanvasIR, DesignDirection } from '@/lib/design-canvas-ir'
 import { GEMINI_DESIGN_MODEL } from '@/lib/gemini-model-policy'
 import { compileStudioDesignTheme, type StudioDesignTheme, type UIScreenIR, type UIScreenSection, type UIScreenVariant } from '@/lib/ui-screen-ir'
@@ -2867,6 +2874,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             const chipRadius = hasPill ? '9999px' : (effectiveRadiusTokens?.find((t: { name: string; value: string }) => ['xl', 'lg', 'full'].includes(t.name))?.value ?? '20px')
             const badgeRadius = effectiveRadiusTokens?.find((t: { name: string; value: string }) => ['xs', 'sm'].includes(t.name))?.value ?? '4px'
             const negativeColor = effectiveStatusColors?.find((s: { name: string; hex: string }) => s.name.toLowerCase().includes('negative'))?.hex ?? 'var(--aui-negative)'
+            // 기본 Aide 시스템일 때만 실제 @/components/ui 인스턴스를 보여준다.
+            // (커스텀 DESIGN.md·프리셋은 --aui-* 계약과 다르므로 근사 렌더가 더 정직하다)
+            const useRealComponents = !customDesignMd && designPreset === 'none'
 
             const TYPO_VISUAL_SIZES = [58, 46, 36, 28]
             type TypoRow = { label: string; font: string; size: number; weight: number; actualSize: string | null }
@@ -2966,8 +2976,37 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     ))}
                   </div>
 
-                  {/* Col 3: illustrative token samples, not runtime component instances */}
+                  {/* Col 3: default 시스템은 실제 @/components/ui, 그 외는 근사 렌더 */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                   {useRealComponents ? (
+                    <>
+                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: "var(--aui-space-2)", overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-1)" }}>
+                          <Button size="xs">Primary</Button>
+                          <Button size="xs" variant="secondary">Secondary</Button>
+                          <Button size="xs" variant="outline">Outline</Button>
+                          <Button size="xs" variant="ghost">Ghost</Button>
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-1)" }}>
+                          <Button size="xs" variant="destructive">Negative</Button>
+                          <Button size="xs" disabled>Disabled</Button>
+                        </div>
+                      </div>
+                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: "var(--aui-space-2)", overflow: 'hidden' }}>
+                        <Skeleton className="w-[82%] h-[6px]" />
+                        <Skeleton className="w-[56%] h-[6px]" />
+                      </div>
+                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", justifyContent: 'center', fontSize: "var(--aui-type-caption-size)", overflow: 'hidden' }}>
+                        <Switch defaultChecked>프로토타입 모드</Switch>
+                        <Checkbox defaultChecked>자동 저장</Checkbox>
+                        <RadioGroup name="dsc-preview-vis" label="공개 범위" style={{ display: 'flex', flexDirection: 'row', gap: "var(--aui-space-3)" }}>
+                          <Radio value="a" defaultChecked>공개</Radio>
+                          <Radio value="b">팀만</Radio>
+                        </RadioGroup>
+                      </div>
+                    </>
+                   ) : (
+                    <>
                     {/* Buttons — radius from radiusTokens.md, negative from statusColors */}
                     <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: "var(--aui-space-1)" }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: "var(--aui-space-1)" }}>
@@ -3009,10 +3048,36 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         </div>
                       ))}
                     </div>
+                    </>
+                   )}
                   </div>
 
-                  {/* Col 4: UI Patterns */}
+                  {/* Col 4: default 시스템은 실제 @/components/ui, 그 외는 근사 렌더 */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                   {useRealComponents ? (
+                    <>
+                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+                        <div style={{ width: '100%' }}><SearchField placeholder="컴포넌트 검색" defaultValue="Button" /></div>
+                      </div>
+                      <div style={{ backgroundColor: cellBg, padding: `0 var(--aui-space-3)`, flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
+                        {[['프로덕트 랜딩', '2분 전 수정'], ['Studio workspace', '자동 저장됨'], ['Playground', '3개 컴포넌트']].map(([t, d]) => (
+                          <ListRow key={t} contents={<ListRowText title={t} description={d} />} trailing={<ChevronRight size={14} />} />
+                        ))}
+                      </div>
+                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: "var(--aui-space-1)", overflow: 'hidden' }}>
+                        <Chip selected>전체</Chip>
+                        <Chip>레이아웃</Chip>
+                        <Badge variant="success"><Check size={11} />저장됨</Badge>
+                        <Badge variant="neutral">Draft</Badge>
+                      </div>
+                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-around', overflow: 'hidden' }}>
+                        <Button variant="ghost" size="icon-sm" aria-label="홈"><Sparkles size={13} /></Button>
+                        <Button variant="ghost" size="icon-sm" aria-label="알림"><Bell size={13} /></Button>
+                        <Button variant="ghost" size="icon-sm" aria-label="설정"><Settings size={13} /></Button>
+                      </div>
+                    </>
+                   ) : (
+                    <>
                     {/* Search */}
                     <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", backgroundColor: subtle, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-line)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-2) var(--aui-space-2)` }}>
@@ -3049,6 +3114,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         </div>
                       ))}
                     </div>
+                    </>
+                   )}
                   </div>
                 </div>
 
