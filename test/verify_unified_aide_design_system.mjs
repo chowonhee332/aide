@@ -15,6 +15,28 @@ assert.ok(contract.consumers.canonical.includes('aide-product-chrome'))
 assert.ok(contract.consumers.canonical.includes('generated-customer-ui-default'))
 assert.deepEqual(contract.consumers.external_override, ['uploaded-design-md'])
 
+// Every declared documentation area must be reachable through the global docs
+// navigation. DOCS_SECTION_IDS is derived from this list and is also the routed
+// allowlist for /aide-ui/[...slug].
+const documentationPageIds = Object.keys(contract.documentation.pages)
+assert.deepEqual(
+  [...contract.documentation.navigation].sort(),
+  documentationPageIds.sort(),
+  'every documentation.pages area must be globally navigable and routable',
+)
+
+// Human docs and llms.txt must retrieve the same formal pattern contracts.
+const documentedPatternIds = contract.documentation.pages.patterns.items
+assert.deepEqual(
+  documentedPatternIds.filter((id) => !contract.patterns[id]),
+  [],
+  'every documented pattern must have a formal contract.patterns entry',
+)
+
+const llmsRouteSource = read('src/app/aide-ui/llms.txt/route.ts')
+assert.match(llmsRouteSource, /dict\(AIDE_DESIGN_CONTRACT\.ai\)\.interaction_principles/, 'llms.txt must derive AI interaction principles from the contract')
+assert.match(llmsRouteSource, /Object\.entries\(patterns\)/, 'llms.txt must derive its pattern index from contract.patterns')
+
 const buttonVariants = contract.components.button.variants
 assert.deepEqual(buttonVariants, ['primary', 'secondary', 'outline', 'ghost', 'destructive', 'link'])
 assert.deepEqual(contract.component_recipes.items.button.properties.variant, buttonVariants)
@@ -75,6 +97,21 @@ const coverageSource = read('src/lib/aide-component-coverage.ts')
 assert.match(coverageSource, /export function previewCaseProps\(\)/, 'previewCaseProps must derive panel props from ComponentPreview source')
 const docsPageSource = read('src/components/aide-docs/DocsPage.tsx')
 assert.match(docsPageSource, /previewCaseProps\(\)\.get\(componentId\)/, 'component page must filter panel props per component')
+
+// Every pattern needs a real React specimen, not a generic contract dump. The
+// declared renderer IDs must cover the full canonical pattern set (and only it),
+// and DocsPage must route those pages through the specimen component.
+const patternSpecimenSource = read('src/components/aide-docs/PatternSpecimen.tsx')
+const priorityPatternSpecimens = ['prompt-to-variants', 'variant-comparison', 'selection-to-prototype', 'generation-recovery']
+const specimenIdDeclaration = patternSpecimenSource.match(/PATTERN_SPECIMEN_IDS\s*=\s*\[([\s\S]*?)\]\s*as const/)
+assert.ok(specimenIdDeclaration, 'pattern specimen IDs must be explicitly declared')
+const renderedPatternSpecimens = [...specimenIdDeclaration[1].matchAll(/'([^']+)'/g)].map((match) => match[1])
+assert.deepEqual(renderedPatternSpecimens.slice(0, priorityPatternSpecimens.length), priorityPatternSpecimens, 'priority pattern specimens must stay first and ordered')
+assert.deepEqual([...renderedPatternSpecimens].sort(), Object.keys(contract.patterns).sort(), 'every contract.patterns entry must have an explicit specimen renderer')
+for (const id of renderedPatternSpecimens) assert.ok(contract.patterns[id], `pattern specimen ${id} must have a canonical contract.patterns entry`)
+for (const id of renderedPatternSpecimens) assert.match(patternSpecimenSource, new RegExp(`pageId === '${id.replace(/[-]/g, '\\-')}'`), `PatternSpecimen must dispatch pageId ${id}`)
+assert.doesNotMatch(patternSpecimenSource, /dangerouslySetInnerHTML|renderHTML/, 'pattern specimens must compose canonical React primitives')
+assert.match(docsPageSource, /supportsPatternSpecimen\(pageId\)/, 'pattern docs must select the focused specimen renderer')
 
 // The "## Audit Checklist" prose was a restatement of Must Follow + Layout
 // Contract + Content Density and shipped to the model as extra tokens. It was

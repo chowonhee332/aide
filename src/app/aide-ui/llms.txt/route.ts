@@ -51,6 +51,10 @@ function indexLine(id: string, href: string, description: string): string {
 function overview(): string {
   const identity = dict(AUI_PRODUCT_CONTRACT.identity)
   const character = Array.isArray(identity.character) ? (identity.character as Dict[]) : []
+  const interactionPrinciplesSource = dict(AIDE_DESIGN_CONTRACT.ai).interaction_principles
+  const interactionPrinciples = Array.isArray(interactionPrinciplesSource)
+    ? interactionPrinciplesSource
+    : []
   const scope = dict(dict(AUI_PRODUCT_CONTRACT.ai).scope_detection)
 
   const lines = [
@@ -64,6 +68,10 @@ function overview(): string {
     '## Principles',
     '',
     ...character.map((item) => `- **${str(item.id)}**: ${str(item.rule)}`),
+    '',
+    '### AI interaction',
+    '',
+    ...interactionPrinciples.map((principle) => `- ${str(principle)}`),
     '',
     '## Scope',
     '',

@@ -6,6 +6,7 @@ import { ComponentPlayground } from './ComponentPlayground'
 import { ComponentSizeSpecimen } from './ComponentSizeSpecimen'
 import { ComponentsCatalog } from './ComponentsCatalog'
 import { FoundationSpecimen } from './FoundationSpecimen'
+import { PatternSpecimen, supportsPatternSpecimen } from './PatternSpecimen'
 import {
   allComponents,
   componentCategory,
@@ -172,6 +173,14 @@ export function GenericSectionPage({ sectionId, pageId }: { sectionId: string; p
       <PageHeader eyebrow={page.title} title={title} description={purpose}/>
       <Section id="specimen" title="Specimen" description="MD 토큰과 계약을 실제 UI 표현으로 확인합니다."><FoundationSpecimen pageId={pageId} content={content}/></Section>
       <Section id="contract" title="Contract" description="시각화의 원본인 portable 및 product 계약입니다."><ContractValue value={content}/></Section>
+    </DocsShell>
+  }
+  if (sectionId === 'patterns' && supportsPatternSpecimen(pageId)) {
+    const purpose = typeof content.purpose === 'string' ? content.purpose : `${title}의 상태와 복구 흐름을 검증합니다.`
+    return <DocsShell sectionId={sectionId} pageId={pageId} toc={[{ id: 'specimen', title: 'Specimen' }, { id: 'contract', title: 'Contract' }]}>
+      <PageHeader eyebrow={page.title} title={title} description={purpose}/>
+      <Section id="specimen" title="State specimen" description="동일한 계약에서 진행, 부분 완료, 선택과 복구 상태를 실제 제품 primitive로 조합합니다."><PatternSpecimen pageId={pageId} content={content}/></Section>
+      <Section id="contract" title="Contract" description="시각 specimen이 따라야 하는 pattern contract입니다."><ContractValue value={content}/></Section>
     </DocsShell>
   }
   return <DocsShell sectionId={sectionId} pageId={pageId} toc={toc}>
