@@ -17,7 +17,7 @@ import { saveHistoryItem, updateHistoryItem, compressThumbnail, loadHistory, del
 import { AIDE_UI, DEFAULT_GENERATED_BRAND_COLOR } from '@/lib/aide-ui'
 import { Button } from '@/components/ui/button'
 import type { DesignCanvasIR, DesignDirection } from '@/lib/design-canvas-ir'
-import { GEMINI_DESIGN_MODEL, GEMINI_DESIGN_MODEL_PRO_EXPERIMENT } from '@/lib/gemini-model-policy'
+import { GEMINI_DESIGN_MODEL } from '@/lib/gemini-model-policy'
 import { compileStudioDesignTheme, type StudioDesignTheme, type UIScreenIR, type UIScreenSection, type UIScreenVariant } from '@/lib/ui-screen-ir'
 import { serializeUIScreenToHtml } from '@/lib/ui-screen-serializer'
 import { screenIrToNodeGraph, validateNodeGraph } from '@/lib/ui-node-graph'
@@ -1863,8 +1863,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
         const visualPolicies = generationContext.visualPolicies
         const htmlResults = await Promise.allSettled(selectedDirections.slice(0, 3).map(async (direction, idx) => {
           const letter = variantLetters[idx]
-          // 임시 실험: A안만 Pro로 생성해 flash 대비 품질 차이를 비교한다.
-          const modelId = idx === 0 ? GEMINI_DESIGN_MODEL_PRO_EXPERIMENT : GEMINI_DESIGN_MODEL
+          const modelId = GEMINI_DESIGN_MODEL
           const response = await fetch('/api/generate', {
             method: 'POST', headers, signal: abort.signal,
             body: JSON.stringify({
