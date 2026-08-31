@@ -220,6 +220,7 @@ contract:
         - card
         - overlay
         - pill
+      rule: nested containers step the inner radius down to keep the curvature concentric with the outer surface (for example 8px outer with 4px inner)
     spacing:
       base: 4px
       rule: use the declared scale; arbitrary spacing is a validation error
@@ -344,28 +345,28 @@ contract:
     color:
       $type: color
       primary:
-        $value: "#0066FF"
+        $value: "#1a75ff"
         $description: Primary Normal — primary action, selected control, focus indicator
       primary-strong:
-        $value: "#005EEB"
+        $value: "#186ae8"
         $description: Primary Strong — hover emphasis
       primary-pressed:
-        $value: "#0054D1"
+        $value: "#1560cc"
         $description: Primary Heavy — pressed emphasis
       primary-soft:
-        $value: rgba(0, 102, 255, 0.08)
+        $value: "#e8f1ff"
         $description: Selected and informative tinted surface
       on-primary:
-        $value: "#FFFFFF"
+        $value: "#ffffff"
         $description: Text and icon on primary action
       page:
-        $value: "#F7F7F8"
+        $value: "#f2f5f9"
         $description: Background Normal Alternative — workspace and application background
       surface:
-        $value: "#FFFFFF"
+        $value: "#ffffff"
         $description: Panel, card, control, dialog
       surface-muted:
-        $value: rgba(112, 115, 124, 0.08)
+        $value: rgba(112, 115, 124, 0.12)
         $description: Fill Normal — grouped region and secondary control
       surface-raised:
         $value: rgba(255, 255, 255, 0.96)
@@ -380,40 +381,40 @@ contract:
         $value: rgba(55, 56, 60, 0.28)
         $description: Label Assistive — placeholder and nonessential hint
       text-disabled:
-        $value: rgba(55, 56, 60, 0.16)
+        $value: rgba(55, 56, 60, 0.35)
         $description: Label Disable — disabled content
       border:
-        $value: rgba(112, 115, 124, 0.22)
+        $value: rgba(112, 115, 124, 0.35)
         $description: Line Normal Normal — control and panel boundary
       border-subtle:
-        $value: rgba(112, 115, 124, 0.08)
+        $value: rgba(112, 115, 124, 0.16)
         $description: Line Normal Alternative — divider and quiet boundary
       fill-subtle:
-        $value: rgba(112, 115, 124, 0.05)
+        $value: rgba(112, 115, 124, 0.08)
         $description: low-emphasis component fill
       positive:
-        $value: "#00BF40"
+        $value: "#00bf40"
         $description: Success icon and accent
       caution:
-        $value: "#FF9200"
+        $value: "#ff9200"
         $description: Warning icon and accent
       negative:
-        $value: "#FF4242"
+        $value: "#ff4242"
         $description: Error and destructive action
       info:
-        $value: "{color.primary}"
+        $value: "#0066ff"
         $description: Informative state
       primary-heavy:
-        $value: "#0054D1"
+        $value: "#1560cc"
         $description: High-emphasis text on primary-soft
       primary-tint:
-        $value: rgba(0, 102, 255, 0.28)
+        $value: rgba(26, 117, 255, 0.28)
         $description: Focus ring and subtle state layer
       primary-outline:
-        $value: rgba(0, 102, 255, 0.43)
+        $value: rgba(26, 117, 255, 0.43)
         $description: selected outline emphasis
       primary-disabled:
-        $value: "#F4F4F5"
+        $value: "#f4f4f5"
         $description: Disabled primary control only
       hero-gradient-start:
         $value: "#95C7CD"
@@ -425,10 +426,10 @@ contract:
         $value: "#B497CF"
         $description: Existing Aide landing hero gradient end
       canvas:
-        $value: "#FFFFFF"
+        $value: "#ffffff"
         $description: Landing and modal canvas
       surface-sunken:
-        $value: "#F7F7F8"
+        $value: "#f7f7f8"
         $description: Workspace canvas behind panels and artifacts
       glass-surface:
         $value: rgba(255, 255, 255, 0.72)
@@ -440,7 +441,7 @@ contract:
         $value: rgba(255, 255, 255, 0.34)
         $description: Boundary for translucent chrome
       inverse-surface:
-        $value: "#1B1C1E"
+        $value: "#1b1c1e"
         $description: Toast and inverse chrome
       text-strong:
         $value: "#000000"
@@ -449,16 +450,16 @@ contract:
         $value: rgba(46, 47, 51, 0.88)
         $description: Secondary emphasis
       fill:
-        $value: rgba(112, 115, 124, 0.08)
+        $value: rgba(112, 115, 124, 0.12)
         $description: Secondary control fill
       fill-strong:
-        $value: rgba(112, 115, 124, 0.16)
+        $value: rgba(112, 115, 124, 0.22)
         $description: Pressed or stronger neutral fill
       negative-soft:
-        $value: rgba(255, 66, 66, 0.08)
+        $value: "#feecec"
         $description: Error background
       caution-soft:
-        $value: rgba(255, 146, 0, 0.08)
+        $value: "#fef4e6"
         $description: Warning background
       scrim:
         $value: rgba(23, 23, 25, 0.52)
@@ -470,7 +471,7 @@ contract:
         $value: rgba(0, 0, 0, 0.65)
         $description: Focused media or fullscreen backdrop
       on-dark:
-        $value: "#FFFFFF"
+        $value: "#ffffff"
         $description: Text on inverse surface
       on-dark-strong:
         $value: rgba(255, 255, 255, 0.90)
@@ -488,41 +489,41 @@ contract:
         $value: "#292A2D"
         $description: Raised layer on inverse chrome
       primary-muted:
-        $value: rgba(0, 102, 255, 0.08)
+        $value: rgba(26, 117, 255, 0.08)
         $description: Quiet primary fill and progress track
       negative-border:
-        $value: rgba(255, 66, 66, 0.25)
+        $value: "#ff8c8c"
         $description: Error field boundary
       caution-border:
-        $value: rgba(255, 146, 0, 0.43)
+        $value: "#ffc06e"
         $description: Warning container boundary
       caution-text:
-        $value: "#D17600"
+        $value: "#d47800"
         $description: Readable warning text on caution-soft
     typography:
       $type: typography
       display:
         $value:
           fontFamily: var(--font-pretendard)
-          fontSize: 32px
+          fontSize: 36px
           fontWeight: "700"
-          lineHeight: 44px
+          lineHeight: 47px
           letterSpacing: -0.0253em
         $description: Title 1 — product introduction and compact display
       page-title:
         $value:
           fontFamily: var(--font-pretendard)
-          fontSize: 24px
+          fontSize: 28px
           fontWeight: "700"
-          lineHeight: 32px
+          lineHeight: 36px
           letterSpacing: -0.023em
         $description: Title 3 — page title
       section-title:
         $value:
           fontFamily: var(--font-pretendard)
-          fontSize: 18px
+          fontSize: 24px
           fontWeight: "700"
-          lineHeight: 26px
+          lineHeight: 31px
           letterSpacing: -0.002em
         $description: Headline 1 — section title
       heading:
@@ -530,15 +531,15 @@ contract:
           fontFamily: var(--font-pretendard)
           fontSize: 20px
           fontWeight: "700"
-          lineHeight: 28px
+          lineHeight: 26px
           letterSpacing: -0.012em
         $description: Heading 2 — component heading
       body:
         $value:
           fontFamily: var(--font-pretendard)
-          fontSize: 15px
+          fontSize: 16px
           fontWeight: "400"
-          lineHeight: 22px
+          lineHeight: 24px
           letterSpacing: 0.0096em
         $description: Body 2 Normal — default product body
       body-small:
@@ -546,7 +547,7 @@ contract:
           fontFamily: var(--font-pretendard)
           fontSize: 14px
           fontWeight: "400"
-          lineHeight: 20px
+          lineHeight: 21px
           letterSpacing: 0.0145em
         $description: Label 1 Normal — compact body
       label:
@@ -554,7 +555,7 @@ contract:
           fontFamily: var(--font-pretendard)
           fontSize: 14px
           fontWeight: "600"
-          lineHeight: 20px
+          lineHeight: 21px
           letterSpacing: 0.0145em
         $description: Label 1 Normal — control label
       caption:
@@ -562,7 +563,7 @@ contract:
           fontFamily: var(--font-pretendard)
           fontSize: 12px
           fontWeight: "400"
-          lineHeight: 16px
+          lineHeight: 18px
           letterSpacing: 0.0252em
         $description: Caption 1 — metadata and supporting copy
       display-hero:
@@ -570,7 +571,7 @@ contract:
           fontFamily: var(--font-pretendard)
           fontSize: 56px
           fontWeight: "800"
-          lineHeight: 72px
+          lineHeight: 73px
           letterSpacing: -0.0319em
         $description: Display 1 — landing hero maximum
       display-large:
@@ -586,7 +587,7 @@ contract:
           fontFamily: var(--font-pretendard)
           fontSize: 13px
           fontWeight: "600"
-          lineHeight: 18px
+          lineHeight: 20px
           letterSpacing: 0.0194em
         $description: Label 2 — compact desktop control
       micro:
@@ -594,15 +595,15 @@ contract:
           fontFamily: var(--font-pretendard)
           fontSize: 11px
           fontWeight: "500"
-          lineHeight: 14px
+          lineHeight: 16px
           letterSpacing: 0.0311em
         $description: Caption 2 — dense tool hint and item description
       meta:
         $value:
           fontFamily: var(--font-pretendard)
-          fontSize: 11px
+          fontSize: 12px
           fontWeight: "700"
-          lineHeight: 14px
+          lineHeight: 18px
           letterSpacing: 0.0311em
         $description: Caption 2 emphasized — metadata badge and source label
       nano:
@@ -610,26 +611,26 @@ contract:
           fontFamily: var(--font-pretendard)
           fontSize: 11px
           fontWeight: "600"
-          lineHeight: 14px
+          lineHeight: 16px
           letterSpacing: 0.0311em
         $description: Legacy alias of Caption 2; 11px is the minimum UI type size
     radius:
       $type: dimension
       # 4px 간격의 한 스케일. control이 8px 기준이고 위로 두 단계가 카드와 오버레이다.
       sm:
-        $value: 6px
+        $value: 4px
         $description: Compact toolbar control
       control:
-        $value: 10px
+        $value: 6px
         $description: default button and field radius
       card:
-        $value: 16px
+        $value: 8px
         $description: Card and grouped content surface
       overlay:
-        $value: 20px
+        $value: 8px
         $description: Dialog and sheet
       pill:
-        $value: 9999px
+        $value: 1000px
         $description: Badge, chip, avatar, status only
     shadow:
       $type: shadow
@@ -675,16 +676,19 @@ contract:
     duration:
       $type: duration
       fast:
-        $value: 150ms
+        $value: 160ms
         $description: Hover, pressed, checkbox
       base:
         $value: 200ms
         $description: Dropdown, panel, popover
       slow:
-        $value: 300ms
+        $value: 250ms
         $description: Dialog and page transition
+      loop:
+        $value: 1000ms
+        $description: Repeating skeleton shimmer and spinner cycle
       easing:
-        $value: cubic-bezier(0.2, 0, 0, 1)
+        $value: cubic-bezier(0.16, 1, 0.3, 1)
         $type: cubicBezier
         $description: Shared easing curve
     gradient:
@@ -729,10 +733,10 @@ contract:
         $value: -0.03em
         $description: Hero display and large headings
       tight:
-        $value: -0.01em
+        $value: -0.015em
         $description: Default UI text and headings
       normal:
-        $value: 0em
+        $value: -0.005em
         $description: Monospace and neutral text
       slight:
         $value: 0.03em
@@ -749,7 +753,7 @@ contract:
         $value: "1"
         $description: Single-line glyph, badge, icon label
       tight:
-        $value: "1.2"
+        $value: "1.3"
         $description: Display and heading
       snug:
         $value: "1.35"
@@ -763,21 +767,21 @@ contract:
   responsive:
     modes:
       compact:
-        range: 0..767px
+        range: 0..600px
         input: touch-first
         density: comfortable
         columns: 2
         page-padding: 16px
         control-min: 44px
       medium:
-        range: 768px..1199px
+        range: 601px..1024px
         input: touch-or-pointer
         density: comfortable
         columns: 3
         page-padding: 16px
         control-min: 40px
       wide:
-        range: 1200px+
+        range: 1025px+
         input: pointer-and-keyboard
         density: compact-or-comfortable
         columns: 12
@@ -790,14 +794,14 @@ contract:
       - MUST NOT hide essential functionality solely because the viewport is compact
       - MUST use container queries for reusable components when parent width matters more than viewport
     breakpoints:
-      compact: 0..767px
-      medium: 768px..1199px
-      wide: 1200px+
-      xs: 0..767px
-      sm: 768px..991px
-      md: 992px..1199px
-      lg: 1200px..1599px
-      xl: 1600px+
+      compact: 0..600px
+      medium: 601px..1024px
+      wide: 1025px+
+      xs: 0..600px
+      sm: 601px..768px
+      md: 769px..1024px
+      lg: 1025px..1440px
+      xl: 1441px+
     grid:
       basis: 8px
       spacing-rule: 4px multiples; 2px optical correction is allowed
@@ -3381,6 +3385,59 @@ contract:
       accessibility:
         - failure MUST use an assertive announcement only when immediate action is required
         - retry status MUST use a polite live region
+    loading:
+      purpose: explain active work and preview the structure that will replace it
+      recipe:
+        - progress-indicator-or-skeleton
+        - current-step-label
+        - optional-cancel-action
+      states:
+        - indeterminate
+        - determinate
+        - delayed
+      rules:
+        - MUST describe the work in progress when the wait is not immediate
+        - skeletons MUST preserve the expected content hierarchy
+        - MUST NOT imply completion before usable output exists
+      accessibility:
+        - status updates MUST use a polite live region
+        - motion MUST respect reduced-motion preferences
+    empty:
+      purpose: explain why useful content is absent and offer the most relevant next action
+      recipe:
+        - optional-figure
+        - concise-explanation
+        - primary-next-action
+        - optional-secondary-guidance
+      states:
+        - first-use
+        - no-results
+        - cleared
+      rules:
+        - MUST distinguish first-use emptiness from filtered no-results
+        - MUST offer an action only when the user can resolve the empty state
+        - MUST NOT present decorative placeholder content as real output
+      accessibility:
+        - the explanation and next action MUST be available as text
+    error-and-recovery:
+      purpose: explain a problem, preserve valid work, and provide a concrete recovery action
+      recipe:
+        - error-summary
+        - affected-content-or-step
+        - preserved-work-summary
+        - recovery-action
+      states:
+        - inline
+        - section
+        - blocking
+        - recovering
+      rules:
+        - MUST preserve valid input and completed output whenever recovery permits
+        - MUST identify the affected field, screen, file, or generation step
+        - retry MUST target only the failed or invalidated work
+      accessibility:
+        - blocking failures MUST receive an assertive announcement
+        - focus MUST move only when immediate user action is required
   develop:
     source_order:
       - design-contract
@@ -5235,6 +5292,8 @@ contract:
       - foundations
       - components
       - patterns
+      - develop
+      - ai-and-tools
     layout:
       wide:
         structure:

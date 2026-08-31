@@ -122,35 +122,35 @@
     "color": {
       "$type": "color",
       "primary": {
-        "$value": "#0066FF",
+        "$value": "#1a75ff",
         "$description": "Primary Normal — primary action, selected control, focus indicator"
       },
       "primary-strong": {
-        "$value": "#005EEB",
+        "$value": "#186ae8",
         "$description": "Primary Strong — hover emphasis"
       },
       "primary-pressed": {
-        "$value": "#0054D1",
+        "$value": "#1560cc",
         "$description": "Primary Heavy — pressed emphasis"
       },
       "primary-soft": {
-        "$value": "rgba(0, 102, 255, 0.08)",
+        "$value": "#e8f1ff",
         "$description": "Selected and informative tinted surface"
       },
       "on-primary": {
-        "$value": "#FFFFFF",
+        "$value": "#ffffff",
         "$description": "Text and icon on primary action"
       },
       "page": {
-        "$value": "#F7F7F8",
+        "$value": "#f2f5f9",
         "$description": "Background Normal Alternative — workspace and application background"
       },
       "surface": {
-        "$value": "#FFFFFF",
+        "$value": "#ffffff",
         "$description": "Panel, card, control, dialog"
       },
       "surface-muted": {
-        "$value": "rgba(112, 115, 124, 0.08)",
+        "$value": "rgba(112, 115, 124, 0.12)",
         "$description": "Fill Normal — grouped region and secondary control"
       },
       "surface-raised": {
@@ -170,51 +170,51 @@
         "$description": "Label Assistive — placeholder and nonessential hint"
       },
       "text-disabled": {
-        "$value": "rgba(55, 56, 60, 0.16)",
+        "$value": "rgba(55, 56, 60, 0.35)",
         "$description": "Label Disable — disabled content"
       },
       "border": {
-        "$value": "rgba(112, 115, 124, 0.22)",
+        "$value": "rgba(112, 115, 124, 0.35)",
         "$description": "Line Normal Normal — control and panel boundary"
       },
       "border-subtle": {
-        "$value": "rgba(112, 115, 124, 0.08)",
+        "$value": "rgba(112, 115, 124, 0.16)",
         "$description": "Line Normal Alternative — divider and quiet boundary"
       },
       "fill-subtle": {
-        "$value": "rgba(112, 115, 124, 0.05)",
+        "$value": "rgba(112, 115, 124, 0.08)",
         "$description": "low-emphasis component fill"
       },
       "positive": {
-        "$value": "#00BF40",
+        "$value": "#00bf40",
         "$description": "Success icon and accent"
       },
       "caution": {
-        "$value": "#FF9200",
+        "$value": "#ff9200",
         "$description": "Warning icon and accent"
       },
       "negative": {
-        "$value": "#FF4242",
+        "$value": "#ff4242",
         "$description": "Error and destructive action"
       },
       "info": {
-        "$value": "#0066FF",
+        "$value": "#0066ff",
         "$description": "Informative state"
       },
       "primary-heavy": {
-        "$value": "#0054D1",
+        "$value": "#1560cc",
         "$description": "High-emphasis text on primary-soft"
       },
       "primary-tint": {
-        "$value": "rgba(0, 102, 255, 0.28)",
+        "$value": "rgba(26, 117, 255, 0.28)",
         "$description": "Focus ring and subtle state layer"
       },
       "primary-outline": {
-        "$value": "rgba(0, 102, 255, 0.43)",
+        "$value": "rgba(26, 117, 255, 0.43)",
         "$description": "selected outline emphasis"
       },
       "primary-disabled": {
-        "$value": "#F4F4F5",
+        "$value": "#f4f4f5",
         "$description": "Disabled primary control only"
       },
       "hero-gradient-start": {
@@ -230,11 +230,11 @@
         "$description": "Existing Aide landing hero gradient end"
       },
       "canvas": {
-        "$value": "#FFFFFF",
+        "$value": "#ffffff",
         "$description": "Landing and modal canvas"
       },
       "surface-sunken": {
-        "$value": "#F7F7F8",
+        "$value": "#f7f7f8",
         "$description": "Workspace canvas behind panels and artifacts"
       },
       "glass-surface": {
@@ -250,7 +250,7 @@
         "$description": "Boundary for translucent chrome"
       },
       "inverse-surface": {
-        "$value": "#1B1C1E",
+        "$value": "#1b1c1e",
         "$description": "Toast and inverse chrome"
       },
       "text-strong": {
@@ -262,19 +262,19 @@
         "$description": "Secondary emphasis"
       },
       "fill": {
-        "$value": "rgba(112, 115, 124, 0.08)",
+        "$value": "rgba(112, 115, 124, 0.12)",
         "$description": "Secondary control fill"
       },
       "fill-strong": {
-        "$value": "rgba(112, 115, 124, 0.16)",
+        "$value": "rgba(112, 115, 124, 0.22)",
         "$description": "Pressed or stronger neutral fill"
       },
       "negative-soft": {
-        "$value": "rgba(255, 66, 66, 0.08)",
+        "$value": "#feecec",
         "$description": "Error background"
       },
       "caution-soft": {
-        "$value": "rgba(255, 146, 0, 0.08)",
+        "$value": "#fef4e6",
         "$description": "Warning background"
       },
       "scrim": {
@@ -290,7 +290,7 @@
         "$description": "Focused media or fullscreen backdrop"
       },
       "on-dark": {
-        "$value": "#FFFFFF",
+        "$value": "#ffffff",
         "$description": "Text on inverse surface"
       },
       "on-dark-strong": {
@@ -314,19 +314,19 @@
         "$description": "Raised layer on inverse chrome"
       },
       "primary-muted": {
-        "$value": "rgba(0, 102, 255, 0.08)",
+        "$value": "rgba(26, 117, 255, 0.08)",
         "$description": "Quiet primary fill and progress track"
       },
       "negative-border": {
-        "$value": "rgba(255, 66, 66, 0.25)",
+        "$value": "#ff8c8c",
         "$description": "Error field boundary"
       },
       "caution-border": {
-        "$value": "rgba(255, 146, 0, 0.43)",
+        "$value": "#ffc06e",
         "$description": "Warning container boundary"
       },
       "caution-text": {
-        "$value": "#D17600",
+        "$value": "#d47800",
         "$description": "Readable warning text on caution-soft"
       }
     },
@@ -335,9 +335,9 @@
       "display": {
         "$value": {
           "fontFamily": "var(--font-pretendard)",
-          "fontSize": "32px",
+          "fontSize": "36px",
           "fontWeight": "700",
-          "lineHeight": "44px",
+          "lineHeight": "47px",
           "letterSpacing": "-0.0253em"
         },
         "$description": "Title 1 — product introduction and compact display"
@@ -345,9 +345,9 @@
       "page-title": {
         "$value": {
           "fontFamily": "var(--font-pretendard)",
-          "fontSize": "24px",
+          "fontSize": "28px",
           "fontWeight": "700",
-          "lineHeight": "32px",
+          "lineHeight": "36px",
           "letterSpacing": "-0.023em"
         },
         "$description": "Title 3 — page title"
@@ -355,9 +355,9 @@
       "section-title": {
         "$value": {
           "fontFamily": "var(--font-pretendard)",
-          "fontSize": "18px",
+          "fontSize": "24px",
           "fontWeight": "700",
-          "lineHeight": "26px",
+          "lineHeight": "31px",
           "letterSpacing": "-0.002em"
         },
         "$description": "Headline 1 — section title"
@@ -367,7 +367,7 @@
           "fontFamily": "var(--font-pretendard)",
           "fontSize": "20px",
           "fontWeight": "700",
-          "lineHeight": "28px",
+          "lineHeight": "26px",
           "letterSpacing": "-0.012em"
         },
         "$description": "Heading 2 — component heading"
@@ -375,9 +375,9 @@
       "body": {
         "$value": {
           "fontFamily": "var(--font-pretendard)",
-          "fontSize": "15px",
+          "fontSize": "16px",
           "fontWeight": "400",
-          "lineHeight": "22px",
+          "lineHeight": "24px",
           "letterSpacing": "0.0096em"
         },
         "$description": "Body 2 Normal — default product body"
@@ -387,7 +387,7 @@
           "fontFamily": "var(--font-pretendard)",
           "fontSize": "14px",
           "fontWeight": "400",
-          "lineHeight": "20px",
+          "lineHeight": "21px",
           "letterSpacing": "0.0145em"
         },
         "$description": "Label 1 Normal — compact body"
@@ -397,7 +397,7 @@
           "fontFamily": "var(--font-pretendard)",
           "fontSize": "14px",
           "fontWeight": "600",
-          "lineHeight": "20px",
+          "lineHeight": "21px",
           "letterSpacing": "0.0145em"
         },
         "$description": "Label 1 Normal — control label"
@@ -407,7 +407,7 @@
           "fontFamily": "var(--font-pretendard)",
           "fontSize": "12px",
           "fontWeight": "400",
-          "lineHeight": "16px",
+          "lineHeight": "18px",
           "letterSpacing": "0.0252em"
         },
         "$description": "Caption 1 — metadata and supporting copy"
@@ -417,7 +417,7 @@
           "fontFamily": "var(--font-pretendard)",
           "fontSize": "56px",
           "fontWeight": "800",
-          "lineHeight": "72px",
+          "lineHeight": "73px",
           "letterSpacing": "-0.0319em"
         },
         "$description": "Display 1 — landing hero maximum"
@@ -437,7 +437,7 @@
           "fontFamily": "var(--font-pretendard)",
           "fontSize": "13px",
           "fontWeight": "600",
-          "lineHeight": "18px",
+          "lineHeight": "20px",
           "letterSpacing": "0.0194em"
         },
         "$description": "Label 2 — compact desktop control"
@@ -447,7 +447,7 @@
           "fontFamily": "var(--font-pretendard)",
           "fontSize": "11px",
           "fontWeight": "500",
-          "lineHeight": "14px",
+          "lineHeight": "16px",
           "letterSpacing": "0.0311em"
         },
         "$description": "Caption 2 — dense tool hint and item description"
@@ -455,9 +455,9 @@
       "meta": {
         "$value": {
           "fontFamily": "var(--font-pretendard)",
-          "fontSize": "11px",
+          "fontSize": "12px",
           "fontWeight": "700",
-          "lineHeight": "14px",
+          "lineHeight": "18px",
           "letterSpacing": "0.0311em"
         },
         "$description": "Caption 2 emphasized — metadata badge and source label"
@@ -467,7 +467,7 @@
           "fontFamily": "var(--font-pretendard)",
           "fontSize": "11px",
           "fontWeight": "600",
-          "lineHeight": "14px",
+          "lineHeight": "16px",
           "letterSpacing": "0.0311em"
         },
         "$description": "Legacy alias of Caption 2; 11px is the minimum UI type size"
@@ -476,23 +476,23 @@
     "radius": {
       "$type": "dimension",
       "sm": {
-        "$value": "6px",
+        "$value": "4px",
         "$description": "Compact toolbar control"
       },
       "control": {
-        "$value": "10px",
+        "$value": "6px",
         "$description": "default button and field radius"
       },
       "card": {
-        "$value": "16px",
+        "$value": "8px",
         "$description": "Card and grouped content surface"
       },
       "overlay": {
-        "$value": "20px",
+        "$value": "8px",
         "$description": "Dialog and sheet"
       },
       "pill": {
-        "$value": "9999px",
+        "$value": "1000px",
         "$description": "Badge, chip, avatar, status only"
       }
     },
@@ -554,7 +554,7 @@
     "duration": {
       "$type": "duration",
       "fast": {
-        "$value": "150ms",
+        "$value": "160ms",
         "$description": "Hover, pressed, checkbox"
       },
       "base": {
@@ -562,11 +562,15 @@
         "$description": "Dropdown, panel, popover"
       },
       "slow": {
-        "$value": "300ms",
+        "$value": "250ms",
         "$description": "Dialog and page transition"
       },
+      "loop": {
+        "$value": "1000ms",
+        "$description": "Repeating skeleton shimmer and spinner cycle"
+      },
       "easing": {
-        "$value": "cubic-bezier(0.2, 0, 0, 1)",
+        "$value": "cubic-bezier(0.16, 1, 0.3, 1)",
         "$type": "cubicBezier",
         "$description": "Shared easing curve"
       }
@@ -627,11 +631,11 @@
         "$description": "Hero display and large headings"
       },
       "tight": {
-        "$value": "-0.01em",
+        "$value": "-0.015em",
         "$description": "Default UI text and headings"
       },
       "normal": {
-        "$value": "0em",
+        "$value": "-0.005em",
         "$description": "Monospace and neutral text"
       },
       "slight": {
@@ -654,7 +658,7 @@
         "$description": "Single-line glyph, badge, icon label"
       },
       "tight": {
-        "$value": "1.2",
+        "$value": "1.3",
         "$description": "Display and heading"
       },
       "snug": {
@@ -806,11 +810,11 @@
         "$description": "Chip radius"
       },
       "outlined-active-border": {
-        "$value": "rgba(0, 102, 255, 0.43)",
+        "$value": "rgba(26, 117, 255, 0.43)",
         "$description": "Chip outlined active inset border"
       },
       "solid-active-content": {
-        "$value": "#F7F7F8",
+        "$value": "#f2f5f9",
         "$description": "Chip solid active foreground"
       }
     },
@@ -896,7 +900,7 @@
         "$description": "Inline feedback inset"
       },
       "radius": {
-        "$value": "10px",
+        "$value": "6px",
         "$description": "Feedback surface radius"
       },
       "progress-height": {
