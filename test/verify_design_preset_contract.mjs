@@ -9,9 +9,11 @@ const presets = readFileSync(new URL('../src/lib/design-presets.ts', import.meta
 assert.match(presets, /import \{ AUI_TOKEN_GROUPS \} from '\.\/aide-product-tokens'/)
 assert.match(presets, /function buildAideRichMeta\(\)/)
 assert.match(presets, /aide: buildAideRichMeta\(\),/)
-// 하드코딩 팔레트/색이 남아 있으면 안 된다.
+// 하드코딩 팔레트/색이 남아 있으면 안 된다. (aide RICH_META, none preset 둘 다)
 assert.doesNotMatch(presets, /aide:\s*\{[\s\S]*?color:\s*'#0066ff'/)
 assert.doesNotMatch(presets, /\{ name: 'Primary', hex: '#0066ff' \}/)
+assert.doesNotMatch(presets, /none:\s*\{[\s\S]*?color:\s*'#[0-9a-fA-F]{3,8}'/)
+assert.match(presets, /none:\s*\{[\s\S]*?color:\s*RICH_META\.aide\.color/)
 
 // 계약 실값 sanity: primary는 #1a75ff, radius 이름은 sm/control/card/overlay/pill.
 const md = readFileSync(new URL('../src/lib/design-systems/aide.md', import.meta.url), 'utf8')

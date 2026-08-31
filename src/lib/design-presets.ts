@@ -255,7 +255,7 @@ export const DESIGN_PRESETS: Record<string, DesignPresetMeta> = {
   none: {
     label: '기본',
     md: MD_FILES.aide ?? MD_FILES.ktds ?? '',
-    color: '#0066ff',
+    color: RICH_META.aide.color, // aide.md contract color.primary (#1a75ff); 손으로 #0066ff 박아두면 팔레트 swatch와 어긋난다
     description: 'Aide 기본 디자인 시스템을 사용합니다',
     palette: RICH_META.aide.palette,
     fonts: RICH_META.aide.fonts,
