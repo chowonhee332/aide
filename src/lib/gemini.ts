@@ -19,6 +19,7 @@ import { sanitizeMaterialSymbols, ensureMaterialSymbolsFont, lintStructure, buil
 import { logGeminiUsage } from './gemini-usage';
 import { parseFencedDesignContract } from './design-md-contract';
 import { selectRelevantComponents, hintsFromDirectionPlan, type ComponentRetrievalHints } from './design-component-retrieval';
+import { injectPlatformBaseline, normalizePageContainer } from './platform-baseline';
 export type { AppDomain } from './domain-constants';
 export { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY, DOMAIN_HOME_EMPHASIS_OPTIONS, DOMAIN_PRIMARY_JOURNEY_OPTIONS, DOMAIN_FIRST_SCREEN_FOCUS_OPTIONS } from './domain-constants';
 
@@ -4285,7 +4286,7 @@ ${JSON.stringify(variantStructure, null, 2)}
 
 ⛔ **히어로 아래 chip/filter rail — 간격 필수**
 \`\`\`html
-<div class="chip-rail" style="display:flex;flex-wrap:wrap;gap:var(--aide-item-gap,8px);align-items:center;padding:0 var(--aide-page-padding,16px);margin-bottom:var(--aide-section-gap,16px);">
+<div class="chip-rail" style="display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:var(--aide-item-gap,8px);align-items:center;padding:0 var(--aide-page-padding,16px);margin-bottom:var(--aide-section-gap,16px);">
   <button style="background:var(--color-primary);color:#fff;border:none;border-radius:100px;padding:6px 14px;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;">선택 칩</button>
   <button style="background:var(--color-surface);color:var(--color-text);border:1px solid var(--color-border,#ddd);border-radius:100px;padding:6px 14px;font-size:13px;white-space:nowrap;cursor:pointer;">비선택 칩</button>
 </div>
@@ -4301,7 +4302,7 @@ ${JSON.stringify(variantStructure, null, 2)}
 **C안 레이아웃 금지 사항 (이게 레이아웃 붕괴의 직접 원인):**
 - ❌ hero 컨테이너에 min-height 없이 img만 absolute → 이미지 로드 전 height:0 붕괴
 - ❌ 콘텐츠 레이어에 z-index:2 없이 이미지 위에 올리기 → 이미지가 텍스트 가림
-- ❌ chip row에 gap 없이 margin/padding으로만 간격 → flex-wrap 시 간격 무너짐
+- ❌ chip/필터/세그먼트 row에 flex-wrap:wrap → 좁은 폭에서 줄바꿈. 반드시 flex-wrap:nowrap; overflow-x:auto (가로 스크롤)
 - ❌ 카드 grid에 gap 대신 margin → 반응형에서 간격 불일치
 - ❌ padding 하드코딩(16px) → CSS 변수 미사용으로 디자인 시스템 불일치
 
@@ -4991,6 +4992,7 @@ ${effectivePlatform === 'web' ? `
   html = sanitizeGeneratedBranding(html, brief, effectiveDesignMd, effectiveLogoDataUrl)
   html = injectMaterialSymbolsFont(html)
   html = ensureRequiredVariantVisuals(html, { variantStyle, sharedVisualSubject: effectiveSharedVisualSubject, heroImagePrompt: visual3dPrompt, visualPolicy: effectiveVisualPolicy })
+  html = normalizePageContainer(html)
   html = injectDesignContractStyle(html, effectiveDesignMd, hasBrandColors)
   html = auditSpacingTokens(html, designContract)
   html = stripButtonInlineOverrides(html)
@@ -5075,6 +5077,8 @@ ${effectivePlatform === 'web' ? `
   } catch { /* intentionally ignored */ }
 
   html = injectBaseTransitions(html)
+  // platform-baseline: 디자인 시스템 무관 레이아웃 불변식 — 항상 마지막에 주입해 우선
+  html = injectPlatformBaseline(html)
   return { html, variantDescription }
 }
 
@@ -5350,6 +5354,7 @@ ${buildQualityRules(heroSubject || heroImagePrompt, domain)}
   // 폰트/컨트랙트는 누락 시에만 보강 (idempotent). 홈 콘텐츠는 변형하지 않음.
   html = injectMaterialSymbolsFont(html)
   html = injectDesignContractStyle(html, designMd || '', !!(expandBrandColors && expandBrandColors.length > 0))
+  html = injectPlatformBaseline(html)
 
   return html
 }
