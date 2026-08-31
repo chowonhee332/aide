@@ -34,7 +34,8 @@ function includesAny(text: string, patterns: RegExp[]): boolean {
 export function detectServiceSubtype(brief: string, domain: AppDomain, subtypeHint?: string): string {
   const normalized = brief.toLowerCase()
   if (includesAny(brief, [/피자|pizza|페퍼로니|주문|픽업|스탬프|피자집/])) return 'pizza-order-membership'
-  if (includesAny(brief, [/요금제|통신|위약금|번호이동|휴대폰|모바일|데이터|유심|알뜰폰/])) return 'telco-plan-recommendation'
+  // "모바일" "데이터"는 통신 전용 신호가 아니다(거의 모든 앱 브리프에 등장) → 통신 특화 단어만 남긴다
+  if (includesAny(brief, [/요금제|통신사|위약금|번호이동|유심|알뜰폰|셀룰러|LTE|5G/])) return 'telco-plan-recommendation'
   if (includesAny(brief, [/포인트|쿠폰|멤버십|등급|리워드|적립|혜택/])) return 'membership-reward'
   if (includesAny(brief, [/식물|물주기|몬스테라|화분|성장|루틴/])) return 'plant-care-companion'
   if (includesAny(brief, [/물류|배송|트럭|화물|창고|배차|route|fleet/])) return 'b2b-logistics-dashboard'
