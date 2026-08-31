@@ -2393,8 +2393,8 @@ body { overflow:hidden !important; }
   overflow-x:hidden !important;
   -webkit-overflow-scrolling:touch;
 }
-.top-navigation { position:sticky !important; top:0 !important; z-index:80 !important; flex:0 0 auto !important; }
-.bottom-navigation { position:fixed !important; left:0 !important; right:0 !important; bottom:0 !important; z-index:80 !important; }
+.top-navigation { position:sticky !important; top:0 !important; z-index:var(--aide-z-header,80) !important; flex:0 0 auto !important; }
+.bottom-navigation { position:fixed !important; left:0 !important; right:0 !important; bottom:0 !important; z-index:var(--aide-z-bottomBar,80) !important; }
 .aide-hero-3d,.aide-3d-asset {
   filter:none !important;
   mix-blend-mode:normal !important;
@@ -2405,7 +2405,7 @@ body { overflow:hidden !important; }
 .app-header,.global-nav,.top-navigation,header {
   position:sticky !important;
   top:0 !important;
-  z-index:80 !important;
+  z-index:var(--aide-z-header,80) !important;
   flex:0 0 auto !important;
 }
 .mobile-tabbar,.bottom-tabbar,.bottom-navigation {
@@ -2413,7 +2413,7 @@ body { overflow:hidden !important; }
   left:0 !important;
   right:0 !important;
   bottom:0 !important;
-  z-index:80 !important;
+  z-index:var(--aide-z-bottomBar,80) !important;
 }
 .content-scroll,.page-scroll,.aide-page,main,.main-content,.content,.scroll-content {
   padding-bottom:calc(var(--aide-tabbar-height,72px) + env(safe-area-inset-bottom) + var(--aide-section-gap,20px)) !important;

@@ -19,7 +19,12 @@ export const PLATFORM_BASELINE = {
   breakpoint: { tablet: 768, desktop: 1280 },
   gutter: { mobile: 16, tablet: 20, desktop: 24 },
   contentMax: { tablet: 720, desktop: 1200 },
-  touchMin: 44,
+  touchMin: 44,          // Apple HIG 44 · WCAG 2.1 SC 2.5.5(AAA). Material 48, WCAG 2.2 AA 24
+  fontControl: 16,       // iOS Safari: <16px input 포커스 시 자동 줌 (WebKit 동작 우회, 스펙 아님)
+  captionFloor: 12,      // 캡션/메타 텍스트 하한 (관례)
+  lineMax: '68ch',       // 본문 줄길이 상한 (Bringhurst 45–75자, 웹 표준 아님)
+  focusRing: 2,          // 포커스 링 두께 px (WCAG 2.4.7은 "보임" 필수, 두께는 관례)
+  z: { header: 100, bottomBar: 100, sticky: 90, sheet: 200, modal: 300, toast: 400, tooltip: 500 },
 } as const
 
 // 모델이 붙일 법한 가로 스크롤 로우 클래스명 (부분 일치)
@@ -40,12 +45,42 @@ const APPBAR_SELECTOR = [
   '[class*="top-nav"]', '[class*="top-navigation"]', '.aide-shell-appbar',
 ].join(',')
 
+// 탭 타깃 하한을 적용할 버튼류 (본문 인라인 <a>는 제외 — 텍스트 링크는 44px면 깨진다)
+const TAP_TARGET_SELECTOR = [
+  'button', '[role="button"]', 'input[type="button"]', 'input[type="submit"]', 'input[type="reset"]',
+  '[class*="btn"]', '[class*="button"]', '[class*="chip"]', '[class*="tab-item"]',
+  '[class*="icon-btn"]', '[class*="icon-button"]', 'a[class*="btn"]', 'a[role="button"]',
+].join(',')
+
+const BODY_TEXT_SELECTOR = [
+  'p', 'li', 'dd', 'blockquote', '[class*="body-text"]', '[class*="description"]',
+  '[class*="paragraph"]', '[class*="summary"]',
+].join(',')
+
+const BOTTOM_FIXED_SELECTOR = [
+  '.bottom-navigation', '[class*="tabbar"]', '[class*="tab-bar"]', '[class*="bottom-bar"]',
+  '[class*="bottom-nav"]', '[class*="fixed-bottom"]', '.nav-bottom',
+].join(',')
+
+const OVERLAY_MAP: Array<[string, keyof typeof PLATFORM_BASELINE.z]> = [
+  ['[class*="sheet"],[class*="drawer"],[class*="bottom-sheet"]', 'sheet'],
+  ['[class*="modal"],[role="dialog"],[class*="dialog"]', 'modal'],
+  ['[class*="toast"],[class*="snackbar"]', 'toast'],
+  ['[class*="tooltip"],[role="tooltip"]', 'tooltip'],
+]
+
 /**
  * 항상 주입되는 baseline `<style>`. `data-aide-platform-baseline` 로 중복 제거된다.
- * 주입 순서상 injectDesignContractStyle 뒤에 와야 `--aide-page-padding` 값이 우선한다.
+ * 주입 순서상 injectDesignContractStyle 뒤에 와야 값이 우선한다.
+ *
+ * 3층 구조:
+ *  - 접근성 (WCAG/CSS 스펙): 재스타일은 되지만 제거 불가하게 일반 특이도로
+ *  - Aide의 선택 (관례·프로젝트 결정): :where() 특이도 0 → DESIGN.md가 덮을 수 있음
  */
 export function buildPlatformBaselineCss(): string {
   const b = PLATFORM_BASELINE
+  const zVars = Object.entries(b.z).map(([k, v]) => `  --aide-z-${k}:${v};`).join('\n')
+  const overlayRules = OVERLAY_MAP.map(([sel, key]) => `:where(${sel}){ z-index:var(--aide-z-${key}); }`).join('\n')
   return `<style data-aide-platform-baseline="1">
 :root{
   --aide-page-padding:${b.gutter.mobile}px;
@@ -53,6 +88,9 @@ export function buildPlatformBaselineCss(): string {
   --aide-touch-min:${b.touchMin}px;
   --aide-bp-tablet:${b.breakpoint.tablet}px;
   --aide-bp-desktop:${b.breakpoint.desktop}px;
+  --aide-line-max:${b.lineMax};
+  scroll-padding-top:var(--aide-header-height,56px);
+${zVars}
 }
 @media (min-width:${b.breakpoint.tablet}px){
   :root{ --aide-page-padding:${b.gutter.tablet}px; --aide-content-max:${b.contentMax.tablet}px; }
@@ -60,25 +98,29 @@ export function buildPlatformBaselineCss(): string {
 @media (min-width:${b.breakpoint.desktop}px){
   :root{ --aide-page-padding:${b.gutter.desktop}px; --aide-content-max:${b.contentMax.desktop}px; }
 }
-/* 최상위 페이지 컨테이너 한 겹에만 거터를 얹는다. 중첩된 같은 성격의 컨테이너는
-   거터를 0으로 눌러 이중 여백을 막는다 (:where로 특이도 0 → 명시적 클래스 규칙은 이김). */
+
+/* ── 리셋 (관례) ── */
+*,*::before,*::after{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+/* overflow-x:clip 은 스크롤 컨테이너를 만들지 않아 position:sticky 헤더를 안 깬다 (hidden 과 다름) */
+html,body{ overflow-x:clip; }
+body{ word-break:keep-all; overflow-wrap:break-word; }
+:where(code,pre,kbd,samp,[class*="url"],[class*="mono"],[class*="code"]){ word-break:normal; overflow-wrap:normal; }
+img,video,svg{ max-width:100%; }
+img,video{ height:auto; }
+
+/* ── 페이지 컨테이너: 한 겹에만 거터, 중첩은 0 (:where 특이도 0) ── */
 :where(${PAGE_CONTAINER_SELECTOR}){
-  box-sizing:border-box;
-  width:100%;
+  box-sizing:border-box; width:100%;
   max-width:var(--aide-content-max);
   margin-inline:auto;
   padding-inline:var(--aide-page-padding);
 }
-:where(${PAGE_CONTAINER_SELECTOR}) :where(${PAGE_CONTAINER_SELECTOR}){
-  max-width:none;
-  padding-inline:0;
-}
-/* full-bleed opt-out: 페이지 거터를 상쇄해 화면 끝까지 */
+:where(${PAGE_CONTAINER_SELECTOR}) :where(${PAGE_CONTAINER_SELECTOR}){ max-width:none; padding-inline:0; }
 :where([data-bleed],.full-bleed,[class*="full-bleed"],[class*="bleed-x"]){
-  margin-inline:calc(var(--aide-page-padding) * -1);
-  max-width:none;
+  margin-inline:calc(var(--aide-page-padding) * -1); max-width:none;
 }
-/* 칩·세그먼트·필터 로우: 줄바꿈 금지, 가로 스크롤 */
+
+/* ── 칩·세그먼트·필터 로우: 줄바꿈 금지, 가로 스크롤 (Aide 선택) ── */
 :where(${SCROLL_ROW_SELECTOR}){
   display:flex; flex-wrap:nowrap; overflow-x:auto;
   gap:var(--aide-item-gap,8px);
@@ -86,8 +128,42 @@ export function buildPlatformBaselineCss(): string {
 }
 :where(${SCROLL_ROW_SELECTOR})::-webkit-scrollbar{ display:none; }
 :where(${SCROLL_ROW_SELECTOR}) > *{ flex:0 0 auto; white-space:nowrap; }
-/* 앱바 컨트롤은 절대 줄바꿈하지 않는다 */
 :where(${APPBAR_SELECTOR}){ flex-wrap:nowrap; }
+
+/* ── 탭 타깃 하한 (Apple HIG / WCAG 2.5.5) — 인라인 텍스트 링크는 제외 ── */
+:where(${TAP_TARGET_SELECTOR}){ min-height:var(--aide-touch-min); }
+:where([class*="icon-btn"],[class*="icon-button"],[aria-label]:is(button,a[role="button"])){ min-width:var(--aide-touch-min); }
+/* iOS 자동 줌 방지 (WebKit) */
+input,select,textarea{ font-size:max(${b.fontControl}px, 1em); }
+/* 캡션·메타 텍스트 하한 (관례) */
+:where(small,[class*="caption"],[class*="micro"],[class*="meta"],[class*="footnote"],[class*="helper"]){
+  font-size:max(${b.captionFloor}px, 0.75rem);
+}
+
+/* ── z-index 사다리 (Aide 선택) ── */
+:where(${APPBAR_SELECTOR}){ z-index:var(--aide-z-header); }
+:where(${BOTTOM_FIXED_SELECTOR}){ z-index:var(--aide-z-bottomBar); padding-bottom:env(safe-area-inset-bottom); }
+${overlayRules}
+
+/* ── 접근성: 재스타일 O / 제거 X (일반 특이도 + 마지막 주입) ── */
+a:focus-visible,button:focus-visible,[role="button"]:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{
+  outline:${b.focusRing}px solid var(--color-primary, #1a73e8);
+  outline-offset:2px;
+}
+:focus:not(:focus-visible){ outline:none; }
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms !important; animation-iteration-count:1 !important;
+    transition-duration:.01ms !important; scroll-behavior:auto !important;
+  }
+}
+@media (hover:none){
+  :where(button,a[role="button"],[class*="btn"],[class*="chip"]):active{ opacity:.7; }
+}
+
+/* ── 본문 줄길이 상한 + disabled 일관성 (Aide 선택) ── */
+:where(${BODY_TEXT_SELECTOR}){ max-width:var(--aide-line-max); }
+:where([disabled],[aria-disabled="true"]){ pointer-events:none; cursor:not-allowed; opacity:.5; }
 </style>`
 }
 
