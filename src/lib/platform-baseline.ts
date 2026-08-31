@@ -34,11 +34,10 @@ const SCROLL_ROW_SELECTOR = [
   '[class*="tab-scroll"]', '[class*="scroller"]', '[class*="h-scroll"]', '[class*="hscroll"]',
 ].join(',')
 
-// 최상위 페이지 컨테이너로 흔히 쓰이는 클래스명 (부분 일치)
-const PAGE_CONTAINER_SELECTOR = [
-  '.aide-page', 'main', '[class*="screen"]', '[class*="page-"]', '[class*="app-shell"]',
-  '[class*="mobile-shell"]', '[class*="page-shell"]', '[class*="container"]', '[class*="wrapper"]',
-].join(',')
+// 거터·본문폭은 normalizePageContainer가 보장하는 단일 컨테이너(.aide-page)에만 적용한다.
+// app-shell·wrapper·container 같은 바깥 래퍼까지 넓게 잡으면 injectDesignContractStyle의
+// .aide-page 거터와 겹쳐 좌우 패딩이 2중으로 쌓인다 (실측: 16+16=32).
+const PAGE_CONTAINER_SELECTOR = '.aide-page'
 
 const APPBAR_SELECTOR = [
   'header', '.app-header', '.appbar', '[class*="app-bar"]', '[class*="appbar"]',

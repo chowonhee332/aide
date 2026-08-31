@@ -2451,7 +2451,7 @@ const DOMAIN_TABS: Record<string, Array<{ label: string; icon: string; ariaLabel
 }
 const DEFAULT_TABS = [{ label: '홈', icon: 'home', ariaLabel: '홈' }, { label: '탐색', icon: 'search', ariaLabel: '탐색' }, { label: '활동', icon: 'notifications', ariaLabel: '활동' }, { label: '마이', icon: 'person', ariaLabel: '내 정보' }]
 
-function injectMissingMobileChrome(html: string, ir: import('./layout-archetypes').UIStructureIR, domain?: AppDomain): string {
+function injectMissingMobileChrome(html: string, ir: import('./layout-archetypes').UIStructureIR, domain?: AppDomain, suppressBottomNav = false): string {
   if (!ir.chrome.topNav && !ir.chrome.bottomNav) return html
 
   const hasTopNav =
@@ -2479,7 +2479,7 @@ function injectMissingMobileChrome(html: string, ir: import('./layout-archetypes
     }
   }
 
-  if (ir.chrome.bottomNav && !hasBottomNav) {
+  if (ir.chrome.bottomNav && !hasBottomNav && !suppressBottomNav) {
     const tabs = (domain && DOMAIN_TABS[domain]) ?? DEFAULT_TABS
     const tabItems = tabs.map((t, i) =>
       `  <button class="tab-item${i === 0 ? ' active' : ''}" aria-label="${t.ariaLabel}"><span class="material-symbols-rounded">${t.icon}</span><span class="tab-label">${t.label}</span></button>`
@@ -2493,6 +2493,43 @@ function injectMissingMobileChrome(html: string, ir: import('./layout-archetypes
   }
 
   return result
+}
+
+/**
+ * class에 classPattern이 매칭되는 요소를 (같은 태그 중첩 깊이까지 세어) 통째로 제거한다.
+ * 정규식 비탐욕 `[\s\S]*?</\1>` 은 <div><div>...</div>...</div> 같은 중첩에서 첫 닫는 태그에
+ * 걸려 잔해를 남긴다 → 그 잔해가 레이아웃에서 떠 보이는 원인. 여기서 깊이 카운팅으로 제거.
+ */
+function stripElementsByClass(html: string, classPattern: RegExp): string {
+  const openRe = /<([a-z][a-z0-9]*)\b([^>]*?)(\/?)>/gi
+  let out = html
+  for (let guard = 0; guard < 20; guard++) {
+    openRe.lastIndex = 0
+    let removed = false
+    let m: RegExpExecArray | null
+    while ((m = openRe.exec(out))) {
+      const [full, tag, attrs, selfClose] = m
+      if (selfClose) continue
+      const classMatch = attrs.match(/class\s*=\s*["']([^"']*)["']/i)
+      if (!classMatch || !classPattern.test(classMatch[1])) continue
+      const start = m.index
+      let i = start + full.length
+      let depth = 1
+      const scanRe = new RegExp(`<${tag}\\b[^>]*?(\\/?)>|<\\/${tag}\\s*>`, 'ig')
+      scanRe.lastIndex = i
+      let s: RegExpExecArray | null
+      while (depth > 0 && (s = scanRe.exec(out))) {
+        if (s[0][1] === '/') depth--
+        else if (s[1] !== '/') depth++
+        i = s.index + s[0].length
+      }
+      out = out.slice(0, start) + out.slice(i)
+      removed = true
+      break
+    }
+    if (!removed) break
+  }
+  return out
 }
 
 /**
@@ -2515,9 +2552,9 @@ function injectShellContract(
   let result = html
 
   if (shellContract.bottomNavigation?.present === false) {
-    result = result.replace(
-      /<(nav|div|footer)\b[^>]*class=["'][^"']*\b(?:bottom-navigation|mobile-tabbar|tab-bar|tabbar|bottom-nav|nav-bottom|bottom-bar|tab-navigation|bottom-tabs)\b[^"']*["'][^>]*>[\s\S]*?<\/\1>/gi,
-      '',
+    result = stripElementsByClass(
+      result,
+      /\b(?:bottom-navigation|mobile-tabbar|tab-bar|tabbar|bottom-nav|nav-bottom|bottom-bar|tab-navigation|bottom-tabs|gnb-bottom)\b/,
     )
   }
 
@@ -3971,6 +4008,17 @@ export async function generateUI(params: GenerateParams, apiKey?: string): Promi
   // as-is 셸 계약이 "로고 없음"이면 로고 슬롯 프롬프트·주입을 전부 끈다 (redesign 대상 셸 보존)
   const suppressBrandLogo = asIsAnalysis?.shellContract?.brandLogo?.present === false
   const effectiveLogoDataUrl = suppressBrandLogo ? '' : logoDataUrl
+  // 브리프가 "하단 앱바/탭바 없음"을 명시하면 As-is 분석 결과와 무관하게 하단 내비게이션을 강제 제거한다.
+  // (As-is 분석이 하단바 있는 화면을 섞어 present:true로 뽑아도 사용자 지시가 이긴다)
+  const briefWantsNoBottomNav =
+    /하단\s*(?:앱\s*?바|탭\s*?바|내비게이션|네비게이션|바)[^.\n]{0,12}?(?:없|미\s*노출|제외|숨김|안\s*(?:보|넣|들어)|불필요|빼)/.test(brief || '') ||
+    /\bno\s+bottom\s+(?:nav|bar|tab)/i.test(brief || '')
+  const effectiveShellContract = (asIsAnalysis?.shellContract || briefWantsNoBottomNav)
+    ? {
+        ...asIsAnalysis?.shellContract,
+        ...(briefWantsNoBottomNav ? { bottomNavigation: { present: false } } : {}),
+      }
+    : undefined
   const effectiveHeroImagePrompt = heroSubject || heroImagePrompt
   const effectiveVisualPolicy = visualPolicy ?? (() => {
     if (getVariantLabel(variantStyle) !== 'B') return undefined
@@ -5001,13 +5049,13 @@ ${effectivePlatform === 'web' ? `
 
   // ── 1층 승격: chrome 결정론 주입 — LLM이 생략한 경우 코드가 직접 삽입 ──
   if (variantStructure) {
-    html = injectMissingMobileChrome(html, variantStructure, domain)
+    html = injectMissingMobileChrome(html, variantStructure, domain, effectiveShellContract?.bottomNavigation?.present === false)
     // data-ui-section 속성 누락 시 레이아웃 클래스 기반으로 보완 (lint의 section 체크 전에)
     html = injectSectionAttrs(html, variantStructure)
   }
 
   // ── 1층 승격: as-is 셸 계약을 결정론으로 강제 (헤더 제목·뒤로가기·우측액션, 하단탭바 부재) ──
-  html = injectShellContract(html, asIsAnalysis?.shellContract)
+  html = injectShellContract(html, effectiveShellContract)
 
   // ── 3층 안전망: 아이콘 자동 교정 → IR 계약 대조 → 로그 적재 → severe만 핀포인트 수정 1회 ──
   // 반복 잡히는 위반은 로그로 확인해 1·2층(결정론/계약)으로 승격하고 여기서 제거한다.

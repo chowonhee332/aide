@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import type { Browser, Page } from 'puppeteer'
 import { generateUI, resolveImagePlaceholders, extractDesignPaletteHint, generateProWithImage } from '@/lib/gemini'
 import { injectVisualReviewCss, reviewDesignScreenshot } from '@/lib/design-visual-review'
-import { GEMINI_DESIGN_MODEL, GEMINI_ECONOMY_MODEL, GEMINI_ECONOMY_IMAGE_MODEL } from '@/lib/gemini-model-policy'
+import { GEMINI_DESIGN_MODEL, GEMINI_ECONOMY_MODEL, GEMINI_ECONOMY_IMAGE_MODEL, GEMINI_IMAGE_FALLBACK_MODEL } from '@/lib/gemini-model-policy'
 import fs from 'fs'
 import path from 'path'
 
@@ -109,10 +109,12 @@ export async function POST(req: NextRequest) {
         unsplashKey,
         imageWarnings,
         paletteHint: extractDesignPaletteHint(normalizedParams.designMd),
+        // pro 이미지 모델(gemini-3-pro-image)은 이 경로에서 쓰지 않는다. 3D 정책은 economy(flash-lite),
+        // 그 외는 flash-image를 상한으로 둔다.
         sceneImageModel: (normalizedParams.visualPolicy === 'scene-3d' || normalizedParams.visualPolicy === 'scene-3d-card-cover')
           ? GEMINI_ECONOMY_IMAGE_MODEL
-          : undefined,
-        heroImageModel: normalizedParams.visualPolicy === 'creon-object-3d' ? GEMINI_ECONOMY_IMAGE_MODEL : undefined,
+          : GEMINI_IMAGE_FALLBACK_MODEL,
+        heroImageModel: normalizedParams.visualPolicy === 'creon-object-3d' ? GEMINI_ECONOMY_IMAGE_MODEL : GEMINI_IMAGE_FALLBACK_MODEL,
         sceneCardCover: normalizedParams.visualPolicy === 'scene-3d-card-cover',
         onImageEvent: (label: string) => emit('step', { label }),
       })
