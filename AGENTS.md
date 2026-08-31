@@ -59,7 +59,6 @@ brief
 - 화면 컴포넌트에 새 hex 색을 추가하지 말고 `--aui-*` 또는 `AIDE_UI`를 사용한다.
 - `AIDE_UI`는 runtime inline style용 TypeScript bridge다. 정적 스타일과 새 canonical token을 `src/lib/aide-ui.ts`에만 추가하지 말라.
 - `#ff385c`는 생성 시안의 기본 브랜드 색이다. Aide 앱 UI 색으로 치환하지 말라.
-- KTDS 생성물은 `src/lib/ktds-tokens.ts`와 `src/lib/design-systems/ktds.md`를 따른다.
 - 디자인 시스템·브리프와 무관한 레이아웃 불변식은 `src/lib/design-systems/aide.md`가 아니라 `src/lib/platform-baseline.ts`에 둔다(확정값: 좌우 거터 mobile 16 / tablet 20 / desktop 24, breakpoint 768·1280, box-sizing 리셋, 터치타깃 44, 폰트 하한, z-index 사다리, 칩·버튼·배지 줄바꿈 금지, 한국어 word-break, focus-visible·reduced-motion). `generateUI`/`expandToPrototype`가 마지막에 주입하며 DESIGN.md보다 우선한다. 값 회귀는 `test/verify_platform_baseline.mjs`가 막는다.
 - 랜딩 페이지는 `contract.visualization`이 아니라 `layout-archetypes.ts`의 `brand-landing`·`product-showcase` 아키타입이 담당한다. `detectLandingIntent`(web + 키워드)가 true면 A/B/C가 랜딩 풀에서만 뽑히고 `sideNav`·`bottomNav`가 강제 false다.
 

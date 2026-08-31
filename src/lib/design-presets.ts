@@ -111,44 +111,6 @@ function buildAideRichMeta(): Omit<DesignPresetMeta, 'md'> {
 
 const RICH_META: Record<string, Omit<DesignPresetMeta, 'md'>> = {
   aide: buildAideRichMeta(),
-  ktds: {
-    label: 'kt ds',
-    color: '#1a75ff',
-    description: 'kt ds의 디자인 시스템',
-    palette: [
-      { name: 'Primary', hex: '#1a75ff' },
-      { name: 'Surface Alt', hex: '#f7f7f8' },
-      { name: 'Neutral', hex: '#70737c' },
-      { name: 'Negative', hex: '#ff4242' },
-    ],
-    fonts: { headline: 'Pretendard', body: 'Pretendard' },
-    traits: ['enterprise grade', 'accessible', 'structured layout'],
-    typographyScale: [
-      { name: 'Display', size: '32px', weight: 700 },
-      { name: 'Headline', size: '24px', weight: 700 },
-      { name: 'Title 1', size: '20px', weight: 600 },
-      { name: 'Title 2', size: '18px', weight: 600 },
-      { name: 'Body 1', size: '16px', weight: 400 },
-      { name: 'Body 2', size: '14px', weight: 400 },
-      { name: 'Caption 1', size: '12px', weight: 400 },
-      { name: 'Caption 2', size: '11px', weight: 400 },
-    ],
-    statusColors: [
-      { name: 'Positive', hex: '#00c244' },
-      { name: 'Info', hex: '#0066ff' },
-      { name: 'Caution', hex: '#ff9200' },
-      { name: 'Negative', hex: '#ff4242' },
-    ],
-    radiusTokens: [
-      { name: 'xs', value: '2px' },
-      { name: 'sm', value: '4px' },
-      { name: 'md', value: '8px' },
-      { name: 'lg', value: '12px' },
-      { name: 'xl', value: '16px' },
-      { name: '2xl', value: '20px' },
-      { name: 'full', value: '9999px' },
-    ],
-  },
   ibm: {
     label: 'IBM',
     color: '#0f62fe',
@@ -234,16 +196,7 @@ const RICH_META: Record<string, Omit<DesignPresetMeta, 'md'>> = {
   },
 }
 
-// ktds first, then alphabetical for the rest
-const PRESET_ORDER = ['ktds']
-const sortedIds = Object.keys(MD_FILES).sort((a, b) => {
-  const ai = PRESET_ORDER.indexOf(a)
-  const bi = PRESET_ORDER.indexOf(b)
-  if (ai !== -1 && bi !== -1) return ai - bi
-  if (ai !== -1) return -1
-  if (bi !== -1) return 1
-  return a.localeCompare(b)
-})
+const sortedIds = Object.keys(MD_FILES).sort((a, b) => a.localeCompare(b))
 
 // Presets that exist as MD files but should not appear in the UI selector.
 // `-test` 접미사는 실험용 규약 — design-systems/ 에 스크래치 md를 넣어도 UI에 노출되지 않는다.
@@ -254,7 +207,7 @@ const isHiddenPreset = (id: string) => HIDDEN_PRESETS.has(id) || id.endsWith('-t
 export const DESIGN_PRESETS: Record<string, DesignPresetMeta> = {
   none: {
     label: '기본',
-    md: MD_FILES.aide ?? MD_FILES.ktds ?? '',
+    md: MD_FILES.aide ?? '',
     color: RICH_META.aide.color, // aide.md contract color.primary (#1a75ff); 손으로 #0066ff 박아두면 팔레트 swatch와 어긋난다
     description: 'Aide 기본 디자인 시스템을 사용합니다',
     palette: RICH_META.aide.palette,
