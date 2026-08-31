@@ -18,6 +18,7 @@ assert.match(css, /--aide-page-padding:16px/)
 assert.match(css, /@media \(min-width:768px\)[\s\S]*--aide-page-padding:20px/)
 assert.match(css, /@media \(min-width:1280px\)[\s\S]*--aide-page-padding:24px/)
 assert.match(css, /flex-wrap:nowrap; overflow-x:auto/) // 칩 로우 가로 스크롤
+assert.match(css, /\[class\*="badge"\][\s\S]*?\{ white-space:nowrap; flex-shrink:0; \}/) // 버튼/배지 라벨 줄바꿈 금지
 assert.match(css, /data-aide-platform-baseline="1"/)
 
 // P0: 리셋 + 미디어 + 한국어 줄바꿈 + iOS 줌 방지 + 탭 타깃

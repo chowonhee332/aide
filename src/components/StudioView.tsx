@@ -95,7 +95,7 @@ function flattenForPreview(html: string): string {
 html,body{height:auto!important;min-height:0!important;overflow:visible!important}
 .app-shell,[data-layout-variant],.app,.screen,.phone-screen,.mobile-shell,.page-shell,.home-screen{display:block!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important}
 .content-scroll,.page-scroll,.aide-page,.scroll-body,.main-content,.content,.scroll-content,main{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important}
-header,.app-header,.top-navigation,.global-nav,.aide-shell-appbar,.bottom-navigation,.mobile-tabbar,.bottom-tabbar,[class*="tabbar"],[class*="bottom-bar"],[class*="fixed-bottom"]{position:static!important;inset:auto!important;width:auto!important;max-width:100%!important;flex:none!important}
+header,.app-header,.top-navigation,.global-nav,.aide-shell-appbar,.bottom-navigation,.mobile-tabbar,.bottom-tabbar,[class*="tabbar"],[class*="bottom-bar"],[class*="fixed-bottom"]{position:static!important;inset:auto!important;transform:none!important;width:auto!important;max-width:100%!important;margin:0!important;flex:none!important}
 </style>`
   if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, `${css}</head>`)
   if (/<body[^>]*>/i.test(html)) return html.replace(/(<body[^>]*>)/i, `$1${css}`)

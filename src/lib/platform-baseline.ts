@@ -10,7 +10,7 @@
  * - 최소 터치 타깃: 44
  *
  * 여기서 정의하는 것: 좌우 거터, 브레이크포인트, 본문 최대폭, 최소 터치 타깃,
- * 칩/세그먼트 로우의 가로 스크롤, 앱바 줄바꿈 금지.
+ * 칩/세그먼트 로우의 가로 스크롤, 앱바·버튼·배지 라벨 줄바꿈 금지.
  * 여기서 정의하지 않는 것: 색·타이포·radius·shadow·섹션 간격·헤더/탭바 높이
  * (이건 DESIGN.md 계약과 injectDesignContractStyle 소관).
  */
@@ -50,6 +50,13 @@ const TAP_TARGET_SELECTOR = [
   'button', '[role="button"]', 'input[type="button"]', 'input[type="submit"]', 'input[type="reset"]',
   '[class*="btn"]', '[class*="button"]', '[class*="chip"]', '[class*="tab-item"]',
   '[class*="icon-btn"]', '[class*="icon-button"]', 'a[class*="btn"]', 'a[role="button"]',
+].join(',')
+
+// 라벨이 절대 줄바꿈되면 안 되는 액션/상태 요소 (부분 일치) — 폼 <label> 태그는 제외
+const ACTION_LABEL_SELECTOR = [
+  'button', '[role="button"]', 'input[type="button"]', 'input[type="submit"]',
+  '[class*="btn"]', '[class*="button"]', '[class*="chip"]', '[class*="badge"]',
+  '[class*="tag"]', '[class*="pill"]', '[class*="status"]', '[class*="label-"]',
 ].join(',')
 
 const BODY_TEXT_SELECTOR = [
@@ -129,6 +136,9 @@ img,video{ height:auto; }
 :where(${SCROLL_ROW_SELECTOR})::-webkit-scrollbar{ display:none; }
 :where(${SCROLL_ROW_SELECTOR}) > *{ flex:0 0 auto; white-space:nowrap; }
 :where(${APPBAR_SELECTOR}){ flex-wrap:nowrap; }
+
+/* ── 액션 버튼·상태 배지·칩 라벨: 한 줄 고정, 플렉스 로우에서 안 찌그러짐 (Aide 선택) ── */
+:where(${ACTION_LABEL_SELECTOR}){ white-space:nowrap; flex-shrink:0; }
 
 /* ── 탭 타깃 하한 (Apple HIG / WCAG 2.5.5) — 인라인 텍스트 링크는 제외 ── */
 :where(${TAP_TARGET_SELECTOR}){ min-height:var(--aide-touch-min); }
