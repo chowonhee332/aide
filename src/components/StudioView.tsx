@@ -2881,7 +2881,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             const TYPO_VISUAL_SIZES = [58, 46, 36, 28]
             type TypoRow = { label: string; font: string; size: number; weight: number; actualSize: string | null }
             const typoRows: TypoRow[] = effectiveTypographyScale
-              ? effectiveTypographyScale.slice(0, Math.min(effectivePalette.length, 4)).map((step: { name: string; size: string; weight: number }, i: number): TypoRow => ({
+              ? effectiveTypographyScale.slice(0, TYPO_VISUAL_SIZES.length).map((step: { name: string; size: string; weight: number }, i: number): TypoRow => ({
                   label: step.name,
                   font: i === 0 ? effectiveFonts.headline : effectiveFonts.body,
                   size: TYPO_VISUAL_SIZES[i] ?? 24,
