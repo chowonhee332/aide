@@ -602,7 +602,8 @@ function loadPlatformGuide(platform: PlatformType): string {
   try {
     const filePath = path.join(process.cwd(), 'src', 'lib', 'platform-guides', `${platform}.md`);
     return fs.readFileSync(filePath, 'utf-8');
-  } catch {
+  } catch (e) {
+    console.warn(`[gemini] platform guide missing for "${platform}" — generation runs without platform structure hints:`, e instanceof Error ? e.message : e);
     return '';
   }
 }
@@ -610,7 +611,8 @@ function loadPlatformGuide(platform: PlatformType): string {
 function loadDefaultDesignMd(): string {
   try {
     return fs.readFileSync(path.join(process.cwd(), 'src', 'lib', 'design-systems', 'aide.md'), 'utf-8')
-  } catch {
+  } catch (e) {
+    console.warn('[gemini] default design system (aide.md) unreadable — generation runs without a design contract:', e instanceof Error ? e.message : e);
     return ''
   }
 }
@@ -2757,21 +2759,6 @@ function sanitizeGeneratedBranding(html: string, brief: string, designMd?: strin
     next = next.replace(brokenBrandImg, `<span class="aide-text-brand">${serviceName}</span>`)
   }
 
-  // KTDS is a design system preset here, not the generated service brand.
-  const briefMentionsKtds = /\bkt\s*ds\b|ktds/i.test(brief)
-  const designIsKtds = /\bkt\s*ds\b|ktds/i.test(designMd ?? '')
-  if (serviceName && designIsKtds && !briefMentionsKtds) {
-    const replacementBrand = logoDataUrl ? AIDE_LOGO_SLOT_HTML : `<span class="aide-text-brand">${serviceName}</span>`
-    next = next.replace(/>([^<]*)(?:\bkt\s*ds\b|ktds)([^<]*)</gi, (_match, before, after) => {
-      const compactBefore = String(before ?? '').replace(/\s+$/g, '')
-      const compactAfter = String(after ?? '').replace(/^\s+/g, '')
-      return `>${compactBefore}${serviceName}${compactAfter}<`
-    })
-    next = next.replace(/(aria-label|alt|title)=(["'])[^"']*(?:\bkt\s*ds\b|ktds)[^"']*\2/gi, `$1=$2${serviceName}$2`)
-    next = next.replace(/<img\b(?=[^>]*(?:\bkt\s*ds\b|ktds|kt-ds))[^>]*>/gi, replacementBrand)
-    next = next.replace(/<svg\b(?=[^>]*(?:\bkt\s*ds\b|ktds|kt-ds))[\s\S]*?<\/svg>/gi, replacementBrand)
-  }
-
   return next
 }
 
@@ -4312,11 +4299,8 @@ ${JSON.stringify(variantStructure, null, 2)}
   const effectiveDesignMd = designMd || loadDefaultDesignMd();
   const hasDesignSystem = !!effectiveDesignMd;
   const isAdaptive = hasDesignSystem && /adaptive:\s*true/.test(effectiveDesignMd);
-  const isKtds = hasDesignSystem && /name:\s*["']?KTDS/i.test(effectiveDesignMd);
-  const usesKtdsCompatibleRules = isKtds;
-  const ktdsCompatibleLabel = 'KTDS';
-  const isMd3Base = hasDesignSystem && /md3Base:\s*true/.test(effectiveDesignMd) && !usesKtdsCompatibleRules;
-  const isMd3 = hasDesignSystem && /(?:^|\n)md3:\s*true/.test(effectiveDesignMd) && !isMd3Base && !usesKtdsCompatibleRules;
+  const isMd3Base = hasDesignSystem && /md3Base:\s*true/.test(effectiveDesignMd);
+  const isMd3 = hasDesignSystem && /(?:^|\n)md3:\s*true/.test(effectiveDesignMd) && !isMd3Base;
 
   const effectivePlatform: PlatformType = platform ?? 'mobile';
   const platformLabel = effectivePlatform === 'web' ? '웹/데스크탑' : '모바일 앱';
@@ -4537,87 +4521,7 @@ ${hasBrandColors
   • padding / paddingX / paddingY 값이 이름이면 → var(--spacing-{이름}) (예: "lg" → var(--spacing-lg), "md" → var(--spacing-md))
   • variants 키 아래 = 독립 스타일 변형(primary/secondary/tertiary 등), states 키 아래 = 동일 컴포넌트의 인터랙션 상태(disabled/focus/error)${hasBrandColors ? '\n  • primary/action/accent 관련 component token만 브랜드 컬러 변수로 치환. surface, neutral, border, disabled, status, card background는 DESIGN.md 값을 유지' : ''}
 - 플랫폼(${platformLabel})은 레이아웃 구조·크롬(상태바·네비바·탭바)에만 영향.
-${usesKtdsCompatibleRules ? `
-╔══════════════════════════════════════════════════════════════╗
-║  🏢  ${ktdsCompatibleLabel} 디자인 시스템 — 컴포넌트 패턴 강제                  ║
-╚══════════════════════════════════════════════════════════════╝
-${ktdsCompatibleLabel} 디자인 시스템을 정확하게 구현하라. 아래 치수·형태·색상을 그대로 적용 — 임의 변경 절대 금지.
-- 페이지 배경: var(--color-primary-fill-neutral) = #F2F5F9 (흰색 배경 사용 금지)
-- 카드/컴포넌트 배경: var(--color-surface) = #ffffff
-- 일반 Button: 8px 라운드 사각형, height 48px. pill/capsule 버튼 금지
-- rounded.full 예외: Badge, Chip, Avatar, FAB처럼 의미상 원형/캡슐형인 컴포넌트에만 허용
-- 입력: default 32px / small 24px / large 40px, border-radius: var(--rounded-md)
-- 카드: B2B 업무형은 border-only, B2C 소비자형은 shadow-only. 같은 카드에 border와 shadow를 함께 쓰지 말 것
-- 내비게이션: ${effectivePlatform === 'web' ? '서비스 성격에 따라 상단 GNB/Header 또는 좌측 LNB/NavSide 선택 (위 웹 내비게이션 결정 규칙 준수)' : '하단 고정 탭바(NavBottom) 사용'}
-- 폰트: ⛔ <head>에 반드시 Pretendard CDN 추가:
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
-  body { font-family: var(--font-sans); } 선언 필수
-
-🧩 ${ktdsCompatibleLabel} 컴포넌트 스펙 (components 토큰 해석 완료 — 그대로 복제):
-
-[Button]
-  .btn-primary  { height:48px; padding:0 var(--spacing-lg); border-radius:var(--rounded-md); background:var(--color-primary); color:#ffffff; border:none; font-weight:600; }
-  .btn-secondary { height:48px; padding:0 var(--spacing-lg); border-radius:var(--rounded-md); background:transparent; border:1px solid var(--color-primary-border); color:var(--color-primary-text); font-weight:600; }
-  .btn-tertiary  { height:48px; padding:0 var(--spacing-base); border-radius:var(--rounded-md); background:transparent; border:none; color:var(--color-primary-text); font-weight:600; }
-  .btn-fab       { border-radius:var(--rounded-full); background:var(--color-primary); color:#ffffff; }
-  [disabled]     { background:var(--color-surface-disabled) !important; color:var(--color-text-disabled) !important; border-color:var(--color-border-alt) !important; }
-
-[Input]
-  wrapper: label(display:block; font-size:14px; font-weight:400; color:var(--color-text-neutral); margin-bottom:var(--spacing-xs)) + input
-  input.default { height:32px; border-radius:var(--rounded-md); border:1px solid var(--color-border); }
-  input.small   { height:24px; border-radius:var(--rounded-md); border:1px solid var(--color-border); }
-  input.large   { height:40px; border-radius:var(--rounded-md); border:1px solid var(--color-border); }
-  ::placeholder { color:var(--color-text-assistive); }
-  :focus { border-color:var(--color-primary-border); outline:none; }
-  .error { border-color:var(--color-negative); }
-  [disabled] { background:var(--color-surface-disabled); color:var(--color-text-disabled); }
-
-[Card]
-  .card-b2b { background:var(--color-surface); border:1px solid var(--color-border-alt); box-shadow:none; border-radius:var(--rounded-xl); padding:var(--spacing-md); }
-  .card-b2c { background:var(--color-surface); border:none; box-shadow:var(--dsx-shadow-b2c-card); border-radius:var(--rounded-xl); padding:var(--spacing-md); }
-  border와 shadow를 같은 카드에 동시에 적용하지 않는다.
-
-[ListItem]
-  { min-height:56px; padding:0 var(--spacing-base); border-bottom:1px solid var(--color-border-alt); display:flex; align-items:center; gap:var(--spacing-sm); }
-  icon: 24px / var(--color-icon); trailing: 16px / var(--color-text-neutral)
-
-[Chip]
-  { height:32px; border-radius:var(--rounded-full); border:1px solid var(--color-border); padding:0 var(--spacing-sm); font-size:14px; }
-
-[Badge]
-  .badge-positive { background:var(--color-positive); color:#ffffff; border-radius:var(--rounded-full); }
-  .badge-negative { background:var(--color-negative); color:#ffffff; border-radius:var(--rounded-full); }
-  .badge-caution  { background:var(--color-caution);  color:#ffffff; border-radius:var(--rounded-full); }
-  .badge-info     { background:var(--color-info);     color:#ffffff; border-radius:var(--rounded-full); }
-
-${effectivePlatform === 'web' ? `[Web Navigation] ⛔ 웹 전용 — 하단 탭바 절대 금지, 서비스 성격에 따라 아래 중 하나 선택
-  상단 GNB/Header Nav: 포털·커머스·배달·예약·여행·교육·엔터테인먼트·브랜드 서비스에 우선 사용
-  { position:sticky; top:0; z-index:20; height:64px; background:var(--color-surface); border-bottom:1px solid var(--color-border-alt); display:flex; align-items:center; justify-content:space-between; padding:0 var(--spacing-xl); }
-  .gnb-left, .gnb-right { display:flex; align-items:center; gap:var(--spacing-base); }
-  .gnb-item.active { color:var(--color-primary); font-weight:600; }
-
-  좌측 LNB/NavigationRail: B2B SaaS·어드민·CRM·ERP·대시보드·업무 도구에만 사용
-  { position:fixed; left:0; top:0; width:240px; height:100vh; background:var(--color-surface); border-right:1px solid var(--color-border-alt); display:flex; flex-direction:column; padding:var(--spacing-lg) 0; }
-  .nav-header { padding:0 var(--spacing-base) var(--spacing-lg); }
-  .nav-item   { height:56px; padding:0 var(--spacing-base); display:flex; align-items:center; gap:var(--spacing-sm); font-size:14px; cursor:pointer; }
-  .nav-item.active { color:var(--color-primary); background:var(--color-primary-fill-neutral); border-radius:var(--rounded-md); font-weight:600; }
-  .nav-item.inactive { color:var(--color-text-alternative, var(--color-on-surface-variant)); }
-  .main-content.with-lnb { margin-left:240px; }
-
-  GNB + 필터 사이드바: 탐색/검색 중심 서비스에서 사용
-  .layout-with-filter { display:grid; grid-template-columns:280px minmax(0,1fr); gap:var(--spacing-xl); }` : `[NavigationBar] ⛔ 모바일 전용 — 하단 고정 탭바
-  { position:fixed; bottom:0; left:0; right:0; background:var(--color-surface); border-top:1px solid var(--color-border-alt); display:flex; }
-  active icon+text: var(--color-primary); inactive: var(--color-icon)`}
-
-[Modal / Dialog]
-  { max-width:480px; border-radius:var(--rounded-xl); padding:var(--spacing-lg); }
-
-${effectivePlatform !== 'web' ? `[BottomSheet]
-  { border-radius:var(--rounded-2xl) var(--rounded-2xl) 0 0; padding:var(--spacing-base) var(--spacing-lg); }
-
-` : ''}[Snackbar]
-  { border-radius:var(--rounded-md); background:#28292c; color:#ffffff; }
-` : isMd3Base ? `
+${isMd3Base ? `
 ╔══════════════════════════════════════════════════════════════╗
 ║  🏗️  MD3 구조 기반 — 컴포넌트 패턴 강제                      ║
 ╚══════════════════════════════════════════════════════════════╝
