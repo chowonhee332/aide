@@ -778,7 +778,7 @@ contract:
         input: touch-or-pointer
         density: comfortable
         columns: 3
-        page-padding: 16px
+        page-padding: 20px
         control-min: 40px
       wide:
         range: 1280px+
@@ -797,11 +797,6 @@ contract:
       compact: 0..767px
       medium: 768px..1279px
       wide: 1280px+
-      xs: 0..479px
-      sm: 480px..767px
-      md: 768px..1279px
-      lg: 1280px..1439px
-      xl: 1440px+
     grid:
       basis: 8px
       spacing-rule: 4px multiples; 2px optical correction is allowed
