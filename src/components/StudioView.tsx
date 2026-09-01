@@ -3374,6 +3374,57 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           </div>
         )}
 
+        {directionPicker && (
+          <div className="fixed inset-0 z-50 flex" style={{ backgroundColor: 'var(--aui-scrim)', backdropFilter: 'blur(6px)' }}>
+            <div className="m-auto flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--aui-radius-card)] bg-[var(--aui-surface)]" style={{ boxShadow: 'var(--aui-shadow-floating)' }}>
+              <div className="flex items-start justify-between gap-4 border-b border-[var(--aui-border-subtle)] p-[var(--aui-space-5)]">
+                <div>
+                  <p className="text-base font-semibold text-[var(--aui-text)]">방향 3개를 고르세요</p>
+                  <p className="mt-1 text-sm text-[var(--aui-text-muted)]">고른 순서대로 A · B · C 시안이 됩니다. 같은 콘텐츠·디자인 시스템으로 표현만 다르게 생성합니다.</p>
+                </div>
+                <button type="button" onClick={() => directionPickResolverRef.current?.(null)} aria-label="닫기" className="shrink-0 rounded-[var(--aui-radius-control)] p-1 text-[var(--aui-text-muted)] hover:bg-[var(--aui-surface-muted)]">
+                  <X size={18}/>
+                </button>
+              </div>
+              <div className="grid flex-1 gap-[var(--aui-space-4)] overflow-y-auto p-[var(--aui-space-5)] sm:grid-cols-2 md:grid-cols-3">
+                {directionPicker.canvases.map((ir) => {
+                  const idx = pickedDirectionIds.indexOf(ir.direction.id)
+                  return (
+                    <DirectionWireframe
+                      key={ir.id}
+                      ir={ir}
+                      order={idx === -1 ? undefined : idx}
+                      onToggle={() => setPickedDirectionIds((prev) =>
+                        prev.includes(ir.direction.id)
+                          ? prev.filter((id) => id !== ir.direction.id)
+                          : prev.length >= 3 ? prev : [...prev, ir.direction.id],
+                      )}
+                    />
+                  )
+                })}
+              </div>
+              <div className="flex items-center justify-between gap-3 border-t border-[var(--aui-border-subtle)] p-[var(--aui-space-5)]">
+                <button type="button" onClick={() => directionPickResolverRef.current?.(directionPicker.auto)} className="text-sm font-semibold text-[var(--aui-text-muted)] transition-colors hover:text-[var(--aui-text)]">
+                  자동으로 3개 고르기
+                </button>
+                <button
+                  type="button"
+                  disabled={pickedDirectionIds.length !== 3}
+                  onClick={() => {
+                    const byId = new Map(directionPicker.canvases.map((c) => [c.direction.id, c.direction]))
+                    const ordered = pickedDirectionIds.map((id) => byId.get(id)).filter((d): d is DesignDirection => !!d)
+                    directionPickResolverRef.current?.(ordered)
+                  }}
+                  className="rounded-[var(--aui-radius-control)] px-4 py-2 text-sm font-semibold text-[var(--aui-on-primary)] transition-opacity disabled:opacity-40"
+                  style={{ backgroundColor: 'var(--aui-primary)' }}
+                >
+                  이 3개로 생성 ({pickedDirectionIds.length}/3)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     )
   }
@@ -4040,57 +4091,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             onVarChange={handleVarChange}
             onEvent={handleTweakEvent}
           />
-        )}
-
-        {directionPicker && (
-          <div className="fixed inset-0 z-50 flex" style={{ backgroundColor: 'var(--aui-scrim)', backdropFilter: 'blur(6px)' }}>
-            <div className="m-auto flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--aui-radius-card)] bg-[var(--aui-surface)]" style={{ boxShadow: 'var(--aui-shadow-floating)' }}>
-              <div className="flex items-start justify-between gap-4 border-b border-[var(--aui-border-subtle)] p-[var(--aui-space-5)]">
-                <div>
-                  <p className="text-base font-semibold text-[var(--aui-text)]">방향 3개를 고르세요</p>
-                  <p className="mt-1 text-sm text-[var(--aui-text-muted)]">고른 순서대로 A · B · C 시안이 됩니다. 같은 콘텐츠·디자인 시스템으로 표현만 다르게 생성합니다.</p>
-                </div>
-                <button type="button" onClick={() => directionPickResolverRef.current?.(null)} aria-label="닫기" className="shrink-0 rounded-[var(--aui-radius-control)] p-1 text-[var(--aui-text-muted)] hover:bg-[var(--aui-surface-muted)]">
-                  <X size={18}/>
-                </button>
-              </div>
-              <div className="grid flex-1 gap-[var(--aui-space-4)] overflow-y-auto p-[var(--aui-space-5)] sm:grid-cols-2 md:grid-cols-3">
-                {directionPicker.canvases.map((ir) => {
-                  const idx = pickedDirectionIds.indexOf(ir.direction.id)
-                  return (
-                    <DirectionWireframe
-                      key={ir.id}
-                      ir={ir}
-                      order={idx === -1 ? undefined : idx}
-                      onToggle={() => setPickedDirectionIds((prev) =>
-                        prev.includes(ir.direction.id)
-                          ? prev.filter((id) => id !== ir.direction.id)
-                          : prev.length >= 3 ? prev : [...prev, ir.direction.id],
-                      )}
-                    />
-                  )
-                })}
-              </div>
-              <div className="flex items-center justify-between gap-3 border-t border-[var(--aui-border-subtle)] p-[var(--aui-space-5)]">
-                <button type="button" onClick={() => directionPickResolverRef.current?.(directionPicker.auto)} className="text-sm font-semibold text-[var(--aui-text-muted)] transition-colors hover:text-[var(--aui-text)]">
-                  자동으로 3개 고르기
-                </button>
-                <button
-                  type="button"
-                  disabled={pickedDirectionIds.length !== 3}
-                  onClick={() => {
-                    const byId = new Map(directionPicker.canvases.map((c) => [c.direction.id, c.direction]))
-                    const ordered = pickedDirectionIds.map((id) => byId.get(id)).filter((d): d is DesignDirection => !!d)
-                    directionPickResolverRef.current?.(ordered)
-                  }}
-                  className="rounded-[var(--aui-radius-control)] px-4 py-2 text-sm font-semibold text-[var(--aui-on-primary)] transition-opacity disabled:opacity-40"
-                  style={{ backgroundColor: 'var(--aui-primary)' }}
-                >
-                  이 3개로 생성 ({pickedDirectionIds.length}/3)
-                </button>
-              </div>
-            </div>
-          </div>
         )}
 
         {figmaExportOpen && (
