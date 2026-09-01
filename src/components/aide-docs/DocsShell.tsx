@@ -16,6 +16,7 @@ export function DocsShell({ sectionId, pageId, toc = [], children }: DocsShellPr
 
   return (
     <div className="docs-app">
+      <a className="docs-skip-link" href="#docs-main">본문으로 건너뛰기</a>
       <header className="docs-gnb">
         <Link className="docs-brand" href="/aide-ui" aria-label="Aide Design System 홈">
           <span className="docs-brand-mark" aria-hidden>W</span>
@@ -56,7 +57,7 @@ export function DocsShell({ sectionId, pageId, toc = [], children }: DocsShellPr
         </nav>
       </aside>
 
-      <main className="docs-content">{children}</main>
+      <main className="docs-content" id="docs-main">{children}</main>
 
       {toc.length > 0 ? <DocsPageToc items={toc}/> : null}
     </div>

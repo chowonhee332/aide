@@ -706,8 +706,8 @@
         "$description": "Prominent horizontal padding"
       },
       "radius": {
-        "$value": "10px",
-        "$description": "Button radius"
+        "$value": "6px",
+        "$description": "Button radius — must match the portable button rule"
       },
       "gap": {
         "$value": "5px",

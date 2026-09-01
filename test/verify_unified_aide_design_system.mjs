@@ -36,6 +36,11 @@ assert.deepEqual(
 const llmsRouteSource = read('src/app/aide-ui/llms.txt/route.ts')
 assert.match(llmsRouteSource, /dict\(AIDE_DESIGN_CONTRACT\.ai\)\.interaction_principles/, 'llms.txt must derive AI interaction principles from the contract')
 assert.match(llmsRouteSource, /Object\.entries\(patterns\)/, 'llms.txt must derive its pattern index from contract.patterns')
+const designParserSource = read('src/lib/design-md-contract.ts')
+assert.match(designParserSource, /flattenGenerationContract/, 'the fenced contract must expose a compact generation contract to the prompt compiler')
+const geminiSource = read('src/lib/gemini.ts')
+assert.match(geminiSource, /generationAcceptance/, 'the A\/B\/C prompt must receive the generation acceptance contract')
+assert.match(geminiSource, /chosen pattern, component tree, token usage, states, and accessibility checks/, 'the A\/B\/C prompt must require auditable generation output')
 
 const buttonVariants = contract.components.button.variants
 assert.deepEqual(buttonVariants, ['primary', 'secondary', 'outline', 'ghost', 'destructive', 'link'])

@@ -1262,6 +1262,12 @@ type DesignRhythmContract = {
   typographyKeys: string[]
   typography: Record<string, { size: string; line: string; weight: string }>
   shadow: Record<string, string>
+  generation: {
+    required: string[]
+    prohibited: string[]
+    selectionRules: string[]
+    accessibility: string[]
+  }
   components: ComponentContract
   layoutRhythm: {
     pagePadding: string
@@ -1487,6 +1493,7 @@ function buildDesignRhythmContract(designMd: string, hasBrandColors = false): De
     typographyKeys: (Array.isArray(typeKeys) ? typeKeys : Object.keys(typeKeys)).slice(0, 16),
     typography: fenced?.typography ?? {},
     shadow,
+    generation: fenced?.generation ?? { required: [], prohibited: [], selectionRules: [], accessibility: [] },
     components,
     layoutRhythm: {
       pagePadding,
@@ -1516,7 +1523,7 @@ function buildDesignSystemContract(
   const contract = buildDesignRhythmContract(designMd, hasBrandColors)
   if (!contract) return 'No external DESIGN.md was provided. Use the default Aide design system contract.'
 
-  const { systemName: name, colors, spacing, rounded, typographyKeys: typeKeys, typography, shadow, components, layoutRhythm } = contract
+  const { systemName: name, colors, spacing, rounded, typographyKeys: typeKeys, typography, shadow, components, layoutRhythm, generation } = contract
   const typeScaleLine = Object.entries(typography)
     .map(([role, t]) => `${role} ${t.size}`)
     .join(' / ')
@@ -1548,6 +1555,12 @@ function buildDesignSystemContract(
     const summary = Object.entries(value).slice(0, 8).map(([prop, val]) => `${prop}: ${val}`).join('; ')
     return `    "${key}": "${summary || 'defined in prose'}"`
   })
+  const generationAcceptance = {
+    required: generation.required,
+    prohibited: generation.prohibited,
+    selectionRules: generation.selectionRules,
+    accessibility: generation.accessibility,
+  }
 
   return `## Design System Contract — generated from the selected DESIGN.md
 
@@ -1573,6 +1586,7 @@ ${roundedLines.length ? roundedLines.join(',\n') : '    "note": "No explicit rad
   "componentContract": {
 ${componentLines.length ? componentLines.join(',\n') : '    "note": "No explicit component YAML found; follow prose component rules strictly."'}
   },
+  "generationAcceptance": ${JSON.stringify(generationAcceptance)},
   "layoutRhythm": {
     "pagePadding": ${JSON.stringify(layoutRhythm.pagePadding)},
     "pagePaddingWeb": ${JSON.stringify(layoutRhythm.pagePaddingWeb)},
@@ -1606,7 +1620,8 @@ ${componentLines.length ? componentLines.join(',\n') : '    "note": "No explicit
   --aide-card-radius = ${layoutRhythm.cardRadius} (카드 모서리)
   ⛔ NEVER write: padding: 16px / gap: 12px / margin-top: 24px → ALWAYS write: var(--aide-card-padding, ${layoutRhythm.cardPadding}) / var(--aide-card-gap, ${layoutRhythm.cardGap}) / var(--aide-section-gap, ${layoutRhythm.sectionGap})
 - Aide also injects the typography scale as --aide-text-{role}-size / -line / -weight${typeScaleLine ? ` (${typeScaleLine})` : ''}. Every font-size MUST be a scale value: reference var(--aide-text-body-size) etc., or use exactly one of the scale px values. Body text ≥ 14px, captions ≥ 12px. NEVER 9/10px or off-scale sizes like 17/19/22px.
-- Aide injects the shadow scale as --shadow-{role}${Object.keys(shadow).length ? ` (${Object.keys(shadow).join(', ')})` : ''}. For box-shadow use var(--shadow-card) / var(--shadow-raised) etc. — do NOT inline raw rgba() shadows.`
+- Aide injects the shadow scale as --shadow-{role}${Object.keys(shadow).length ? ` (${Object.keys(shadow).join(', ')})` : ''}. For box-shadow use var(--shadow-card) / var(--shadow-raised) etc. — do NOT inline raw rgba() shadows.
+- Before finalizing, name the chosen pattern, component tree, token usage, states, and accessibility checks. Never use an unresolved token, inaccessible name, or unregistered component without a reason.`
 }
 
 function cssVarDeclaration(key: string, value: string): string {

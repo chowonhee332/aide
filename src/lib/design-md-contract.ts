@@ -32,6 +32,13 @@ export interface FlatDesignContract {
   typography: Record<string, { size: string; line: string; weight: string }>
   /** `contract.tokens.shadow` — role → box-shadow value. Model otherwise inlines raw rgba(). */
   shadow: Record<string, string>
+  /** Compact AI acceptance contract compiled from the canonical YAML. */
+  generation: {
+    required: string[]
+    prohibited: string[]
+    selectionRules: string[]
+    accessibility: string[]
+  }
 }
 
 /** DTCG 그룹(`{ key: { $value, $description } }`)을 평면 `key: value`로 편다. */
@@ -116,6 +123,24 @@ export function parseFencedDesignContract(designMd: string): FlatDesignContract 
     layout,
     typography: flattenTypography(tokens.typography),
     shadow: flattenTokenGroup(tokens.shadow),
+    generation: flattenGenerationContract(contract),
+  }
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+}
+
+/** Full prose remains in aide.md; this is the deterministic generation subset. */
+function flattenGenerationContract(contract: Record<string, unknown>): FlatDesignContract['generation'] {
+  const ai = (contract.ai ?? {}) as Record<string, unknown>
+  const output = (ai.generation_output ?? {}) as Record<string, unknown>
+  const accessibility = (contract.accessibility ?? {}) as Record<string, unknown>
+  return {
+    required: stringList(output.required),
+    prohibited: stringList(output.prohibited),
+    selectionRules: stringList(ai.selection_rules),
+    accessibility: stringList(accessibility.requirements),
   }
 }
 

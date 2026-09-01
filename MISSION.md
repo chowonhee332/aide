@@ -68,7 +68,7 @@ Brain이 목표를 아래 역할로 쪼개 서브에이전트에 배정한다. �
 서브에이전트 보고를 받아 Brain이 갱신한다. 형식: `상태 · 무엇을 · 다음 검증`
 
 - **기획**: 🟡 대기 — 아직 이번 사이클 착수 안 함
-- **디자인**: 🟢 진행 — `docs/design-system-upgrade-plan.md`을 외부 시스템 조사 기반 갭맵으로 갱신하고 `aide.md`에 AI interaction 원칙 + P0 패턴 6개 추가. `design:lint` 0 errors, unified contract test 통과. 다음: pattern retrieval·문서 renderer 확인
+- **디자인**: 🟢 진행 — `aide.md`의 AI interaction·P0 패턴·토큰/컴포넌트 계약을 `/aide-ui`와 연결. 2026-08-31에 platform baseline(768·1280), 버튼 radius, 생성용 색상 산문을 정합화하고 `generationAcceptance`를 A/B/C 프롬프트에 연결. `design:lint` 0 errors, unified test·lint·build 통과. 다음: 실제 A/B/C 1회로 계약 준수 실측
 - **아키텍처**: 🟢 감사 — 생성 파이프라인·IR·API·데이터 경계의 안전한 분할과 선행조건 조사
 - **개발**: 🟢 진행 — `docs/design-contract-cleanup.md` 완료분(9커밋, 전부 정적 검증). 남음: 1b(_base/guardrails 신규 + aide.md 산문 통합)·2(aide.md 물리 분해)는 **다음 실 생성 1회와 묶어서**.
 - **Brain 직접(2026-08-31)**: 🟢 platform-baseline·셸 강제·모델 라우팅·telco 수정·랜딩 아키타입·데스크 리서치 커밋 완료(`ad2178b`~`d76ed50`+). 6절 참고. 다음: 실제 FORMA/VIP 재생성으로 검증.

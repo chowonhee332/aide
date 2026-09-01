@@ -767,21 +767,21 @@ contract:
   responsive:
     modes:
       compact:
-        range: 0..600px
+        range: 0..767px
         input: touch-first
         density: comfortable
         columns: 2
         page-padding: 16px
         control-min: 44px
       medium:
-        range: 601px..1024px
+        range: 768px..1279px
         input: touch-or-pointer
         density: comfortable
         columns: 3
         page-padding: 16px
         control-min: 40px
       wide:
-        range: 1025px+
+        range: 1280px+
         input: pointer-and-keyboard
         density: compact-or-comfortable
         columns: 12
@@ -794,14 +794,14 @@ contract:
       - MUST NOT hide essential functionality solely because the viewport is compact
       - MUST use container queries for reusable components when parent width matters more than viewport
     breakpoints:
-      compact: 0..600px
-      medium: 601px..1024px
-      wide: 1025px+
-      xs: 0..600px
-      sm: 601px..768px
-      md: 769px..1024px
-      lg: 1025px..1440px
-      xl: 1441px+
+      compact: 0..767px
+      medium: 768px..1279px
+      wide: 1280px+
+      xs: 0..479px
+      sm: 480px..767px
+      md: 768px..1279px
+      lg: 1280px..1439px
+      xl: 1440px+
     grid:
       basis: 8px
       spacing-rule: 4px multiples; 2px optical correction is allowed
@@ -3701,8 +3701,8 @@ contract:
         $value: "{dimension.space-5}"
         $description: Prominent horizontal padding
       radius:
-        $value: 10px
-        $description: Button radius
+        $value: "{radius.control}"
+        $description: Button radius — must match the portable button rule
       gap:
         $value: 5px
         $description: Button icon-to-label gap
@@ -5566,9 +5566,9 @@ Core CSS contract:
 
 ```css
 :root {
-  --color-primary: #0066FF;
-  --color-primary-soft: #EAF2FE;
-  --color-page: #F7F7F8;
+  --color-primary: #1a75ff;
+  --color-primary-soft: #e8f1ff;
+  --color-page: #f2f5f9;
   --color-surface: #FFFFFF;
   --color-text: #171719;
   --color-muted: rgba(55,56,60,0.61);
@@ -5775,15 +5775,15 @@ Good: hero + simulator + quick actions + ranked cards + recent history + bottom 
 
 ## Primary Color Hierarchy
 
-`--color-primary: #0066FF` has four distinct roles — apply only the role that matches the context:
+`--color-primary: #1a75ff` has four distinct roles — apply only the role that matches the context:
 
 | 토큰 | 용도 | 사용 예 |
 |---|---|---|
-| `primary` (#0066FF) | CTA 버튼 배경, 아이콘 강조, 숫자 KPI | 주요 행동 버튼, 탭 활성 아이콘 |
-| `primary-strong` (#005EEB) | CTA :hover / :active 상태 | 버튼 눌림 시 색 변화 |
-| `primary-heavy` (#0054D1) | 선택된 항목의 텍스트·아이콘 | 활성 탭 레이블 |
-| `primary-soft` (#EAF2FE) | 선택·활성 상태의 배경 | 칩 선택 배경, 탭 인디케이터 배경 |
-| `primary-tint` (rgba 8%) | 경계 없이 tint 효과 | 토스트 배경, 인라인 강조 |
+| `primary` (#1a75ff) | CTA 버튼 배경, 아이콘 강조, 숫자 KPI | 주요 행동 버튼, 탭 활성 아이콘 |
+| `primary-strong` (#186ae8) | CTA :hover / :active 상태 | 버튼 눌림 시 색 변화 |
+| `primary-heavy` (#1560cc) | 선택된 항목의 텍스트·아이콘 | 활성 탭 레이블 |
+| `primary-soft` (#e8f1ff) | 선택·활성 상태의 배경 | 칩 선택 배경, 탭 인디케이터 배경 |
+| `primary-tint` (rgba(26,117,255,.28)) | 경계 없이 tint 효과 | 토스트 배경, 인라인 강조 |
 
 Rules:
 - Primary blue는 **CTA, 활성 상태, KPI 숫자**에만 사용한다. 장식·배경·텍스트 기본색에 쓰지 않는다.
@@ -5876,6 +5876,6 @@ Aide UI에서 사용하는 한국어 카피의 어조와 규칙.
 - Do not center-float buttons in the middle of image/content blocks.
 - Do not make all variants the same layout.
 - Do not create empty, decorative, low-content screens.
-- Do not apply primary blue (#0066FF) to decorative backgrounds, body text, or non-CTA elements.
+- Do not apply primary blue (#1a75ff) to decorative backgrounds, body text, or non-CTA elements.
 - Do not omit `:focus-visible` ring on interactive elements.
 - Do not use English copy for labels, CTAs, or status messages in Korean-language screens.
