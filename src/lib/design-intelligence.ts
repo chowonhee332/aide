@@ -48,6 +48,35 @@ export function detectLandingIntent(brief: string, platform: 'mobile' | 'web'): 
 
 export function detectServiceSubtype(brief: string, domain: AppDomain, subtypeHint?: string): string {
   const normalized = brief.toLowerCase()
+
+  // Phase 1: LLM 힌트 우선 — ServiceAnalysis로부터 온 서비스 서브타입 힌트를 먼저 확인
+  // known subtypes로 검증하고, 유효하면 즉시 반환한다. (AGENTS.md: "새 로직은 ServiceAnalysis를 우선한다")
+  const knownSubtypes = [
+    'pizza-order-membership',
+    'telco-plan-recommendation',
+    'membership-reward',
+    'plant-care-companion',
+    'b2b-logistics-dashboard',
+    'health-fitness-tracker',
+    'fintech-investment',
+    'travel-booking',
+    'education-learning',
+    'social-community',
+    'e-commerce-shopping',
+    'food-order-commerce',
+    'local-store-commerce',
+    'b2b-dashboard',
+    'ai-productivity',
+  ]
+
+  if (subtypeHint) {
+    const cleanHint = subtypeHint.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '')
+    if (cleanHint && cleanHint.length >= 3 && knownSubtypes.includes(cleanHint)) {
+      return cleanHint
+    }
+  }
+
+  // Phase 2: 정규식 기반 매칭 — known subtypes 중 regex로 감지되는 것
   if (includesAny(brief, [/피자|pizza|페퍼로니|주문|픽업|스탬프|피자집/])) return 'pizza-order-membership'
   // "모바일" "데이터"는 통신 전용 신호가 아니다(거의 모든 앱 브리프에 등장) → 통신 특화 단어만 남긴다
   if (includesAny(brief, [/요금제|통신사|위약금|번호이동|유심|알뜰폰|셀룰러|LTE|5G/])) return 'telco-plan-recommendation'
@@ -63,9 +92,15 @@ export function detectServiceSubtype(brief: string, domain: AppDomain, subtypeHi
   if (domain === 'food') return 'food-order-commerce'
   if (domain === 'commerce') return 'local-store-commerce'
   if (domain === 'business') return 'b2b-dashboard'
-  // 정규식 매칭 실패 — LLM이 추출한 서비스 성격 힌트가 있으면 그걸 우선 사용 (Phase 1-B)
-  const cleanHint = subtypeHint?.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '')
-  if (cleanHint && cleanHint.length >= 3) return cleanHint
+
+  // Phase 3: 정규식/도메인 기반 매칭 실패 — unrecognized hint 경고 후 폴백
+  if (subtypeHint) {
+    const cleanHint = subtypeHint.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '')
+    if (cleanHint && cleanHint.length >= 3 && !knownSubtypes.includes(cleanHint)) {
+      console.warn(`detectServiceSubtype: unrecognized subtypeHint "${subtypeHint}" (cleaned: "${cleanHint}")`)
+    }
+  }
+
   return normalized.includes('ai') ? 'ai-productivity' : `${domain}-service`
 }
 
