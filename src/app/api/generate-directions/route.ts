@@ -29,10 +29,15 @@ export async function POST(req: NextRequest) {
       ? selectDirectionsForVisualRoles(directions, body.visualRoles)
       : selectDiverseDirections(directions, 3)
     const selectedCanvases = selected.map(direction => buildDesignCanvasIR(direction, body))
+    // Every candidate gets a deterministic wireframe so the user can pick 3 of N
+    // instead of the pipeline silently auto-narrowing. Same IR the picked
+    // direction feeds into generateUI — no throwaway mock UI.
+    const canvases = directions.map(direction => buildDesignCanvasIR(direction, body))
     return NextResponse.json({
       directions,
       selected,
       selectedCanvases,
+      canvases,
     })
   } catch (error) {
     console.error('[generate-directions]', error)
