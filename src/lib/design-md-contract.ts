@@ -131,6 +131,15 @@ function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
 }
 
+/**
+ * 진단: parent key는 있는데 추출 결과가 비면 경고한다. 키 이름 오타나 구조 변경으로
+ * 값이 조용히 사라지던 것을 드러낸다. Customer DESIGN.md는 경고만, aide.md는
+ * `assertAideContractParse`로 build/test에서 throw.
+ */
+function warnIfEmpty(path: string): void {
+  console.warn(`[design-md-contract] ${path} key exists but produced no values — check for a renamed or restructured key`)
+}
+
 /** Full prose remains in aide.md; this is the deterministic generation subset. */
 function flattenGenerationContract(contract: Record<string, unknown>): FlatDesignContract['generation'] {
   const ai = (contract.ai ?? {}) as Record<string, unknown>
@@ -159,6 +168,9 @@ function flattenTypography(group: unknown): Record<string, { size: string; line:
     const weight = v.fontWeight ?? v['font-weight'] ?? ''
     result[key] = { size: String(size), line: String(line), weight: String(weight) }
   }
+  if (typeof group === 'object' && group !== null && Object.keys(group as Record<string, unknown>).length > 0 && Object.keys(result).length === 0) {
+    warnIfEmpty('contract.tokens.typography')
+  }
   return result
 }
 
@@ -180,5 +192,40 @@ function flattenResponsiveLayout(contract: Record<string, unknown>): Record<stri
   if (wide) result['page-padding-web'] = wide
   const gutter = str((responsive.grid as Record<string, unknown> | undefined)?.gutter)
   if (gutter) result['gutter'] = gutter
+  if (modes && typeof modes === 'object' && Object.keys(modes).length > 0 && !result['page-padding'] && !result['page-padding-web']) {
+    warnIfEmpty('contract.responsive.modes')
+  }
   return result
+}
+
+/**
+ * aide.md(기본 디자인 시스템) 전용 엄격 검증. parent key가 있는데 추출이 비면 throw해서
+ * 조용한 재구조화·오타가 배포되지 않게 한다. Customer DESIGN.md는 `parseFencedDesignContract`
+ * 의 경고만 받는다. `scripts/design-system.mjs`/test에서 호출한다.
+ */
+export function assertAideContractParse(designMd: string): void {
+  const fenced = designMd.match(/```yaml\n([\s\S]*?)\n```/)
+  if (!fenced) throw new Error('aide.md: machine-readable yaml block not found')
+  let contract: Record<string, unknown> | undefined
+  try {
+    contract = (parseYaml(fenced[1]) as { contract?: Record<string, unknown> })?.contract
+  } catch (e) {
+    throw new Error(`aide.md: YAML parse error: ${e instanceof Error ? e.message : String(e)}`)
+  }
+  if (!contract) throw new Error('aide.md: contract missing')
+  const tokens = contract.tokens as Record<string, unknown> | undefined
+  if (!tokens) throw new Error('aide.md: contract.tokens missing')
+
+  const responsive = contract.responsive as Record<string, unknown> | undefined
+  const modes = responsive?.modes as Record<string, unknown> | undefined
+  if (modes && typeof modes === 'object' && Object.keys(modes).length > 0) {
+    if (Object.keys(flattenResponsiveLayout(contract)).length === 0) {
+      throw new Error('aide.md: contract.responsive.modes present but produced no layout values (check compact/medium/wide page-padding, or grid.gutter)')
+    }
+  }
+  if (tokens.typography && typeof tokens.typography === 'object' && Object.keys(tokens.typography as Record<string, unknown>).length > 0) {
+    if (Object.keys(flattenTypography(tokens.typography)).length === 0) {
+      throw new Error('aide.md: contract.tokens.typography present but produced no scales (each scale needs $value with fontSize/font-size)')
+    }
+  }
 }
