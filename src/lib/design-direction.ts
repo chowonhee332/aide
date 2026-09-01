@@ -3,16 +3,62 @@ import type {
   CanvasDensity,
   CanvasMediaMode,
   CanvasNavigation,
+  CanvasPlatform,
+  CanvasStructure,
   DesignDirection,
   DesignDirectionRequest,
 } from './design-canvas-ir'
 
 type TextGenerator = (prompt: string) => Promise<string>
 
-const COMPOSITIONS: CanvasComposition[] = ['dashboard', 'immersive', 'editorial', 'workspace', 'feed', 'map', 'commerce', 'guided', 'experimental']
+const COMPOSITIONS: CanvasComposition[] = ['dashboard', 'immersive', 'editorial', 'carousel', 'workspace', 'feed', 'map', 'commerce', 'guided', 'experimental']
 const DENSITIES: CanvasDensity[] = ['compact', 'balanced', 'airy']
 const MEDIA_MODES: CanvasMediaMode[] = ['none', 'data', 'illustration', 'photo', 'mixed']
-const NAVIGATIONS: CanvasNavigation[] = ['bottom-tabs', 'top-bar', 'sidebar', 'minimal']
+const WEB_NAVIGATIONS: CanvasNavigation[] = ['top-bar', 'sidebar', 'top-and-side', 'minimal']
+
+function oneOf<T extends string>(value: unknown, choices: readonly T[], fallback: T): T {
+  return typeof value === 'string' && choices.includes(value as T) ? value as T : fallback
+}
+
+/** 모바일은 앱 셸(헤더+하단탭)이 전제라 navigation을 고정한다. 웹은 셸 자체가 변화 축이다. */
+function navForPlatform(platform: CanvasPlatform, value: unknown): CanvasNavigation {
+  if (platform === 'mobile') return 'bottom-tabs'
+  return oneOf(value, WEB_NAVIGATIONS, 'top-bar')
+}
+
+export interface StructureLock {
+  composition?: CanvasComposition
+  compositionPool?: CanvasComposition[]
+  navigation: CanvasNavigation
+  label: string
+}
+
+/**
+ * 설문의 "메인 구조" → composition/navigation. app-* 는 composition을 고정하고,
+ * web-* 는 셸(navigation)을 고정하되 일부는 composition을 풀에서 변주한다.
+ * 이 매핑은 여기 한 곳에서만 해석한다.
+ */
+export const STRUCTURE_LOCKS: Record<CanvasStructure, StructureLock> = {
+  'app-card': { composition: 'carousel', navigation: 'bottom-tabs', label: '큰 카드를 좌우로 넘기며 탐색하는 캐러셀 구조' },
+  'app-list': { composition: 'feed', navigation: 'bottom-tabs', label: '세로 리스트를 한 줄씩 쌓는 피드 구조' },
+  'app-grid': { composition: 'editorial', navigation: 'bottom-tabs', label: '균일한 카드를 2열 그리드로 채우는 구조' },
+  'app-dashboard': { composition: 'dashboard', navigation: 'bottom-tabs', label: '상단 KPI + 정보 카드 그리드의 대시보드 구조' },
+  'app-discovery': { composition: 'commerce', navigation: 'bottom-tabs', label: '검색·필터 + 조밀한 썸네일 그리드의 탐색 구조' },
+  'app-map': { composition: 'map', navigation: 'bottom-tabs', label: '지도 전면 + 하단 시트의 위치 기반 구조' },
+  'app-guided': { composition: 'guided', navigation: 'bottom-tabs', label: '한 번에 하나씩 선택하며 진행하는 단계형 구조' },
+  'app-immersive': { composition: 'immersive', navigation: 'bottom-tabs', label: '대형 비주얼 1개 + 단일 CTA의 몰입형 구조' },
+  'web-gnb': { compositionPool: ['editorial', 'feed', 'commerce'], navigation: 'top-bar', label: '상단 GNB + 넓은 단일 컬럼' },
+  'web-lnb': { compositionPool: ['feed', 'dashboard'], navigation: 'sidebar', label: '좌측 LNB + 우측 목록/작업 영역' },
+  'web-dashboard': { composition: 'dashboard', navigation: 'top-and-side', label: '상단바 + 좌측 내비 + 정보 그리드의 대시보드' },
+  'web-split': { composition: 'workspace', navigation: 'sidebar', label: '좌측 목록 + 우측 상세의 분할 뷰' },
+  'web-minimal': { compositionPool: ['immersive', 'editorial', 'guided'], navigation: 'minimal', label: '상단 최소 바 + 좁은 중앙 컬럼' },
+}
+
+export function applyStructureLock(direction: DesignDirection, lock: StructureLock, index: number): DesignDirection {
+  const pool = lock.compositionPool
+  const composition = lock.composition ?? (pool ? pool[index % pool.length] : direction.composition)
+  return { ...direction, composition, navigation: lock.navigation }
+}
 
 const FALLBACK_DIRECTIONS: Array<Omit<DesignDirection, 'id'>> = [
   { name: '인사이트 보드', thesis: '핵심 상태와 다음 행동을 한 화면에서 판단한다.', userFeeling: '명확함과 통제감', composition: 'dashboard', density: 'compact', mediaMode: 'data', navigation: 'bottom-tabs', focalPoint: '핵심 지표', primaryAction: '주요 목표 시작', sectionFlow: ['상태 요약', '빠른 행동', '추세', '최근 활동'], paletteIntent: '높은 가독성의 절제된 데이터 팔레트', typographyIntent: '숫자와 상태가 빠르게 읽히는 조밀한 계층', signatureMove: '가로로 이어지는 단일 KPI 리본', avoid: ['대형 장식 이미지', '동일 크기 카드 반복'] },
@@ -23,15 +69,11 @@ const FALLBACK_DIRECTIONS: Array<Omit<DesignDirection, 'id'>> = [
   { name: '가이드 플로우', thesis: '복잡한 선택을 하나씩 안내해 결과에 도달하게 한다.', userFeeling: '안심과 전진감', composition: 'guided', density: 'balanced', mediaMode: 'illustration', navigation: 'minimal', focalPoint: '현재 선택 단계', primaryAction: '다음 단계 진행', sectionFlow: ['목표 요약', '현재 질문', '선택지', '결과 미리보기'], paletteIntent: '신뢰감 있는 부드러운 저채도 팔레트', typographyIntent: '질문과 답이 명확히 구분되는 대화형 계층', signatureMove: '선택과 결과가 동시에 보이는 프리뷰 카드', avoid: ['많은 KPI', '긴 피드'] },
 ]
 
-function oneOf<T extends string>(value: unknown, choices: readonly T[], fallback: T): T {
-  return typeof value === 'string' && choices.includes(value as T) ? value as T : fallback
-}
-
 function strings(value: unknown, max: number): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).slice(0, max) : []
 }
 
-function normalizeDirection(value: unknown, index: number): DesignDirection | null {
+function normalizeDirection(value: unknown, index: number, platform: CanvasPlatform): DesignDirection | null {
   if (!value || typeof value !== 'object') return null
   const raw = value as Record<string, unknown>
   if (typeof raw.name !== 'string' || typeof raw.thesis !== 'string') return null
@@ -43,7 +85,7 @@ function normalizeDirection(value: unknown, index: number): DesignDirection | nu
     composition: oneOf(raw.composition, COMPOSITIONS, 'dashboard'),
     density: oneOf(raw.density, DENSITIES, 'balanced'),
     mediaMode: oneOf(raw.mediaMode, MEDIA_MODES, 'none'),
-    navigation: oneOf(raw.navigation, NAVIGATIONS, 'bottom-tabs'),
+    navigation: navForPlatform(platform, raw.navigation),
     focalPoint: typeof raw.focalPoint === 'string' ? raw.focalPoint.slice(0, 100) : '핵심 콘텐츠',
     primaryAction: typeof raw.primaryAction === 'string' ? raw.primaryAction.slice(0, 80) : '시작하기',
     sectionFlow: strings(raw.sectionFlow, 6),
@@ -63,6 +105,14 @@ function extractJson(text: string): unknown {
 }
 
 export function buildDirectionPrompt(input: DesignDirectionRequest): string {
+  const lock = input.structure ? STRUCTURE_LOCKS[input.structure] : undefined
+  const navEnum = input.platform === 'mobile' ? 'bottom-tabs' : 'top-bar|sidebar|top-and-side|minimal'
+  const navGuidance = input.platform === 'mobile'
+    ? '- 플랫폼이 모바일 앱이다. 모든 안은 상단 헤더 + 하단 탭바 셸을 전제하며 navigation은 "bottom-tabs"로 고정한다. 여섯 안의 차이는 composition(카드/리스트/피드/대시보드/가이드/몰입)과 밀도·미디어로 만든다.'
+    : '- 플랫폼이 웹이다. 셸 구조 자체가 변화 축이다. navigation은 "top-bar"(상단 GNB만), "sidebar"(좌측 LNB만), "top-and-side"(GNB+LNB 혼합), "minimal"(중앙 집중) 중에서 고르고, 여섯 안에 최소 3가지 이상 서로 다른 값을 사용한다.'
+  const structureGuidance = lock
+    ? `- 고정 구조: 사용자가 "${lock.label}"를 선택했다. 여섯 안 모두 navigation=${lock.navigation}${lock.composition ? `, composition=${lock.composition}` : `, composition은 ${lock.compositionPool!.join('/')} 중에서만`} 을 유지하고, 차이는 density·mediaMode·focalPoint·sectionFlow·signatureMove로만 만든다.`
+    : '- 여섯 안의 composition, density, mediaMode, navigation 조합을 가능한 겹치지 마라.'
   return `당신은 제품 UI 아트 디렉터다. 코드나 HTML을 쓰지 말고, 서로 시각적·구조적으로 먼 6개의 디자인 방향을 설계해라.
 
 서비스: ${input.projectSummary || input.brief}
@@ -77,7 +127,8 @@ export function buildDirectionPrompt(input: DesignDirectionRequest): string {
 최종 시안 미디어 역할: ${input.visualRoles?.length === 3 ? `A=${input.visualRoles[0]}, B=${input.visualRoles[1]}, C=${input.visualRoles[2]}` : '후속 단계에서 결정'}
 
 규칙:
-- 여섯 안의 composition, density, mediaMode, navigation 조합을 가능한 겹치지 마라.
+${navGuidance}
+${structureGuidance}
 - 색상·폰트·라운드·그림자·컴포넌트 스타일은 여섯 안 모두 위 디자인 시스템을 공유한다. 시안별 새 팔레트를 만들지 마라.
 - 차이는 focal point, section flow, CTA 위치, 정보 밀도, 미디어 배치로 만들라.
 - paletteIntent는 새 hex·새 색상 제안이 아니라 DESIGN.md 토큰의 사용 비중(주조/보조/중립 면적)만 설명한다.
@@ -87,19 +138,29 @@ export function buildDirectionPrompt(input: DesignDirectionRequest): string {
 - 출력은 설명 없이 JSON 배열만 사용한다.
 
 각 객체 스키마:
-{"name":"","thesis":"","userFeeling":"","composition":"dashboard|immersive|editorial|workspace|feed|map|commerce|guided|experimental","density":"compact|balanced|airy","mediaMode":"none|data|illustration|photo|mixed","navigation":"bottom-tabs|top-bar|sidebar|minimal","focalPoint":"","primaryAction":"","sectionFlow":[""],"paletteIntent":"","typographyIntent":"","signatureMove":"","avoid":[""]}`
+{"name":"","thesis":"","userFeeling":"","composition":"dashboard|immersive|editorial|workspace|feed|map|commerce|guided|experimental","density":"compact|balanced|airy","mediaMode":"none|data|illustration|photo|mixed","navigation":"${navEnum}","focalPoint":"","primaryAction":"","sectionFlow":[""],"paletteIntent":"","typographyIntent":"","signatureMove":"","avoid":[""]}`
 }
 
 export async function generateDesignDirections(input: DesignDirectionRequest, generateText: TextGenerator): Promise<DesignDirection[]> {
+  const lock = input.structure ? STRUCTURE_LOCKS[input.structure] : undefined
+  const finalize = (list: Array<Omit<DesignDirection, 'id'> | DesignDirection>): DesignDirection[] =>
+    list.slice(0, 6).map((item, index) => {
+      const withId = { ...item, id: `direction-${index + 1}` } as DesignDirection
+      // 구조 lock이 있으면 composition/navigation을 강제한다. 없으면 최소한
+      // navigation은 플랫폼에 맞춘다(웹 fallback이 bottom-tabs로 새는 것 방지).
+      return lock ? applyStructureLock(withId, lock, index) : { ...withId, navigation: navForPlatform(input.platform, withId.navigation) }
+    })
   try {
     const parsed = extractJson(await generateText(buildDirectionPrompt(input)))
     if (!Array.isArray(parsed)) throw new Error('배열이 아닙니다.')
-    const normalized = parsed.map(normalizeDirection).filter((item): item is DesignDirection => item !== null)
-    if (normalized.length >= 6) return normalized.slice(0, 6).map((item, index) => ({ ...item, id: `direction-${index + 1}` }))
+    const normalized = parsed
+      .map((item, index) => normalizeDirection(item, index, input.platform))
+      .filter((item): item is DesignDirection => item !== null)
+    if (normalized.length >= 6) return finalize(normalized)
   } catch (error) {
     console.warn('[design-direction] fallback:', error instanceof Error ? error.message : error)
   }
-  return FALLBACK_DIRECTIONS.map((direction, index) => ({ ...direction, id: `direction-${index + 1}` }))
+  return finalize(FALLBACK_DIRECTIONS)
 }
 
 function directionDistance(a: DesignDirection, b: DesignDirection): number {

@@ -4,7 +4,7 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Sparkles, Upload, Download, RefreshCw, ArrowLeft, Check,
   SlidersHorizontal, X, Moon, Sun, Pencil, Send, ChevronDown,
-  CornerUpLeft, CornerUpRight, Image as ImageIcon, Shapes, Zap,
+  CornerUpLeft, CornerUpRight, Image as ImageIcon, Shapes, Zap, ChevronRight, Bell, Settings,
 } from '@/components/ui/material-icon'
 import { cn } from '@/lib/utils'
 import DotField from '@/components/DotField'
@@ -22,8 +22,11 @@ import { Checkbox, Switch } from '@/components/ui/selection-control'
 import { RadioGroup, Radio } from '@/components/ui/radio-group'
 import { SearchField } from '@/components/ui/search-field'
 import { Skeleton } from '@/components/ui/progress'
+import { ListRow, ListRowText } from '@/components/ui/list-row'
 import type { DesignCanvasIR, DesignDirection } from '@/lib/design-canvas-ir'
-import { DirectionWireframe } from '@/components/studio/DirectionWireframe'
+import { WireframeSvg } from '@/components/studio/DirectionWireframe'
+import type { AuthoredStructure } from '@/lib/layout-archetypes'
+import { authoredFromAnswer, directionFromStructure, previewCanvasForStructure, pickedStructurePlan } from '@/lib/main-structure'
 import { GEMINI_DESIGN_MODEL } from '@/lib/gemini-model-policy'
 import { compileStudioDesignTheme, type StudioDesignTheme, type UIScreenIR, type UIScreenSection, type UIScreenVariant } from '@/lib/ui-screen-ir'
 import { serializeUIScreenToHtml } from '@/lib/ui-screen-serializer'
@@ -193,13 +196,6 @@ function platformLabel(platform?: 'mobile' | 'web') {
   return platform === 'web' ? '웹 서비스' : '모바일 앱'
 }
 
-function platformFromIntent(value?: string): 'mobile' | 'web' | null {
-  if (!value) return null
-  if (value.includes('웹') || value.includes('랜딩') || value.includes('대시보드') || value.includes('포털')) return 'web'
-  if (value.includes('모바일')) return 'mobile'
-  return null
-}
-
 async function readUIScreenStream(
   response: Response,
   onPatch: (patch: { variant: UIScreenVariant; screen?: Omit<UIScreenIR, 'sections'>; section?: UIScreenSection }) => void,
@@ -266,7 +262,7 @@ function readStoredAsIsAnalysis(): AsIsPageAnalysis | undefined {
   catch { sessionStorage.removeItem('asIsAnalysis'); return undefined }
 }
 
-function defaultAnswersFromAnalysis(data: QuestionnaireResponse): Record<string, string> {
+function defaultAnswersFromAnalysis(data: QuestionnaireResponse): Record<string, string | string[]> {
   const domain = data.domain ?? 'other'
   const isB2B = domain === 'business' || domain === 'productivity'
   const serviceType = isB2B
@@ -305,7 +301,8 @@ function defaultAnswersFromAnalysis(data: QuestionnaireResponse): Record<string,
   return {
     hero_3d: hero3dDefault,
     service_type: serviceType,
-    platform_intent: platformLabel(data.recommendedPlatform?.platform),
+    // 프리셀렉트: LLM이 작성한 구조 5개 중 상위 3개(적합순)를 미리 고른다. 사용자가 설문에서 오버라이드 가능.
+    main_structure: (data.serviceAnalysis?.authoredStructures ?? []).slice(0, 3).map(s => s.name),
     domain: domainLabel,
     home_emphasis: homeOptions[0] ?? 'AI가 결정',
     primary_journey: primaryJourney,
@@ -823,8 +820,9 @@ interface StudioViewProps {
 
 export default function StudioView({ triggerBrief, triggerPreset, triggerPlatform, historyId, onBack }: StudioViewProps) {
   const [step, setStep] = useState<Step>(1)
-  const [startedFromLanding, setStartedFromLanding] = useState(false)
-  const [platform, setPlatform] = useState<'mobile' | 'web'>('mobile')
+  // 입력 폼은 랜딩 페이지 하나뿐이다. StudioView는 항상 분석→질문지→생성→프로토타입만.
+  const [startedFromLanding, setStartedFromLanding] = useState(!!triggerBrief)
+  const [platform, setPlatform] = useState<'mobile' | 'web'>(triggerPlatform === 'web' ? 'web' : 'mobile')
   const [designPreset, setDesignPreset] = useState<DesignPreset>('none')
   const [customDesignMd, setCustomDesignMd] = useState<string | null>(null)
   const customDesignMdName = customDesignMd
@@ -846,7 +844,6 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const [logoLoading, setLogoLoading] = useState(false)
   const [brandColors, setBrandColors] = useState<string[]>([])
   const [extractedColors, setExtractedColors] = useState<string[]>([])
-  const logoInputRef = useRef<HTMLInputElement>(null)
   const [briefDesc, setBriefDesc] = useState('')
   const [briefFeatures, setBriefFeatures] = useState('')
   const brief = [
@@ -898,11 +895,6 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const [generationEvents, setGenerationEvents] = useState<GenerationEvent[]>([])
   const generationIdRef = useRef(0)
   const bgFetchAbortRef = useRef<AbortController | null>(null)
-  // Direction picker: handleGenerate awaits this promise while the user picks
-  // 3 of the N wireframed directions. resolve(null) = cancel generation.
-  const directionPickResolverRef = useRef<((picked: DesignDirection[] | null) => void) | null>(null)
-  const [directionPicker, setDirectionPicker] = useState<{ canvases: DesignCanvasIR[]; auto: DesignDirection[] } | null>(null)
-  const [pickedDirectionIds, setPickedDirectionIds] = useState<string[]>([])
   const tweakRequestHtmlRef = useRef<string | null>(null)
 
   // Screen navigation (step 4)
@@ -1048,7 +1040,10 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
     setBrief(triggerBrief)
     setDesignPreset(preset)
-    if (triggerPlatform === 'web' || triggerPlatform === 'mobile') setPlatform(triggerPlatform)
+    if (triggerPlatform === 'web' || triggerPlatform === 'mobile') {
+      setPlatform(triggerPlatform)
+      if (triggerPlatform === 'web') { setPreviewWidth(1440); setZoom(60) }
+    }
 
     const brandLogoFromStorage = sessionStorage.getItem('brandLogo')
     setLogoDataUrl(brandLogoFromStorage || DEFAULT_AIDE_LOGO_SRC)
@@ -1075,16 +1070,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       .then(res => res.json())
       .then(data => {
         if (data.error) throw new Error(data.error)
-        if (data.recommendedPlatform?.platform === 'web' || data.recommendedPlatform?.platform === 'mobile') {
-          setPlatform(data.recommendedPlatform.platform)
-          if (data.recommendedPlatform.platform === 'web') {
-            setPreviewWidth(1440)
-            setZoom(60)
-          } else {
-            setPreviewWidth(390)
-            setZoom(100)
-          }
-        }
         setQuestionnaire(data)
         setAnswers(data.domain ? { domain: DOMAIN_KEY_TO_LABEL[data.domain as AppDomain] ?? '기타' } : {})
         setStep(2)
@@ -1591,20 +1576,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: apiHeaders(),
-      body: JSON.stringify({ designMd: effectiveDesignMd, brief }),
+      body: JSON.stringify({ designMd: effectiveDesignMd, brief, platform }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      if (data.recommendedPlatform?.platform === 'web' || data.recommendedPlatform?.platform === 'mobile') {
-        setPlatform(data.recommendedPlatform.platform)
-        if (data.recommendedPlatform.platform === 'web') {
-          setPreviewWidth(1440)
-          setZoom(60)
-        } else {
-          setPreviewWidth(390)
-          setZoom(100)
-        }
-      }
+      // 플랫폼은 step 1 토글이 단일 원본이다. 설문의 "메인 구조" 보기가 이 값으로
+      // 서버에서 만들어지므로 AI 추천으로 되덮지 않는다.
       setQuestionnaire(data)
       setAnswers(defaultAnswersFromAnalysis(data))
       setStep(2)
@@ -1618,7 +1595,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
   useEffect(() => {
     if (!questionnaire) return
     setAnswers(prev => ({ ...defaultAnswersFromAnalysis(questionnaire), ...prev }))
-  }, [questionnaire])
+  }, [questionnaire, platform, brief])
 
   const handleAnswer = useCallback((questionId: string, value: string, type: 'single' | 'multi' | 'text') => {
     setAnswers(prev => {
@@ -1647,19 +1624,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       })
       setAnswers(prev => ({ ...prev, home_emphasis: newOptions[0] ?? 'AI가 결정' }))
     }
-    if (questionId === 'platform_intent') {
-      const next = platformFromIntent(value)
-      if (next) {
-        setPlatform(next)
-        if (next === 'web') {
-          setPreviewWidth(1440)
-          setZoom(60)
-        } else {
-          setPreviewWidth(390)
-          setZoom(100)
-        }
-      }
-    }
   }, [])
 
   const buildGenerationContext = useCallback((questionnaireOverride = questionnaire, answersOverride = answers) => {
@@ -1685,6 +1649,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     const domainFromAnswer = typeof activeAnswers['domain'] === 'string' ? DOMAIN_LABEL_TO_KEY[activeAnswers['domain']] : undefined
     const effectiveDomain = (domainFromAnswer ?? activeQuestionnaire.domain ?? 'other') as AppDomain
     const needsScene3d = wants3D && Boolean(heroSubject || activeQuestionnaire.heroImageDecision?.generate || activeQuestionnaire.heroImageDecision?.heroSubject || activeQuestionnaire.heroImageDecision?.prompt)
+    // 설문에서 고른 구조 3개(순서 = A·B·C)를 아키타입·섹션 recipe·sideNav 계획으로. generateUI의 variantStructures까지 이어진다.
+    const structurePlan = pickedStructurePlan(
+      Array.isArray(activeAnswers['main_structure']) ? activeAnswers['main_structure'] as string[] : undefined,
+      activeQuestionnaire.serviceAnalysis?.authoredStructures,
+    )
     const { generationPlan, visualPolicies, sharedVisualSubject } = buildDesignIntelligencePlan({
       brief,
       domain: effectiveDomain,
@@ -1696,6 +1665,10 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       needsScene3d,
       serviceAnalysis: activeQuestionnaire.serviceAnalysis,
       shellContract: readStoredAsIsAnalysis()?.shellContract,
+      pickedArchetypeIds: structurePlan?.archetypeIds,
+      sideNavByVariant: structurePlan?.sideNavByVariant,
+      authoredRecipes: structurePlan?.authoredRecipes,
+      densityByVariant: structurePlan?.densityByVariant,
     })
     return { heroSubject, heroPrompt, effectiveDomain, sharedVisualSubject, generationPlan, visualPolicies }
   }, [answers, brief, platform, questionnaire])
@@ -1831,54 +1804,27 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       if (!generationContext) return
       const { effectiveDomain } = generationContext
       const headers = apiHeaders()
-      let selectedDirections: DesignDirection[] = []
-      try {
-        appendGenerationEvent({ kind: 'design', title: '서로 다른 6개 디자인 방향 탐색', status: 'done' })
-        const directionResponse = await fetch('/api/generate-directions', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            brief,
-            projectSummary: questionnaire.projectSummary,
-            platform,
-            domain: effectiveDomain,
-            targetAudience: questionnaire.serviceAnalysis?.targetAudience,
-            primaryJourney: questionnaire.serviceAnalysis?.primaryJourney,
-            coreObjects: questionnaire.serviceAnalysis?.coreObjects,
-            keyDataPoints: questionnaire.serviceAnalysis?.keyDataPoints,
-            contentSeed: questionnaire.serviceAnalysis?.contentSeed,
-            designSystemSummary: effectiveDesignMd.slice(0, 1600),
-            visualRoles: generationContext.visualPolicies.map(policy => policy === 'real-photo' ? 'photo' : policy === 'no-image' ? 'data' : '3d'),
-          }),
-        })
-        if (directionResponse.ok) {
-          const directionData = await directionResponse.json() as {
-            selected?: DesignDirection[]
-            canvases?: DesignCanvasIR[]
-          }
-          const auto = directionData.selected ?? []
-          const canvases = directionData.canvases ?? []
-          if (canvases.length >= 3) {
-            directionPickResolverRef.current?.(null) // cancel any prior pending pick
-            setPickedDirectionIds([])
-            setDirectionPicker({ canvases, auto })
-            const picked = await new Promise<DesignDirection[] | null>((resolve) => {
-              directionPickResolverRef.current = resolve
+      // 설문에서 고른 구조 3개(LLM이 브리프로 작성한 것)가 그대로 A · B · C 가 된다.
+      // 섹션 순서·nav·밀도를 결정론 DesignDirection 으로 옮긴다 — 별도 LLM 방향 발산 없음.
+      const pickedStructureNames = Array.isArray(answers['main_structure']) ? answers['main_structure'] as string[] : []
+      const authoredPool = questionnaire?.serviceAnalysis?.authoredStructures ?? []
+      const selectedDirections: DesignDirection[] = pickedStructureNames.length >= 3
+        ? pickedStructureNames.slice(0, 3)
+            .map((name, i) => {
+              const authored = authoredFromAnswer(name, authoredPool)
+              return authored ? directionFromStructure(authored, i, platform) : null
             })
-            directionPickResolverRef.current = null
-            setDirectionPicker(null)
-            if (!picked) { setStep(2); return }
-            selectedDirections = picked.slice(0, 3)
-          } else {
-            selectedDirections = auto
-          }
-        }
-      } catch (error) {
-        console.warn('[design-directions]', error)
-      }
+            .filter((d): d is DesignDirection => d !== null)
+        : []
       if (generationIdRef.current !== genId || selectedDirections.length < 3) {
-        throw new Error('디자인 방향을 준비하지 못했습니다.')
+        throw new Error('메인 구조 3개를 선택해야 합니다.')
       }
+      appendGenerationEvent({
+        kind: 'design',
+        title: '선택한 메인 구조 3개로 A · B · C 설계',
+        detail: selectedDirections.map((d, i) => `시안 ${['A', 'B', 'C'][i]}: ${d.name}`).join('\n'),
+        status: 'done',
+      })
 
       const variantLetters = ['A', 'B', 'C'] as const
       const boardVariants: [GenerateResult | null, GenerateResult | null, GenerateResult | null] = [null, null, null]
@@ -2169,7 +2115,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
   const handleReset = () => {
     tweakRequestHtmlRef.current = null
-    setStep(1); setVariants([null, null]); setActiveVariant(0); setQuestionnaire(null)
+    setVariants([null, null]); setActiveVariant(0); setQuestionnaire(null)
     setStartedFromLanding(false)
     setAnswers({}); setGenerateError(''); setAnalyzeError('')
     setSelectedStyles(null); setDarkMode(false); setBrandColor(DEFAULT_GENERATED_BRAND_COLOR); setDebouncedBrandColor(DEFAULT_GENERATED_BRAND_COLOR)
@@ -2188,6 +2134,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
     bgFetchAbortRef.current?.abort()
     bgFetchAbortRef.current = null
     ++generationIdRef.current
+    onBack?.()
   }
 
   const handleRefine = async () => {
@@ -2935,6 +2882,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               ]
             }
 
+            function isLightHex(hex: string): boolean {
+              const h = hex.replace('#', '')
+              return parseInt(h.slice(0, 2), 16) * 0.299 + parseInt(h.slice(2, 4), 16) * 0.587 + parseInt(h.slice(4, 6), 16) * 0.114 > 150
+            }
+
             const stylePlanLabel = designSystemDisplayName
 
             return (
@@ -2956,113 +2908,185 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   </div>
                 </div>
 
-                {/* Body: 색상 · 타이포 · 컴포넌트 3밴드 */}
-                <div data-card-scroll="style-plan" style={{ display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: gridLine, flex: 1, overflowY: 'auto' }}>
+                {/* 4-column grid */}
+                <div data-card-scroll="style-plan" style={{ display: 'grid', gridTemplateColumns: '175px 140px 1fr 1fr', gap: 1, backgroundColor: gridLine, flex: 1, overflowY: 'auto' }}>
 
-                  {/* 색상 */}
-                  <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-4)`, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
-                    <span style={{ fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-semibold)", color: muted, textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wide)" }}>색상 토큰</span>
-                    <div style={{ display: 'flex', gap: "var(--aui-space-2)" }}>
-                      {effectivePalette.slice(0, 5).map(swatch => (
-                        <div key={swatch.name} style={{ flex: 1, minWidth: 0, borderRadius: "var(--aui-radius-sm)", overflow: 'hidden', border: '1px solid var(--aui-border-subtle)' }}>
-                          <div style={{ backgroundColor: swatch.hex, height: 40 }} />
-                          <div style={{ padding: `var(--aui-space-1) var(--aui-space-2)`, display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: cellBg }}>
-                            <span style={{ fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-semibold)", color: ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{swatch.name}</span>
-                            <span style={{ fontSize: "var(--aui-type-nano-size)", fontFamily: 'monospace', color: muted }}>{swatch.hex.toUpperCase()}</span>
-                          </div>
-                          <div style={{ display: 'flex', height: 6 }}>
-                            {genTints(swatch.hex).map((t, ti) => <div key={ti} style={{ flex: 1, backgroundColor: t }} />)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 타이포그래피 */}
-                  <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-4)`, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
-                    <span style={{ fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-semibold)", color: muted, textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wide)", marginBottom: "var(--aui-space-1)" }}>타이포그래피</span>
-                    {typoRows.map(({ label, font, weight, actualSize }, i) => {
-                      const px = Math.min(actualSize ? parseInt(actualSize) || 20 : 20, 30)
+                  {/* Col 1: Color swatches + tint strips */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {effectivePalette.map(swatch => {
+                      const tints = genTints(swatch.hex)
+                      const onSwatch = isLightHex(swatch.hex) ? 'var(--aui-text)' : 'var(--aui-on-dark)'
                       return (
-                        <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: "var(--aui-space-3)", padding: `var(--aui-space-1) 0`, borderTop: i ? '1px solid var(--aui-border-subtle)' : 'none' }}>
-                          <span style={{ width: 92, flexShrink: 0, fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-semibold)", color: muted, textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wide)", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
-                          <span style={{ width: 70, flexShrink: 0, fontSize: "var(--aui-type-nano-size)", fontFamily: 'monospace', color: isDark ? 'var(--aui-text-neutral)' : 'var(--aui-text-assistive)' }}>{actualSize ?? '—'}{actualSize ? ` · ${weight}` : ''}</span>
-                          <span style={{ flex: 1, minWidth: 0, fontSize: px, fontWeight: weight, fontFamily: font, color: ink, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>가나다 Ag</span>
+                        <div key={swatch.name} style={{ backgroundColor: cellBg, display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+                          <div style={{ backgroundColor: swatch.hex, padding: `var(--aui-space-3) var(--aui-space-3)`, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)", flex: 1 }}>
+                            <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)", color: onSwatch }}>{swatch.name}</span>
+                            <span style={{ fontSize: "var(--aui-type-meta-size)", fontFamily: 'monospace', color: onSwatch, opacity: 0.75 }}>{swatch.hex.toUpperCase()}</span>
+                          </div>
+                          <div style={{ display: 'flex', height: 14 }}>
+                            {tints.map((t, ti) => <div key={ti} style={{ flex: 1, backgroundColor: t }} />)}
+                          </div>
                         </div>
                       )
                     })}
                   </div>
 
-                  {/* 컴포넌트 */}
-                  <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-4)`, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", flex: 1 }}>
-                    <span style={{ fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-semibold)", color: muted, textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wide)" }}>컴포넌트{useRealComponents ? '' : ' · 근사'}</span>
-                    {useRealComponents ? (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: "var(--aui-space-4)", alignItems: 'start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", minWidth: 0 }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-1)" }}>
-                            <Button size="xs">Primary</Button>
-                            <Button size="xs" variant="secondary">Secondary</Button>
-                            <Button size="xs" variant="outline">Outline</Button>
-                            <Button size="xs" variant="ghost">Ghost</Button>
-                            <Button size="xs" variant="destructive">Negative</Button>
-                          </div>
-                          <Switch defaultChecked>프로토타입 모드</Switch>
-                          <Checkbox defaultChecked>자동 저장</Checkbox>
-                          <RadioGroup name="dsc-preview-vis" label="공개 범위" style={{ display: 'flex', flexDirection: 'row', gap: "var(--aui-space-3)" }}>
-                            <Radio value="a" defaultChecked>공개</Radio>
-                            <Radio value="b">팀만</Radio>
-                          </RadioGroup>
+                  {/* Col 2: Typography — reads from preset.typographyScale */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {typoRows.map(({ label, font, size, weight, actualSize }, i) => (
+                      <div key={i} style={{ backgroundColor: cellBg, padding: `var(--aui-space-2) var(--aui-space-3)`, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: "var(--aui-space-1)", overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: "var(--aui-space-1)" }}>
+                          <span style={{ fontSize: "var(--aui-type-nano-size)", fontWeight: "var(--aui-weight-semibold)", color: muted, textTransform: 'uppercase', letterSpacing: "var(--aui-tracking-wide)", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 70 }}>{label}</span>
+                          <span style={{ fontSize: "var(--aui-type-nano-size)", color: isDark ? 'var(--aui-text-neutral)' : 'var(--aui-text-assistive)', flexShrink: 0 }}>{font.split(',')[0].trim()}</span>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", minWidth: 0 }}>
-                          <SearchField placeholder="컴포넌트 검색" defaultValue="Button" />
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-1)", alignItems: 'center' }}>
-                            <Chip selected>전체</Chip>
-                            <Chip>레이아웃</Chip>
-                            <Badge variant="success"><Check size={11} />저장됨</Badge>
-                            <Badge variant="neutral">Draft</Badge>
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: "var(--aui-space-1)" }}>
-                            <Skeleton className="w-full h-[8px]" />
-                            <Skeleton className="w-[70%] h-[8px]" />
-                          </div>
-                        </div>
+                        {actualSize && (
+                          <span style={{ fontSize: "var(--aui-type-nano-size)", color: isDark ? 'var(--aui-text-neutral)' : 'var(--aui-text-disabled)', fontFamily: 'monospace', lineHeight: "var(--aui-leading-none)" }}>{actualSize} · {weight}</span>
+                        )}
+                        <div style={{ fontSize: size, fontWeight: weight, color: ink, lineHeight: "var(--aui-leading-none)", fontFamily: font, letterSpacing: "var(--aui-tracking-tight)", overflow: 'hidden', marginTop: 'auto' }}>Aa</div>
                       </div>
-                    ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: "var(--aui-space-4)", alignItems: 'start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", minWidth: 0 }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-1)" }}>
-                            <span style={{ backgroundColor: effectiveColor, color: 'var(--aui-on-dark)', borderRadius: btnRadius, padding: `var(--aui-space-1) var(--aui-space-3)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)" }}>Primary</span>
-                            <span style={{ backgroundColor: isDark ? 'var(--aui-on-dark-faint)' : 'var(--aui-shadow-line)', color: ink, borderRadius: btnRadius, padding: `var(--aui-space-1) var(--aui-space-3)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-medium)" }}>Secondary</span>
-                            <span style={{ border: `1px solid ${isDark ? 'var(--aui-on-dark-faint)' : 'var(--aui-scrim-soft)'}`, color: ink, borderRadius: btnRadius, padding: `var(--aui-space-1) var(--aui-space-3)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-medium)" }}>Outline</span>
-                            <span style={{ backgroundColor: negativeColor, color: 'var(--aui-on-dark)', borderRadius: btnRadius, padding: `var(--aui-space-1) var(--aui-space-3)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)" }}>Negative</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)" }}>
-                            <div style={{ width: 32, height: 18, borderRadius: "var(--aui-radius-sm)", backgroundColor: effectiveColor, display: 'flex', alignItems: 'center', padding: `0 var(--aui-space-1)` }}>
-                              <div style={{ width: 14, height: 14, borderRadius: '50%', backgroundColor: 'var(--aui-on-dark)', marginLeft: 'auto' }} />
-                            </div>
-                            <div style={{ width: 14, height: 14, borderRadius: "var(--aui-radius-sm)", backgroundColor: effectiveColor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="var(--aui-on-dark)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            </div>
-                            <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${effectiveColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: effectiveColor }} />
-                            </div>
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", backgroundColor: subtle, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-line)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-2) var(--aui-space-2)` }}>
-                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={muted} strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                            <span style={{ fontSize: "var(--aui-type-meta-size)", color: muted }}>Search</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", flexWrap: 'wrap' }}>
-                            <span style={{ backgroundColor: effectiveColor, color: 'var(--aui-on-dark)', borderRadius: badgeRadius, padding: `var(--aui-space-1) var(--aui-space-2)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)" }}>New</span>
-                            <span style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-medium)', borderRadius: chipRadius, padding: `var(--aui-space-1) var(--aui-space-2)`, fontSize: "var(--aui-type-meta-size)" }}>Filter</span>
-                            <span style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-medium)', borderRadius: chipRadius, padding: `var(--aui-space-1) var(--aui-space-2)`, fontSize: "var(--aui-type-meta-size)" }}>Sort</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    ))}
                   </div>
 
+                  {/* Col 3: default 시스템은 실제 @/components/ui, 그 외는 근사 렌더 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                   {useRealComponents ? (
+                    <>
+                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: "var(--aui-space-2)", overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-1)" }}>
+                          <Button size="xs">Primary</Button>
+                          <Button size="xs" variant="secondary">Secondary</Button>
+                          <Button size="xs" variant="outline">Outline</Button>
+                          <Button size="xs" variant="ghost">Ghost</Button>
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-1)" }}>
+                          <Button size="xs" variant="destructive">Negative</Button>
+                          <Button size="xs" disabled>Disabled</Button>
+                        </div>
+                      </div>
+                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: "var(--aui-space-2)", overflow: 'hidden' }}>
+                        <Skeleton className="w-[82%] h-[6px]" />
+                        <Skeleton className="w-[56%] h-[6px]" />
+                      </div>
+                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", justifyContent: 'center', fontSize: "var(--aui-type-caption-size)", overflow: 'hidden' }}>
+                        <Switch defaultChecked>프로토타입 모드</Switch>
+                        <Checkbox defaultChecked>자동 저장</Checkbox>
+                        <RadioGroup name="dsc-preview-vis" label="공개 범위" style={{ display: 'flex', flexDirection: 'row', gap: "var(--aui-space-3)" }}>
+                          <Radio value="a" defaultChecked>공개</Radio>
+                          <Radio value="b">팀만</Radio>
+                        </RadioGroup>
+                      </div>
+                    </>
+                   ) : (
+                    <>
+                    {/* Buttons — radius from radiusTokens.md, negative from statusColors */}
+                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: "var(--aui-space-1)" }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: "var(--aui-space-1)" }}>
+                        <button style={{ backgroundColor: effectiveColor, color: 'var(--aui-on-dark)', border: 'none', borderRadius: btnRadius, padding: `var(--aui-space-2) var(--aui-space-1)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)", cursor: 'default' }}>Primary</button>
+                        <button style={{ backgroundColor: isDark ? 'var(--aui-on-dark-faint)' : 'var(--aui-shadow-line)', color: ink, border: 'none', borderRadius: btnRadius, padding: `var(--aui-space-2) var(--aui-space-1)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'default' }}>Secondary</button>
+                        <button style={{ backgroundColor: 'transparent', color: ink, border: `1px solid ${isDark ? 'var(--aui-on-dark-faint)' : 'var(--aui-scrim-soft)'}`, borderRadius: btnRadius, padding: `var(--aui-space-2) var(--aui-space-1)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'default' }}>Outline</button>
+                        <button style={{ backgroundColor: 'transparent', color: ink, border: 'none', borderRadius: btnRadius, padding: `var(--aui-space-2) var(--aui-space-1)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'default' }}>Ghost</button>
+                      </div>
+                      <button style={{ backgroundColor: negativeColor, color: 'var(--aui-on-dark)', border: 'none', borderRadius: btnRadius, padding: `var(--aui-space-2) var(--aui-space-1)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)", cursor: 'default', width: '100%' }}>Negative</button>
+                    </div>
+
+                    {/* Dividers */}
+                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, display: 'flex', alignItems: 'center', flex: 1 }}>
+                      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
+                        <div style={{ height: 1, backgroundColor: effectiveColor, width: '100%' }} />
+                        <div style={{ height: 1, backgroundColor: gridLine, width: '75%' }} />
+                        <div style={{ height: 1, backgroundColor: gridLine, width: '50%' }} />
+                      </div>
+                    </div>
+
+                    {/* Toggle + checkbox + radio */}
+                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", flex: 1 }}>
+                      <div style={{ width: 32, height: 18, borderRadius: "var(--aui-radius-sm)", backgroundColor: effectiveColor, display: 'flex', alignItems: 'center', padding: `0 var(--aui-space-1)` }}>
+                        <div style={{ width: 14, height: 14, borderRadius: '50%', backgroundColor: 'var(--aui-on-dark)', marginLeft: 'auto' }} />
+                      </div>
+                      <div style={{ width: 14, height: 14, borderRadius: "var(--aui-radius-sm)", backgroundColor: effectiveColor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="var(--aui-on-dark)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </div>
+                      <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${effectiveColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: effectiveColor }} />
+                      </div>
+                    </div>
+
+                    {/* Nav icons */}
+                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, display: 'flex', alignItems: 'center', justifyContent: 'space-around', flex: 1 }}>
+                      {['M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z', 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'].map((d, i) => (
+                        <div key={i} style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: subtle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={ink} strokeWidth="1.8"><path d={d}/></svg>
+                        </div>
+                      ))}
+                    </div>
+                    </>
+                   )}
+                  </div>
+
+                  {/* Col 4: default 시스템은 실제 @/components/ui, 그 외는 근사 렌더 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                   {useRealComponents ? (
+                    <>
+                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+                        <div style={{ width: '100%' }}><SearchField placeholder="컴포넌트 검색" defaultValue="Button" /></div>
+                      </div>
+                      <div style={{ backgroundColor: cellBg, padding: `0 var(--aui-space-3)`, flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
+                        {[['프로덕트 랜딩', '2분 전 수정'], ['Studio workspace', '자동 저장됨'], ['Playground', '3개 컴포넌트']].map(([t, d]) => (
+                          <ListRow key={t} contents={<ListRowText title={t} description={d} />} trailing={<ChevronRight size={14} />} />
+                        ))}
+                      </div>
+                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: "var(--aui-space-1)", overflow: 'hidden' }}>
+                        <Chip selected>전체</Chip>
+                        <Chip>레이아웃</Chip>
+                        <Badge variant="success"><Check size={11} />저장됨</Badge>
+                        <Badge variant="neutral">Draft</Badge>
+                      </div>
+                      <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-around', overflow: 'hidden' }}>
+                        <Button variant="ghost" size="icon-sm" aria-label="홈"><Sparkles size={13} /></Button>
+                        <Button variant="ghost" size="icon-sm" aria-label="알림"><Bell size={13} /></Button>
+                        <Button variant="ghost" size="icon-sm" aria-label="설정"><Settings size={13} /></Button>
+                      </div>
+                    </>
+                   ) : (
+                    <>
+                    {/* Search */}
+                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", backgroundColor: subtle, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-line)', borderRadius: "var(--aui-radius-sm)", padding: `var(--aui-space-2) var(--aui-space-2)` }}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={muted} strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        <span style={{ fontSize: "var(--aui-type-meta-size)", color: muted }}>Search</span>
+                      </div>
+                    </div>
+
+                    {/* List rows */}
+                    <div style={{ backgroundColor: cellBg, padding: `0 var(--aui-space-3)`, flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: "var(--aui-space-1)" }}>
+                      {[100, 75, 55].map((w, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", padding: `var(--aui-space-1) 0`, borderBottom: i < 2 ? (isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-border-subtle)') : 'none' }}>
+                          <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: i === 0 ? effectiveColor : subtle, flexShrink: 0 }} />
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
+                            <div style={{ height: 6, borderRadius: "var(--aui-radius-sm)", backgroundColor: isDark ? 'var(--aui-inverse-surface-raised)' : 'var(--aui-border)', width: `${w}%` }} />
+                            <div style={{ height: 4, borderRadius: "var(--aui-radius-sm)", backgroundColor: isDark ? 'var(--aui-text)' : 'var(--aui-border-subtle)', width: `${Math.round(w * 0.6)}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Badge + chips — radius from radiusTokens */}
+                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", flexWrap: 'wrap' }}>
+                      <div style={{ backgroundColor: effectiveColor, color: 'var(--aui-on-dark)', borderRadius: badgeRadius, padding: `var(--aui-space-1) var(--aui-space-2)`, fontSize: "var(--aui-type-meta-size)", fontWeight: "var(--aui-weight-semibold)" }}>New</div>
+                      <div style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-medium)', borderRadius: chipRadius, padding: `var(--aui-space-1) var(--aui-space-2)`, fontSize: "var(--aui-type-meta-size)" }}>Filter</div>
+                      <div style={{ backgroundColor: subtle, color: ink, border: isDark ? '1px solid var(--aui-on-dark-faint)' : '1px solid var(--aui-shadow-medium)', borderRadius: chipRadius, padding: `var(--aui-space-1) var(--aui-space-2)`, fontSize: "var(--aui-type-meta-size)" }}>Sort</div>
+                    </div>
+
+                    {/* Action icons */}
+                    <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3) var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-around' }}>
+                      {['M12 5v14M5 12l7 7 7-7', 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0', 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'].map((d, i) => (
+                        <div key={i} style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: subtle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={ink} strokeWidth="1.8"><path d={d}/></svg>
+                        </div>
+                      ))}
+                    </div>
+                    </>
+                   )}
+                  </div>
                 </div>
 
               </div>
@@ -3374,57 +3398,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           </div>
         )}
 
-        {directionPicker && (
-          <div className="fixed inset-0 z-50 flex" style={{ backgroundColor: 'var(--aui-scrim)', backdropFilter: 'blur(6px)' }}>
-            <div className="m-auto flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--aui-radius-card)] bg-[var(--aui-surface)]" style={{ boxShadow: 'var(--aui-shadow-floating)' }}>
-              <div className="flex items-start justify-between gap-4 border-b border-[var(--aui-border-subtle)] p-[var(--aui-space-5)]">
-                <div>
-                  <p className="text-base font-semibold text-[var(--aui-text)]">방향 3개를 고르세요</p>
-                  <p className="mt-1 text-sm text-[var(--aui-text-muted)]">고른 순서대로 A · B · C 시안이 됩니다. 같은 콘텐츠·디자인 시스템으로 표현만 다르게 생성합니다.</p>
-                </div>
-                <button type="button" onClick={() => directionPickResolverRef.current?.(null)} aria-label="닫기" className="shrink-0 rounded-[var(--aui-radius-control)] p-1 text-[var(--aui-text-muted)] hover:bg-[var(--aui-surface-muted)]">
-                  <X size={18}/>
-                </button>
-              </div>
-              <div className="grid flex-1 gap-[var(--aui-space-4)] overflow-y-auto p-[var(--aui-space-5)] sm:grid-cols-2 md:grid-cols-3">
-                {directionPicker.canvases.map((ir) => {
-                  const idx = pickedDirectionIds.indexOf(ir.direction.id)
-                  return (
-                    <DirectionWireframe
-                      key={ir.id}
-                      ir={ir}
-                      order={idx === -1 ? undefined : idx}
-                      onToggle={() => setPickedDirectionIds((prev) =>
-                        prev.includes(ir.direction.id)
-                          ? prev.filter((id) => id !== ir.direction.id)
-                          : prev.length >= 3 ? prev : [...prev, ir.direction.id],
-                      )}
-                    />
-                  )
-                })}
-              </div>
-              <div className="flex items-center justify-between gap-3 border-t border-[var(--aui-border-subtle)] p-[var(--aui-space-5)]">
-                <button type="button" onClick={() => directionPickResolverRef.current?.(directionPicker.auto)} className="text-sm font-semibold text-[var(--aui-text-muted)] transition-colors hover:text-[var(--aui-text)]">
-                  자동으로 3개 고르기
-                </button>
-                <button
-                  type="button"
-                  disabled={pickedDirectionIds.length !== 3}
-                  onClick={() => {
-                    const byId = new Map(directionPicker.canvases.map((c) => [c.direction.id, c.direction]))
-                    const ordered = pickedDirectionIds.map((id) => byId.get(id)).filter((d): d is DesignDirection => !!d)
-                    directionPickResolverRef.current?.(ordered)
-                  }}
-                  className="rounded-[var(--aui-radius-control)] px-4 py-2 text-sm font-semibold text-[var(--aui-on-primary)] transition-opacity disabled:opacity-40"
-                  style={{ backgroundColor: 'var(--aui-primary)' }}
-                >
-                  이 3개로 생성 ({pickedDirectionIds.length}/3)
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
       </div>
     )
   }
@@ -3489,7 +3462,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       setGnbHistory(updated)
                       if (isActive) {
                         if (updated.length > 0) loadHistoryItemIntoEditor(updated[0])
-                        else { setStartedFromLanding(false); setStep(1) }
+                        else { setStartedFromLanding(false); onBack?.() }
                       }
                     }}
                     style={{
@@ -4402,182 +4375,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           </div>
         )}
 
-        {step === 1 && !isAnalyzing && !startedFromLanding && (
-          <div className="max-w-5xl mx-auto w-full px-8 py-12">
-            <div className="mb-10">
-              <h1 className="text-[28px] font-bold mb-2" style={{ letterSpacing: "var(--aui-tracking-tighter)", color: F.ink }}>UI 시안 만들기</h1>
-              <p className="text-[16px] leading-[1.6]" style={{ color: F.inkMuted }}>
-                디자인 시스템과 기획서를 입력하면 AI가 맞춤형 질문을 생성합니다
-              </p>
-            </div>
-
-            {/* Design System + Logo (left) / 기획서 (right) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-
-              {/* ── Left: Design System preset + Logo ── */}
-              <div className="flex flex-col gap-5">
-
-                {/* Design System */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-[14px] font-medium" style={{ color: F.ink }}>
-                    Design System <span className="ml-2 text-[13px] font-normal" style={{ color: F.inkMuted }}>선택사항</span>
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(Object.keys(DESIGN_PRESETS).filter(k => k !== 'none') as DesignPreset[]).map(key => {
-                      const preset = DESIGN_PRESETS[key]
-                      const isActive = designPreset === key
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => setDesignPreset(isActive ? 'none' : key)}
-                          className="flex flex-col gap-1.5 p-3 text-left border transition-all"
-                          style={{
-                            borderRadius: "var(--aui-radius-sm)",
-                            borderColor: isActive ? F.primary : F.hairline,
-                            backgroundColor: isActive ? 'var(--aui-primary-soft)' : F.surface,
-                            outline: 'none',
-                          }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="w-3 h-3 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: preset.color }}
-                            />
-                            <span className="text-[13px] font-semibold" style={{ color: isActive ? F.primary : F.ink }}>{preset.label}</span>
-                            {isActive && (
-                              <span className="ml-auto text-[11px] font-600 px-2 py-0.5" style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: F.primary, color: 'var(--aui-on-dark)' }}>
-                                선택됨
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[13px] leading-snug" style={{ color: F.inkMuted }}>{preset.description}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <p className="text-[13px]" style={{ color: F.inkMuted }}>
-                    {`${designSystemDisplayName} 가이드라인을 적용합니다`}
-                  </p>
-                </div>
-
-                {/* Logo Upload */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-[14px] font-medium" style={{ color: F.ink }}>
-                    회사 로고 <span className="ml-2 text-[13px] font-normal" style={{ color: F.inkMuted }}>선택사항</span>
-                  </label>
-                  <input
-                    ref={logoInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleLogoUpload}
-                  />
-                  {logoLoading ? (
-                    <div className="flex items-center justify-center gap-2 px-4 py-6 border border-dashed bg-white" style={{ borderRadius: "var(--aui-radius-control)", borderColor: F.hairline }}>
-                      <div className="size-4 rounded-full animate-spin" style={{ border: `2px solid ${F.hairline}`, borderTopColor: F.ink }} />
-                      <span className="text-[13px]" style={{ color: F.inkMuted }}>처리 중...</span>
-                    </div>
-                  ) : logoDataUrl ? (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-white border" style={{ borderRadius: "var(--aui-radius-control)", borderColor: F.hairlineSoft }}>
-                      <img src={logoDataUrl} alt="logo" className="h-8 object-contain" />
-                      <span className="flex-1 text-[13px]" style={{ color: F.inkMuted }}>로고가 UI에 자동으로 삽입됩니다</span>
-                      <button
-                        onClick={() => { setLogoDataUrl(null); setBrandColors([]); setExtractedColors([]) }}
-                        className="transition-colors"
-                        style={{ color: F.inkMuted }}
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => logoInputRef.current?.click()}
-                      className="flex flex-col items-center justify-center gap-2 px-4 py-6 border border-dashed transition-colors text-center hover:!bg-[var(--aui-surface)]"
-                      style={{ borderRadius: "var(--aui-radius-control)", borderColor: F.hairline, backgroundColor: F.canvas }}
-                    >
-                      <Upload size={18} style={{ color: F.inkSubtle }} />
-                      <span className="text-[13px]" style={{ color: F.inkMuted }}>로고 이미지 업로드</span>
-                      <span className="text-[13px]" style={{ color: F.inkSubtle }}>PNG · SVG · JPG</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* ── Right: 기획서 ── */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-[14px] font-medium" style={{ color: F.ink }}>
-                    서비스 정보 <span className="ml-2 text-[13px] font-normal" style={{ color: F.primary }}>필수</span>
-                  </label>
-                  <span className="text-[13px]" style={{ color: F.inkMuted }}>{brief.length} / 2000</span>
-                </div>
-                {(designPreset !== 'none' || !!customDesignMd) && (
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px]" style={{ backgroundColor: F.surface1, border: `1px solid ${F.hairlineSoft}`, color: F.ink }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                      <span>{customDesignMdName ?? designPreset}.md</span>
-                      <button onClick={() => { setDesignPreset('none'); setCustomDesignMd(null) }} className="flex items-center" style={{ color: F.inkMuted }}>
-                        <X size={11} />
-                      </button>
-                    </div>
-                    <span className="text-[12px]" style={{ color: F.inkMuted }}>이 design.md 파일의 디자인 시스템 사용</span>
-                  </div>
-                )}
-                <div className="flex flex-col gap-3">
-                  {/* 서비스 설명 */}
-                  <div
-                    className="flex flex-col"
-                    style={{ borderRadius: "var(--aui-radius-control)", border: `1px solid ${F.hairlineSoft}`, backgroundColor: F.canvas }}
-                    onFocusCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairline }}
-                    onBlurCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairlineSoft }}
-                  >
-                    <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-                      <span className="text-[12px] font-semibold" style={{ color: F.primary }}>ㅇ</span>
-                      <span className="text-[13px] font-semibold" style={{ color: F.ink }}>서비스 설명</span>
-                    </div>
-                    <textarea
-                      value={briefDesc}
-                      onChange={e => setBriefDesc(e.target.value)}
-                      placeholder="어떤 서비스인지, 무엇을 해결하는지 2-3문장으로 적어주세요.&#10;예) 반려식물을 키우는 사람들이 물주기·일조량·영양 상태를 기록하고 AI가 식물 상태를 진단해주는 앱"
-                      className="px-4 pb-4 pt-1 text-sm resize-none leading-relaxed bg-transparent outline-none min-h-[100px]"
-                      style={{ color: F.ink }}
-                    />
-                  </div>
-                  {/* 핵심 기능 */}
-                  <div
-                    className="flex flex-col"
-                    style={{ borderRadius: "var(--aui-radius-control)", border: `1px solid ${F.hairlineSoft}`, backgroundColor: F.canvas }}
-                    onFocusCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairline }}
-                    onBlurCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = F.hairlineSoft }}
-                  >
-                    <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-                      <span className="text-[12px] font-semibold" style={{ color: F.primary }}>ㅇ</span>
-                      <span className="text-[13px] font-semibold" style={{ color: F.ink }}>핵심 기능</span>
-                    </div>
-                    <textarea
-                      value={briefFeatures}
-                      onChange={e => setBriefFeatures(e.target.value)}
-                      placeholder="주요 기능을 줄바꿈으로 나열해주세요. 구체적일수록 생성 품질이 올라가요.&#10;예) - 식물 상태 기록 (물주기, 햇빛, 온도)&#10;- AI 진단 및 케어 추천&#10;- 성장 일지 및 사진 기록&#10;- 스토어 (식물·용품 구매)"
-                      className="px-4 pb-4 pt-1 text-sm resize-none leading-relaxed bg-transparent outline-none min-h-[140px]"
-                      style={{ color: F.ink }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {analyzeError && (
-              <div className="mb-4 px-4 py-3 text-sm" style={{ borderRadius: "var(--aui-radius-control)", color: F.primary, backgroundColor: 'var(--aui-negative-soft)', border: `1px solid var(--aui-negative-border)` }}>
-                {analyzeError}
-              </div>
-            )}
-
-            <PrimaryButton onClick={handleAnalyze} disabled={!brief.trim() || isAnalyzing} loading={isAnalyzing} loadingText="AI가 기획서를 분석하고 있습니다...">
-              <Sparkles size={16} /> 분석하고 질문지 생성하기
-            </PrimaryButton>
-          </div>
-        )}
-
         {/* ── Step 2: AI Criteria Review ── */}
         {step === 2 && questionnaire && (
           <div className="max-w-3xl mx-auto w-full px-8 py-12">
@@ -4586,10 +4383,17 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 <h1 className="text-[22px] font-bold mb-1" style={{ letterSpacing: "var(--aui-tracking-tighter)" }}>이 기준으로 만들게요</h1>
                 <p className="text-[14px] text-[var(--aui-text-muted)]">{questionnaire.projectSummary}</p>
               </div>
-              <button onClick={() => { clearGeneratedBoard(); setStartedFromLanding(false); setStep(1) }} className="flex items-center gap-1.5 text-sm text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors mt-1">
+              <button onClick={() => { clearGeneratedBoard(); setStartedFromLanding(false); onBack?.() }} className="flex items-center gap-1.5 text-sm text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors mt-1">
                 <ArrowLeft size={14} /> 뒤로
               </button>
             </div>
+
+            {brief.trim() && (
+              <div className="mb-8 px-4 py-3" style={{ borderRadius: "var(--aui-radius-control)", backgroundColor: 'var(--aui-on-dark)', border: '1px solid var(--aui-border-subtle)' }}>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--aui-text-muted)] mb-1">입력한 브리프</div>
+                <p className="text-[13px] leading-[1.7] text-[var(--aui-text)] whitespace-pre-wrap">{brief.trim()}</p>
+              </div>
+            )}
 
             <div className="mb-8 flex items-center justify-between gap-4 px-4 py-3" style={{ borderRadius: "var(--aui-radius-control)", backgroundColor: 'var(--aui-on-dark)', border: '1px solid var(--aui-border-subtle)' }}>
               <div>
@@ -4740,9 +4544,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
             <div className="space-y-8 mb-10">
               {questionnaire.questions
-                .filter(q => q.id === 'platform_intent' || q.id === 'hero_3d')
+                .filter(q => q.id === 'main_structure' || q.id === 'hero_3d')
                 .map((q, idx) => (
-                  <QuestionCard key={q.id} index={idx + 1} question={q} answer={answers[q.id]} onAnswer={(value) => handleAnswer(q.id, value, q.type)} />
+                  q.id === 'main_structure'
+                    ? <StructurePicker key={q.id} question={q} answer={answers[q.id]} platform={platform} onAnswer={(value) => handleAnswer(q.id, value, q.type)} authoredStructures={questionnaire.serviceAnalysis?.authoredStructures ?? []} />
+                    : <QuestionCard key={q.id} index={idx + 1} question={q} answer={answers[q.id]} onAnswer={(value) => handleAnswer(q.id, value, q.type)} />
                 ))}
             </div>
 
@@ -5482,6 +5288,80 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
         style={{ left: on ? '22px' : '2px' }}
       />
     </button>
+  )
+}
+
+/** "메인 구조" 질문 — LLM이 이 서비스 전용으로 작성한 구조 5개를 결정론 와이어프레임으로 보여준다.
+ *  고른 3개(순서 = A/B/C)의 섹션 순서가 그대로 시안 골격이 된다. */
+const STRUCTURE_ORDER = ['A', 'B', 'C'] as const
+
+function StructurePicker({ question, answer, platform, onAnswer, authoredStructures }: {
+  question: Question
+  answer: string | string[] | undefined
+  platform: 'mobile' | 'web'
+  onAnswer: (value: string) => void
+  authoredStructures: AuthoredStructure[]
+}) {
+  const web = platform === 'web'
+  const picked = Array.isArray(answer) ? answer : answer ? [answer] : []
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-1">
+        <div className="grid size-6 place-items-center rounded-[var(--aui-radius-sm)] bg-[var(--aui-text)] text-[var(--aui-on-primary)]">
+          <Check size={13} />
+        </div>
+        <span className="text-[15px] font-semibold text-[var(--aui-text)]">{question.question}</span>
+        <span className="text-[12px] font-medium text-[var(--aui-text-muted)]">{picked.length}/3</span>
+      </div>
+      <p className="ml-8 mb-4 text-[13px] leading-[1.6] text-[var(--aui-text-muted)]">{question.description}</p>
+      <div className={`ml-8 grid gap-3 ${web ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'}`}>
+        {(question.options ?? []).map(option => {
+          const authored = authoredFromAnswer(option, authoredStructures)
+          if (!authored) return null
+          const ir = previewCanvasForStructure(authored, platform)
+          const order = picked.indexOf(option)
+          const selected = order !== -1
+          const disabled = !selected && picked.length >= 3
+          const name = authored.name
+          const reason = authored.reason
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onAnswer(option)}
+              aria-pressed={selected}
+              disabled={disabled}
+              className="group relative flex flex-col gap-2 rounded-[var(--aui-radius-card)] border p-2.5 text-left transition-[border-color,box-shadow,opacity] focus-visible:shadow-[var(--aui-shadow-focus)] focus-visible:outline-none disabled:opacity-40"
+              style={{
+                borderColor: selected ? 'var(--aui-text)' : 'var(--aui-border-subtle)',
+                boxShadow: selected ? 'inset 0 0 0 1px var(--aui-text)' : undefined,
+              }}
+            >
+              <div
+                className="overflow-hidden rounded-[var(--aui-radius-control)] bg-[var(--aui-surface)] ring-1 ring-inset ring-[var(--aui-border-subtle)]"
+                style={{ aspectRatio: `${ir.width} / ${ir.height}` }}
+              >
+                <WireframeSvg ir={ir} accent="var(--aui-fill-strong)" label={`${name} 구조`} />
+              </div>
+              {selected && (
+                <span className="absolute right-3.5 top-3.5 grid size-6 place-items-center rounded-[var(--aui-radius-pill)] bg-[var(--aui-text)] text-xs font-bold text-[var(--aui-on-primary)]">
+                  {STRUCTURE_ORDER[order] ?? order + 1}
+                </span>
+              )}
+              <div className="px-0.5">
+                <div className="text-[13px] font-semibold text-[var(--aui-text)]">{name}</div>
+                {reason && (
+                  <div className="mt-1.5 flex gap-1 text-[11px] leading-4 text-[var(--aui-primary-heavy)]">
+                    <Sparkles size={11} className="mt-px shrink-0" />
+                    <span>{reason}</span>
+                  </div>
+                )}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 

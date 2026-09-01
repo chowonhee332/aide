@@ -20,6 +20,14 @@ export type DesignIntelligenceInput = {
     bottomNavigation?: { present?: boolean }
     brandLogo?: { present?: boolean }
   }
+  /** 설문에서 고른 메인 구조 3개(순서 = A·B·C) → 아키타입 id. 있으면 brief/domain 휴리스틱보다 우선. */
+  pickedArchetypeIds?: readonly string[]
+  /** 고른 웹 구조가 LNB를 요구하는 variant에 sideNav를 켠다. */
+  sideNavByVariant?: Partial<Record<VariantKey, boolean>>
+  /** 고른 authored 구조의 섹션 순서 — 있으면 아키타입 sectionRecipe 대신 이걸 골격으로 쓴다. */
+  authoredRecipes?: Partial<Record<VariantKey, string[]>>
+  /** 고른 authored 구조의 밀도 — 있으면 아키타입 density 대신. */
+  densityByVariant?: Partial<Record<VariantKey, 'compact' | 'balanced' | 'airy'>>
 }
 
 type PatternSelection = {
@@ -828,7 +836,7 @@ export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
   const variantBriefs = variantBriefsFor(input.needsScene3d, serviceSubtype, input.domain, contentInventory)
   const componentHints = getSubtypeComponentHints(serviceSubtype, input.domain)
   const isLandingIntent = detectLandingIntent(input.brief, input.platform)
-  const variantArchetypes = assignVariantArchetypes(input.brief, input.domain, isLandingIntent)
+  const variantArchetypes = assignVariantArchetypes(input.brief, input.domain, isLandingIntent, input.pickedArchetypeIds)
   const variantStructures = buildVariantStructures({
     archetypes: variantArchetypes,
     visualPolicies,
@@ -838,6 +846,9 @@ export function buildDesignIntelligencePlan(input: DesignIntelligenceInput): {
     contentInventory,
     shellContract: input.shellContract,
     isLandingIntent,
+    sideNavByVariant: input.sideNavByVariant,
+    authoredRecipes: input.authoredRecipes,
+    densityByVariant: input.densityByVariant,
   })
 
   return {

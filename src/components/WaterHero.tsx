@@ -116,16 +116,20 @@ void main(){
     float d = length(to);
     vec2  dir = d > 1e-4 ? to / d : vec2(0.0);
 
-    // front-loaded envelope: full strength the instant it is born, then eases
-    // the whole ring system away to nothing — clamped cleanly to 0 at maxAge
-    float life = exp(-age * 0.32) * (1.0 - age / maxAge);
+    // A new impact has a narrow, high-contrast front. As its energy disperses,
+    // the front broadens first and then loses contrast into the caustic field
+    // instead of staying as a uniformly soft graphic ring.
+    float ageN = age / maxAge;
+    float dissolve = 1.0 - smoothstep(0.36, 0.92, ageN);
+    float life = exp(-age * 0.18) * dissolve;
+    float frontSharpness = mix(220.0, 36.0, smoothstep(0.0, 0.78, ageN));
 
     // expands fast at first, then slows (√t), like a real spreading ring
     float front = sqrt(age) * (0.17 + vr * 0.08);
 
     // a bright leading wavefront + a decaying train of rings trailing inside it
     float wdf = d - front;                                   // <0 inside the front
-    float win = exp(-wdf * wdf * 46.0)                       // the sharp bright wavefront
+    float win = exp(-wdf * wdf * frontSharpness)              // crisp impact front → soft water trace
               + 0.55 * exp(wdf * 5.5) * step(wdf, 0.0);      // rings trailing inward
     float annulus = min(win, 1.3) * life * r.w;
 
@@ -136,7 +140,7 @@ void main(){
     ringField  += wave * annulus;
     rippleWarp += dir * wave * annulus * (2.6 / wl);
     centrePlop += exp(-d * d * 900.0) * exp(-age * 5.0) * r.w;
-    waveGlint  += exp(-wdf * wdf * 120.0) * life * r.w;   // tight bright band on the wavefront
+    waveGlint  += exp(-wdf * wdf * (frontSharpness * 2.2)) * life * r.w; // sharp glint dissolves with the front
   }
 
   // ---- caustic web, warped by the swirl and lensed through the ripple rings ----
@@ -180,16 +184,16 @@ void main(){
   col += causticTint * centrePlop * 0.4;
   col += vec3(0.86, 0.95, 1.0) * waveGlint * 0.09;      // cool specular skip on the wavefront
 
-  // ---- vignette: deeper cobalt corners, luminous lower centre ----
+  // ---- vignette: gentle cobalt corners, luminous lower centre ----
   vec2 vd = uv - vec2(0.5, 0.28);
   float vig = clamp(1.0 - dot(vd, vd) * 0.85, 0.0, 1.0);
-  col *= mix(0.74, 1.0, vig);
-  col *= 1.0 - smoothstep(0.78, 1.0, uv.y) * 0.12;    // deepen the top for nav + mass
+  col *= mix(0.86, 1.0, vig);
+  col *= 1.0 - smoothstep(0.78, 1.0, uv.y) * 0.07;    // slight deepen at the top for nav
 
   // clean and photographic — not neon, not murky
   float luma = dot(col, vec3(0.299, 0.587, 0.114));
-  col = mix(vec3(luma), col, 1.06);
-  col = pow(clamp(col * 0.99, 0.0, 1.0), vec3(1.03));
+  col = mix(vec3(luma), col, 1.12);
+  col = pow(clamp(col * 1.03, 0.0, 1.0), vec3(1.0));
 
   col += (hash1(gl_FragCoord.xy + t) - 0.5) * 0.012;
   fragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
@@ -224,11 +228,11 @@ interface WaterHeroProps {
 }
 
 const WaterHero = ({
-  // arcade.software 히어로 그라디언트에서 샘플링한 블루 패밀리.
-  // deep cobalt(화면 대부분을 채우는 톤) → azure → light cyan(하단)
-  colorTop = '#0a6ae6',
-  colorMid = '#2f8fee',
-  colorBot = '#7fd0f2',
+  // 맑고 선명한 블루 그라디언트.
+  // deep vivid blue(화면 대부분을 채우는 톤) → clean azure → light cyan(하단)
+  colorTop = '#0066ff',
+  colorMid = '#4a9dff',
+  colorBot = '#a8e4f8',
   caustic = 1.0,
   className = '',
 }: WaterHeroProps) => {
@@ -533,13 +537,17 @@ const WaterHero = ({
           rnx[i] = -ty / tl; rny[i] = tx / tl;
         }
 
-        // body undulation — travelling wave, deeper toward the tail and when the
-        // fish is working hard (this, not the length, is what sells "fast")
+        // body undulation — the prior slow-state displacement was smaller than
+        // the canvas blur, so a cruising koi read as a rigid, dead sprite.
+        // Keep the burst silhouette, but give the resting tail a readable,
+        // lower-frequency breathing sway.
         const WAVES = 2.9;
-        const ampK = k.len * (0.16 + 0.42 * thr);
+        const idle = 1 - thr;
+        const idleSway = idle * 0.22 * Math.sin(k.phase * 0.37 + k.kind * 1.9);
+        const ampK = k.len * (0.31 + 0.27 * thr);
         for (let i = 0; i < RIB_N; i++) {
           const s = i / (RIB_N - 1);
-          const w = (0.03 + 0.1 * s) * ampK * Math.sin(k.phase - s * WAVES);
+          const w = (0.03 + 0.1 * s) * ampK * Math.sin(k.phase - s * WAVES + idleSway);
           wx[i] = rx[i] + rnx[i] * w;
           wy[i] = ry[i] + rny[i] * w;
         }
@@ -583,13 +591,14 @@ const WaterHero = ({
         const tdl = Math.hypot(tdx, tdy) || 1;
         const fX = tdx / tdl, fY = tdy / tdl;
         const sX = -fY, sY = fX;
-        const beat = Math.sin(k.phase - WAVES);
+        const beat = Math.sin(k.phase - WAVES + idleSway);
 
         // ---- caudal fin: translucent forked fan, swept by the tail stroke ----
         {
           const finL = L * (0.32 + 0.06 * thr);
           const spr = L * 0.145 * (0.85 + 0.3 * beat);
-          const bX = sX * L * 0.05 * beat, bY = sY * L * 0.05 * beat;
+          const tailSweep = L * (0.08 * idle + 0.05 * thr) * beat;
+          const bX = sX * tailSweep, bY = sY * tailSweep;
           const g = kctx.createLinearGradient(tipX, tipY, tipX + fX * finL, tipY + fY * finL);
           g.addColorStop(0, `rgba(${core},0.5)`);
           g.addColorStop(0.5, `rgba(${edge},0.2)`);
@@ -621,7 +630,7 @@ const WaterHero = ({
             const nx = -by * sgn, ny = bx * sgn;
             const flu = 0.6 + 0.4 * Math.sin(k.phase * 0.7 + (sgn > 0 ? 0 : Math.PI));
             const rx0 = wx[pi] + nx * half(0.22) * 0.6, ry0 = wy[pi] + ny * half(0.22) * 0.6;
-            const fl = L * (0.11 + 0.05 * flu);
+            const fl = L * (0.12 + 0.06 * flu + 0.035 * idle);
             const tx = rx0 + bx * fl * 0.5 + nx * fl * 0.75;
             const ty = ry0 + by * fl * 0.5 + ny * fl * 0.75;
             kctx.fillStyle = `rgba(${core},0.3)`;

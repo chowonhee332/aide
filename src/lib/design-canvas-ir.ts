@@ -1,11 +1,32 @@
 export type CanvasPlatform = 'mobile' | 'web'
 export type CanvasDensity = 'compact' | 'balanced' | 'airy'
 export type CanvasMediaMode = 'none' | 'data' | 'illustration' | 'photo' | 'mixed'
-export type CanvasNavigation = 'bottom-tabs' | 'top-bar' | 'sidebar' | 'minimal'
+export type CanvasNavigation = 'bottom-tabs' | 'top-bar' | 'sidebar' | 'top-and-side' | 'minimal'
+
+/**
+ * 사용자가 설문에서 고르는 "메인 구조". 6개 방향 후보는 이 구조를 고정한 채
+ * 밀도·미디어·섹션 흐름만 변주한다. app-* 는 composition을, web-* 는 셸(navigation)을
+ * 잠근다. 매핑은 design-direction.ts 의 STRUCTURE_LOCKS 하나에서만 해석한다.
+ */
+export type CanvasStructure =
+  | 'app-card'
+  | 'app-list'
+  | 'app-grid'
+  | 'app-dashboard'
+  | 'app-discovery'
+  | 'app-map'
+  | 'app-guided'
+  | 'app-immersive'
+  | 'web-gnb'
+  | 'web-lnb'
+  | 'web-dashboard'
+  | 'web-split'
+  | 'web-minimal'
 export type CanvasComposition =
   | 'dashboard'
   | 'immersive'
   | 'editorial'
+  | 'carousel'
   | 'workspace'
   | 'feed'
   | 'map'
@@ -84,6 +105,8 @@ export interface DesignDirectionRequest {
   coreObjects?: string[]
   keyDataPoints?: string[]
   designSystemSummary?: string
+  /** 설문에서 고른 메인 구조. 6개 방향의 composition/navigation을 잠근다. */
+  structure?: CanvasStructure
   /** A/B/C가 실제로 사용할 미디어 역할. 방향 선택과 렌더 정책의 충돌을 막는다. */
   visualRoles?: Array<'data' | '3d' | 'photo'>
   /** Real content produced by ServiceAnalysis, so the preview shows the service

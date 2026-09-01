@@ -20,9 +20,8 @@ assert.match(studio, /Token Reference/)
 // Ensures studio displays tokens and their approximate components (allows text variation in display format)
 assert.match(studio, /토큰.*컴포넌트/)
 
-// Ensures studio card body has color, typography, and component bands (allows header text variation)
-assert.match(studio, /색상.*타이포.*컴포넌트/)
-assert.match(studio, /색상/)
-assert.match(studio, /타이포그래피/)
+// Ensures studio card body is the 4-column token grid (color swatches · typography · components ×2)
+assert.match(studio, /gridTemplateColumns: '175px 140px 1fr 1fr', gap: 1/)
+assert.equal((studio.match(/flexDirection: 'column', gap: 1/g) ?? []).length >= 4, true)
 
 console.log('shared variant content and token preview contract verified')

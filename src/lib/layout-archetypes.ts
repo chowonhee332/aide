@@ -1,4 +1,5 @@
 import type { AppDomain } from './domain-constants'
+import type { CanvasPlatform } from './design-canvas-ir'
 
 /**
  * 레이아웃 아키타입 — "구성(composition) 다양성"의 원천.
@@ -283,7 +284,21 @@ export function assignVariantArchetypes(
   brief: string,
   domain: AppDomain,
   isLandingIntent: boolean = false,
+  pickedArchetypeIds?: readonly string[],
 ): Record<'A' | 'B' | 'C', LayoutArchetype> {
+  // 설문에서 메인 구조 3개를 고른 경우: 고른 순서대로 A·B·C 아키타입을 고정한다.
+  // brief/domain 휴리스틱보다 우선 — 사용자가 명시적으로 고른 구조가 최종 시안까지 이어져야 한다.
+  if (
+    pickedArchetypeIds &&
+    pickedArchetypeIds.length >= 3 &&
+    pickedArchetypeIds.slice(0, 3).every(id => ARCHETYPE_POOL[id])
+  ) {
+    return {
+      A: ARCHETYPE_POOL[pickedArchetypeIds[0]],
+      B: ARCHETYPE_POOL[pickedArchetypeIds[1]],
+      C: ARCHETYPE_POOL[pickedArchetypeIds[2]],
+    }
+  }
   const seed = hashString(`${brief}::${domain}`)
   const used = new Set<string>()
 
@@ -395,6 +410,12 @@ export function buildVariantStructures(args: {
   }
   /** 랜딩 페이지 의도 감지 — true면 sideNav/bottomNav 강제 비활성화 */
   isLandingIntent?: boolean
+  /** 설문에서 고른 웹 구조가 LNB를 요구하면 variant별로 sideNav를 켠다 (도메인 기본값보다 우선) */
+  sideNavByVariant?: Partial<Record<'A' | 'B' | 'C', boolean>>
+  /** 설문에서 고른 authored 구조의 섹션 순서 — 있으면 아키타입 sectionRecipe 대신 이걸 골격으로 쓴다 */
+  authoredRecipes?: Partial<Record<'A' | 'B' | 'C', string[]>>
+  /** authored 구조의 밀도 — 있으면 아키타입 density 대신 */
+  densityByVariant?: Partial<Record<'A' | 'B' | 'C', 'compact' | 'balanced' | 'airy'>>
 }): Record<'A' | 'B' | 'C', UIStructureIR> {
   const variants = ['A', 'B', 'C'] as const
   const isWeb = args.platform === 'web'
@@ -413,8 +434,19 @@ export function buildVariantStructures(args: {
 
   return variants.reduce((acc, variant, variantIdx) => {
     const archetype = args.archetypes[variant]
+    // 고른 웹 구조(web-lnb / web-dashboard / web-split)가 sideNav를 요구하면 도메인 기본값보다 우선.
+    const sideNavForVariant = args.isLandingIntent
+      ? false
+      : isWeb
+        ? (args.sideNavByVariant?.[variant] ?? sideNav)
+        : false
     const policy = args.visualPolicies[variantIdx] ?? 'no-image'
-    const sections = archetype.sectionRecipe.map((recipe, index): UIStructureSection => {
+    // 설문에서 고른 authored 구조가 있으면 그 섹션 순서를 골격으로 쓰고, 없으면 아키타입 기본 recipe.
+    const sectionRecipe = (args.authoredRecipes?.[variant]?.length ?? 0) >= 3
+      ? args.authoredRecipes![variant]!
+      : archetype.sectionRecipe
+    const density = args.densityByVariant?.[variant] ?? archetype.density
+    const sections = sectionRecipe.map((recipe, index): UIStructureSection => {
       const isHero = index === 0 || /hero|summary|status|search|savings|progress|photo|object/.test(recipe)
       const visual = visualForPolicy(policy, isHero)
       const layout = sectionLayout(recipe, archetype)
@@ -422,7 +454,7 @@ export function buildVariantStructures(args: {
         id: recipe.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || `section-${index + 1}`,
         role: recipe,
         layout,
-        density: archetype.density,
+        density,
         visual,
         ctaPlacement: /cta|hero|summary|savings|progress|status/.test(recipe) ? (visual === 'SCENE_3D' ? 'bottom-right' : 'bottom') : 'none',
         content: sectionContent(recipe, args.contentInventory?.requiredAboveFoldUnits ?? ['title', 'meta', 'value', 'action']),
@@ -452,14 +484,14 @@ export function buildVariantStructures(args: {
         archetype.id,
         archetype.heroPattern,
         archetype.contentPattern,
-        archetype.sectionRecipe.join('+'),
+        sectionRecipe.join('+'),
       ].join('::'),
       chrome: {
         topNav: true,
         // 랜딩 페이지는 bottomNav 강제 비활성화. 그 외엔 아키타입 기본값(mobile=하단탭바)이되
         // as-is 셸 계약이 present:false면 그걸 우선한다.
         bottomNav: args.isLandingIntent ? false : (!isWeb && shellBottomNav !== false),
-        sideNav,
+        sideNav: sideNavForVariant,
         scrollArea: 'main',
         fixedChrome: true,
         contentMustScroll: true,
@@ -502,4 +534,233 @@ export function archetypeToPrompt(a: LayoutArchetype): string {
     `- 피할 것: ${a.forbid.join(', ')}`,
     `⚠️ 이 아키타입의 골격을 따르되, 색·간격·컴포넌트 토큰은 DESIGN.md 결정론 규칙을 그대로 유지하세요. 골격은 다르게, 정확성은 동일하게.`,
   ].join('\n')
+}
+
+// ── AuthoredStructure — LLM이 브리프로 이 서비스 전용으로 "작성"하는 화면 구조 ──
+//
+// 고정 목록에서 고르는 게 아니라, 분석 단계에서 이 서비스에 맞는 구조 5개를 직접 만든다.
+// 각 구조 = 위→아래 섹션 순서(어휘 슬러그) + 밀도 + (웹) 내비게이션. 사용자가 5개 중 3개를
+// 고르면 그 섹션 순서가 그대로 buildVariantStructures 의 recipe 가 되어 시안 A/B/C 골격이 된다.
+// 섹션 슬러그는 자유 창작이 아니라 SECTION_VOCABULARY 안에서 조합한다 — 그래야 결정론
+// 렌더러(repeatPattern·sectionLayout·sectionContent)가 처리할 수 있다.
+
+export type WebNav = 'top-bar' | 'sidebar' | 'top-and-side' | 'minimal'
+export const WEB_NAVS: readonly WebNav[] = ['top-bar', 'sidebar', 'top-and-side', 'minimal']
+const AUTHORED_DENSITIES = ['compact', 'balanced', 'airy'] as const
+
+export interface AuthoredStructure {
+  /** 이 브리프 기준 짧은 한국어 이름 */
+  name: string
+  /** 왜 이 서비스에 맞는지 한 문장 */
+  reason: string
+  /** 위→아래 섹션 순서. 3~7개, SECTION_VOCABULARY 슬러그 */
+  sections: string[]
+  /** 웹 전용 내비게이션. 모바일은 항상 하단 탭바라 생략한다 */
+  nav?: WebNav
+  density: 'compact' | 'balanced' | 'airy'
+}
+
+/**
+ * LLM에게 보여주는 섹션 어휘 — 전부 아키타입 sectionRecipe 에 실제로 쓰이는 슬러그라
+ * 결정론 레이아웃/콘텐츠/비주얼 함수가 이미 처리한다. 새 슬러그를 여기 넣기 전에
+ * repeatPattern/sectionLayout/sectionContent 처리부터 확인할 것.
+ */
+export const SECTION_VOCABULARY: Record<string, string> = {
+  // 리드(첫 섹션 후보)
+  'summary-hero': '상태·요약을 압축한 상단 히어로 (수치 1~3개 + 한 줄 메시지)',
+  'kpi-band': '핵심 지표 3~4개를 가로로 늘어놓은 KPI 밴드',
+  'photo-hero': '대형 사진 히어로 (감성·탐색형)',
+  'object-3d-hero': '배경 없는 단일 3D 오브젝트 히어로 (전환·상징형)',
+  'brand-hero': '헤드라인+부제+CTA의 편집형 브랜드 히어로 (랜딩)',
+  'search-bar': '상단 검색 입력 (찾기·탐색이 시작점)',
+  'progress-hero': '진행률/레벨 히어로 (습관·학습·퀘스트)',
+  'map-preview': '지도/위치 미리보기 (장소·예약)',
+  // 본문
+  'quick-actions': '자주 쓰는 액션 버튼 그리드',
+  'category-chips': '카테고리 필터 칩 가로 줄',
+  'category-rail': '카테고리 썸네일 가로 레일',
+  'horizontal-rail': '콘텐츠 카드 가로 스크롤 레일',
+  'featured-cards': '2열 이미지 카드 그리드',
+  'result-grid': '검색/탐색 결과 썸네일 그리드',
+  'product-card-grid': '상품/가게 카드 그리드',
+  'bento-tiles': '크기가 다른 타일의 벤토 그리드',
+  'feed-post': '세로 피드 포스트 (사진·반응·댓글)',
+  'recommendation-list': '추천 항목 세로 리스트',
+  'ranked-list': '순위가 있는 세로 리스트',
+  'comparison-table': '2~3안 비교표',
+  'data-table': '정렬 가능한 데이터 테이블 (어드민)',
+  'timeline-list': '시간순 타임라인/이력 리스트',
+  'metric-cards': '지표 카드 묶음',
+  'benefit-cards': '혜택/기능 카드 묶음',
+  'segmented-tabs': '세그먼트/탭 전환',
+  'stepper-form': '단계형 입력 폼',
+  'trust-section': '신뢰 요소 (후기·파트너·보증)',
+  'conversion-cta': '전환 CTA 블록',
+  'cta-footer': '하단 CTA 풋터',
+  'related-recommendations': '연관 추천 섹션',
+}
+
+/** 첫 섹션으로 허용되는 리드형 슬러그 */
+const LEAD_SLUGS = new Set<string>([
+  'summary-hero', 'kpi-band', 'photo-hero', 'object-3d-hero', 'brand-hero',
+  'search-bar', 'progress-hero', 'map-preview',
+])
+
+/** 검증에서 허용하는 전체 슬러그 — 어휘 + 모든 아키타입 recipe 슬러그 (동기화). */
+const KNOWN_SLUGS: Set<string> = new Set([
+  ...Object.keys(SECTION_VOCABULARY),
+  ...Object.values(ARCHETYPE_POOL).flatMap(a => a.sectionRecipe),
+])
+
+/** 분석 프롬프트에 넣는 어휘 목록 문자열. */
+export function buildSectionVocabularyPrompt(platform: CanvasPlatform): string {
+  const lines = Object.entries(SECTION_VOCABULARY).map(([slug, desc]) => `- ${slug}: ${desc}`)
+  const navLine = platform === 'web'
+    ? `\n웹 nav 값(하나): ${WEB_NAVS.join(' | ')} (sidebar/top-and-side는 좌측 내비가 있는 구조)`
+    : ''
+  return `${lines.join('\n')}${navLine}`
+}
+
+function clampAuthoredSections(raw: unknown): string[] {
+  const arr = Array.isArray(raw) ? raw : []
+  const kept: string[] = []
+  for (const s of arr) {
+    if (typeof s === 'string' && KNOWN_SLUGS.has(s) && !kept.includes(s)) kept.push(s)
+    if (kept.length >= 7) break
+  }
+  if (kept.length > 0 && !LEAD_SLUGS.has(kept[0])) kept.unshift('summary-hero')
+  return kept.slice(0, 7)
+}
+
+function projectArchetypeToAuthored(id: string, platform: CanvasPlatform): AuthoredStructure {
+  const a = ARCHETYPE_POOL[id]
+  const sections = clampAuthoredSections(a.sectionRecipe)
+  return {
+    name: a.name,
+    reason: '',
+    sections: sections.length >= 3 ? sections : ['summary-hero', 'recommendation-list', 'conversion-cta'],
+    ...(platform === 'web'
+      ? { nav: (a.heroPattern === 'kpi-band' || a.contentPattern === 'widgets' ? 'top-and-side' : 'top-bar') as WebNav }
+      : {}),
+    density: a.density,
+  }
+}
+
+/** 두 구조가 얼마나 겹치는지 — 섹션 교집합 크기, 같은 리드 섹션이면 가산. 낮을수록 다르다. */
+function authoredOverlap(a: AuthoredStructure, b: AuthoredStructure): number {
+  const shared = a.sections.filter(s => b.sections.includes(s)).length
+  return shared + (a.sections[0] === b.sections[0] ? 1.5 : 0)
+}
+
+/**
+ * 이미 고른 구조들과 가장 안 겹치면서 도메인에 맞는 아키타입을 골라 투영한다.
+ * `strict`면 도메인 부적합('any' 포함) 아키타입은 후보에서 제외 — 어드민에 3D 히어로가
+ * "다르다"는 이유로 채워지는 걸 막는다. 쓸 만한 게 없으면 null.
+ */
+function diversePadArchetype(
+  chosen: AuthoredStructure[],
+  usedArchetypeIds: Set<string>,
+  domain: AppDomain,
+  platform: CanvasPlatform,
+  strict: boolean,
+): AuthoredStructure | null {
+  let bestId = ''
+  let bestScore = Infinity
+  for (const [id, a] of Object.entries(ARCHETYPE_POOL)) {
+    if (usedArchetypeIds.has(id)) continue
+    const domainFit = a.bestFor !== 'any' && a.bestFor.includes(domain)
+    if (strict && !domainFit) continue
+    const candidate = projectArchetypeToAuthored(id, platform)
+    const worstOverlap = chosen.reduce((m, c) => Math.max(m, authoredOverlap(candidate, c)), 0)
+    const domainPenalty = domainFit ? 0 : a.bestFor === 'any' ? 1 : 2.5
+    const score = worstOverlap + domainPenalty
+    if (score < bestScore) {
+      bestScore = score
+      bestId = id
+    }
+  }
+  if (!bestId) return null
+  usedArchetypeIds.add(bestId)
+  const arch = ARCHETYPE_POOL[bestId]
+  return { ...projectArchetypeToAuthored(bestId, platform), reason: arch.description.split(/[.。]/)[0].trim() }
+}
+
+/**
+ * LLM이 작성한 구조 배열을 검증·수리해 항상 유효한 "서로 확연히 다른" 5개로 만든다.
+ * - 모르는 섹션 슬러그 제거, 3~7개로 clamp, 첫 섹션이 리드형이 아니면 summary-hero 삽입
+ * - 웹이 아니면 nav 제거, 웹이면 WEB_NAVS 안으로 강제(기본 top-bar)
+ * - 이미 채택한 구조와 섹션이 3개 이상 겹치면(=거의 같으면) 버린다
+ * - 5개 미만이면 "이미 고른 것과 가장 안 겹치는 아키타입"으로 채운다
+ */
+export function normalizeAuthoredStructures(
+  raw: unknown,
+  platform: CanvasPlatform,
+  brief: string,
+  domain: AppDomain,
+  isLandingIntent: boolean,
+): AuthoredStructure[] {
+  const out: AuthoredStructure[] = []
+  const usedArchetypeIds = new Set<string>()
+
+  const tryPush = (candidate: AuthoredStructure) => {
+    if (out.length >= 5 || candidate.sections.length < 3) return
+    // 거의 같은 구조(섹션 3개 이상 겹침, 또는 같은 리드 + 2개 겹침)는 버린다.
+    if (out.some(existing => authoredOverlap(candidate, existing) >= 3)) return
+    out.push(candidate)
+    usedArchetypeIds.add(bestArchetypeFor(candidate.sections, ''))
+  }
+
+  for (const item of Array.isArray(raw) ? raw : []) {
+    if (!item || typeof item !== 'object') continue
+    const rec = item as Record<string, unknown>
+    const sections = clampAuthoredSections(rec.sections)
+    if (sections.length < 3) continue
+    const navRaw = typeof rec.nav === 'string' ? rec.nav : ''
+    const nav: WebNav | undefined = platform === 'web'
+      ? (WEB_NAVS.includes(navRaw as WebNav) ? navRaw as WebNav : 'top-bar')
+      : undefined
+    const density = AUTHORED_DENSITIES.includes(rec.density as typeof AUTHORED_DENSITIES[number])
+      ? rec.density as AuthoredStructure['density']
+      : 'balanced'
+    tryPush({
+      name: typeof rec.name === 'string' && rec.name.trim() ? rec.name.trim().slice(0, 40) : '구조',
+      reason: typeof rec.reason === 'string' ? rec.reason.trim().slice(0, 160) : '',
+      sections,
+      ...(nav ? { nav } : {}),
+      density,
+    })
+  }
+
+  // LLM이 3개도 못 주면 브리프 시드 아키타입으로 최소선을 만든다.
+  if (out.length < 3) {
+    const seed = assignVariantArchetypes(brief, domain, isLandingIntent)
+    for (const a of [seed.A, seed.B, seed.C]) {
+      if (out.length >= 5 || usedArchetypeIds.has(a.id)) continue
+      tryPush({ ...projectArchetypeToAuthored(a.id, platform), reason: a.description.split(/[.。]/)[0].trim() })
+    }
+  }
+  // 5개까지 채우되, 먼저 도메인에 맞는 것만(strict). 도메인 적합 아키타입이 동나면
+  // 억지로 안 맞는 걸 넣지 않고 그대로 둔다 — 3~5개면 충분하다("5개 정도").
+  let guard = 0
+  while (out.length < 5 && guard < 20) {
+    const pad = diversePadArchetype(out, usedArchetypeIds, domain, platform, out.length >= 3)
+    if (!pad) break
+    out.push(pad)
+    guard++
+  }
+  return out.slice(0, 5)
+}
+
+/** authored 섹션과 슬러그 교집합이 가장 큰 아키타입 id. 교집합이 0이면 fallbackId. */
+export function bestArchetypeFor(sections: string[], fallbackId: string): string {
+  let bestId = fallbackId
+  let bestScore = 0
+  for (const [id, a] of Object.entries(ARCHETYPE_POOL)) {
+    const score = a.sectionRecipe.reduce((n, slug) => n + (sections.includes(slug) ? 1 : 0), 0)
+    if (score > bestScore) {
+      bestScore = score
+      bestId = id
+    }
+  }
+  return bestId
 }

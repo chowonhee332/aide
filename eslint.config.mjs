@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored third-party source (Astryx submodule) — not Aide's to lint/typecheck.
+    "vendor/**",
   ]),
 ]);
 

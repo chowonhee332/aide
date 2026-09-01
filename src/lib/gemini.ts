@@ -15,7 +15,8 @@ import {
 import sharp from 'sharp';
 import { type AppDomain, DOMAIN_KEY_TO_LABEL, DOMAIN_HOME_EMPHASIS_OPTIONS, DOMAIN_PRIMARY_JOURNEY_OPTIONS, DOMAIN_FIRST_SCREEN_FOCUS_OPTIONS } from './domain-constants';
 import { getDomainGuidance } from './variant-refs';
-import { archetypeToPrompt } from './layout-archetypes';
+import { archetypeToPrompt, normalizeAuthoredStructures, buildSectionVocabularyPrompt, type AuthoredStructure } from './layout-archetypes';
+import { detectLandingIntent } from './design-intelligence';
 import { sanitizeMaterialSymbols, ensureMaterialSymbolsFont, lintStructure, buildStructureRepairMessage, logStructureRecord, injectSectionAttrs, repairSectionOrder } from './structure-lint';
 import { logGeminiUsage } from './gemini-usage';
 import { parseFencedDesignContract } from './design-md-contract';
@@ -578,6 +579,8 @@ export interface ServiceAnalysis {
   heroVisualType: '3d-object' | 'photo' | 'data';
   /** 브리프에서 추론한 주요 타겟 — target_audience 질문 옵션 중 하나 (도메인 하드코딩 대신) */
   targetAudience: string;
+  /** LLM이 브리프를 분석해 이 서비스 전용으로 작성한 화면 구조 5개 (적합순). 설문의 "메인 구조" 보기가 된다. */
+  authoredStructures?: AuthoredStructure[];
   /** 이 서비스에 맞는 실제 콘텐츠 시드 — AI 생성 (정규식 더미 템플릿 대신 사용) */
   contentSeed?: {
     kpis: Array<{ label: string; value: string; meta: string }>;
@@ -986,6 +989,12 @@ ${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는
    - quickActions: 첫 화면 빠른 액션 4~6개 (이 서비스의 실제 행동)
    - listItems: 추천/리스트 항목 3개 이상. 각 { title, meta, value, badge(선택) }
    - activityItems: 최근 활동/상태 2~3개. 각 { title, meta, value }
+10. **authoredStructures** — 위 분석(coreObjects·primaryJourney·keyDataPoints·heroVisualType)을 근거로, 이 서비스의 홈 화면을 짤 수 있는 **서로 다른 접근 5개**를 직접 작성하세요. **정확히 5개**, 하나도 빠뜨리지 마세요. 예: 요약·현황 중심 / 탐색·검색 중심 / 콘텐츠 몰입 중심 / 관리·목록 중심 / 단계·가이드 중심처럼 **각각 다른 각도**로. 도메인만 보고 정형 답 금지. 각 구조:
+   - name: 이 서비스 기준 짧은 한국어 이름
+   - reason: 왜 이 서비스에 맞는지 한 문장
+   - sections: 위→아래 섹션 순서 3~7개. **아래 어휘 슬러그만** 사용(자유 창작 금지). 첫 섹션은 리드형(summary-hero·kpi-band·photo-hero·object-3d-hero·brand-hero·search-bar·progress-hero·map-preview) 중 하나이며, **5개의 첫 섹션은 되도록 서로 다르게**. 두 구조가 섹션을 3개 이상 똑같이 쓰면 안 됩니다.
+   - density: "compact" | "balanced" | "airy"${platform === 'web' ? '\n   - nav: 아래 nav 값 중 하나' : ''}
+${buildSectionVocabularyPrompt(platform ?? 'mobile')}
 
 반드시 아래 JSON 형식으로만 응답하세요 (마크다운 없이):
 {
@@ -1013,6 +1022,13 @@ ${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는
     "heroVisualType": "3d-object | photo | data",
     "heroVisualSubject": "...",
     "targetAudience": "...",
+    "authoredStructures": [
+      { "name": "요약 대시보드", "reason": "...", "sections": ["kpi-band", "quick-actions", "recommendation-list", "timeline-list"], "density": "compact" },
+      { "name": "탐색 피드", "reason": "...", "sections": ["search-bar", "category-chips", "result-grid", "benefit-cards"], "density": "balanced" },
+      { "name": "콘텐츠 몰입", "reason": "...", "sections": ["photo-hero", "horizontal-rail", "ranked-list"], "density": "airy" },
+      { "name": "관리 목록", "reason": "...", "sections": ["summary-hero", "segmented-tabs", "data-table"], "density": "compact" },
+      { "name": "단계 가이드", "reason": "...", "sections": ["progress-hero", "stepper-form", "cta-footer"], "density": "balanced" }
+    ],
     "contentSeed": {
       "kpis": [{ "label": "...", "value": "...", "meta": "..." }],
       "quickActions": ["...", "..."],
@@ -1056,6 +1072,13 @@ ${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는
       const v = typeof rawAnalysis.targetAudience === 'string' ? rawAnalysis.targetAudience.trim() : ''
       return opts.includes(v) ? v : ''
     })(),
+    authoredStructures: normalizeAuthoredStructures(
+      (rawAnalysis as { authoredStructures?: unknown }).authoredStructures,
+      platform ?? 'mobile',
+      brief,
+      parsed.domain ?? 'other',
+      detectLandingIntent(brief, platform ?? 'mobile'),
+    ),
     contentSeed: (() => {
       const cs = rawAnalysis.contentSeed
       if (!cs || typeof cs !== 'object') return undefined
@@ -1080,11 +1103,11 @@ ${platform ? `- 참고: URL 파라미터로 전달된 기존 플랫폼 힌트는
 
   const fixedQuestions: Question[] = [
     {
-      id: 'platform_intent',
-      question: '기준 화면',
-      description: parsed.recommendedPlatform?.reason ?? '첫 시안 프리뷰와 정보 구조의 기준 화면입니다.',
-      type: 'single',
-      options: ['모바일 앱', '웹 서비스', '랜딩/브랜드', '대시보드/관리자', '포털/커머스'],
+      id: 'main_structure',
+      question: '메인 구조 3개',
+      description: 'AI가 이 서비스에 맞게 작성한 구조 5개입니다. 고른 순서대로 A · B · C 시안이 됩니다.',
+      type: 'multi',
+      options: (serviceAnalysis?.authoredStructures ?? []).map(s => s.name),
     },
     {
       id: 'hero_3d',

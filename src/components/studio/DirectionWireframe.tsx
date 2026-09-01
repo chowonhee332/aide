@@ -1,13 +1,9 @@
 import type { CanvasNode, DesignCanvasIR } from '@/lib/design-canvas-ir'
 
 /**
- * Deterministic wireframe of one DesignDirection's canvas IR. Renders the exact
- * `DesignCanvasIR` that the picked direction feeds into generateUI — no mock UI,
- * no invented palette. The user picks 3 of these instead of the pipeline
- * silently auto-narrowing 6 → 3.
+ * Deterministic schematic of a `DesignCanvasIR` — the exact structure a picked
+ * "메인 구조" feeds into generateUI. No mock UI, no invented palette.
  */
-
-const ORDER_LABEL = ['A', 'B', 'C'] as const
 
 function TextLines({ node }: { node: CanvasNode }) {
   const rows = Math.max(1, Math.min(3, Math.round(node.height / 34)))
@@ -79,62 +75,31 @@ function CanvasRect({ node, accent }: { node: CanvasNode; accent: string }) {
   }
 }
 
-export function DirectionWireframe({
+/** Just the schematic SVG for a canvas IR — reused by the direction picker and
+ *  the questionnaire's "메인 구조" chooser. */
+export function WireframeSvg({
   ir,
-  order,
-  onToggle,
+  accent = 'var(--aui-primary)',
+  label,
 }: {
   ir: DesignCanvasIR
-  /** 0-based pick order → A/B/C badge. undefined = not selected. */
-  order?: number
-  onToggle?: () => void
+  accent?: string
+  label?: string
 }) {
-  const accent = ir.visualContract?.accent ?? 'var(--aui-primary)'
-  const selected = order !== undefined
-  const d = ir.direction
-
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-pressed={selected}
-      className="group flex w-full flex-col gap-[var(--aui-space-2)] rounded-[var(--aui-radius-card)] border p-[var(--aui-space-3)] text-left transition-[border-color,box-shadow] focus-visible:shadow-[var(--aui-shadow-focus)] focus-visible:outline-none"
-      style={{
-        borderColor: selected ? accent : 'var(--aui-border-subtle)',
-        boxShadow: selected ? `inset 0 0 0 1px ${accent}` : undefined,
-      }}
+    <svg
+      viewBox={`0 0 ${ir.width} ${ir.height}`}
+      width="100%"
+      height="100%"
+      preserveAspectRatio="xMidYMid meet"
+      role="img"
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
     >
-      <div className="relative">
-        <div
-          className="overflow-hidden rounded-[var(--aui-radius-control)] bg-[var(--aui-surface)] ring-1 ring-inset ring-[var(--aui-border-subtle)]"
-          style={{ aspectRatio: `${ir.width} / ${ir.height}` }}
-        >
-          <svg viewBox={`0 0 ${ir.width} ${ir.height}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label={`${d.name} 와이어프레임`}>
-            <rect x={0} y={0} width={ir.width} height={ir.height} fill="var(--aui-page)" />
-            {ir.nodes.map((node) => (
-              <CanvasRect key={node.id} node={node} accent={accent} />
-            ))}
-          </svg>
-        </div>
-        {selected && (
-          <span
-            className="absolute right-[var(--aui-space-2)] top-[var(--aui-space-2)] grid size-6 place-items-center rounded-[var(--aui-radius-pill)] text-xs font-bold text-[var(--aui-on-primary)]"
-            style={{ backgroundColor: accent }}
-          >
-            {ORDER_LABEL[order] ?? order + 1}
-          </span>
-        )}
-      </div>
-      <div className="grid gap-[var(--aui-space-1)]">
-        <span className="text-sm font-semibold text-[var(--aui-text)]">{d.name}</span>
-        <span className="line-clamp-2 text-xs leading-4 text-[var(--aui-text-muted)]">{d.signatureMove || d.thesis}</span>
-        <span className="mt-[var(--aui-space-1)] flex flex-wrap gap-[var(--aui-space-1)] text-[10px] font-semibold uppercase tracking-wide text-[var(--aui-text-assistive)]">
-          <span className="rounded bg-[var(--aui-fill)] px-1.5 py-0.5">{d.composition}</span>
-          <span className="rounded bg-[var(--aui-fill)] px-1.5 py-0.5">{d.density}</span>
-          <span className="rounded bg-[var(--aui-fill)] px-1.5 py-0.5">{d.navigation}</span>
-          {d.mediaMode !== 'none' && <span className="rounded bg-[var(--aui-fill)] px-1.5 py-0.5">{d.mediaMode}</span>}
-        </span>
-      </div>
-    </button>
+      <rect x={0} y={0} width={ir.width} height={ir.height} fill="var(--aui-page)" />
+      {ir.nodes.map((node) => (
+        <CanvasRect key={node.id} node={node} accent={accent} />
+      ))}
+    </svg>
   )
 }

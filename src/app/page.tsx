@@ -5,6 +5,7 @@ import {
   ArrowUp, ArrowRight, FileText, Upload, X,
   Check, ChevronDown, Palette, Share2,
   Clock, Trash2, ExternalLink, Link2, KeyRound,
+  Smartphone, Monitor,
   Download, Eye, EyeOff, Coins, Menu as MenuIcon,
 } from '@/components/ui/material-icon'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
@@ -381,6 +382,7 @@ export default function Home() {
       .finally(() => setUsageLoading(false))
   }, [usageModalOpen])
 
+  const [platform, setPlatform] = useState<'mobile' | 'web'>('mobile')
   const [briefDesc, setBriefDesc] = useState('')
   const [briefFeatures, setBriefFeatures] = useState('')
   const [briefAudience, setBriefAudience] = useState('')
@@ -1090,8 +1092,9 @@ export default function Home() {
     setStudioTrigger({
       brief: brief.trim(),
       preset: designPreset !== 'none' ? designPreset : undefined,
+      platform,
     })
-  }, [brief, designPreset, designMdContent, asIsAnalysis, refPageImage, refImageKind, brandLogo, brandColors, prdDoc, iaImage, iaText])
+  }, [brief, platform, designPreset, designMdContent, asIsAnalysis, refPageImage, refImageKind, brandLogo, brandColors, prdDoc, iaImage, iaText])
 
   const canSubmit = brief.trim().length > 0
   const designButtonLabel = designMdFileName ?? null
@@ -1649,8 +1652,8 @@ export default function Home() {
 
           {/* Input card */}
           <div className="hero-brief-card" style={{
-            width: '100%', maxWidth: 'var(--aui-content-narrow)', borderRadius: "var(--aui-radius-overlay)",
-            background: 'linear-gradient(rgba(255,255,255,0.6), rgba(255,255,255,0.6)) padding-box, linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.8)) border-box',
+            width: '100%', maxWidth: 'var(--aui-content-narrow)', borderRadius: '20px',
+            background: 'linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)) padding-box, linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.8)) border-box',
             backdropFilter: 'blur(var(--aui-blur-glass-strong))',
             WebkitBackdropFilter: 'blur(var(--aui-blur-glass-strong))',
             border: '1px solid transparent',
@@ -1744,6 +1747,33 @@ export default function Home() {
                 >
                   <span style={{ fontSize: "var(--aui-icon-md)", lineHeight: "var(--aui-leading-none)", marginTop: '-1px' }}>+</span>
                 </button>
+                {/* App / Web 토글 — 이 선택이 설문의 "메인 구조" 보기를 결정한다 */}
+                <div role="radiogroup" aria-label="플랫폼" style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '3px', borderRadius: 'var(--aui-radius-pill)', backgroundColor: 'var(--aui-border-subtle)', flexShrink: 0 }}>
+                  {([['mobile', '앱', Smartphone], ['web', '웹', Monitor]] as const).map(([value, label, Icon]) => {
+                    const active = platform === value
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => setPlatform(value)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '5px',
+                          padding: '0 var(--aui-space-3)', height: '32px', borderRadius: 'var(--aui-radius-pill)',
+                          border: 'none', cursor: 'pointer', letterSpacing: 'var(--aui-tracking-tight)',
+                          fontSize: 'var(--aui-type-compact-size)', fontWeight: 'var(--aui-weight-semibold)',
+                          backgroundColor: active ? 'var(--aui-on-dark)' : 'transparent',
+                          color: active ? 'var(--aui-scrim-strong)' : 'var(--aui-scrim)',
+                          boxShadow: active ? 'var(--aui-shadow-sm)' : 'none',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        <Icon size={13} /> {label}
+                      </button>
+                    )
+                  })}
+                </div>
 
                 {/* Source chips */}
                 {asIsAnalysis ? (
