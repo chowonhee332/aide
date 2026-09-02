@@ -1,0 +1,474 @@
+[
+  {
+    "id": "ai-chat",
+    "name": "AI Chat Conversation",
+    "description": "Transcript of alternating turns carrying mixed rich content inline — markdown, code blocks, collapsible tool-call output — beside a resizable artifact panel tha",
+    "category": "AI Chat - Conversation",
+    "lines": 764,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "ai-chat.tsx",
+    "skeleton": "ai-chat.skeleton.txt"
+  },
+  {
+    "id": "ai-chat-landing",
+    "name": "AI Chat Landing",
+    "description": "Zero-state entry surface centered on a single composer with suggestion chips instead of history, sized for the moment before any content exists.",
+    "category": "AI Chat - Landing",
+    "lines": 479,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "ai-chat-landing.tsx",
+    "skeleton": "ai-chat-landing.skeleton.txt"
+  },
+  {
+    "id": "dashboard",
+    "name": "Analytics Dashboard",
+    "description": "Three-band analytics: a row of headline tiles, then charts, then supporting tables, all re-reading from one global filter bar.",
+    "category": "Dashboard - Analytics",
+    "lines": 804,
+    "deps": [
+      "recharts",
+      "@heroicons"
+    ],
+    "file": "dashboard.tsx",
+    "skeleton": "dashboard.skeleton.txt"
+  },
+  {
+    "id": "login",
+    "name": "Basic Login",
+    "description": "Minimal centered credential form on a plain ground — two fields and a submit, nothing competing for attention.",
+    "category": "Login - Basic",
+    "lines": 98,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "login.tsx",
+    "skeleton": "login.skeleton.txt"
+  },
+  {
+    "id": "blank",
+    "name": "Blank",
+    "description": "Bare scaffold: one heading slot, one empty content region, no navigation and no chrome.",
+    "category": "Shell - Blank",
+    "lines": 19,
+    "deps": [],
+    "file": "blank.tsx",
+    "skeleton": "blank.skeleton.txt"
+  },
+  {
+    "id": "library",
+    "name": "Card Grid",
+    "description": "Searchable, browsable card grid with filter tabs and a real empty state: uniform tiles organized by topic, narrowing in place, with no detail surface behind the",
+    "category": "Content - Card Grid",
+    "lines": 515,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "library.tsx",
+    "skeleton": "library.skeleton.txt"
+  },
+  {
+    "id": "centered-hero",
+    "name": "Centered Hero",
+    "description": "Symmetrical centered stack — headline, short blurb, paired call-to-action buttons — resting on one wide full-bleed picture, with nothing on either flank competi",
+    "category": "Gallery - Hero",
+    "lines": 78,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "centered-hero.tsx",
+    "skeleton": "centered-hero.skeleton.txt"
+  },
+  {
+    "id": "payment-form",
+    "name": "Checkout Form",
+    "description": "Long sectioned form running beside a summary that stays visible while the fields scroll and recalculates as they change, ending on a terminal confirm of the tot",
+    "category": "Form - Checkout",
+    "lines": 979,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "payment-form.tsx",
+    "skeleton": "payment-form.skeleton.txt"
+  },
+  {
+    "id": "classic-gallery",
+    "name": "Classic Gallery",
+    "description": "Uniform grid of equal-ratio media tiles under a centered intro, with filter tabs that narrow the set in place.",
+    "category": "Gallery - Basic",
+    "lines": 162,
+    "deps": [],
+    "file": "classic-gallery.tsx",
+    "skeleton": "classic-gallery.skeleton.txt"
+  },
+  {
+    "id": "contact-form",
+    "name": "Contact Form",
+    "description": "Flat single-column form mixing control types — text, pill toggles, dropdowns, long free-text — landing on one full-width submit.",
+    "category": "Form - Basic",
+    "lines": 293,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "contact-form.tsx",
+    "skeleton": "contact-form.skeleton.txt"
+  },
+  {
+    "id": "documentation",
+    "name": "Documentation Catalog",
+    "description": "Reference landing that is pure wayfinding: a banner above a grid of category cards linking into sections, with no article content on the surface itself.",
+    "category": "Content - Documentation Catalog",
+    "lines": 273,
+    "deps": [],
+    "file": "documentation.tsx",
+    "skeleton": "documentation.skeleton.txt"
+  },
+  {
+    "id": "documentation-design",
+    "name": "Documentation Design",
+    "description": "Reference article alternating prose with live rendered examples: an interactive preview, a property table, paired do and don't comparisons, and copyable code bl",
+    "category": "Content - Documentation Design",
+    "lines": 758,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "documentation-design.tsx",
+    "skeleton": "documentation-design.skeleton.txt"
+  },
+  {
+    "id": "documentation-technical",
+    "name": "Documentation Technical",
+    "description": "Reference article ordered as sequential numbered steps with code at each stage, plus callout cards for prerequisites and onward links.",
+    "category": "Content - Documentation Technical",
+    "lines": 257,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "documentation-technical.tsx",
+    "skeleton": "documentation-technical.skeleton.txt"
+  },
+  {
+    "id": "dashboard-executive-summary",
+    "name": "Executive Summary Dashoard",
+    "description": "Report-shaped analytics with a prose rail beside the charts: a scorecard of headline numbers with period deltas and status coloring, goal-attainment bars, a tre",
+    "category": "Dashboard - Executive Summary",
+    "lines": 875,
+    "deps": [
+      "recharts",
+      "@heroicons"
+    ],
+    "file": "dashboard-executive-summary.tsx",
+    "skeleton": "dashboard-executive-summary.skeleton.txt"
+  },
+  {
+    "id": "file-explorer",
+    "name": "File Explorer",
+    "description": "Hierarchical browser that drills through nested levels as adjacent columns rather than replacing the list each time, with breadcrumb history, switchable list an",
+    "category": "Tools - File Explorer",
+    "lines": 539,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "file-explorer.tsx",
+    "skeleton": "file-explorer.skeleton.txt"
+  },
+  {
+    "id": "table-filter",
+    "name": "Filterable Table",
+    "description": "Flat row collection built around progressive filtering: a token bar that escalates into full query syntax, saved views that persist a filter set, column and gro",
+    "category": "Table - Filtering",
+    "lines": 4094,
+    "deps": [
+      "lucide-react"
+    ],
+    "file": "table-filter.tsx",
+    "skeleton": "table-filter.skeleton.txt"
+  },
+  {
+    "id": "gallery-hero",
+    "name": "Gallery Hero",
+    "description": "Centered stack — headline, short blurb, call-to-action buttons — resolving into a multi-image photo grid rather than one wide full-bleed picture, so the imagery",
+    "category": "Gallery - Hero",
+    "lines": 95,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "gallery-hero.tsx",
+    "skeleton": "gallery-hero.skeleton.txt"
+  },
+  {
+    "id": "table-grouped",
+    "name": "Grouped Table",
+    "description": "Row collection bundled into collapsible sections with per-group counts, so a long list reads as a handful of blocks that expand and collapse.",
+    "category": "Table - Grouped",
+    "lines": 1219,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "table-grouped.tsx",
+    "skeleton": "table-grouped.skeleton.txt"
+  },
+  {
+    "id": "ide",
+    "name": "IDE",
+    "description": "Dense multi-pane workspace of resizable, collapsible regions: a hierarchy tree on one flank, tabbed documents in the middle, a docked drawer along the bottom, a",
+    "category": "Tools - IDE",
+    "lines": 463,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "ide.tsx",
+    "skeleton": "ide.skeleton.txt"
+  },
+  {
+    "id": "kanban-board",
+    "name": "Kanban Board",
+    "description": "Horizontal lanes of draggable cards where the column itself is the status, so drag and drop between lanes is the state change.",
+    "category": "Tools - Kanban Board",
+    "lines": 754,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "kanban-board.tsx",
+    "skeleton": "kanban-board.skeleton.txt"
+  },
+  {
+    "id": "login-card",
+    "name": "Login Card",
+    "description": "Credential form inside an elevated centered card, third-party provider buttons separated from the fields by a divider, secondary sign-up and legal links beneath",
+    "category": "Login - Card",
+    "lines": 214,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "login-card.tsx",
+    "skeleton": "login-card.skeleton.txt"
+  },
+  {
+    "id": "login-split",
+    "name": "Login Split",
+    "description": "Credential form filling one half of a two-pane split, full-bleed media holding the other.",
+    "category": "Login - Split",
+    "lines": 275,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "login-split.tsx",
+    "skeleton": "login-split.skeleton.txt"
+  },
+  {
+    "id": "login-sso",
+    "name": "Login SSO",
+    "description": "Progressive credential flow that branches on input: the email domain resolves an identity provider and redirects, with a password path as fallback.",
+    "category": "Login - SSO",
+    "lines": 285,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "login-sso.tsx",
+    "skeleton": "login-sso.skeleton.txt"
+  },
+  {
+    "id": "mixed-gallery",
+    "name": "Mixed Gallery",
+    "description": "Masonry grid of variable-height tiles that pack against each other instead of cropping to a shared ratio, captioned per tile.",
+    "category": "Gallery - Mixed",
+    "lines": 169,
+    "deps": [],
+    "file": "mixed-gallery.tsx",
+    "skeleton": "mixed-gallery.skeleton.txt"
+  },
+  {
+    "id": "detail-page",
+    "name": "Order Detail",
+    "description": "Single-record detail in two columns: a summary header with status and actions, a repeating line-item list, a totals block that sums it, and a chronological acti",
+    "category": "Content - Order Detail",
+    "lines": 632,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "detail-page.tsx",
+    "skeleton": "detail-page.skeleton.txt"
+  },
+  {
+    "id": "editor",
+    "name": "Page Editor",
+    "description": "Three-pane authoring workspace: a source palette on one flank, a live canvas in the middle, and an inspector that retargets to whatever is selected.",
+    "category": "Tools - Page Editor",
+    "lines": 957,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "editor.tsx",
+    "skeleton": "editor.skeleton.txt"
+  },
+  {
+    "id": "dashboard-portfolio",
+    "name": "Portfolio Dashboard",
+    "description": "Analytics for a value-over-time question: balance and change tiles above a stacked area chart of composition through time, closing on a ranked table of the larg",
+    "category": "Dashboard - Portfolio",
+    "lines": 768,
+    "deps": [
+      "recharts",
+      "@heroicons"
+    ],
+    "file": "dashboard-portfolio.tsx",
+    "skeleton": "dashboard-portfolio.skeleton.txt"
+  },
+  {
+    "id": "product-detail",
+    "name": "Product Detail",
+    "description": "Single-item detail pairing a media gallery with a selection column: variant swatches, a quantity stepper, primary and secondary commit actions, and collapsible ",
+    "category": "Content - Product Detail",
+    "lines": 299,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "product-detail.tsx",
+    "skeleton": "product-detail.skeleton.txt"
+  },
+  {
+    "id": "product-gallery",
+    "name": "Product Gallery",
+    "description": "Uniform card grid where every tile carries media, title, supporting line, and a price.",
+    "category": "Gallery - Product",
+    "lines": 160,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "product-gallery.tsx",
+    "skeleton": "product-gallery.skeleton.txt"
+  },
+  {
+    "id": "dashboard-project-status",
+    "name": "Project Status Dashboard",
+    "description": "Status analytics mixing progress and time-axis shapes: a completion donut, a horizontal timeline of dated bars against a today marker, a per-owner table with pr",
+    "category": "Dashboard - Project Status",
+    "lines": 1140,
+    "deps": [
+      "recharts",
+      "@heroicons"
+    ],
+    "file": "dashboard-project-status.tsx",
+    "skeleton": "dashboard-project-status.skeleton.txt"
+  },
+  {
+    "id": "table-page",
+    "name": "Searchable Table",
+    "description": "Flat row collection with query search and an action toolbar above sortable rows, running full width with no detail pane.",
+    "category": "Table - Basic",
+    "lines": 440,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "table-page.tsx",
+    "skeleton": "table-page.skeleton.txt"
+  },
+  {
+    "id": "settings-dialog",
+    "name": "Settings Dialog",
+    "description": "Preferences inside a modal container with searchable section navigation, so configuration happens without leaving whatever is underneath.",
+    "category": "Settings - Dialog",
+    "lines": 2604,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "settings-dialog.tsx",
+    "skeleton": "settings-dialog.skeleton.txt"
+  },
+  {
+    "id": "settings",
+    "name": "Settings Form",
+    "description": "Preferences as one continuously scrolling form, sections stacked in order with no navigation between them.",
+    "category": "Settings - Form",
+    "lines": 231,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "settings.tsx",
+    "skeleton": "settings.skeleton.txt"
+  },
+  {
+    "id": "settings-sidebar",
+    "name": "Settings Panels",
+    "description": "Preferences split into nav-switched panels: a persistent section list swaps the pane beside it, and rows edit in place rather than opening a separate form.",
+    "category": "Settings - Panels",
+    "lines": 835,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "settings-sidebar.tsx",
+    "skeleton": "settings-sidebar.skeleton.txt"
+  },
+  {
+    "id": "shell-nav",
+    "name": "Shell Nav",
+    "description": "Application frame combining both navigation axes: a top menu bar with command-palette search over a resizable hierarchy rail, wrapping placeholder content.",
+    "category": "Shell - Top Nav + Left Sidebar",
+    "lines": 322,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "shell-nav.tsx",
+    "skeleton": "shell-nav.skeleton.txt"
+  },
+  {
+    "id": "side-gallery",
+    "name": "Side Gallery",
+    "description": "Asymmetric split section: a copy column of headline, supporting text, and links held against a clustered image collage opposite.",
+    "category": "Gallery - Side",
+    "lines": 143,
+    "deps": [],
+    "file": "side-gallery.tsx",
+    "skeleton": "side-gallery.skeleton.txt"
+  },
+  {
+    "id": "shell-side-nav",
+    "name": "Side Nav",
+    "description": "Application frame with a single collapsible, resizable left rail carrying grouped history and search, wrapping the main content.",
+    "category": "Shell - Left Sidebar",
+    "lines": 242,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "shell-side-nav.tsx",
+    "skeleton": "shell-side-nav.skeleton.txt"
+  },
+  {
+    "id": "theme-showcase",
+    "name": "Theme Showcase",
+    "description": "Several unrelated product surfaces rendered together on one canvas so a token change can be judged across contexts at once.",
+    "category": "page",
+    "lines": 1293,
+    "deps": [
+      "lucide-react"
+    ],
+    "file": "theme-showcase.tsx",
+    "skeleton": "theme-showcase.skeleton.txt"
+  },
+  {
+    "id": "shell-top-nav",
+    "name": "Top Nav",
+    "description": "Application frame with horizontal navigation only: a centered bar whose items open full-width mega-menu panels, over placeholder content that keeps the entire w",
+    "category": "Shell - Top Nav",
+    "lines": 225,
+    "deps": [
+      "@heroicons"
+    ],
+    "file": "shell-top-nav.tsx",
+    "skeleton": "shell-top-nav.skeleton.txt"
+  },
+  {
+    "id": "form-two-column",
+    "name": "Two-column Form",
+    "description": "Form split into two columns beneath a hero header: inputs on one flank, a persistent context panel opposite that stays put while the fields scroll.",
+    "category": "Form - Two-column",
+    "lines": 241,
+    "deps": [],
+    "file": "form-two-column.tsx",
+    "skeleton": "form-two-column.skeleton.txt"
+  }
+]

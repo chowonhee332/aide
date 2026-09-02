@@ -1,0 +1,4690 @@
+[
+  {
+    "id": "astryx-button",
+    "astryxName": "Button",
+    "importPath": "@astryxdesign/core/Button",
+    "name": "Button",
+    "description": "Button triggers an action when clicked.",
+    "category": "action",
+    "composite": false,
+    "defaultProps": {
+      "label": "Click me",
+      "variant": "primary",
+      "size": "md",
+      "elevation": "none",
+      "type": "button",
+      "isLoading": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "name",
+        "label": "name",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "primary",
+          "secondary",
+          "ghost",
+          "destructive"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "elevation",
+        "label": "elevation",
+        "type": "select",
+        "options": [
+          "none",
+          "low",
+          "med",
+          "high"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "type",
+        "label": "type",
+        "type": "select",
+        "options": [
+          "button",
+          "submit",
+          "reset"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isLoading",
+        "label": "isLoading",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-button-group",
+    "astryxName": "ButtonGroup",
+    "importPath": "@astryxdesign/core/ButtonGroup",
+    "name": "Button Group",
+    "description": "ButtonGroup joins related actions into a single connected control.",
+    "category": "action",
+    "composite": true,
+    "defaultProps": {
+      "label": "Actions"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      }
+    ]
+  },
+  {
+    "id": "astryx-context-menu",
+    "astryxName": "ContextMenu",
+    "importPath": "@astryxdesign/core/ContextMenu",
+    "name": "Context Menu",
+    "description": "A right-click context menu that appears at the cursor position.",
+    "category": "action",
+    "composite": true,
+    "defaultProps": {
+      "label": "Context menu",
+      "size": "md",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-dropdown-menu",
+    "astryxName": "DropdownMenu",
+    "importPath": "@astryxdesign/core/DropdownMenu",
+    "name": "Dropdown Menu",
+    "description": "A dropdown menu that displays a list of actionable items in a popup triggered by a button.",
+    "category": "action",
+    "composite": true,
+    "defaultProps": {
+      "placement": "below",
+      "alignment": "start"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "placement",
+        "label": "placement",
+        "type": "select",
+        "options": [
+          "above",
+          "below",
+          "start",
+          "end"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "alignment",
+        "label": "alignment",
+        "type": "select",
+        "options": [
+          "start",
+          "center",
+          "end"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-icon-button",
+    "astryxName": "IconButton",
+    "importPath": "@astryxdesign/core/IconButton",
+    "name": "Icon Button",
+    "description": "A button that shows only an icon with no visible text.",
+    "category": "action",
+    "composite": false,
+    "defaultProps": {
+      "variant": "secondary",
+      "size": "md",
+      "elevation": "none",
+      "isLoading": "false",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "primary",
+          "secondary",
+          "ghost",
+          "destructive"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "elevation",
+        "label": "elevation",
+        "type": "select",
+        "options": [
+          "none",
+          "low",
+          "med",
+          "high"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isLoading",
+        "label": "isLoading",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-link",
+    "astryxName": "Link",
+    "importPath": "@astryxdesign/core/Link",
+    "name": "Link",
+    "description": "A styled anchor for inline and standalone text navigation.",
+    "category": "action",
+    "composite": false,
+    "defaultProps": {
+      "children": "Learn more"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      }
+    ]
+  },
+  {
+    "id": "astryx-more-menu",
+    "astryxName": "MoreMenu",
+    "importPath": "@astryxdesign/core/MoreMenu",
+    "name": "More Menu",
+    "description": "MoreMenu is a three-dot button that opens a list of actions.",
+    "category": "action",
+    "composite": true,
+    "defaultProps": {
+      "label": "More options",
+      "placement": "below",
+      "alignment": "start",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "placement",
+        "label": "placement",
+        "type": "select",
+        "options": [
+          "above",
+          "below",
+          "start",
+          "end"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "alignment",
+        "label": "alignment",
+        "type": "select",
+        "options": [
+          "start",
+          "center",
+          "end"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-toggle-button",
+    "astryxName": "ToggleButton",
+    "importPath": "@astryxdesign/core/ToggleButton",
+    "name": "Toggle Button",
+    "description": "ToggleButton switches between selected and unselected states to represent a persistent on/off choice.",
+    "category": "action",
+    "composite": false,
+    "defaultProps": {
+      "label": "Toggle Group",
+      "value": "option-1",
+      "size": "md",
+      "isPressed": "false",
+      "isDisabled": "false",
+      "isLoading": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isPressed",
+        "label": "isPressed",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isLoading",
+        "label": "isLoading",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-toolbar",
+    "astryxName": "Toolbar",
+    "importPath": "@astryxdesign/core/Toolbar",
+    "name": "Toolbar",
+    "description": "Toolbar is a horizontal bar with left, center, and right areas.",
+    "category": "action",
+    "composite": true,
+    "defaultProps": {
+      "label": "Table actions"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      }
+    ]
+  },
+  {
+    "id": "astryx-avatar",
+    "astryxName": "Avatar",
+    "importPath": "@astryxdesign/core/Avatar",
+    "name": "Avatar",
+    "description": "Avatar represents a person or team with a profile photo, initials, or a default icon.",
+    "category": "content",
+    "composite": false,
+    "defaultProps": {
+      "size": "md",
+      "shape": "circle"
+    },
+    "propSchema": [
+      {
+        "key": "src",
+        "label": "src",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "name",
+        "label": "name",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "alt",
+        "label": "alt",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "xsm",
+          "sm",
+          "md",
+          "lg",
+          "xl"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "shape",
+        "label": "shape",
+        "type": "select",
+        "options": [
+          "circle",
+          "rounded",
+          "square"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-avatar-group",
+    "astryxName": "AvatarGroup",
+    "importPath": "@astryxdesign/core/AvatarGroup",
+    "name": "Avatar Group",
+    "description": "AvatarGroup displays multiple avatars in an overlapping row with an optional overflow indicator.",
+    "category": "content",
+    "composite": true,
+    "defaultProps": {
+      "shape": "circle"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "shape",
+        "label": "shape",
+        "type": "select",
+        "options": [
+          "circle",
+          "rounded",
+          "square"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-avatar-status-dot",
+    "astryxName": "AvatarStatusDot",
+    "importPath": "@astryxdesign/core/Avatar",
+    "name": "Avatar Status Dot",
+    "description": "Size-aware status indicator dot that reads avatar size from context and scales proportionally.",
+    "category": "content",
+    "composite": true,
+    "defaultProps": {
+      "variant": "success"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "success",
+          "neutral",
+          "error"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-blockquote",
+    "astryxName": "Blockquote",
+    "importPath": "@astryxdesign/core/Blockquote",
+    "name": "Blockquote",
+    "description": "A quotation block with a rule on its inline-start edge and secondary text color.",
+    "category": "content",
+    "composite": false,
+    "defaultProps": {
+      "children": "Design is not just what it looks like and feels like. Design is how it works.",
+      "cite": "Steve Jobs"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "cite",
+        "label": "cite",
+        "type": "text",
+        "group": "content"
+      }
+    ]
+  },
+  {
+    "id": "astryx-chat-composer",
+    "astryxName": "ChatComposer",
+    "importPath": "@astryxdesign/core/Chat",
+    "name": "Chat Composer",
+    "description": "Layout shell for a chat composer.",
+    "category": "content",
+    "composite": true,
+    "defaultProps": {
+      "placeholder": "Type a message...",
+      "density": "balanced",
+      "elevation": "low",
+      "statusPosition": "bottom",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "placeholder",
+        "label": "placeholder",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "density",
+        "label": "density",
+        "type": "select",
+        "options": [
+          "compact",
+          "balanced",
+          "spacious"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "elevation",
+        "label": "elevation",
+        "type": "select",
+        "options": [
+          "none",
+          "low"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "statusPosition",
+        "label": "statusPosition",
+        "type": "select",
+        "options": [
+          "top",
+          "bottom"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-chat-message-bubble",
+    "astryxName": "ChatMessageBubble",
+    "importPath": "@astryxdesign/core/Chat",
+    "name": "Chat Message Bubble",
+    "description": "Styled content container for the chat \"bubble.\" Reads sender from parent ChatMessage context to auto-style the background.",
+    "category": "content",
+    "composite": true,
+    "defaultProps": {
+      "variant": "filled",
+      "group": "first"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "name",
+        "label": "name",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "filled",
+          "ghost"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "group",
+        "label": "group",
+        "type": "select",
+        "options": [
+          "first",
+          "middle",
+          "last"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-citation",
+    "astryxName": "Citation",
+    "importPath": "@astryxdesign/core/Citation",
+    "name": "Citation",
+    "description": "Citations display inline references to external sources.",
+    "category": "content",
+    "composite": false,
+    "defaultProps": {
+      "variant": "label"
+    },
+    "propSchema": [
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "label",
+          "number"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-code-block",
+    "astryxName": "CodeBlock",
+    "importPath": "@astryxdesign/core/CodeBlock",
+    "name": "Code Block",
+    "description": "CodeBlock renders syntax-highlighted code with line numbers, a copy button, and optional collapsible sections.",
+    "category": "content",
+    "composite": true,
+    "defaultProps": {
+      "size": "md",
+      "container": "card",
+      "highlightMode": "auto"
+    },
+    "propSchema": [
+      {
+        "key": "title",
+        "label": "title",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "container",
+        "label": "container",
+        "type": "select",
+        "options": [
+          "card",
+          "section"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "highlightMode",
+        "label": "highlightMode",
+        "type": "select",
+        "options": [
+          "auto",
+          "ranges",
+          "spans"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-collapsible-group",
+    "astryxName": "CollapsibleGroup",
+    "importPath": "@astryxdesign/core/Collapsible",
+    "name": "Collapsible Group",
+    "description": "Coordinates multiple Collapsible instances so only one (single mode) or any number (multiple mode) can be open at a time.",
+    "category": "content",
+    "composite": true,
+    "defaultProps": {
+      "type": "single",
+      "density": "compact",
+      "hasDividers": "false"
+    },
+    "propSchema": [
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "type",
+        "label": "type",
+        "type": "select",
+        "options": [
+          "single",
+          "multiple"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "density",
+        "label": "density",
+        "type": "select",
+        "options": [
+          "compact",
+          "balanced",
+          "spacious"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "hasDividers",
+        "label": "hasDividers",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-empty-state",
+    "astryxName": "EmptyState",
+    "importPath": "@astryxdesign/core/EmptyState",
+    "name": "Empty State",
+    "description": "EmptyState shows a placeholder when a content area has no data.",
+    "category": "content",
+    "composite": true,
+    "defaultProps": {
+      "title": "No results found",
+      "description": "Try adjusting your search or filter criteria.",
+      "isCompact": "false"
+    },
+    "propSchema": [
+      {
+        "key": "title",
+        "label": "title",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "isCompact",
+        "label": "isCompact",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-icon",
+    "astryxName": "Icon",
+    "importPath": "@astryxdesign/core/Icon",
+    "name": "Icon",
+    "description": "Icons are small visual symbols that represent actions, objects, or concepts.",
+    "category": "content",
+    "composite": false,
+    "defaultProps": {
+      "color": "inherit",
+      "size": "md"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "color",
+        "label": "color",
+        "type": "select",
+        "options": [
+          "primary",
+          "secondary",
+          "tertiary",
+          "disabled",
+          "accent",
+          "success",
+          "error",
+          "warning",
+          "inherit"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "xsm",
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-kbd",
+    "astryxName": "Kbd",
+    "importPath": "@astryxdesign/core/Kbd",
+    "name": "Kbd",
+    "description": "Renders a keyboard shortcut as styled key badges.",
+    "category": "content",
+    "composite": false,
+    "defaultProps": {},
+    "propSchema": [
+      {
+        "key": "keys",
+        "label": "keys",
+        "type": "text",
+        "group": "content"
+      }
+    ]
+  },
+  {
+    "id": "astryx-list",
+    "astryxName": "List",
+    "importPath": "@astryxdesign/core/List",
+    "name": "List",
+    "description": "A vertical collection of items with consistent spacing, dividers, and optional markers.",
+    "category": "content",
+    "composite": true,
+    "defaultProps": {
+      "density": "balanced",
+      "listStyle": "none",
+      "hasDividers": "false"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "density",
+        "label": "density",
+        "type": "select",
+        "options": [
+          "compact",
+          "balanced",
+          "spacious"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "listStyle",
+        "label": "listStyle",
+        "type": "select",
+        "options": [
+          "none",
+          "disc",
+          "decimal",
+          "circle"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "hasDividers",
+        "label": "hasDividers",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-markdown",
+    "astryxName": "Markdown",
+    "importPath": "@astryxdesign/core/Markdown",
+    "name": "Markdown",
+    "description": "Renders a markdown string as Astryx-styled components.",
+    "category": "content",
+    "composite": true,
+    "defaultProps": {
+      "children": "## Getting Started\n\nInstall the package:\n\n```bash\nnpm install @astryxdesign/core\n```\n\nThen import and use any component:\n\n```tsx\nimport {Button} from '@astryxdesign/core/Button';\n```\n\n**Bold**, *italic*, and `inline code` all work.",
+      "display": "block",
+      "density": "default",
+      "citationStyle": "label",
+      "contentAlign": "start"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "display",
+        "label": "display",
+        "type": "select",
+        "options": [
+          "block",
+          "inline"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "density",
+        "label": "density",
+        "type": "select",
+        "options": [
+          "default",
+          "compact"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "citationStyle",
+        "label": "citationStyle",
+        "type": "select",
+        "options": [
+          "label",
+          "number"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "contentAlign",
+        "label": "contentAlign",
+        "type": "select",
+        "options": [
+          "start",
+          "center"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-metadata-list",
+    "astryxName": "MetadataList",
+    "importPath": "@astryxdesign/core/MetadataList",
+    "name": "Metadata List",
+    "description": "MetadataList displays key-value pairs for object attributes like quality, condition, and status, in a structured layout.",
+    "category": "content",
+    "composite": true,
+    "defaultProps": {
+      "columns": "single",
+      "orientation": "vertical"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "title",
+        "label": "title",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "columns",
+        "label": "columns",
+        "type": "select",
+        "options": [
+          "multi",
+          "single"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "orientation",
+        "label": "orientation",
+        "type": "select",
+        "options": [
+          "vertical",
+          "horizontal"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-overflow-list",
+    "astryxName": "OverflowList",
+    "importPath": "@astryxdesign/core/OverflowList",
+    "name": "Overflow List",
+    "description": "A horizontal list that automatically hides items when they exceed the available width.",
+    "category": "content",
+    "composite": true,
+    "defaultProps": {
+      "collapseFrom": "end",
+      "behavior": "observeParent"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "collapseFrom",
+        "label": "collapseFrom",
+        "type": "select",
+        "options": [
+          "start",
+          "end"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "behavior",
+        "label": "behavior",
+        "type": "select",
+        "options": [
+          "observeSelf",
+          "observeParent"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-tab-menu",
+    "astryxName": "TabMenu",
+    "importPath": "@astryxdesign/core/TabList",
+    "name": "Tab Menu",
+    "description": "Overflow menu trigger that opens a dropdown of additional tab options, showing the selected option's label as the trigger text.",
+    "category": "content",
+    "composite": true,
+    "defaultProps": {},
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      }
+    ]
+  },
+  {
+    "id": "astryx-table",
+    "astryxName": "Table",
+    "importPath": "@astryxdesign/core/Table",
+    "name": "Table",
+    "description": "Table displays structured data in rows and columns with consistent dimensionality.",
+    "category": "content",
+    "composite": true,
+    "defaultProps": {
+      "density": "balanced",
+      "dividers": "rows",
+      "verticalAlign": "middle",
+      "textOverflow": "wrap",
+      "isStriped": "false",
+      "hasHover": "false"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "density",
+        "label": "density",
+        "type": "select",
+        "options": [
+          "compact",
+          "balanced",
+          "spacious"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "dividers",
+        "label": "dividers",
+        "type": "select",
+        "options": [
+          "rows",
+          "columns",
+          "grid",
+          "none"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "verticalAlign",
+        "label": "verticalAlign",
+        "type": "select",
+        "options": [
+          "middle",
+          "top",
+          "bottom"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "textOverflow",
+        "label": "textOverflow",
+        "type": "select",
+        "options": [
+          "wrap",
+          "truncate"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isStriped",
+        "label": "isStriped",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "hasHover",
+        "label": "hasHover",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-text",
+    "astryxName": "Text",
+    "importPath": "@astryxdesign/core/Text",
+    "name": "Text",
+    "description": "Text renders styled body text and headings from the theme.",
+    "category": "content",
+    "composite": false,
+    "defaultProps": {
+      "children": "The quick brown fox jumps over the lazy dog.",
+      "type": "body",
+      "size": "4xs",
+      "color": "primary",
+      "weight": "normal",
+      "display": "inline",
+      "as": "span",
+      "wordBreak": "break-word",
+      "textWrap": "wrap"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "type",
+        "label": "type",
+        "type": "select",
+        "options": [
+          "body",
+          "large",
+          "label",
+          "supporting",
+          "code",
+          "display-1",
+          "display-2",
+          "display-3",
+          "inherit"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "4xs",
+          "3xs",
+          "2xs",
+          "xsm",
+          "sm",
+          "base",
+          "lg",
+          "xl",
+          "2xl",
+          "3xl",
+          "4xl"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "color",
+        "label": "color",
+        "type": "select",
+        "options": [
+          "primary",
+          "secondary",
+          "disabled",
+          "placeholder",
+          "accent",
+          "inherit"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "weight",
+        "label": "weight",
+        "type": "select",
+        "options": [
+          "normal",
+          "medium",
+          "semibold",
+          "bold"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "display",
+        "label": "display",
+        "type": "select",
+        "options": [
+          "inline",
+          "block"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "as",
+        "label": "as",
+        "type": "select",
+        "options": [
+          "span",
+          "p",
+          "div",
+          "label"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "wordBreak",
+        "label": "wordBreak",
+        "type": "select",
+        "options": [
+          "break-word",
+          "break-all"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "textWrap",
+        "label": "textWrap",
+        "type": "select",
+        "options": [
+          "wrap",
+          "nowrap",
+          "balance",
+          "pretty"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-thumbnail",
+    "astryxName": "Thumbnail",
+    "importPath": "@astryxdesign/core/Thumbnail",
+    "name": "Thumbnail",
+    "description": "Thumbnail displays a compact, square preview of an image attachment.",
+    "category": "content",
+    "composite": false,
+    "defaultProps": {
+      "isLoading": "false",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "src",
+        "label": "src",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "alt",
+        "label": "alt",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "isLoading",
+        "label": "isLoading",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-timestamp",
+    "astryxName": "Timestamp",
+    "importPath": "@astryxdesign/core/Timestamp",
+    "name": "Timestamp",
+    "description": "Timestamp formats a date or time value into human-readable text.",
+    "category": "content",
+    "composite": false,
+    "defaultProps": {
+      "value": "2026-02-19T17:00:00Z",
+      "format": "auto",
+      "type": "supporting",
+      "size": "4xs",
+      "color": "secondary",
+      "weight": "normal"
+    },
+    "propSchema": [
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "format",
+        "label": "format",
+        "type": "select",
+        "options": [
+          "relative",
+          "relative_short",
+          "auto",
+          "date",
+          "date_long",
+          "date_weekday",
+          "date_time",
+          "time",
+          "system_date",
+          "system_date_time",
+          "system_time",
+          "unix_seconds"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "type",
+        "label": "type",
+        "type": "select",
+        "options": [
+          "body",
+          "large",
+          "label",
+          "supporting",
+          "code",
+          "display-1",
+          "display-2",
+          "display-3",
+          "inherit"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "4xs",
+          "3xs",
+          "2xs",
+          "xsm",
+          "sm",
+          "base",
+          "lg",
+          "xl",
+          "2xl",
+          "3xl",
+          "4xl"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "color",
+        "label": "color",
+        "type": "select",
+        "options": [
+          "primary",
+          "secondary",
+          "disabled",
+          "placeholder",
+          "accent",
+          "inherit"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "weight",
+        "label": "weight",
+        "type": "select",
+        "options": [
+          "normal",
+          "medium",
+          "semibold",
+          "bold"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-toggle-button-group",
+    "astryxName": "ToggleButtonGroup",
+    "importPath": "@astryxdesign/core/ToggleButton",
+    "name": "Toggle Button Group",
+    "description": "Groups toggle buttons for exclusive (single) or multi-select behavior.",
+    "category": "content",
+    "composite": true,
+    "defaultProps": {
+      "type": "single",
+      "orientation": "horizontal",
+      "size": "md",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "type",
+        "label": "type",
+        "type": "select",
+        "options": [
+          "single",
+          "multiple"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "orientation",
+        "label": "orientation",
+        "type": "select",
+        "options": [
+          "horizontal",
+          "vertical"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-tree-list",
+    "astryxName": "TreeList",
+    "importPath": "@astryxdesign/core/TreeList",
+    "name": "Tree List",
+    "description": "An expandable tree structure for displaying hierarchical data with branch connector lines.",
+    "category": "content",
+    "composite": true,
+    "defaultProps": {},
+    "propSchema": []
+  },
+  {
+    "id": "astryx-badge",
+    "astryxName": "Badge",
+    "importPath": "@astryxdesign/core/Badge",
+    "name": "Badge",
+    "description": "Badge highlights a status or category at a glance.",
+    "category": "feedback",
+    "composite": false,
+    "defaultProps": {
+      "label": "Badge",
+      "variant": "neutral"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "neutral",
+          "info",
+          "success",
+          "warning",
+          "error",
+          "blue",
+          "cyan",
+          "green",
+          "orange",
+          "pink",
+          "purple",
+          "red",
+          "teal",
+          "yellow"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-banner",
+    "astryxName": "Banner",
+    "importPath": "@astryxdesign/core/Banner",
+    "name": "Banner",
+    "description": "Banner shows a persistent message at the top of a page or section.",
+    "category": "feedback",
+    "composite": false,
+    "defaultProps": {
+      "title": "System maintenance scheduled",
+      "description": "The platform will be briefly unavailable on Sunday from 2–4 AM PST.",
+      "status": "info",
+      "container": "card",
+      "elevation": "none",
+      "isDismissable": "false"
+    },
+    "propSchema": [
+      {
+        "key": "title",
+        "label": "title",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "status",
+        "label": "status",
+        "type": "select",
+        "options": [
+          "info",
+          "warning",
+          "error",
+          "success"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "container",
+        "label": "container",
+        "type": "select",
+        "options": [
+          "card",
+          "section"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "elevation",
+        "label": "elevation",
+        "type": "select",
+        "options": [
+          "none",
+          "low",
+          "med",
+          "high"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDismissable",
+        "label": "isDismissable",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-progress-bar",
+    "astryxName": "ProgressBar",
+    "importPath": "@astryxdesign/core/ProgressBar",
+    "name": "Progress Bar",
+    "description": "A horizontal bar showing the completion progress of a task.",
+    "category": "feedback",
+    "composite": false,
+    "defaultProps": {
+      "value": "0",
+      "variant": "accent",
+      "hasValueLabel": "false",
+      "isIndeterminate": "false",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "number",
+        "group": "content"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "accent",
+          "success",
+          "warning",
+          "error",
+          "neutral"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "hasValueLabel",
+        "label": "hasValueLabel",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isIndeterminate",
+        "label": "isIndeterminate",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-skeleton",
+    "astryxName": "Skeleton",
+    "importPath": "@astryxdesign/core/Skeleton",
+    "name": "Skeleton",
+    "description": "An animated shimmer placeholder that previews the shape of content while it loads.",
+    "category": "feedback",
+    "composite": false,
+    "defaultProps": {
+      "radius": "3"
+    },
+    "propSchema": [
+      {
+        "key": "radius",
+        "label": "radius",
+        "type": "select",
+        "options": [
+          "none",
+          "rounded"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-spinner",
+    "astryxName": "Spinner",
+    "importPath": "@astryxdesign/core/Spinner",
+    "name": "Spinner",
+    "description": "An animated loading indicator for processes with unknown duration, such as data fetching or form submission.",
+    "category": "feedback",
+    "composite": false,
+    "defaultProps": {
+      "size": "md",
+      "shade": "default"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg",
+          "xl"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "shade",
+        "label": "shade",
+        "type": "select",
+        "options": [
+          "default",
+          "onMedia",
+          "subtle",
+          "inherit"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-status-dot",
+    "astryxName": "StatusDot",
+    "importPath": "@astryxdesign/core/StatusDot",
+    "name": "Status Dot",
+    "description": "A small colored dot that communicates status like online/offline presence or severity levels.",
+    "category": "feedback",
+    "composite": false,
+    "defaultProps": {
+      "variant": "success",
+      "isPulsing": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "success",
+          "warning",
+          "error",
+          "accent",
+          "neutral"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isPulsing",
+        "label": "isPulsing",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-calendar",
+    "astryxName": "Calendar",
+    "importPath": "@astryxdesign/core/Calendar",
+    "name": "Calendar",
+    "description": "Calendar lets the user pick a date or date range from a month grid.",
+    "category": "input",
+    "composite": true,
+    "defaultProps": {
+      "mode": "single",
+      "weekStartsOn": "0"
+    },
+    "propSchema": [
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "mode",
+        "label": "mode",
+        "type": "select",
+        "options": [
+          "single",
+          "range"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "weekStartsOn",
+        "label": "weekStartsOn",
+        "type": "select",
+        "options": [
+          "sun",
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri",
+          "sat"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-checkbox-input",
+    "astryxName": "CheckboxInput",
+    "importPath": "@astryxdesign/core/CheckboxInput",
+    "name": "Checkbox Input",
+    "description": "CheckboxInput toggles a single on/off value.",
+    "category": "input",
+    "composite": true,
+    "defaultProps": {
+      "size": "md",
+      "isLoading": "false",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isLoading",
+        "label": "isLoading",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-complex-selector",
+    "astryxName": "ComplexSelector",
+    "importPath": "@astryxdesign/core/ComplexSelector",
+    "name": "Complex Selector",
+    "description": "Use ComplexSelector when a selection needs richer custom content than a Selector option row.",
+    "category": "input",
+    "composite": true,
+    "defaultProps": {},
+    "propSchema": []
+  },
+  {
+    "id": "astryx-date-input",
+    "astryxName": "DateInput",
+    "importPath": "@astryxdesign/core/DateInput",
+    "name": "Date Input",
+    "description": "DateInput lets the user type or pick a date from a calendar popover.",
+    "category": "input",
+    "composite": true,
+    "defaultProps": {
+      "placeholder": "Select a date",
+      "size": "md",
+      "statusVariant": "attached",
+      "weekStartsOn": "0",
+      "nativePicker": "touch",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "placeholder",
+        "label": "placeholder",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "statusVariant",
+        "label": "statusVariant",
+        "type": "select",
+        "options": [
+          "attached",
+          "detached",
+          "tooltip"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "weekStartsOn",
+        "label": "weekStartsOn",
+        "type": "select",
+        "options": [
+          "sun",
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri",
+          "sat"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "nativePicker",
+        "label": "nativePicker",
+        "type": "select",
+        "options": [
+          "touch",
+          "always",
+          "never"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-date-range-input",
+    "astryxName": "DateRangeInput",
+    "importPath": "@astryxdesign/core/DateRangeInput",
+    "name": "Date Range Input",
+    "description": "DateRangeInput lets users select a start and end date from a dual-month calendar popover.",
+    "category": "input",
+    "composite": true,
+    "defaultProps": {
+      "placeholder": "Select date range",
+      "size": "md",
+      "statusVariant": "attached",
+      "weekStartsOn": "0",
+      "isDisabled": "false",
+      "isLoading": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "placeholder",
+        "label": "placeholder",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "statusVariant",
+        "label": "statusVariant",
+        "type": "select",
+        "options": [
+          "attached",
+          "detached",
+          "tooltip"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "weekStartsOn",
+        "label": "weekStartsOn",
+        "type": "select",
+        "options": [
+          "sun",
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri",
+          "sat"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isLoading",
+        "label": "isLoading",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-date-time-input",
+    "astryxName": "DateTimeInput",
+    "importPath": "@astryxdesign/core/DateTimeInput",
+    "name": "Date Time Input",
+    "description": "DateTimeInput combines date and time selection in one field.",
+    "category": "input",
+    "composite": true,
+    "defaultProps": {
+      "placeholder": "Select a date",
+      "hourFormat": "12h",
+      "size": "md",
+      "weekStartsOn": "0",
+      "isDisabled": "false",
+      "isLoading": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "placeholder",
+        "label": "placeholder",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "hourFormat",
+        "label": "hourFormat",
+        "type": "select",
+        "options": [
+          "12h",
+          "24h"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "weekStartsOn",
+        "label": "weekStartsOn",
+        "type": "select",
+        "options": [
+          "sun",
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri",
+          "sat"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isLoading",
+        "label": "isLoading",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-field",
+    "astryxName": "Field",
+    "importPath": "@astryxdesign/core/Field",
+    "name": "Field",
+    "description": "Field is a low-level wrapper for custom, native, or third-party controls that do not already provide field label, description, and status UI",
+    "category": "input",
+    "composite": true,
+    "defaultProps": {
+      "label": "Email address",
+      "description": "Use Field for controls that do not already provide field under the hood.",
+      "statusVariant": "attached",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "statusVariant",
+        "label": "statusVariant",
+        "type": "select",
+        "options": [
+          "attached",
+          "detached"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-file-input",
+    "astryxName": "FileInput",
+    "importPath": "@astryxdesign/core/FileInput",
+    "name": "File Input",
+    "description": "FileInput provides file upload with optional drag-and-drop support.",
+    "category": "input",
+    "composite": true,
+    "defaultProps": {
+      "placeholder": "\"Choose file\" or \"Choose files\"",
+      "mode": "input",
+      "statusVariant": "attached",
+      "isDisabled": "false",
+      "isLoading": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "placeholder",
+        "label": "placeholder",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "mode",
+        "label": "mode",
+        "type": "select",
+        "options": [
+          "input",
+          "dropzone"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "statusVariant",
+        "label": "statusVariant",
+        "type": "select",
+        "options": [
+          "attached",
+          "detached",
+          "tooltip"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isLoading",
+        "label": "isLoading",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-input-group",
+    "astryxName": "InputGroup",
+    "importPath": "@astryxdesign/core/InputGroup",
+    "name": "Input Group",
+    "description": "InputGroup connects an input with prefix/suffix addons in a single visual unit.",
+    "category": "input",
+    "composite": true,
+    "defaultProps": {
+      "size": "md",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-multi-selector",
+    "astryxName": "MultiSelector",
+    "importPath": "@astryxdesign/core/MultiSelector",
+    "name": "Multi Selector",
+    "description": "A checkbox dropdown for selecting multiple values from a list.",
+    "category": "input",
+    "composite": true,
+    "defaultProps": {},
+    "propSchema": []
+  },
+  {
+    "id": "astryx-number-input",
+    "astryxName": "NumberInput",
+    "importPath": "@astryxdesign/core/NumberInput",
+    "name": "Number Input",
+    "description": "A form input for numeric values with built-in validation, min/max constraints, and step controls.",
+    "category": "input",
+    "composite": false,
+    "defaultProps": {
+      "size": "md",
+      "statusVariant": "attached",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "number",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "placeholder",
+        "label": "placeholder",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "statusVariant",
+        "label": "statusVariant",
+        "type": "select",
+        "options": [
+          "attached",
+          "detached",
+          "tooltip"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-power-search",
+    "astryxName": "PowerSearch",
+    "importPath": "@astryxdesign/core/PowerSearch",
+    "name": "Power Search",
+    "description": "PowerSearch is a structured filter bar where each token represents a field, operator, and value.",
+    "category": "input",
+    "composite": true,
+    "defaultProps": {
+      "label": "Search",
+      "placeholder": "Search...",
+      "statusVariant": "attached",
+      "size": "md",
+      "tokenOverflowBehavior": "none",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "placeholder",
+        "label": "placeholder",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "statusVariant",
+        "label": "statusVariant",
+        "type": "select",
+        "options": [
+          "attached",
+          "detached"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "tokenOverflowBehavior",
+        "label": "tokenOverflowBehavior",
+        "type": "select",
+        "options": [
+          "none",
+          "unfocusedInline",
+          "unfocusedLayer"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-selector",
+    "astryxName": "Selector",
+    "importPath": "@astryxdesign/core/Selector",
+    "name": "Selector",
+    "description": "A dropdown selector for choosing a single value from a list of options.",
+    "category": "input",
+    "composite": true,
+    "defaultProps": {
+      "placeholder": "Select...",
+      "size": "md",
+      "variant": "input",
+      "statusVariant": "attached' for input selectors; 'detached' for ghost selectors",
+      "indicatorPosition": "end",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "placeholder",
+        "label": "placeholder",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "input",
+          "ghost"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "statusVariant",
+        "label": "statusVariant",
+        "type": "select",
+        "options": [
+          "attached",
+          "detached",
+          "tooltip"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "indicatorPosition",
+        "label": "indicatorPosition",
+        "type": "select",
+        "options": [
+          "start",
+          "end"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-slider",
+    "astryxName": "Slider",
+    "importPath": "@astryxdesign/core/Slider",
+    "name": "Slider",
+    "description": "A draggable control for selecting a numeric value or range within defined bounds.",
+    "category": "input",
+    "composite": false,
+    "defaultProps": {
+      "label": "Volume",
+      "value": "50",
+      "orientation": "horizontal",
+      "valueDisplay": "tooltip",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "number",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "orientation",
+        "label": "orientation",
+        "type": "select",
+        "options": [
+          "horizontal",
+          "vertical"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "valueDisplay",
+        "label": "valueDisplay",
+        "type": "select",
+        "options": [
+          "tooltip",
+          "text",
+          "none"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-text-area",
+    "astryxName": "TextArea",
+    "importPath": "@astryxdesign/core/TextArea",
+    "name": "Text Area",
+    "description": "TextArea is a multi-line text input for collecting longer-form content like comments, descriptions, or messages.",
+    "category": "input",
+    "composite": false,
+    "defaultProps": {
+      "statusVariant": "attached",
+      "size": "md",
+      "isDisabled": "false",
+      "isLoading": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "placeholder",
+        "label": "placeholder",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "statusVariant",
+        "label": "statusVariant",
+        "type": "select",
+        "options": [
+          "attached",
+          "detached",
+          "tooltip"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isLoading",
+        "label": "isLoading",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-text-input",
+    "astryxName": "TextInput",
+    "importPath": "@astryxdesign/core/TextInput",
+    "name": "Text Input",
+    "description": "TextInput collects short-form text like names, emails, or search queries.",
+    "category": "input",
+    "composite": false,
+    "defaultProps": {
+      "type": "text",
+      "size": "md",
+      "statusVariant": "attached",
+      "isDisabled": "false",
+      "isLoading": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "placeholder",
+        "label": "placeholder",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "type",
+        "label": "type",
+        "type": "select",
+        "options": [
+          "text",
+          "password",
+          "email"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "statusVariant",
+        "label": "statusVariant",
+        "type": "select",
+        "options": [
+          "attached",
+          "detached",
+          "tooltip"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isLoading",
+        "label": "isLoading",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-time-input",
+    "astryxName": "TimeInput",
+    "importPath": "@astryxdesign/core/TimeInput",
+    "name": "Time Input",
+    "description": "TimeInput lets users enter a time of day and converts it to a standard format.",
+    "category": "input",
+    "composite": true,
+    "defaultProps": {
+      "placeholder": "Select a time",
+      "hourFormat": "12h",
+      "size": "md",
+      "statusVariant": "attached",
+      "isDisabled": "false",
+      "isLoading": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "placeholder",
+        "label": "placeholder",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "hourFormat",
+        "label": "hourFormat",
+        "type": "select",
+        "options": [
+          "12h",
+          "24h"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "statusVariant",
+        "label": "statusVariant",
+        "type": "select",
+        "options": [
+          "attached",
+          "detached",
+          "tooltip"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isLoading",
+        "label": "isLoading",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-tokenizer",
+    "astryxName": "Tokenizer",
+    "importPath": "@astryxdesign/core/Tokenizer",
+    "name": "Tokenizer",
+    "description": "Tokenizer is a multi-select input that lets users search, select, and manage multiple items displayed as removable chips.",
+    "category": "input",
+    "composite": true,
+    "defaultProps": {
+      "statusVariant": "attached",
+      "size": "md",
+      "tokenOverflowBehavior": "none",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "placeholder",
+        "label": "placeholder",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "statusVariant",
+        "label": "statusVariant",
+        "type": "select",
+        "options": [
+          "attached",
+          "detached"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "tokenOverflowBehavior",
+        "label": "tokenOverflowBehavior",
+        "type": "select",
+        "options": [
+          "none",
+          "unfocusedInline",
+          "unfocusedLayer"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-typeahead",
+    "astryxName": "Typeahead",
+    "importPath": "@astryxdesign/core/Typeahead",
+    "name": "Typeahead",
+    "description": "A searchable input for selecting a single item from a large or dynamic dataset.",
+    "category": "input",
+    "composite": true,
+    "defaultProps": {
+      "statusVariant": "attached",
+      "size": "md",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "placeholder",
+        "label": "placeholder",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "statusVariant",
+        "label": "statusVariant",
+        "type": "select",
+        "options": [
+          "attached",
+          "detached"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-app-shell",
+    "astryxName": "AppShell",
+    "importPath": "@astryxdesign/core/AppShell",
+    "name": "App Shell",
+    "description": "The outermost layout for an application.",
+    "category": "layout",
+    "composite": true,
+    "defaultProps": {
+      "height": "fill",
+      "variant": "surface"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "height",
+        "label": "height",
+        "type": "select",
+        "options": [
+          "fill",
+          "auto"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "wash",
+          "surface",
+          "section",
+          "elevated"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-aspect-ratio",
+    "astryxName": "AspectRatio",
+    "importPath": "@astryxdesign/core/AspectRatio",
+    "name": "Aspect Ratio",
+    "description": "Maintains a fixed width-to-height ratio for its children as its container resizes.",
+    "category": "layout",
+    "composite": true,
+    "defaultProps": {
+      "shape": "rectangle",
+      "fit": "cover"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "shape",
+        "label": "shape",
+        "type": "select",
+        "options": [
+          "rectangle",
+          "ellipse"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "fit",
+        "label": "fit",
+        "type": "select",
+        "options": [
+          "cover",
+          "contain",
+          "center"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-card",
+    "astryxName": "Card",
+    "importPath": "@astryxdesign/core/Card",
+    "name": "Card",
+    "description": "Card is a bordered, elevated container for discrete, self-contained items: things you could reorder, remove, or interact with independently.",
+    "category": "layout",
+    "composite": true,
+    "defaultProps": {
+      "variant": "default",
+      "elevation": "none"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "default",
+          "transparent",
+          "muted",
+          "blue",
+          "cyan",
+          "gray",
+          "green",
+          "orange",
+          "pink",
+          "purple",
+          "red",
+          "teal",
+          "yellow"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "elevation",
+        "label": "elevation",
+        "type": "select",
+        "options": [
+          "none",
+          "low",
+          "med",
+          "high"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-carousel",
+    "astryxName": "Carousel",
+    "importPath": "@astryxdesign/core/Carousel",
+    "name": "Carousel",
+    "description": "Carousel scrolls a row of items horizontally when they overflow the available width.",
+    "category": "layout",
+    "composite": true,
+    "defaultProps": {},
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      }
+    ]
+  },
+  {
+    "id": "astryx-center",
+    "astryxName": "Center",
+    "importPath": "@astryxdesign/core/Center",
+    "name": "Center",
+    "description": "Center aligns content to the middle of its container.",
+    "category": "layout",
+    "composite": true,
+    "defaultProps": {
+      "axis": "both",
+      "isInline": "false"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "axis",
+        "label": "axis",
+        "type": "select",
+        "options": [
+          "both",
+          "horizontal",
+          "vertical"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isInline",
+        "label": "isInline",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-clickable-card",
+    "astryxName": "ClickableCard",
+    "importPath": "@astryxdesign/core/ClickableCard",
+    "name": "Clickable Card",
+    "description": "An interactive card for navigation or action targets.",
+    "category": "layout",
+    "composite": true,
+    "defaultProps": {
+      "label": "View product details",
+      "variant": "default",
+      "elevation": "none",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "default",
+          "transparent",
+          "muted",
+          "blue",
+          "cyan",
+          "gray",
+          "green",
+          "orange",
+          "pink",
+          "purple",
+          "red",
+          "teal",
+          "yellow"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "elevation",
+        "label": "elevation",
+        "type": "select",
+        "options": [
+          "none",
+          "low",
+          "med",
+          "high"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-collapsible",
+    "astryxName": "Collapsible",
+    "importPath": "@astryxdesign/core/Collapsible",
+    "name": "Collapsible",
+    "description": "Collapsible hides and reveals content behind a trigger button.",
+    "category": "layout",
+    "composite": true,
+    "defaultProps": {
+      "defaultIsOpen": "true",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "defaultIsOpen",
+        "label": "defaultIsOpen",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-divider",
+    "astryxName": "Divider",
+    "importPath": "@astryxdesign/core/Divider",
+    "name": "Divider",
+    "description": "A visual separator that divides content into distinct sections.",
+    "category": "layout",
+    "composite": false,
+    "defaultProps": {
+      "orientation": "horizontal",
+      "variant": "subtle",
+      "isFullBleed": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "orientation",
+        "label": "orientation",
+        "type": "select",
+        "options": [
+          "horizontal",
+          "vertical"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "subtle",
+          "strong"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isFullBleed",
+        "label": "isFullBleed",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-form-layout",
+    "astryxName": "FormLayout",
+    "importPath": "@astryxdesign/core/FormLayout",
+    "name": "Form Layout",
+    "description": "A layout container that arranges form fields with consistent spacing and direction.",
+    "category": "layout",
+    "composite": true,
+    "defaultProps": {
+      "direction": "vertical",
+      "defaultOptionality": "optional"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "direction",
+        "label": "direction",
+        "type": "select",
+        "options": [
+          "vertical",
+          "horizontal",
+          "horizontal-labels"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "defaultOptionality",
+        "label": "defaultOptionality",
+        "type": "select",
+        "options": [
+          "optional",
+          "required"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-grid",
+    "astryxName": "Grid",
+    "importPath": "@astryxdesign/core/Grid",
+    "name": "Grid",
+    "description": "A CSS grid layout container for arranging children in rows and columns.",
+    "category": "layout",
+    "composite": true,
+    "defaultProps": {
+      "align": "stretch",
+      "justify": "stretch"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "align",
+        "label": "align",
+        "type": "select",
+        "options": [
+          "start",
+          "center",
+          "end",
+          "stretch"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "justify",
+        "label": "justify",
+        "type": "select",
+        "options": [
+          "start",
+          "center",
+          "end",
+          "stretch"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-section",
+    "astryxName": "Section",
+    "importPath": "@astryxdesign/core/Section",
+    "name": "Section",
+    "description": "Section is the correct way to create page regions and group related content on a page.",
+    "category": "layout",
+    "composite": true,
+    "defaultProps": {
+      "variant": "section"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "section",
+          "transparent",
+          "muted"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-selectable-card",
+    "astryxName": "SelectableCard",
+    "importPath": "@astryxdesign/core/SelectableCard",
+    "name": "Selectable Card",
+    "description": "A card that toggles between selected and unselected states with an accent border.",
+    "category": "layout",
+    "composite": true,
+    "defaultProps": {
+      "label": "Pro plan",
+      "variant": "default",
+      "elevation": "none",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "default",
+          "transparent",
+          "muted",
+          "blue",
+          "cyan",
+          "gray",
+          "green",
+          "orange",
+          "pink",
+          "purple",
+          "red",
+          "teal",
+          "yellow"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "elevation",
+        "label": "elevation",
+        "type": "select",
+        "options": [
+          "none",
+          "low",
+          "med",
+          "high"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-stack",
+    "astryxName": "Stack",
+    "importPath": "@astryxdesign/core/Stack",
+    "name": "Stack",
+    "description": "Stack arranges items in a row or column with consistent spacing.",
+    "category": "layout",
+    "composite": true,
+    "defaultProps": {},
+    "propSchema": []
+  },
+  {
+    "id": "astryx-breadcrumbs",
+    "astryxName": "Breadcrumbs",
+    "importPath": "@astryxdesign/core/Breadcrumbs",
+    "name": "Breadcrumbs",
+    "description": "Breadcrumbs show a trail of links from the root to the current page.",
+    "category": "navigation",
+    "composite": true,
+    "defaultProps": {
+      "label": "Breadcrumb",
+      "variant": "default"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "default",
+          "supporting"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-mobile-nav",
+    "astryxName": "MobileNav",
+    "importPath": "@astryxdesign/core/MobileNav",
+    "name": "Mobile Nav",
+    "description": "A slide-out drawer for mobile navigation.",
+    "category": "navigation",
+    "composite": true,
+    "defaultProps": {},
+    "propSchema": []
+  },
+  {
+    "id": "astryx-outline",
+    "astryxName": "Outline",
+    "importPath": "@astryxdesign/core/Outline",
+    "name": "Outline",
+    "description": "A table-of-contents sidebar for documentation pages, help centers, wikis, and long settings pages.",
+    "category": "navigation",
+    "composite": true,
+    "defaultProps": {},
+    "propSchema": []
+  },
+  {
+    "id": "astryx-pagination",
+    "astryxName": "Pagination",
+    "importPath": "@astryxdesign/core/Pagination",
+    "name": "Pagination",
+    "description": "Pagination lets users step through pages of content.",
+    "category": "navigation",
+    "composite": true,
+    "defaultProps": {
+      "label": "Pagination",
+      "variant": "pages",
+      "size": "md",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "pages",
+          "count",
+          "compact",
+          "dots",
+          "input",
+          "none"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-side-nav",
+    "astryxName": "SideNav",
+    "importPath": "@astryxdesign/core/SideNav",
+    "name": "Side Nav",
+    "description": "A sidebar navigation component for organizing application pages with sections, nested items, and icons.",
+    "category": "navigation",
+    "composite": true,
+    "defaultProps": {},
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      }
+    ]
+  },
+  {
+    "id": "astryx-stepper",
+    "astryxName": "Stepper",
+    "importPath": "@astryxdesign/core/Stepper",
+    "name": "Stepper",
+    "description": "Steppers display progress through a sequence of logical and numbered steps.",
+    "category": "navigation",
+    "composite": true,
+    "defaultProps": {},
+    "propSchema": []
+  },
+  {
+    "id": "astryx-tab-list",
+    "astryxName": "TabList",
+    "importPath": "@astryxdesign/core/TabList",
+    "name": "Tab List",
+    "description": "TabList provides tab-style navigation for organizing content into categorized sections.",
+    "category": "navigation",
+    "composite": true,
+    "defaultProps": {
+      "value": "tab-1",
+      "size": "md",
+      "layout": "hug",
+      "overflow": "auto"
+    },
+    "propSchema": [
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "layout",
+        "label": "layout",
+        "type": "select",
+        "options": [
+          "hug",
+          "fill"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "overflow",
+        "label": "overflow",
+        "type": "select",
+        "options": [
+          "auto",
+          "scroll",
+          "visible"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-top-nav",
+    "astryxName": "TopNav",
+    "importPath": "@astryxdesign/core/TopNav",
+    "name": "Top Nav",
+    "description": "TopNav is a horizontal navigation bar for product-level navigation in application headers.",
+    "category": "navigation",
+    "composite": true,
+    "defaultProps": {
+      "label": "Navigation"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      }
+    ]
+  },
+  {
+    "id": "astryx-alert-dialog",
+    "astryxName": "AlertDialog",
+    "importPath": "@astryxdesign/core/AlertDialog",
+    "name": "Alert Dialog",
+    "description": "AlertDialog asks the user to confirm a destructive or irreversible action before it happens.",
+    "category": "overlay",
+    "composite": true,
+    "defaultProps": {
+      "title": "Delete item?",
+      "description": "This action cannot be undone. The item and all its data will be permanently removed.",
+      "isInline": "true"
+    },
+    "propSchema": [
+      {
+        "key": "title",
+        "label": "title",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "isInline",
+        "label": "isInline",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-bottom-sheet",
+    "astryxName": "BottomSheet",
+    "importPath": "@astryxdesign/core/BottomSheet",
+    "name": "Bottom Sheet",
+    "description": "A mobile touch surface for filters, actions, forms, and detail views that should rise from the bottom of the viewport; use BottomSheetSwitch",
+    "category": "overlay",
+    "composite": true,
+    "defaultProps": {
+      "label": "Filters",
+      "purpose": "info",
+      "height": "hug"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "purpose",
+        "label": "purpose",
+        "type": "select",
+        "options": [
+          "required",
+          "form",
+          "info"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "height",
+        "label": "height",
+        "type": "select",
+        "options": [
+          "hug",
+          "capped",
+          "tall"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-command-palette",
+    "astryxName": "CommandPalette",
+    "importPath": "@astryxdesign/core/CommandPalette",
+    "name": "Command Palette",
+    "description": "CommandPalette is a searchable dialog for quick access to commands, navigation, and actions.",
+    "category": "overlay",
+    "composite": true,
+    "defaultProps": {
+      "label": "Command palette",
+      "isInline": "true"
+    },
+    "propSchema": [
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "isInline",
+        "label": "isInline",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-dialog",
+    "astryxName": "Dialog",
+    "importPath": "@astryxdesign/core/Dialog",
+    "name": "Dialog",
+    "description": "Dialog displays a modal overlay that blocks interaction with the page until the user responds.",
+    "category": "overlay",
+    "composite": true,
+    "defaultProps": {
+      "variant": "standard",
+      "purpose": "info",
+      "isInline": "true"
+    },
+    "propSchema": [
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "variant",
+        "label": "variant",
+        "type": "select",
+        "options": [
+          "standard",
+          "fullscreen"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "purpose",
+        "label": "purpose",
+        "type": "select",
+        "options": [
+          "required",
+          "form",
+          "info"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isInline",
+        "label": "isInline",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-hover-card",
+    "astryxName": "HoverCard",
+    "importPath": "@astryxdesign/core/HoverCard",
+    "name": "Hover Card",
+    "description": "HoverCard shows additional information when the user hovers or focuses a trigger element.",
+    "category": "overlay",
+    "composite": true,
+    "defaultProps": {},
+    "propSchema": []
+  },
+  {
+    "id": "astryx-lightbox",
+    "astryxName": "Lightbox",
+    "importPath": "@astryxdesign/core/Lightbox",
+    "name": "Lightbox",
+    "description": "A fullscreen overlay for viewing images and videos at full resolution.",
+    "category": "overlay",
+    "composite": true,
+    "defaultProps": {},
+    "propSchema": []
+  },
+  {
+    "id": "astryx-popover",
+    "astryxName": "Popover",
+    "importPath": "@astryxdesign/core/Popover",
+    "name": "Popover",
+    "description": "A click-triggered overlay anchored to a button or trigger element.",
+    "category": "overlay",
+    "composite": true,
+    "defaultProps": {},
+    "propSchema": []
+  },
+  {
+    "id": "astryx-toast",
+    "astryxName": "Toast",
+    "importPath": "@astryxdesign/core/Toast",
+    "name": "Toast",
+    "description": "Toast shows a brief, non-blocking notification to confirm an action or present temporary information.",
+    "category": "overlay",
+    "composite": false,
+    "defaultProps": {
+      "type": "info",
+      "collisionBehavior": "overwrite"
+    },
+    "propSchema": [
+      {
+        "key": "body",
+        "label": "body",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "type",
+        "label": "type",
+        "type": "select",
+        "options": [
+          "info",
+          "error"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "collisionBehavior",
+        "label": "collisionBehavior",
+        "type": "select",
+        "options": [
+          "overwrite",
+          "ignore"
+        ],
+        "group": "style"
+      }
+    ]
+  },
+  {
+    "id": "astryx-tooltip",
+    "astryxName": "Tooltip",
+    "importPath": "@astryxdesign/core/Tooltip",
+    "name": "Tooltip",
+    "description": "A short text hint that appears on hover or focus, anchored to a trigger element.",
+    "category": "overlay",
+    "composite": true,
+    "defaultProps": {},
+    "propSchema": []
+  },
+  {
+    "id": "astryx-checkbox-list",
+    "astryxName": "CheckboxList",
+    "importPath": "@astryxdesign/core/CheckboxList",
+    "name": "Checkbox List",
+    "description": "CheckboxList shows a small group of checkboxes so users can turn several options on or off at once.",
+    "category": "selection",
+    "composite": true,
+    "defaultProps": {
+      "density": "balanced",
+      "hasDividers": "false",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "density",
+        "label": "density",
+        "type": "select",
+        "options": [
+          "compact",
+          "balanced",
+          "spacious"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "hasDividers",
+        "label": "hasDividers",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-radio-list",
+    "astryxName": "RadioList",
+    "importPath": "@astryxdesign/core/RadioList",
+    "name": "Radio List",
+    "description": "A group of options where only one can be selected at a time.",
+    "category": "selection",
+    "composite": true,
+    "defaultProps": {
+      "orientation": "vertical",
+      "size": "md",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "orientation",
+        "label": "orientation",
+        "type": "select",
+        "options": [
+          "vertical",
+          "horizontal"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-segmented-control",
+    "astryxName": "SegmentedControl",
+    "importPath": "@astryxdesign/core/SegmentedControl",
+    "name": "Segmented Control",
+    "description": "A segmented button group that allows users to make a single selection from a small set of mutually exclusive options.",
+    "category": "selection",
+    "composite": true,
+    "defaultProps": {
+      "value": "option-1",
+      "size": "md",
+      "layout": "hug",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "value",
+        "label": "value",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "children",
+        "label": "children",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "layout",
+        "label": "layout",
+        "type": "select",
+        "options": [
+          "hug",
+          "fill"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  },
+  {
+    "id": "astryx-switch",
+    "astryxName": "Switch",
+    "importPath": "@astryxdesign/core/Switch",
+    "name": "Switch",
+    "description": "A toggle control for on/off states that take effect immediately.",
+    "category": "selection",
+    "composite": false,
+    "defaultProps": {
+      "size": "md",
+      "labelPosition": "end",
+      "labelSpacing": "hug",
+      "isLoading": "false",
+      "isDisabled": "false"
+    },
+    "propSchema": [
+      {
+        "key": "label",
+        "label": "label",
+        "type": "text",
+        "group": "content"
+      },
+      {
+        "key": "description",
+        "label": "description",
+        "type": "textarea",
+        "group": "content"
+      },
+      {
+        "key": "size",
+        "label": "size",
+        "type": "select",
+        "options": [
+          "sm",
+          "md"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "labelPosition",
+        "label": "labelPosition",
+        "type": "select",
+        "options": [
+          "start",
+          "end"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "labelSpacing",
+        "label": "labelSpacing",
+        "type": "select",
+        "options": [
+          "hug",
+          "spread"
+        ],
+        "group": "style"
+      },
+      {
+        "key": "isLoading",
+        "label": "isLoading",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      },
+      {
+        "key": "isDisabled",
+        "label": "isDisabled",
+        "type": "select",
+        "options": [
+          "false",
+          "true"
+        ],
+        "group": "state"
+      }
+    ]
+  }
+]

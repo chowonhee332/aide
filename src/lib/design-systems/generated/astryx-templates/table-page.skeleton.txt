@@ -1,0 +1,19 @@
+# table-page - Flat row collection with query search and an action toolbar above sortable rows, running full width with no detail pane. Sits between the bare table and the filtered one. Table, list, rows, records, grid, search, or admin index.
+# Components: Avatar, IconButton, Layout, PowerSearch, Table
+
+<Layout hasDivider height="fill">
+  /* header: */
+  <LayoutHeader hasDivider>
+    <HStack gap={2}>
+      <StackItem />
+      <Heading />
+      <IconButton />
+      <IconButton />
+      <Button />
+    </HStack>
+  </LayoutHeader>
+  /* content: */
+  <LayoutContent padding={3}>
+    <VStack gap={4}>
+      <PowerSearch />
+      <Table>

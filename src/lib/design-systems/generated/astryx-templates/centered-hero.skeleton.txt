@@ -1,0 +1,23 @@
+# centered-hero - Symmetrical centered stack - headline, short blurb, paired call-to-action buttons - resting on one wide full-bleed picture, with nothing on either flank competing. Hero, banner, splash, landing image, or marketing masthead.
+# Components: AspectRatio, Layout
+
+<Layout padding={6}>
+  /* content: */
+  <LayoutContent padding={6}>
+    <VStack gap={10}>
+      <VStack gap={6}>
+        <VStack gap={3}>
+          <Heading />
+          <Text />
+        </VStack>
+        <HStack gap={3}>
+          <Button variant="primary" />
+          <Icon />
+          <Button variant="secondary" />
+        </HStack>
+      </VStack>
+      <Section padding={0} variant="transparent">
+        <AspectRatio />
+      </Section>
+    </VStack>
+  </LayoutContent>

@@ -47,6 +47,9 @@ next-env.d.ts
 # local structure-lint violation logs (graduation-cycle data)
 /.aide-logs
 
+# transient dir for the Astryx template vendoring script (prebuild)
+/.astryx-templates-tmp
+
 # iCloud sync conflict duplicates ("File 2.md")
 * 2.md
 * 2.ts

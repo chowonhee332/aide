@@ -1,0 +1,13 @@
+# settings-dialog - Preferences inside a modal container with searchable section navigation, so configuration happens without leaving whatever is underneath. Grouped toggles, live preview of appearance choices, rebindable shortcuts. Settings, preferences, configuration, options, or modal dialog.
+# Components: Appearance, AspectRatio, Billing, Card, Center, Developer, Dialog, Divider, FontPreview, Grid, IconButton, Integrations, Kbd, Language, Layout, List, Notifications, Privacy, Profile, Security, SegmentedControl, SelectableCard, Selector, SettingsCard, SettingsContentPane, SettingsNarrowShell, SettingsPanel, SettingsPanelBody, SettingsPanelTabs, SettingsRow, SettingsSearchInput, SettingsSearchResults, SettingsSideNav, ShortcutRecorder, ShortcutRow, Shortcuts, SideNav, Stack, Switch, TextInput, ThemeChoiceCards, ThemePreviewCanvas, ThemePreviewMock, Token, Tooltip
+
+<Center height="100dvh">
+  <Dialog>
+    <SettingsNarrowShell />
+    <Layout />
+    /* start: */
+    <SettingsSideNav />
+    /* content: */
+    <SettingsContentPane />
+  </Dialog>
+</Center>

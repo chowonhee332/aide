@@ -1,5 +1,5 @@
 import type { BuilderDevice, ComponentDefinition } from './builder-types';
-import { AIDE_PLAYGROUND_COMPONENTS } from './aide-playground-components';
+import { ASTRYX_PLAYGROUND_COMPONENTS } from './astryx-playground-components';
 
 export type {
   ComponentCategory,
@@ -11,8 +11,9 @@ export type {
 } from './builder-types';
 
 /**
- * Playground renders the same Aide component registry documented by /aide-ui.
- * A future DESIGN.md adapter can replace this catalog without changing BuilderView.
+ * Playground builds on the Astryx (@astryxdesign/core) component catalog.
+ * The registry is a list so a future DESIGN.md adapter can add another catalog
+ * without changing BuilderView.
  */
 export interface BuilderDesignSystemCatalog {
   id: string;
@@ -22,19 +23,36 @@ export interface BuilderDesignSystemCatalog {
 }
 
 export const BUILDER_DESIGN_SYSTEM_CATALOGS: Record<string, BuilderDesignSystemCatalog> = {
-  aide: {
-    id: 'aide',
-    name: 'Aide UI',
-    contractFiles: ['aide.md'],
-    components: AIDE_PLAYGROUND_COMPONENTS,
+  astryx: {
+    id: 'astryx',
+    name: 'Astryx',
+    contractFiles: ['@astryxdesign/core'],
+    components: ASTRYX_PLAYGROUND_COMPONENTS,
   },
 };
 
-export const ACTIVE_DESIGN_SYSTEM = BUILDER_DESIGN_SYSTEM_CATALOGS.aide;
+export type DesignSystemId = keyof typeof BUILDER_DESIGN_SYSTEM_CATALOGS;
+
+export const DESIGN_SYSTEM_OPTIONS = Object.values(BUILDER_DESIGN_SYSTEM_CATALOGS).map((catalog) => ({
+  value: catalog.id,
+  label: catalog.name,
+}));
+
+export const ACTIVE_DESIGN_SYSTEM = BUILDER_DESIGN_SYSTEM_CATALOGS.astryx;
+
+/** Active Playground catalog — also consumed by the /api/playground-compose planner. */
 export const COMPONENT_DEFINITIONS: ComponentDefinition[] = ACTIVE_DESIGN_SYSTEM.components;
 
+/** Every catalog's components — canvas items may belong to any active design system. */
+export const ALL_BUILDER_COMPONENTS: ComponentDefinition[] = Object.values(BUILDER_DESIGN_SYSTEM_CATALOGS)
+  .flatMap((catalog) => catalog.components);
+
+export function componentsForDesignSystem(id: string): ComponentDefinition[] {
+  return (BUILDER_DESIGN_SYSTEM_CATALOGS[id] ?? ACTIVE_DESIGN_SYSTEM).components;
+}
+
 export function getComponentById(id: string): ComponentDefinition | undefined {
-  return COMPONENT_DEFINITIONS.find((component) => component.id === id);
+  return ALL_BUILDER_COMPONENTS.find((component) => component.id === id);
 }
 
 export function supportsDevice(component: ComponentDefinition, device: BuilderDevice): boolean {

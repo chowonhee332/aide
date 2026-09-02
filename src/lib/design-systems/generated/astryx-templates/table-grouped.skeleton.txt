@@ -1,0 +1,39 @@
+# table-grouped - Row collection bundled into collapsible sections with per-group counts, so a long list reads as a handful of blocks that expand and collapse. Query filtering and a resizable inspector for the selected row. Table, list, rows, records, grid, or grouped dataset.
+# Components: Avatar, Badge, Center, Dialog, Divider, DropdownMenu, Layout, MetadataList, Popover, PowerSearch, RadioList, React, ResizeHandle, Selector, StatusDot, Table, TableBody, TableCell, TableRow, TaskDetail, TextInput
+
+<Layout padding={4} hasDivider height="fill">
+  /* header: */
+  <LayoutHeader padding={4} hasDivider>
+    <VStack gap={4}>
+      <HStack gap={3}>
+        <StackItem />
+        <Heading />
+        <Button variant="primary" />
+      </HStack>
+      <HStack gap={2}>
+        <StackItem />
+        <PowerSearch />
+        <Popover gap={4} width={320} />
+        /* content: */
+        <VStack gap={4}>
+          <RadioList />
+          <RadioListItem />
+        </VStack>
+        <Button variant="secondary" />
+      </HStack>
+    </VStack>
+  </LayoutHeader>
+  /* content: */
+  <LayoutContent padding={0} role="main">
+    <Table columns={columns} density="balanced">
+      <TableBody />
+      <React />
+      <TableRow role="button" />
+      <TableCell />
+      <HStack gap={2}>
+        <Icon />
+        <Text />
+        <Badge variant="neutral" />
+      </HStack>
+      <TableRow />
+      ...

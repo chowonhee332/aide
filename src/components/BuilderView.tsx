@@ -27,38 +27,38 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   ArrowLeft,
   ArrowUp,
-  ChevronDown,
   Download,
-  Eye,
-  EyeOff,
-  Focus,
   LayoutTemplate,
   Monitor,
-  PanelLeft,
-  PanelsTopLeft,
   Plus,
   RefreshCw,
-  Rows3,
   Smartphone,
   Sparkles,
   Trash2,
-  X,
 } from '@/components/ui/material-icon';
 import {
-  COMPONENT_DEFINITIONS,
+  componentsForDesignSystem,
+  DESIGN_SYSTEM_OPTIONS,
   getComponentById,
   getComponentPropsForDevice,
   supportsDevice,
   BuilderDevice,
   ComponentDefinition,
+  DesignSystemId,
   PropType,
 } from '@/lib/builder-components';
+import {
+  ASTRYX_TEMPLATES,
+  ASTRYX_TEMPLATES_BY_ID,
+  astryxTemplateGroup,
+  type AstryxTemplateEntry,
+} from '@/lib/astryx-templates';
 import { AIDE_UI, AIDE_UI_RAW } from '@/lib/aide-ui';
 import { AUI_ROOT_CSS } from '@/lib/aide-product-tokens';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import { ComponentPreview } from '@/components/aide-docs/ComponentPreview';
+import { PlaygroundComponentPreview as ComponentPreview } from '@/components/aide-docs/PlaygroundComponentPreview';
 import { componentPreviewSize } from '@/lib/aide-docs';
 import DotField from '@/components/DotField';
 
@@ -70,6 +70,83 @@ interface CanvasItem {
   region: CanvasRegion;
   props: Record<string, string>;
   hidden?: boolean;
+  /** Shallow nesting: only container components (see CONTAINER_COMPONENT_IDS) carry children. */
+  children?: CanvasItem[];
+}
+
+// Astryx container components that hold canvas children (one/two levels deep —
+// the template compiler flattens pure layout wrappers before this point).
+const CONTAINER_COMPONENT_IDS = new Set<string>([
+  'astryx-card', 'astryx-clickable-card', 'astryx-stack', 'astryx-grid',
+  'astryx-section', 'astryx-center', 'astryx-collapsible',
+]);
+
+function isContainerComponent(componentId: string): boolean {
+  return CONTAINER_COMPONENT_IDS.has(componentId);
+}
+
+function findCanvasItem(items: CanvasItem[], instanceId: string): CanvasItem | null {
+  for (const item of items) {
+    if (item.instanceId === instanceId) return item;
+    if (item.children) {
+      const hit = findCanvasItem(item.children, instanceId);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+/** Immutable per-node update over the whole tree. */
+function mapCanvasItems(items: CanvasItem[], fn: (item: CanvasItem) => CanvasItem): CanvasItem[] {
+  return items.map((item) => {
+    const mapped = fn(item);
+    return mapped.children ? { ...mapped, children: mapCanvasItems(mapped.children, fn) } : mapped;
+  });
+}
+
+function removeCanvasItem(items: CanvasItem[], instanceId: string): CanvasItem[] {
+  return items.flatMap((item) => {
+    if (item.instanceId === instanceId) return [];
+    return [item.children ? { ...item, children: removeCanvasItem(item.children, instanceId) } : item];
+  });
+}
+
+/** parentId null → top level of the region list. */
+function insertCanvasItem(items: CanvasItem[], parentId: string | null, index: number, newItem: CanvasItem): CanvasItem[] {
+  if (parentId === null) {
+    const next = [...items];
+    next.splice(Math.max(0, Math.min(index, next.length)), 0, newItem);
+    return next;
+  }
+  return items.map((item) => {
+    if (item.instanceId === parentId) {
+      const children = [...(item.children ?? [])];
+      children.splice(Math.max(0, Math.min(index, children.length)), 0, newItem);
+      return { ...item, children };
+    }
+    return item.children ? { ...item, children: insertCanvasItem(item.children, parentId, index, newItem) } : item;
+  });
+}
+
+function flattenCanvasItems(items: CanvasItem[]): CanvasItem[] {
+  return items.flatMap((item) => [item, ...(item.children ? flattenCanvasItems(item.children) : [])]);
+}
+
+/** Locate an item's parent container id (null = region root) and its index there. */
+function locateCanvasItem(
+  items: CanvasItem[],
+  instanceId: string,
+  parentId: string | null = null,
+): { parentId: string | null; index: number } | null {
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].instanceId === instanceId) return { parentId, index: i };
+    const kids = items[i].children;
+    if (kids) {
+      const hit = locateCanvasItem(kids, instanceId, items[i].instanceId);
+      if (hit) return hit;
+    }
+  }
+  return null;
 }
 
 type FrameDevice = BuilderDevice;
@@ -84,11 +161,18 @@ const FRAME_REGIONS: Record<FrameDevice, CanvasRegion[]> = {
   desktop: ['header', 'navigation', 'main', 'aside', 'overlay'],
 };
 
+const OVERLAY_COMPONENTS = new Set([
+  'dialog', 'sheet', 'popover', 'tooltip', 'dropdown-menu', 'toast',
+  'astryx-dialog', 'astryx-alert-dialog', 'astryx-bottom-sheet', 'astryx-popover', 'astryx-tooltip',
+  'astryx-dropdown-menu', 'astryx-context-menu', 'astryx-hover-card', 'astryx-more-menu',
+  'astryx-lightbox', 'astryx-command-palette', 'astryx-toast',
+]);
+
 function defaultRegionForComponent(componentId: string, device: FrameDevice): CanvasRegion {
-  if (['dialog', 'sheet', 'popover', 'tooltip', 'dropdown-menu', 'toast'].includes(componentId)) return 'overlay';
-  if (['bottom-app-bar', 'fixed-bottom-cta'].includes(componentId)) return 'bottom';
-  if (['app-header', 'top-navigation', 'global-navigation'].includes(componentId)) return 'header';
-  if (device === 'desktop' && ['local-navigation', 'side-navigation', 'navigation'].includes(componentId)) return 'navigation';
+  if (OVERLAY_COMPONENTS.has(componentId)) return 'overlay';
+  if (['bottom-app-bar', 'fixed-bottom-cta', 'astryx-mobile-nav'].includes(componentId)) return 'bottom';
+  if (['app-header', 'top-navigation', 'global-navigation', 'astryx-top-nav', 'astryx-app-shell'].includes(componentId)) return 'header';
+  if (device === 'desktop' && ['local-navigation', 'side-navigation', 'navigation', 'astryx-side-nav'].includes(componentId)) return 'navigation';
   if (device === 'desktop' && ['side-panel'].includes(componentId)) return 'aside';
   return device === 'mobile' ? 'content' : 'main';
 }
@@ -132,101 +216,17 @@ const FRAME_DIMENSIONS: Record<FrameDevice, { width: number; height: number; lab
   desktop: { width: 1920, height: 1080, label: 'PC', scale: 1 },
 };
 
-interface StructureTemplate {
-  id: string;
-  device: FrameDevice;
-  name: string;
-  description: string;
-  kind: 'mobile-basic' | 'mobile-nav' | 'mobile-list' | 'gnb' | 'lnb' | 'hybrid' | 'focus';
-  items: Array<{ componentId: string; props?: Record<string, string> }>;
-}
+// ─── Astryx page templates → canvas ──────────────────────────────────────────
 
-const STRUCTURE_TEMPLATES: StructureTemplate[] = [
-  {
-    id: 'mobile-basic',
-    device: 'mobile',
-    name: '기본 앱 화면',
-    description: '내비게이션, 상세 헤더와 카드가 있는 기본 구조',
-    kind: 'mobile-basic',
-    items: [
-      { componentId: 'top-navigation', props: { type: 'root', title: '서비스 홈' } },
-      { componentId: 'page-header', props: { title: '페이지 제목', description: '화면에 필요한 정보를 구성하세요.', label: '주요 작업' } },
-      { componentId: 'card', props: { title: '콘텐츠 영역', description: '왼쪽 패널에서 컴포넌트를 추가해 화면을 완성하세요.' } },
-    ],
-  },
-  {
-    id: 'mobile-bottom-nav',
-    device: 'mobile',
-    name: '하단 내비게이션',
-    description: '주요 메뉴 3개를 빠르게 전환하는 앱 구조',
-    kind: 'mobile-nav',
-    items: [
-      { componentId: 'top-navigation', props: { type: 'root', title: '서비스 홈' } },
-      { componentId: 'page-header', props: { title: '서비스 시작하기', description: '오늘 필요한 업무를 확인하세요.', label: '시작하기' } },
-      { componentId: 'responsive-grid', props: { options: '빠른 메뉴\n최근 활동\n알림' } },
-      { componentId: 'bottom-app-bar', props: { options: '홈\n업무\n내 정보', 'item-count': '3', position: 'fixed' } },
-    ],
-  },
-  {
-    id: 'mobile-list',
-    device: 'mobile',
-    name: '검색·목록',
-    description: '검색, 필터와 결과 목록이 있는 업무 화면',
-    kind: 'mobile-list',
-    items: [
-      { componentId: 'top-navigation', props: { type: 'standard', title: '요청 관리' } },
-      { componentId: 'search', props: { label: '검색', placeholder: '요청을 검색하세요' } },
-      { componentId: 'chip', props: { options: '전체\n진행 중\n완료' } },
-      { componentId: 'list-section', props: { title: '요청 목록', options: '디자인 검토 요청\n컴포넌트 등록\n화면 기획서 확인' } },
-      { componentId: 'bottom-app-bar', props: { options: '홈\n업무\n내정보', 'item-count': '3', position: 'fixed' } },
-    ],
-  },
-  {
-    id: 'pc-gnb',
-    device: 'desktop',
-    name: 'GNB',
-    description: '메뉴가 적고 정보 구조가 얕은 포털형',
-    kind: 'gnb',
-    items: [
-      { componentId: 'app-header', props: { title: 'Aide', options: '대시보드\n프로젝트\n설정', position: 'sticky' } },
-      { componentId: 'page-header', props: { title: '대시보드', description: '핵심 지표와 최근 활동을 확인합니다.', label: '새 프로젝트' } },
-      { componentId: 'responsive-grid', props: { options: '오늘의 지표\n최근 활동\n진행 상태' } },
-    ],
-  },
-  {
-    id: 'pc-lnb',
-    device: 'desktop',
-    name: 'LNB',
-    description: '업무 메뉴가 많고 전환이 잦은 관리형',
-    kind: 'lnb',
-    items: [
-      { componentId: 'workspace-shell', props: { title: '업무 대시보드', description: '업무 상태를 확인하고 속성을 편집합니다.', options: '업무 홈\n요청 관리\n통계', navigation: 'side', inspector: 'none' } },
-    ],
-  },
-  {
-    id: 'pc-gnb-lnb',
-    device: 'desktop',
-    name: 'GNB + LNB',
-    description: '전역 영역과 로컬 업무를 함께 탐색',
-    kind: 'hybrid',
-    items: [
-      { componentId: 'workspace-shell', props: { title: '요청 관리', description: '접수된 요청을 검색하고 처리 상태를 관리합니다.', options: '홈\n요청\n보고서', navigation: 'side', inspector: 'right' } },
-    ],
-  },
-  {
-    id: 'pc-focus',
-    device: 'desktop',
-    name: '집중형',
-    description: '등록·수정처럼 한 가지 작업에 집중',
-    kind: 'focus',
-    items: [
-      { componentId: 'top-navigation', props: { type: 'standard', title: '새 요청 등록' } },
-      { componentId: 'page-header', props: { title: '요청 정보', description: '필수 정보를 입력한 후 요청을 등록하세요.', label: '도움말' } },
-      { componentId: 'field-group', props: { title: '요청 정보', label: '요청 제목', placeholder: '제목을 입력하세요' } },
-      { componentId: 'action-bar', props: { label: '요청 등록' } },
-    ],
-  },
-];
+/** Every template drops as one frozen block that renders the real Astryx page. */
+function astryxTemplateToItems(entry: AstryxTemplateEntry, device: FrameDevice): CanvasItem[] {
+  return [{
+    instanceId: newInstanceId(),
+    componentId: 'astryx-frozen',
+    region: device === 'mobile' ? 'content' : 'main',
+    props: { t: entry.id, label: entry.name },
+  }];
+}
 
 // ─── Palette Thumbnail ───────────────────────────────────────────────────────
 
@@ -368,15 +368,15 @@ function CanvasEmptyZone({ frameId, region }: { frameId: string; region: CanvasR
 
 // ─── Sortable Canvas Item ─────────────────────────────────────────────────────
 
-function PaletteDropSlot({ frameId, region, index, device }: { frameId: string; region: CanvasRegion; index: number; device: FrameDevice }) {
-  const { isOver, setNodeRef } = useDroppable({ id: `insert:${frameId}:${region}:${index}` });
+function PaletteDropSlot({ frameId, parentKey, index, device, nested }: { frameId: string; parentKey: string; index: number; device: FrameDevice; nested?: boolean }) {
+  const { isOver, setNodeRef } = useDroppable({ id: `insert:${frameId}:${parentKey}:${index}` });
 
   return (
     <div
       ref={setNodeRef}
       style={{
-        height: device === 'desktop' ? 32 : 18,
-        margin: device === 'desktop' ? '0 24px' : '0 12px',
+        height: nested ? 12 : device === 'desktop' ? 32 : 18,
+        margin: nested ? '0 4px' : device === 'desktop' ? '0 24px' : '0 12px',
         display: 'flex',
         alignItems: 'center',
         position: 'relative',
@@ -417,22 +417,104 @@ function PaletteDropSlot({ frameId, region, index, device }: { frameId: string; 
   );
 }
 
+/** Empty container drop target — accepts the first child. */
+function ContainerEmptySlot({ frameId, containerId }: { frameId: string; containerId: string }) {
+  const { isOver, setNodeRef } = useDroppable({ id: `insert:${frameId}:${containerId}:0` });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        padding: 'var(--aui-space-4)',
+        textAlign: 'center',
+        border: `1.5px dashed ${isOver ? AIDE.primary : 'var(--aui-primary-muted)'}`,
+        borderRadius: 'var(--aui-radius-sm)',
+        color: isOver ? AIDE.primary : AIDE.textSubtle,
+        fontSize: 'var(--aui-type-meta-size)',
+        background: isOver ? AIDE.primarySoft : 'transparent',
+      }}
+    >
+      여기에 컴포넌트를 놓으세요
+    </div>
+  );
+}
+
+/** Interleaved drop slots + child items for one container's children (shallow nesting). */
+function ContainerChildren({
+  parent,
+  device,
+  frameId,
+  editing,
+  canAcceptPalette,
+  selectedId,
+  dragOverCanvasId,
+  onSelect,
+}: {
+  parent: CanvasItem;
+  device: FrameDevice;
+  frameId: string;
+  editing: boolean;
+  canAcceptPalette: boolean;
+  selectedId: string | null;
+  dragOverCanvasId: string | null;
+  onSelect: (instanceId: string) => void;
+}) {
+  const kids = (parent.children ?? []).filter((child) => !child.hidden);
+  if (!editing) {
+    return <>{kids.map((child) => <StaticCanvasItem key={child.instanceId} item={child} device={device} layoutColumns={1} nested />)}</>;
+  }
+  if (kids.length === 0) {
+    return canAcceptPalette ? <ContainerEmptySlot frameId={frameId} containerId={parent.instanceId} /> : null;
+  }
+  return (
+    <SortableContext items={kids.map((child) => child.instanceId)} strategy={verticalListSortingStrategy}>
+      {kids.map((child, index) => (
+        <React.Fragment key={child.instanceId}>
+          {canAcceptPalette ? <PaletteDropSlot frameId={frameId} parentKey={parent.instanceId} index={index} device={device} nested /> : null}
+          <SortableItem
+            item={child}
+            device={device}
+            frameId={frameId}
+            isSelected={selectedId === child.instanceId}
+            showInsertBefore={dragOverCanvasId === child.instanceId}
+            onSelect={onSelect}
+            layoutColumns={1}
+            canAcceptPalette={canAcceptPalette}
+            selectedId={selectedId}
+            dragOverCanvasId={dragOverCanvasId}
+          />
+        </React.Fragment>
+      ))}
+      {canAcceptPalette ? <PaletteDropSlot frameId={frameId} parentKey={parent.instanceId} index={kids.length} device={device} nested /> : null}
+    </SortableContext>
+  );
+}
+
 function SortableItem({
   item,
   device,
+  frameId,
   isSelected,
   showInsertBefore,
   onSelect,
   layoutColumns,
+  canAcceptPalette,
+  selectedId,
+  dragOverCanvasId,
 }: {
   item: CanvasItem;
   device: FrameDevice;
+  frameId: string;
   isSelected: boolean;
   showInsertBefore: boolean;
-  onSelect: () => void;
+  onSelect: (instanceId: string) => void;
   layoutColumns: number;
+  canAcceptPalette: boolean;
+  selectedId: string | null;
+  dragOverCanvasId: string | null;
 }) {
   const def = getComponentById(item.componentId);
+  const isContainer = isContainerComponent(item.componentId);
+  const isFrozen = item.componentId === 'astryx-frozen';
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.instanceId,
   });
@@ -440,12 +522,15 @@ function SortableItem({
   const isFixedBottom = def?.canvasBehavior === 'fixed-bottom';
   const isModal = def?.canvasBehavior === 'modal';
   const isOverlay = isModal;
-  const isStack = def?.canvasBehavior === 'stack' || !def?.canvasBehavior;
+  const isStack = (def?.canvasBehavior === 'stack' || !def?.canvasBehavior) && !isFrozen;
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.35 : 1,
     position: isOverlay ? 'absolute' : 'relative',
+    // A frozen Astryx page fills the frame so its own `minHeight:100%` / centered
+    // layouts resolve; no margin, or the page looks inset and cut off.
+    ...(isFrozen ? { height: '100%' } : {}),
     ...(isFixedBottom ? { zIndex: 40 } : {}),
     ...(isModal ? { inset: 0, zIndex: 50 } : {}),
     ...(isStack ? { margin: 'var(--aui-space-4)' } : {}),
@@ -462,7 +547,7 @@ function SortableItem({
       onPointerDown={(event) => {
         if (event.button !== 0) return;
         event.stopPropagation();
-        onSelect();
+        onSelect(item.instanceId);
       }}
       onClick={(event) => event.stopPropagation()}
     >
@@ -530,33 +615,57 @@ function SortableItem({
 
       {/* Canonical React component shared with /aide-ui. */}
       <div
-        style={{ userSelect: 'none', height: isModal ? '100%' : undefined }}
+        style={{ userSelect: 'none', height: isModal || isFrozen ? '100%' : undefined }}
       >
-        <div style={{ pointerEvents: 'none' }}>
-          <ComponentPreview id={def.id} props={item.props} device={device} context="playground" />
-        </div>
+        {isContainer ? (
+          <ComponentPreview id={def.id} props={item.props} device={device} context="playground">
+            <ContainerChildren
+              parent={item}
+              device={device}
+              frameId={frameId}
+              editing
+              canAcceptPalette={canAcceptPalette}
+              selectedId={selectedId}
+              dragOverCanvasId={dragOverCanvasId}
+              onSelect={onSelect}
+            />
+          </ComponentPreview>
+        ) : (
+          <div style={{ pointerEvents: 'none', height: isFrozen ? '100%' : undefined }}>
+            <ComponentPreview id={def.id} props={item.props} device={device} context="playground" />
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function StaticCanvasItem({ item, device, layoutColumns }: { item: CanvasItem; device: FrameDevice; layoutColumns: number }) {
+function StaticCanvasItem({ item, device, layoutColumns, nested }: { item: CanvasItem; device: FrameDevice; layoutColumns: number; nested?: boolean }) {
   const def = getComponentById(item.componentId);
   if (!def) return null;
+  const isFrozen = item.componentId === 'astryx-frozen';
   const isFixedBottom = def.canvasBehavior === 'fixed-bottom';
   const isModal = def.canvasBehavior === 'modal';
-  const isStack = def.canvasBehavior === 'stack' || !def.canvasBehavior;
+  const isStack = (def.canvasBehavior === 'stack' || !def.canvasBehavior) && !isFrozen;
+  const isContainer = isContainerComponent(item.componentId);
 
   return (
     <div
       style={{
+        ...(isFrozen ? { height: '100%' } : {}),
         ...(isFixedBottom ? { position: 'relative', zIndex: 40 } as React.CSSProperties : {}),
         ...(isModal ? { position: 'absolute', inset: 0, zIndex: 50 } as React.CSSProperties : {}),
-        ...(isStack ? { margin: 'var(--aui-space-4)' } : {}),
+        ...(isStack && !nested ? { margin: 'var(--aui-space-4)' } : {}),
         ...((isFixedBottom || isModal || def.canvasBehavior === 'full-width') && layoutColumns > 1 ? { gridColumn: '1 / -1' } : {}),
       }}
     >
-      <ComponentPreview id={def.id} props={item.props} device={device} context="playground" />
+      {isContainer ? (
+        <ComponentPreview id={def.id} props={item.props} device={device} context="playground">
+          <ContainerChildren parent={item} device={device} frameId="" editing={false} canAcceptPalette={false} selectedId={null} dragOverCanvasId={null} onSelect={() => {}} />
+        </ComponentPreview>
+      ) : (
+        <ComponentPreview id={def.id} props={item.props} device={device} context="playground" />
+      )}
     </div>
   );
 }
@@ -598,7 +707,9 @@ function FrameRegion({
         ...(isOverlay ? { top: 16, right: 16, width: frame.device === 'mobile' ? 320 : 420, zIndex: 60 } : { gridArea: region }),
         minWidth: 0,
         minHeight: isContent ? 0 : isEmpty ? 0 : 44,
-        overflowY: 'visible',
+        // Content/main scroll inside the fixed-height frame; other regions size to content.
+        overflowY: isContent ? 'auto' : 'visible',
+        overflowX: isContent ? 'auto' : 'visible',
         background: showEmpty ? 'color-mix(in srgb, var(--aui-surface) 94%, var(--aui-primary) 6%)' : 'transparent',
         border: showEmpty ? '1px dashed var(--aui-primary-muted)' : 'none',
         display: columns > 1 ? 'grid' : 'block',
@@ -611,15 +722,26 @@ function FrameRegion({
           <>
             {regionItems.map((item, index) => (
               <React.Fragment key={item.instanceId}>
-                {canAcceptPalette ? <PaletteDropSlot frameId={frame.id} region={region} index={index} device={frame.device} /> : null}
+                {canAcceptPalette ? <PaletteDropSlot frameId={frame.id} parentKey={region} index={index} device={frame.device} /> : null}
                 {editing ? (
-                  <SortableItem item={item} device={frame.device} isSelected={selectedId === item.instanceId} showInsertBefore={dragOverCanvasId === item.instanceId} onSelect={() => onSelect(item.instanceId)} layoutColumns={columns} />
+                  <SortableItem
+                    item={item}
+                    device={frame.device}
+                    frameId={frame.id}
+                    isSelected={selectedId === item.instanceId}
+                    showInsertBefore={dragOverCanvasId === item.instanceId}
+                    onSelect={onSelect}
+                    layoutColumns={columns}
+                    canAcceptPalette={canAcceptPalette}
+                    selectedId={selectedId}
+                    dragOverCanvasId={dragOverCanvasId}
+                  />
                 ) : (
                   <StaticCanvasItem item={item} device={frame.device} layoutColumns={columns} />
                 )}
               </React.Fragment>
             ))}
-            {canAcceptPalette ? <PaletteDropSlot frameId={frame.id} region={region} index={regionItems.length} device={frame.device} /> : null}
+            {canAcceptPalette ? <PaletteDropSlot frameId={frame.id} parentKey={region} index={regionItems.length} device={frame.device} /> : null}
           </>
         )}
       </SortableContext>
@@ -629,35 +751,35 @@ function FrameRegion({
 
 // ─── Left component library ──────────────────────────────────────────────────
 
-type LibraryTab = 'components' | 'layers';
+type LibraryTab = 'templates' | 'components';
 
 function ComponentLibraryPanel({
   tab,
   onTabChange,
   device,
-  frames,
-  activeFrameId,
-  selectedId,
-  onSelectFrame,
-  onSelectItem,
-  onToggleItem,
-  onMoveItem,
+  designSystem,
+  onDesignSystemChange,
+  activeTemplateId,
+  onApplyTemplate,
 }: {
   tab: LibraryTab;
   onTabChange: (tab: LibraryTab) => void;
   device: FrameDevice;
-  frames: CanvasFrame[];
-  activeFrameId: string;
-  selectedId: string | null;
-  onSelectFrame: (frameId: string) => void;
-  onSelectItem: (frameId: string, instanceId: string) => void;
-  onToggleItem: (instanceId: string) => void;
-  onMoveItem: (instanceId: string, direction: -1 | 1) => void;
+  designSystem: DesignSystemId;
+  onDesignSystemChange: (id: DesignSystemId) => void;
+  activeTemplateId?: string;
+  onApplyTemplate: (template: AstryxTemplateEntry) => void;
 }) {
-  const activeFrame = frames.find((frame) => frame.id === activeFrameId) ?? null;
-  const activeDefinitions = COMPONENT_DEFINITIONS.filter((component) => {
-    return supportsDevice(component, device);
+  const activeDefinitions = componentsForDesignSystem(designSystem).filter((component) => {
+    // astryx-frozen only enters the canvas from a template, never the palette.
+    return component.id !== 'astryx-frozen' && supportsDevice(component, device);
   });
+  const templateGroups = new Map<string, AstryxTemplateEntry[]>();
+  for (const template of ASTRYX_TEMPLATES) {
+    const key = astryxTemplateGroup(template.category);
+    (templateGroups.get(key) ?? templateGroups.set(key, []).get(key)!).push(template);
+  }
+  const activeTemplate = activeTemplateId?.replace(/^astryx:/, '');
 
   return (
     <div
@@ -679,8 +801,8 @@ function ComponentLibraryPanel({
           flexShrink: 0,
         }}
       >
-        {(['components', 'layers'] as LibraryTab[]).map((t) => {
-          const label = t === 'components' ? '컴포넌트' : '레이어';
+        {(['templates', 'components'] as LibraryTab[]).map((t) => {
+          const label = t === 'templates' ? '템플릿' : '컴포넌트';
           const active = tab === t;
           return (
             <button
@@ -709,6 +831,16 @@ function ComponentLibraryPanel({
       {/* Tab content */}
       {tab === 'components' ? (
         <div style={{ flex: 1, overflowY: 'auto', padding: `var(--aui-space-3) var(--aui-space-2) var(--aui-space-4)` }}>
+          {DESIGN_SYSTEM_OPTIONS.length > 1 ? (
+            <div style={{ margin: `0 var(--aui-space-1) var(--aui-space-3)` }}>
+              <SegmentedControl
+                label="디자인 시스템"
+                value={designSystem}
+                onValueChange={(value) => onDesignSystemChange(value as DesignSystemId)}
+                options={DESIGN_SYSTEM_OPTIONS}
+              />
+            </div>
+          ) : null}
           <div style={{ margin: `0 var(--aui-space-1) var(--aui-space-2)`, display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", color: AIDE.textMuted, fontSize: "var(--aui-type-meta-size)" }}>
             {device === 'mobile' ? <Smartphone size={12} /> : <Monitor size={12} />}
             <span>{device === 'mobile' ? 'Mobile에 적합한 컴포넌트' : 'PC에 적합한 컴포넌트'}</span>
@@ -748,63 +880,55 @@ function ComponentLibraryPanel({
         </div>
       ) : (
         <div style={{ flex: 1, overflowY: 'auto', padding: "var(--aui-space-3) var(--aui-space-2) var(--aui-space-4)" }}>
-          <div style={{ padding: '0 6px 8px', color: AIDE.textSubtle, fontSize: "var(--aui-type-meta-size)", fontWeight: 700, letterSpacing: '0.08em' }}>
-            화면
+          <div style={{ margin: `0 var(--aui-space-1) var(--aui-space-3)`, fontSize: "var(--aui-type-micro-size)", color: AIDE.textMuted, lineHeight: "var(--aui-leading-normal)" }}>
+            실제 Astryx 페이지가 프레임 크기에 맞춰 그대로 들어옵니다. 상단 Mobile/Desktop 토글로 전환하세요.
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {frames.map((frame) => {
-              const active = frame.id === activeFrameId;
-              return (
-                <button
-                  key={frame.id}
-                  type="button"
-                  onClick={() => onSelectFrame(frame.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 34, padding: '6px 8px', border: `1px solid ${active ? AIDE.primary : 'transparent'}`, borderRadius: 7, background: active ? 'var(--aui-primary-subtle)' : 'transparent', color: AIDE.text, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }}
-                >
-                  {frame.device === 'mobile' ? <Smartphone size={14} /> : <Monitor size={14} />}
-                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>{frame.name}</span>
-                  <span style={{ color: AIDE.textMuted, fontSize: 10 }}>{frame.items.length}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {activeFrame ? FRAME_REGIONS[activeFrame.device].map((region) => {
-            const regionItems = activeFrame.items.filter((item) => item.region === region);
-            if (regionItems.length === 0) return null;
-            return (
-              <div key={region} style={{ marginTop: 16 }}>
-                <div style={{ padding: '0 6px 6px', color: AIDE.textSubtle, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  {REGION_LABELS[region]}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {regionItems.map((item, index) => {
-                    const definition = getComponentById(item.componentId);
-                    const selected = item.instanceId === selectedId;
-                    return (
-                      <div key={item.instanceId} style={{ display: 'flex', alignItems: 'center', minHeight: 34, border: `1px solid ${selected ? AIDE.primary : 'transparent'}`, borderRadius: 7, background: selected ? 'var(--aui-primary-subtle)' : 'transparent', opacity: item.hidden ? 0.55 : 1 }}>
-                        <button type="button" onClick={() => onSelectItem(activeFrame.id, item.instanceId)} style={{ flex: 1, minWidth: 0, alignSelf: 'stretch', display: 'flex', alignItems: 'center', gap: 7, padding: '0 8px', border: 0, background: 'transparent', color: AIDE.text, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }}>
-                          <Rows3 size={12} color={AIDE.textSubtle} />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>{definition?.name ?? item.componentId}</span>
-                        </button>
-                        {selected ? (
-                          <>
-                            <button type="button" aria-label="위로 이동" disabled={index === 0} onClick={() => onMoveItem(item.instanceId, -1)} style={{ width: 26, height: 30, border: 0, background: 'transparent', color: index === 0 ? AIDE.textSubtle : AIDE.textMuted, cursor: index === 0 ? 'default' : 'pointer' }}><ArrowUp size={12} /></button>
-                            <button type="button" aria-label="아래로 이동" disabled={index === regionItems.length - 1} onClick={() => onMoveItem(item.instanceId, 1)} style={{ width: 26, height: 30, border: 0, background: 'transparent', color: index === regionItems.length - 1 ? AIDE.textSubtle : AIDE.textMuted, cursor: index === regionItems.length - 1 ? 'default' : 'pointer' }}><ChevronDown size={13} /></button>
-                          </>
-                        ) : null}
-                        <button type="button" aria-label={item.hidden ? '표시' : '숨기기'} onClick={() => onToggleItem(item.instanceId)} style={{ width: 30, height: 30, border: 0, background: 'transparent', color: AIDE.textMuted, cursor: 'pointer' }}>
-                          {item.hidden ? <EyeOff size={13} /> : <Eye size={13} />}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+          {[...templateGroups.entries()].map(([group, templates]) => (
+            <div key={group} style={{ marginBottom: 16 }}>
+              <div
+                style={{
+                  padding: `0 var(--aui-space-1) var(--aui-space-2)`,
+                  fontSize: "var(--aui-type-meta-size)",
+                  fontWeight: "var(--aui-weight-bold)",
+                  color: AIDE.textSubtle,
+                  letterSpacing: "var(--aui-tracking-wider)",
+                  textTransform: 'uppercase',
+                }}
+              >
+                {group}
               </div>
-            );
-          }) : (
-            <div style={{ padding: 20, color: AIDE.textMuted, fontSize: 12, textAlign: 'center' }}>프레임을 추가하면 레이어가 표시됩니다.</div>
-          )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
+                {templates.map((template) => {
+                  const active = template.id === activeTemplate;
+                  return (
+                    <button
+                      key={template.id}
+                      type="button"
+                      onClick={() => onApplyTemplate(template)}
+                      style={{
+                        padding: `var(--aui-space-2) var(--aui-space-2)`,
+                        border: `1px solid ${active ? AIDE.primary : AIDE.border}`,
+                        borderRadius: "var(--aui-radius-sm)",
+                        background: active ? AIDE.primarySoft : AIDE.surface,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 3,
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", color: active ? AIDE.primary : AIDE.text }}>
+                        <LayoutTemplate size={13} />
+                        <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)" }}>{template.name}</span>
+                      </span>
+                      <span style={{ color: AIDE.textMuted, fontSize: "var(--aui-type-meta-size)", lineHeight: "var(--aui-leading-normal)", display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{template.description}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -893,7 +1017,7 @@ function ComponentDetailsPanel({
               </span>
               <div>
                 <div style={{ color: AIDE.text, fontSize: 13, fontWeight: 700 }}>프레임</div>
-                <div style={{ marginTop: 2, color: AIDE.textMuted, fontSize: 11 }}>{activeFrame.items.length}개 컴포넌트</div>
+                <div style={{ marginTop: 2, color: AIDE.textMuted, fontSize: 11 }}>{flattenCanvasItems(activeFrame.items).length}개 컴포넌트</div>
               </div>
             </div>
             <label style={{ display: 'block', marginTop: 16, color: AIDE.textMuted, fontSize: 11, fontWeight: 600 }}>
@@ -1265,10 +1389,15 @@ function buildExportHTML(frame: CanvasFrame): string {
   const layoutColumns = frame.device === 'desktop' ? frame.layout === 'grid-3' ? 3 : frame.layout === 'grid-2' ? 2 : 1 : 1;
   const hasNavigation = frame.items.some((item) => item.region === 'navigation' && !item.hidden);
   const hasAside = frame.items.some((item) => item.region === 'aside' && !item.hidden);
-  const renderItem = (item: CanvasItem) => {
+  const renderItem = (item: CanvasItem): string => {
       const def = getComponentById(item.componentId);
       if (!def) return '';
-      const html = def.renderHTML(item.props);
+      let html = def.renderHTML(item.props);
+      const kids = (item.children ?? []).filter((child) => !child.hidden);
+      if (isContainerComponent(item.componentId) && kids.length > 0) {
+        // Nested children: render inside a wrapper alongside the container's own markup.
+        html = `<div class="canvas-container" data-component="${item.componentId}">${kids.map(renderItem).join('\n')}</div>`;
+      }
       return layoutColumns > 1 && def.canvasBehavior === 'full-width' ? `<div style="grid-column:1/-1">${html}</div>` : html;
   };
   const body = FRAME_REGIONS[frame.device].map((region) => {
@@ -1329,120 +1458,6 @@ function DragPreview({ componentId, props, device }: { componentId: string; prop
   );
 }
 
-function TemplateMiniature({ kind }: { kind: StructureTemplate['kind'] }) {
-  const isMobile = kind.startsWith('mobile');
-  if (isMobile) {
-    return (
-      <div style={{ width: 42, height: 72, border: `1px solid ${AIDE.border}`, borderRadius: "var(--aui-radius-sm)", background: 'var(--aui-on-dark)', padding: "var(--aui-space-1)", display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
-        <div style={{ height: 5, borderRadius: "var(--aui-radius-sm)", background: AIDE.fillStrong }} />
-        <div style={{ height: 8, borderRadius: "var(--aui-radius-sm)", background: AIDE.primarySoft, borderBottom: `1px solid ${AIDE.border}` }} />
-        {kind === 'mobile-list' ? (
-          <>
-            <div style={{ height: 8, borderRadius: "var(--aui-radius-sm)", background: AIDE.fill }} />
-            {[1, 2, 3].map((value) => <div key={value} style={{ height: 8, borderRadius: "var(--aui-radius-sm)", border: `1px solid ${AIDE.border}` }} />)}
-          </>
-        ) : (
-          <div style={{ flex: 1, borderRadius: "var(--aui-radius-sm)", background: kind === 'mobile-nav' ? AIDE.primarySoft : AIDE.surfaceHover, border: `1px solid ${AIDE.border}` }} />
-        )}
-        {kind === 'mobile-nav' || kind === 'mobile-list' ? <div style={{ height: 8, borderRadius: "var(--aui-radius-sm)", background: 'var(--aui-primary-muted)' }} /> : null}
-      </div>
-    );
-  }
-
-  const hasGnb = kind === 'gnb' || kind === 'hybrid';
-  const hasLnb = kind === 'lnb' || kind === 'hybrid';
-  return (
-    <div style={{ width: 88, height: 58, border: `1px solid ${AIDE.border}`, borderRadius: "var(--aui-radius-sm)", background: 'var(--aui-on-dark)', padding: "var(--aui-space-1)", display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
-      {hasGnb ? <div style={{ height: 8, borderRadius: "var(--aui-radius-sm)", background: 'var(--aui-primary-muted)' }} /> : null}
-      <div style={{ flex: 1, display: 'flex', gap: "var(--aui-space-1)" }}>
-        {hasLnb ? <div style={{ width: 18, borderRadius: "var(--aui-radius-sm)", background: AIDE.fill }} /> : null}
-        <div style={{ flex: 1, padding: "var(--aui-space-1)", borderRadius: "var(--aui-radius-sm)", background: AIDE.bg, display: 'grid', gridTemplateColumns: kind === 'focus' ? '1fr' : 'repeat(2,1fr)', gap: "var(--aui-space-1)" }}>
-          {[1, 2, 3, 4].slice(0, kind === 'focus' ? 3 : 4).map((value) => <span key={value} style={{ borderRadius: "var(--aui-radius-sm)", background: value === 1 ? AIDE.primarySoft : AIDE.fillStrong }} />)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StructureTemplatePicker({
-  device,
-  activeTemplateId,
-  onApply,
-  onClose,
-}: {
-  device: FrameDevice;
-  activeTemplateId?: string;
-  onApply: (template: StructureTemplate) => void;
-  onClose: () => void;
-}) {
-  const templates = STRUCTURE_TEMPLATES.filter((template) => template.device === device);
-  return (
-    <div
-      role="dialog"
-      aria-label="구조 템플릿 선택"
-      style={{
-        position: 'absolute',
-        top: 62,
-        right: 16,
-        width: 520,
-        padding: "var(--aui-space-4)",
-        border: `1px solid ${AIDE.border}`,
-        borderRadius: "var(--aui-radius-sm)",
-        background: AIDE.surface,
-        boxShadow: "var(--aui-shadow-floating)",
-        zIndex: 120,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: "var(--aui-space-3)" }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-bold)", color: AIDE.text }}>{device === 'mobile' ? 'Mobile' : 'PC'} 구조 템플릿</div>
-          <div style={{ marginTop: 4, fontSize: "var(--aui-type-micro-size)", color: AIDE.textMuted }}>템플릿을 적용한 뒤 컴포넌트와 내용을 자유롭게 바꿀 수 있습니다.</div>
-        </div>
-        <button type="button" onClick={onClose} aria-label="템플릿 닫기" style={{ width: 28, height: 28, border: 'none', borderRadius: "var(--aui-radius-sm)", background: 'transparent', color: AIDE.textMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-          <X size={15} />
-        </button>
-      </div>
-      <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: "var(--aui-space-2)" }}>
-        {templates.map((template) => {
-          const active = template.id === activeTemplateId;
-          const Icon = template.kind === 'gnb' ? Rows3 : template.kind === 'lnb' ? PanelLeft : template.kind === 'hybrid' ? PanelsTopLeft : template.kind === 'focus' ? Focus : Smartphone;
-          return (
-            <button
-              key={template.id}
-              type="button"
-              onClick={() => onApply(template)}
-              style={{
-                minHeight: 112,
-                padding: "var(--aui-space-3)",
-                border: `1px solid ${active ? AIDE.primary : AIDE.border}`,
-                borderRadius: "var(--aui-radius-sm)",
-                background: active ? AIDE.primarySoft : AIDE.surface,
-                display: 'flex',
-                gap: "var(--aui-space-3)",
-                alignItems: 'center',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
-            >
-              <div style={{ width: 98, height: 76, flexShrink: 0, borderRadius: "var(--aui-radius-sm)", background: AIDE.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <TemplateMiniature kind={template.kind} />
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", color: active ? AIDE.primary : AIDE.text }}>
-                  <Icon size={13} />
-                  <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)" }}>{template.name}</span>
-                </div>
-                <div style={{ marginTop: 6, color: AIDE.textMuted, fontSize: "var(--aui-type-meta-size)", lineHeight: "var(--aui-leading-normal)" }}>{template.description}</div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ─── Main BuilderView ─────────────────────────────────────────────────────────
 
 let instanceCounter = 0;
@@ -1450,15 +1465,33 @@ let frameCounter = 2;
 const PLAYGROUND_STORAGE_KEY = 'aide:playground:v6';
 const LEGACY_PLAYGROUND_STORAGE_KEYS = ['aide:wonhee-playground:v5', 'aide:wonhee-playground:v4', 'aide:wonhee-playground:v3', 'aide:wonhee-playground:v2'];
 
+// Legacy Aide-catalog Playground ids → Astryx catalog ids, so frames saved
+// before the Playground moved to @astryxdesign/core still restore.
 const TEMPLATE_COMPONENT_MIGRATION: Record<string, string> = {
-  'status-bar': 'alert', 'app-bar': 'navigation', 'hero-banner': 'detail-header',
-  'section-header': 'detail-header', 'list-item': 'list-cell', 'search-bar': 'search',
-  'bottom-tab-bar': 'tabs', 'pc-global-nav': 'navigation', 'pc-workspace': 'panel',
-  'ktds-button': 'button', 'ktds-textarea': 'textarea', 'ktds-select': 'select',
-  'ktds-checkbox-group': 'checkbox', 'ktds-radio-group': 'radio', 'ktds-switch': 'switch',
-  'ktds-chip-group': 'chip', 'ktds-tab-list': 'tabs', 'ktds-table': 'table',
-  'ktds-pagination': 'navigation', 'ktds-admonition': 'alert', 'ktds-toast': 'toast',
-  'ktds-dialog': 'dialog', 'ktds-bottom-sheet': 'sheet',
+  button: 'astryx-button', 'icon-button': 'astryx-icon-button', 'action-bar': 'astryx-button-group',
+  'fixed-bottom-cta': 'astryx-button', 'floating-action-button': 'astryx-button',
+  field: 'astryx-text-input', 'field-group': 'astryx-form-layout', textarea: 'astryx-text-area',
+  editor: 'astryx-text-area', select: 'astryx-selector', search: 'astryx-text-input',
+  'number-field': 'astryx-number-input', keypad: 'astryx-number-input', slider: 'astryx-slider',
+  rating: 'astryx-slider', checkbox: 'astryx-checkbox-list', radio: 'astryx-radio-list',
+  switch: 'astryx-switch', agreement: 'astryx-checkbox-list', 'segmented-control': 'astryx-segmented-control',
+  chip: 'astryx-badge', tabs: 'astryx-tab-list', stepper: 'astryx-stepper',
+  'date-picker': 'astryx-date-input', 'time-picker': 'astryx-time-input', 'file-uploader': 'astryx-file-input',
+  navigation: 'astryx-tab-list', 'app-header': 'astryx-top-nav', 'top-navigation': 'astryx-top-nav',
+  'global-navigation': 'astryx-top-nav', 'side-navigation': 'astryx-side-nav', 'local-navigation': 'astryx-side-nav',
+  'bottom-app-bar': 'astryx-mobile-nav', 'app-footer': 'astryx-text', breadcrumb: 'astryx-breadcrumbs',
+  pagination: 'astryx-pagination', 'pagination-dots': 'astryx-pagination',
+  card: 'astryx-card', panel: 'astryx-card', 'side-panel': 'astryx-card', 'workspace-shell': 'astryx-app-shell',
+  'list-cell': 'astryx-list', 'list-row': 'astryx-list', 'list-section': 'astryx-list',
+  table: 'astryx-table', metric: 'astryx-metadata-list', 'bar-chart': 'astryx-card',
+  'responsive-grid': 'astryx-grid', asset: 'astryx-thumbnail', carousel: 'astryx-carousel',
+  'page-header': 'astryx-heading', 'section-header': 'astryx-heading', 'detail-header': 'astryx-heading',
+  prose: 'astryx-text', badge: 'astryx-badge', avatar: 'astryx-avatar', 'avatar-group': 'astryx-avatar-group',
+  anchor: 'astryx-link', accordion: 'astryx-collapsible', progress: 'astryx-progress-bar',
+  alert: 'astryx-banner', toast: 'astryx-toast', loading: 'astryx-spinner',
+  'empty-state': 'astryx-empty-state', result: 'astryx-empty-state',
+  dialog: 'astryx-dialog', sheet: 'astryx-bottom-sheet', popover: 'astryx-popover',
+  tooltip: 'astryx-tooltip', 'dropdown-menu': 'astryx-dropdown-menu',
 };
 
 function newInstanceId() {
@@ -1476,19 +1509,41 @@ function createFrame(device: FrameDevice, items: CanvasItem[] = []): CanvasFrame
   };
 }
 
-function createTemplateItems(template: StructureTemplate): CanvasItem[] {
-  return template.items.flatMap((item) => {
-    const componentId = getComponentById(item.componentId) ? item.componentId : TEMPLATE_COMPONENT_MIGRATION[item.componentId] ?? item.componentId;
-    const definition = getComponentById(componentId);
-    if (!definition || !supportsDevice(definition, template.device)) return [];
-    const compatibleTemplateProps = componentId === item.componentId ? item.props : undefined;
-    return [{
-      instanceId: newInstanceId(),
-      componentId: definition.id,
-      region: defaultRegionForComponent(definition.id, template.device),
-      props: { ...getComponentPropsForDevice(definition, template.device), ...compatibleTemplateProps },
-    }];
-  });
+/** Validate + migrate one persisted canvas item (recurses into container children). */
+function parseSavedCanvasItem(raw: unknown, device: FrameDevice, parentRegion?: CanvasRegion): CanvasItem | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const item = raw as Partial<CanvasItem>;
+  if (typeof item.instanceId !== 'string' || typeof item.componentId !== 'string' || !item.props || typeof item.props !== 'object') return null;
+  const componentId = getComponentById(item.componentId) ? item.componentId : TEMPLATE_COMPONENT_MIGRATION[item.componentId] ?? item.componentId;
+  const definition = getComponentById(componentId);
+  if (!definition || !supportsDevice(definition, device)) return null;
+  const savedProps = Object.fromEntries(Object.entries(item.props).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
+  const allowedKeys = new Set([...Object.keys(definition.defaultProps), ...definition.propSchema.map((schema) => schema.key)]);
+  const props = Object.fromEntries(Object.entries(savedProps).filter(([key]) => allowedKeys.has(key)));
+  const deviceDefaults = getComponentPropsForDevice(definition, device);
+  const legacyGenericValues: Record<string, string> = {
+    label: definition.name,
+    title: definition.name,
+    description: '컴포넌트 설명을 입력하세요.',
+    options: '첫 번째\n두 번째\n세 번째',
+    placeholder: '내용을 입력하세요',
+  };
+  const migratedProps = Object.fromEntries(Object.entries(props).map(([key, value]) => [
+    key,
+    legacyGenericValues[key] === value && deviceDefaults[key] ? deviceDefaults[key] : value,
+  ]));
+  const allowedRegions = FRAME_REGIONS[device];
+  const region = parentRegion
+    ?? (typeof item.region === 'string' && allowedRegions.includes(item.region as CanvasRegion)
+      ? item.region as CanvasRegion
+      : defaultRegionForComponent(componentId, device));
+  const parsed: CanvasItem = { instanceId: item.instanceId, componentId, region, props: { ...deviceDefaults, ...migratedProps }, hidden: item.hidden === true };
+  if (Array.isArray(item.children) && isContainerComponent(componentId)) {
+    parsed.children = item.children
+      .map((child) => parseSavedCanvasItem(child, device, region))
+      .filter((child): child is CanvasItem => child !== null);
+  }
+  return parsed;
 }
 
 function restoreFrames(value: string | null, refreshTemplates = false): CanvasFrame[] | null {
@@ -1501,38 +1556,24 @@ function restoreFrames(value: string | null, refreshTemplates = false): CanvasFr
       const frame = candidate as Partial<CanvasFrame>;
       if (typeof frame.id !== 'string' || typeof frame.name !== 'string') return [];
       if (frame.device !== 'mobile' && frame.device !== 'desktop') return [];
-      const currentTemplate = refreshTemplates && typeof frame.templateId === 'string'
-        ? STRUCTURE_TEMPLATES.find((template) => template.id === frame.templateId)
-        : undefined;
+      const astryxTemplateId = refreshTemplates && typeof frame.templateId === 'string' && frame.templateId.startsWith('astryx:')
+        ? frame.templateId.slice('astryx:'.length)
+        : null;
+      const currentTemplate = astryxTemplateId ? ASTRYX_TEMPLATES_BY_ID[astryxTemplateId] : undefined;
       if (currentTemplate) {
-        return [{ ...frame, id: frame.id, name: `${FRAME_DIMENSIONS[currentTemplate.device].label} · ${currentTemplate.name}`, device: currentTemplate.device, items: createTemplateItems(currentTemplate), templateId: currentTemplate.id }];
+        return [{
+          ...frame,
+          id: frame.id,
+          name: `${FRAME_DIMENSIONS[frame.device].label} · ${currentTemplate.name}`,
+          device: frame.device,
+          items: astryxTemplateToItems(currentTemplate, frame.device),
+          templateId: `astryx:${currentTemplate.id}`,
+        }];
       }
       const items = Array.isArray(frame.items)
         ? frame.items.flatMap((item): CanvasItem[] => {
-          if (!item || typeof item.instanceId !== 'string' || typeof item.componentId !== 'string' || !item.props || typeof item.props !== 'object') return []
-          const componentId = getComponentById(item.componentId) ? item.componentId : TEMPLATE_COMPONENT_MIGRATION[item.componentId] ?? item.componentId
-          const definition = getComponentById(componentId)
-          if (!definition || !supportsDevice(definition, frame.device!)) return []
-          const savedProps = Object.fromEntries(Object.entries(item.props).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
-          const allowedKeys = new Set([...Object.keys(definition.defaultProps), ...definition.propSchema.map((schema) => schema.key)])
-          const props = Object.fromEntries(Object.entries(savedProps).filter(([key]) => allowedKeys.has(key)))
-          const deviceDefaults = getComponentPropsForDevice(definition, frame.device!)
-          const legacyGenericValues: Record<string, string> = {
-            label: definition.name,
-            title: definition.name,
-            description: '컴포넌트 설명을 입력하세요.',
-            options: '첫 번째\n두 번째\n세 번째',
-            placeholder: '내용을 입력하세요',
-          }
-          const migratedProps = Object.fromEntries(Object.entries(props).map(([key, value]) => [
-            key,
-            legacyGenericValues[key] === value && deviceDefaults[key] ? deviceDefaults[key] : value,
-          ]))
-          const allowedRegions = FRAME_REGIONS[frame.device!]
-          const region = typeof item.region === 'string' && allowedRegions.includes(item.region as CanvasRegion)
-            ? item.region as CanvasRegion
-            : defaultRegionForComponent(componentId, frame.device!)
-          return [{ instanceId: item.instanceId, componentId, region, props: { ...deviceDefaults, ...migratedProps }, hidden: item.hidden === true }]
+          const parsed = parseSavedCanvasItem(item, frame.device!);
+          return parsed ? [parsed] : [];
         })
         : [];
       const layout = frame.device === 'desktop' && (frame.layout === 'grid-2' || frame.layout === 'grid-3') ? frame.layout : 'stack';
@@ -1555,9 +1596,9 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [dragOverCanvasId, setDragOverCanvasId] = useState<string | null>(null);
-  const [libraryTab, setLibraryTab] = useState<LibraryTab>('components');
+  const [libraryTab, setLibraryTab] = useState<LibraryTab>('templates');
+  const [designSystem, setDesignSystem] = useState<DesignSystemId>('astryx');
   const [previewMode, setPreviewMode] = useState(false);
-  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [canvasView, setCanvasView] = useState({ x: 36, y: 36, zoom: 1 });
   const [spacePressed, setSpacePressed] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
@@ -1607,7 +1648,10 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
   useEffect(() => {
     const currentValue = window.localStorage.getItem(PLAYGROUND_STORAGE_KEY);
     const legacyValue = LEGACY_PLAYGROUND_STORAGE_KEYS.map((key) => window.localStorage.getItem(key)).find(Boolean) ?? null;
-    const restored = restoreFrames(currentValue ?? legacyValue, !currentValue);
+    // Always re-derive Astryx-templated frames from their templateId: each is a
+    // single frozen block, cheap to rebuild, and this keeps them current when the
+    // template set or its rendering changes between sessions.
+    const restored = restoreFrames(currentValue ?? legacyValue, true);
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
@@ -1746,18 +1790,30 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
     focusCanvasFrame(frame, nextFrames);
   };
 
+  // Resize the ACTIVE frame in place (like the Astryx playground toggle) — no
+  // second frame. Re-derives an Astryx template at the new width; for hand-built
+  // frames it just remaps content ↔ main so the items survive the region swap.
   const selectFrameDevice = (device: FrameDevice) => {
-    if (activeFrame?.device === device) return;
-    const existingFrame = frames.find((frame) => frame.device === device);
-    if (existingFrame) {
-      focusCanvasFrame(existingFrame);
-    } else {
-      const frame = createFrame(device);
-      const nextFrames = [...frames, frame];
-      setFrames(nextFrames);
-      focusCanvasFrame(frame, nextFrames);
-    }
-    setTemplatePickerOpen(false);
+    if (!activeFrame || activeFrame.device === device) return;
+    const templateId = activeFrame.templateId?.startsWith('astryx:') ? activeFrame.templateId.slice(7) : null;
+    const template = templateId ? ASTRYX_TEMPLATES_BY_ID[templateId] : undefined;
+    const swap = device === 'mobile'
+      ? { main: 'content' as CanvasRegion, navigation: 'content' as CanvasRegion, aside: 'content' as CanvasRegion }
+      : { content: 'main' as CanvasRegion };
+    const remapRegion = (item: CanvasItem): CanvasItem => ({ ...item, region: swap[item.region as keyof typeof swap] ?? item.region });
+    const nextFrames = frames.map((frame) => {
+      if (frame.id !== activeFrame.id) return frame;
+      return {
+        ...frame,
+        device,
+        layout: 'stack' as const,
+        name: template ? `${FRAME_DIMENSIONS[device].label} · ${template.name}` : `${FRAME_DIMENSIONS[device].label} ${frame.name.replace(/^\S+\s+·?\s*/, '')}`.trim(),
+        items: template ? astryxTemplateToItems(template, device) : frame.items.map(remapRegion),
+      };
+    });
+    setFrames(nextFrames);
+    focusCanvasFrame(nextFrames.find((frame) => frame.id === activeFrame.id)!, nextFrames);
+    setSelectedId(null);
   };
 
   const deleteActiveFrame = () => {
@@ -1772,31 +1828,27 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
     }
   };
 
-  const applyStructureTemplate = (template: StructureTemplate) => {
-    const nextItems = createTemplateItems(template);
-    if (items.length > 0 && !window.confirm('현재 프레임의 구성 대신 선택한 구조 템플릿을 적용할까요?')) return;
+  const applyStructureTemplate = (template: AstryxTemplateEntry) => {
+    if (flattenCanvasItems(items).length > 0 && !window.confirm('현재 프레임의 구성 대신 선택한 템플릿을 적용할까요?')) return;
+    const device = activeFrame?.device ?? activeDevice;
+    const nextItems = astryxTemplateToItems(template, device);
+    const name = `${FRAME_DIMENSIONS[device].label} · ${template.name}`;
 
     if (!activeFrame) {
-      const frame = createFrame(template.device, nextItems);
-      frame.name = `${FRAME_DIMENSIONS[template.device].label} · ${template.name}`;
-      frame.templateId = template.id;
+      const frame = createFrame(device, nextItems);
+      frame.name = name;
+      frame.templateId = `astryx:${template.id}`;
       setFrames((previousFrames) => [...previousFrames, frame]);
       setActiveFrameId(frame.id);
     } else {
       setFrames((previousFrames) => previousFrames.map((frame) => (
         frame.id === activeFrame.id
-          ? {
-              ...frame,
-              device: template.device,
-              name: `${FRAME_DIMENSIONS[template.device].label} · ${template.name}`,
-              items: nextItems,
-              templateId: template.id,
-            }
+          ? { ...frame, name, items: nextItems, templateId: `astryx:${template.id}` }
           : frame
       )));
     }
     setSelectedId(null);
-    setTemplatePickerOpen(false);
+    setLibraryTab('components');
   };
 
   const sensors = useSensors(
@@ -1808,7 +1860,7 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
     (instanceId: string) => {
       setFrames((previous) => previous.map((frame) => ({
         ...frame,
-        items: frame.items.filter((item) => item.instanceId !== instanceId),
+        items: removeCanvasItem(frame.items, instanceId),
       })));
       if (selectedId === instanceId) setSelectedId(null);
     },
@@ -1818,7 +1870,7 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
   const updateProp = useCallback((instanceId: string, key: string, value: string) => {
     setFrames((previous) => previous.map((frame) => ({
       ...frame,
-      items: frame.items.map((item) => item.instanceId === instanceId
+      items: mapCanvasItems(frame.items, (item) => item.instanceId === instanceId
         ? { ...item, props: { ...item.props, [key]: value } }
         : item),
     })));
@@ -1827,14 +1879,14 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
   const updateRegion = useCallback((instanceId: string, region: CanvasRegion) => {
     setFrames((previous) => previous.map((frame) => ({
       ...frame,
-      items: frame.items.map((item) => item.instanceId === instanceId ? { ...item, region } : item),
+      items: mapCanvasItems(frame.items, (item) => item.instanceId === instanceId ? { ...item, region } : item),
     })));
   }, [setFrames]);
 
   const resetItem = useCallback((instanceId: string) => {
     setFrames((previous) => previous.map((frame) => ({
       ...frame,
-      items: frame.items.map((item) => {
+      items: mapCanvasItems(frame.items, (item) => {
         if (item.instanceId !== instanceId) return item;
         const definition = getComponentById(item.componentId);
         return definition ? { ...item, props: getComponentPropsForDevice(definition, frame.device) } : item;
@@ -1842,36 +1894,22 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
     })));
   }, [setFrames]);
 
-  const toggleItemVisibility = useCallback((instanceId: string) => {
-    setFrames((previous) => previous.map((frame) => ({
-      ...frame,
-      items: frame.items.map((item) => item.instanceId === instanceId ? { ...item, hidden: !item.hidden } : item),
-    })));
-  }, [setFrames]);
-
-  const moveItemInRegion = useCallback((instanceId: string, direction: -1 | 1) => {
-    setFrames((previous) => previous.map((frame) => {
-      const sourceIndex = frame.items.findIndex((item) => item.instanceId === instanceId);
-      if (sourceIndex < 0) return frame;
-      const source = frame.items[sourceIndex];
-      const regionIndices = frame.items.flatMap((item, index) => item.region === source.region ? [index] : []);
-      const regionIndex = regionIndices.indexOf(sourceIndex);
-      const targetIndex = regionIndices[regionIndex + direction];
-      return targetIndex === undefined ? frame : { ...frame, items: arrayMove(frame.items, sourceIndex, targetIndex) };
-    }));
-  }, [setFrames]);
-
   const duplicateItem = useCallback((instanceId: string) => {
-    const owner = frames.find((frame) => frame.items.some((item) => item.instanceId === instanceId));
-    const source = owner?.items.find((item) => item.instanceId === instanceId);
+    const owner = frames.find((frame) => findCanvasItem(frame.items, instanceId));
+    const source = owner ? findCanvasItem(owner.items, instanceId) : null;
     if (!owner || !source) return;
-    const duplicate = { ...source, instanceId: newInstanceId(), props: { ...source.props }, hidden: false };
+    const cloneItem = (item: CanvasItem): CanvasItem => ({
+      ...item,
+      instanceId: newInstanceId(),
+      props: { ...item.props },
+      hidden: false,
+      children: item.children ? item.children.map(cloneItem) : undefined,
+    });
+    const duplicate = cloneItem(source);
+    const located = locateCanvasItem(owner.items, instanceId);
     setFrames((previous) => previous.map((frame) => {
-      if (frame.id !== owner.id) return frame;
-      const sourceIndex = frame.items.findIndex((item) => item.instanceId === instanceId);
-      const nextItems = [...frame.items];
-      nextItems.splice(sourceIndex + 1, 0, duplicate);
-      return { ...frame, items: nextItems };
+      if (frame.id !== owner.id || !located) return frame;
+      return { ...frame, items: insertCanvasItem(frame.items, located.parentId, located.index + 1, duplicate) };
     }));
     setActiveFrameId(owner.id);
     setSelectedId(duplicate.instanceId);
@@ -2001,6 +2039,28 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
         const targetFrame = frames.find((frame) => frame.id === targetFrameId);
         if (!targetFrame || !supportsDevice(def, targetFrame.device)) return;
 
+        // Nested drop: parentKey is a container instanceId, not a region name.
+        const parentKey = slotMatch?.[2];
+        if (parentKey && !(parentKey in REGION_LABELS)) {
+          const container = findCanvasItem(targetFrame.items, parentKey);
+          if (!container || !isContainerComponent(container.componentId)) return;
+          const childItem: CanvasItem = {
+            instanceId: newInstanceId(),
+            componentId: def.id,
+            region: container.region,
+            props: getComponentPropsForDevice(def, targetFrame.device),
+          };
+          const childIndex = Number(slotMatch![3]);
+          setFrames((previousFrames) => previousFrames.map((frame) => (
+            frame.id === targetFrameId
+              ? { ...frame, items: insertCanvasItem(frame.items, parentKey, childIndex, childItem) }
+              : frame
+          )));
+          setActiveFrameId(targetFrameId);
+          setSelectedId(childItem.instanceId);
+          return;
+        }
+
         if (def.canvasBehavior === 'fixed-bottom') {
           const existingFixedItem = targetFrame.items.find((item) => getComponentById(item.componentId)?.canvasBehavior === 'fixed-bottom');
           if (existingFixedItem) {
@@ -2036,15 +2096,34 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
         return;
       }
 
-      // Canvas item reordering
+      // Canvas item reordering (nesting-aware)
       if (over && active.id !== over.id) {
+        const activeStr = String(active.id);
+        const overStr = String(over.id);
         setItems((prev) => {
-          const oldIndex = prev.findIndex((i) => i.instanceId === active.id);
-          const newIndex = prev.findIndex((i) => i.instanceId === over.id);
-          if (oldIndex < 0 || newIndex < 0) return prev;
-          const targetRegion = prev[newIndex].region;
-          const moved = prev.map((item, index) => index === oldIndex ? { ...item, region: targetRegion } : item);
-          return arrayMove(moved, oldIndex, newIndex);
+          const from = locateCanvasItem(prev, activeStr);
+          const to = locateCanvasItem(prev, overStr);
+          if (!from || !to) return prev;
+          if (from.parentId === to.parentId) {
+            if (from.parentId === null) {
+              const targetRegion = prev[to.index].region;
+              const moved = prev.map((item, index) => index === from.index ? { ...item, region: targetRegion } : item);
+              return arrayMove(moved, from.index, to.index);
+            }
+            return mapCanvasItems(prev, (item) => item.instanceId === from.parentId
+              ? { ...item, children: arrayMove(item.children ?? [], from.index, to.index) }
+              : item);
+          }
+          // cross-container move: pull the node out, drop it next to `over`
+          const node = findCanvasItem(prev, activeStr);
+          if (!node) return prev;
+          const without = removeCanvasItem(prev, activeStr);
+          const dest = locateCanvasItem(without, overStr);
+          if (!dest) return prev;
+          const placed = dest.parentId === null
+            ? { ...node, region: findCanvasItem(without, overStr)?.region ?? node.region }
+            : node;
+          return insertCanvasItem(without, dest.parentId, dest.index, placed);
         });
       }
   };
@@ -2068,7 +2147,9 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
     return def ? { componentId: def.id, props: item.props } : null;
   })();
 
-  const selectedItem = frames.flatMap((frame) => frame.items).find((item) => item.instanceId === selectedId) ?? null;
+  const selectedItem = selectedId
+    ? flattenCanvasItems(frames.flatMap((frame) => frame.items)).find((item) => item.instanceId === selectedId) ?? null
+    : null;
 
   const handleExport = () => {
     if (!activeFrame) return;
@@ -2103,10 +2184,10 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
         <div style={{ minWidth: 180, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
             <span style={{ fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-bold)", color: AIDE.text }}>Playground</span>
-            <Badge variant="info">AIDE UI</Badge>
+            <Badge variant="info">Astryx</Badge>
           </div>
           <div style={{ marginTop: 2, fontSize: "var(--aui-type-meta-size)", color: AIDE.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {activeFrame ? `${activeFrame.name} · ${items.length}개 컴포넌트${persistenceReady ? ' · 자동 저장' : ''}` : '새 프레임을 추가하세요'}
+            {activeFrame ? `${activeFrame.name} · ${flattenCanvasItems(items).length}개 컴포넌트${persistenceReady ? ' · 자동 저장' : ''}` : '새 프레임을 추가하세요'}
           </div>
         </div>
 
@@ -2134,12 +2215,6 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
           />
         ) : null}
 
-        <Button type="button" onClick={() => setTemplatePickerOpen((open) => !open)} aria-expanded={templatePickerOpen} variant={templatePickerOpen ? 'secondary' : 'outline'} size="touch">
-          <LayoutTemplate size={14} />
-          구조 템플릿
-          <ChevronDown size={13} />
-        </Button>
-
         <div style={{ width: 1, height: 24, background: AIDE.border }} />
         <Button type="button" onClick={undo} title="실행 취소 (⌘Z)" aria-label="실행 취소" variant="ghost" size="icon">
           <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>↶</span>
@@ -2163,15 +2238,6 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
         <Button type="button" onClick={togglePreviewMode} variant={previewMode ? 'primary' : 'outline'} size="touch">
           {previewMode ? '편집으로 돌아가기' : '미리보기'}
         </Button>
-
-        {templatePickerOpen ? (
-          <StructureTemplatePicker
-            device={activeDevice}
-            activeTemplateId={activeFrame?.templateId}
-            onApply={applyStructureTemplate}
-            onClose={() => setTemplatePickerOpen(false)}
-          />
-        ) : null}
       </div>
 
       {/* ── Main 3-Panel Layout ──────────────────────────────────────────── */}
@@ -2191,20 +2257,11 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
           <ComponentLibraryPanel
             tab={libraryTab}
             onTabChange={setLibraryTab}
+            designSystem={designSystem}
+            onDesignSystemChange={setDesignSystem}
             device={activeDevice}
-            frames={frames}
-            activeFrameId={activeFrameId}
-            selectedId={selectedId}
-            onSelectFrame={(frameId) => {
-              const frame = frames.find((candidate) => candidate.id === frameId);
-              if (frame) focusCanvasFrame(frame);
-            }}
-            onSelectItem={(frameId, instanceId) => {
-              setActiveFrameId(frameId);
-              setSelectedId(instanceId);
-            }}
-            onToggleItem={toggleItemVisibility}
-            onMoveItem={moveItemInRegion}
+            activeTemplateId={activeFrame?.templateId}
+            onApplyTemplate={applyStructureTemplate}
           />
 
           {/* Center: multi-frame canvas */}
@@ -2328,12 +2385,11 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
                           {config.width} × {config.height}
                         </span>
                       </button>
-                      <div style={{ width: displayWidth, minHeight: displayHeight, position: 'relative' }}>
+                      <div style={{ width: displayWidth, height: displayHeight, position: 'relative' }}>
                         <div
                           style={{
                             width: config.width,
-                            minHeight: config.height,
-                            height: 'auto',
+                            height: config.height,
                             position: 'relative',
                             transform: `scale(${config.scale})`,
                             transformOrigin: 'top left',
