@@ -80,22 +80,10 @@ export const ASTRYX_TEMPLATE_INDEX = [
     "category": "Content - Documentation Technical"
   },
   {
-    "id": "dashboard-executive-summary",
-    "name": "Executive Summary Dashoard",
-    "description": "Report-shaped analytics with a prose rail beside the charts: a scorecard of headline numbers with period deltas and status coloring, goal-attainment bars, a tre",
-    "category": "Dashboard - Executive Summary"
-  },
-  {
     "id": "file-explorer",
     "name": "File Explorer",
     "description": "Hierarchical browser that drills through nested levels as adjacent columns rather than replacing the list each time, with breadcrumb history, switchable list an",
     "category": "Tools - File Explorer"
-  },
-  {
-    "id": "table-filter",
-    "name": "Filterable Table",
-    "description": "Flat row collection built around progressive filtering: a token bar that escalates into full query syntax, saved views that persist a filter set, column and gro",
-    "category": "Table - Filtering"
   },
   {
     "id": "gallery-hero",
@@ -114,12 +102,6 @@ export const ASTRYX_TEMPLATE_INDEX = [
     "name": "IDE",
     "description": "Dense multi-pane workspace of resizable, collapsible regions: a hierarchy tree on one flank, tabbed documents in the middle, a docked drawer along the bottom, a",
     "category": "Tools - IDE"
-  },
-  {
-    "id": "kanban-board",
-    "name": "Kanban Board",
-    "description": "Horizontal lanes of draggable cards where the column itself is the status, so drag and drop between lanes is the state change.",
-    "category": "Tools - Kanban Board"
   },
   {
     "id": "login-card",
@@ -176,22 +158,10 @@ export const ASTRYX_TEMPLATE_INDEX = [
     "category": "Gallery - Product"
   },
   {
-    "id": "dashboard-project-status",
-    "name": "Project Status Dashboard",
-    "description": "Status analytics mixing progress and time-axis shapes: a completion donut, a horizontal timeline of dated bars against a today marker, a per-owner table with pr",
-    "category": "Dashboard - Project Status"
-  },
-  {
     "id": "table-page",
     "name": "Searchable Table",
     "description": "Flat row collection with query search and an action toolbar above sortable rows, running full width with no detail pane.",
     "category": "Table - Basic"
-  },
-  {
-    "id": "settings-dialog",
-    "name": "Settings Dialog",
-    "description": "Preferences inside a modal container with searchable section navigation, so configuration happens without leaving whatever is underneath.",
-    "category": "Settings - Dialog"
   },
   {
     "id": "settings",
@@ -228,12 +198,6 @@ export const ASTRYX_TEMPLATE_INDEX = [
     "name": "Theme Showcase",
     "description": "Several unrelated product surfaces rendered together on one canvas so a token change can be judged across contexts at once.",
     "category": "page"
-  },
-  {
-    "id": "shell-top-nav",
-    "name": "Top Nav",
-    "description": "Application frame with horizontal navigation only: a centered bar whose items open full-width mega-menu panels, over placeholder content that keeps the entire w",
-    "category": "Shell - Top Nav"
   },
   {
     "id": "form-two-column",

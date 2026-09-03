@@ -4,16 +4,16 @@ import { useEffect, useRef } from 'react';
 import { Renderer, Program, Mesh, Triangle } from 'ogl';
 
 /**
- * WaterHero — animated pool-water hero background.
- * WebGL2 fragment shader: vertical blue gradient + moving caustics +
- * expanding ripple rings (ambient + cursor-driven). A 2D canvas overlay
- * draws motion-blurred koi that drift and lean toward the pointer.
+ * WaterHero — animated caustic-water hero background (Unicorn Studio look).
+ * WebGL2 fragment shader: near-uniform azure + moving caustics + expanding
+ * ripple rings — a drifting ambient source plus a cursor wake (a moving pointer
+ * lays rings, a click drops a bigger one). Koi overlay is dormant (MAX_KOI 0).
  *
  * Replaces <Grainient> on the landing hero. Self-contained and reversible.
  */
 
-const MAX_RIPPLES = 18; // ripple pool — enough for an ambient pool disturbance
-const MAX_KOI = 2;      // koi count
+const MAX_RIPPLES = 24; // ripple pool — ambient drift source + the cursor wake
+const MAX_KOI = 0;      // koi count — 0 = plain caustic water (Unicorn Studio look)
 
 const hexToRgb = (hex: string): [number, number, number] => {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -121,11 +121,13 @@ void main(){
     // instead of staying as a uniformly soft graphic ring.
     float ageN = age / maxAge;
     float dissolve = 1.0 - smoothstep(0.36, 0.92, ageN);
-    float life = exp(-age * 0.18) * dissolve;
-    float frontSharpness = mix(220.0, 36.0, smoothstep(0.0, 0.78, ageN));
+    float life = exp(-age * 0.16) * dissolve;
+    // broad, soft band — a lens bulge that follows the cursor, not a thin
+    // raindrop line (Unicorn "Water Ripple" — high strength, low viscosity)
+    float frontSharpness = mix(90.0, 14.0, smoothstep(0.0, 0.78, ageN));
 
     // expands fast at first, then slows (√t), like a real spreading ring
-    float front = sqrt(age) * (0.17 + vr * 0.08);
+    float front = sqrt(age) * (0.24 + vr * 0.10);
 
     // a bright leading wavefront + a decaying train of rings trailing inside it
     float wdf = d - front;                                   // <0 inside the front
@@ -133,8 +135,8 @@ void main(){
               + 0.55 * exp(wdf * 5.5) * step(wdf, 0.0);      // rings trailing inward
     float annulus = min(win, 1.3) * life * r.w;
 
-    // a whole train of tight concentric rings, not just two
-    float wl = 70.0 + vr * 40.0;
+    // fewer, wider rings so each reads as a rolling swell, not fine ripples
+    float wl = 22.0 + vr * 14.0;
     float wave = sin(d * wl - age * (5.5 + vr2 * 3.0));
 
     ringField  += wave * annulus;
@@ -144,28 +146,39 @@ void main(){
   }
 
   // ---- caustic web, warped by the swirl and lensed through the ripple rings ----
-  vec2 cuv = auv * 1.35 + swirl + rippleWarp * 2.5 + vec2(t * 0.011, t * 0.019);
+  vec2 cuv = auv * 1.35 + swirl + rippleWarp * 4.2 + vec2(t * 0.011, t * 0.019);
   float web = causticWeb(cuv, t);
   web += causticWeb(cuv * 1.9 + 11.0, t * 1.35) * 0.5;
   web *= uCaustic;
   // crests concentrate that caustic light into rings, troughs dim it → the
   // ripple shows in the water's own texture and colour, not as a separate line
-  web *= 1.0 + ringField * 0.8;
+  web *= 1.0 + ringField * 1.9;
   web = max(web, 0.0);
 
   // ---- base colour: deep mass (top) → luminous glow (bottom) ----
   // premium soft-focus gradient: the deep tone holds through most of the frame,
   // the bright tone reads as a glow only near the lower edge
-  float gy = clamp(uv.y + rippleWarp.y * 0.35
+  // Diagonal composition: light mass anchored upper-left, deepening toward
+  // the lower-right — matches a bright-top-left / colour-bottom-right hero.
+  float diag = clamp((1.0 - uv.x) * 0.55 + uv.y * 0.55
+                 + rippleWarp.y * 0.30
                  + (fbm(auv * 1.3 + swirl * 2.0 + t * 0.03) - 0.5) * 0.06, 0.0, 1.0);
-  float gg = pow(gy, 0.62);
+  float gg = pow(diag, 0.58);
   vec3 base = mix(uColorBot, uColorTop, gg);
-  base = mix(base, uColorMid, (1.0 - abs(gg - 0.5) * 2.0) * 0.30);
+  base = mix(base, uColorMid, (1.0 - abs(gg - 0.5) * 2.0) * 0.34);
+
+  // a wedge of light rising from the lower-left, echoing the reference's
+  // bright beam cutting up into the colour mass
+  vec2 wedgeOrigin = vec2(-0.05, -0.05);
+  vec2 toWedge = auv - wedgeOrigin;
+  float wedgeAngle = atan(toWedge.y, toWedge.x);
+  float wedgeMask = smoothstep(0.55, 0.20, abs(wedgeAngle - 1.05)) * smoothstep(1.3, 0.15, length(toWedge));
+  base = mix(base, uColorTop, wedgeMask * 0.38);
 
   // one big soft light bloom drifting low, like an abstract gradient wallpaper
-  vec2 bc = vec2(0.40 + 0.06 * sin(t * 0.05), 0.10 + 0.04 * sin(t * 0.037 + 2.0));
+  vec2 bc = vec2(0.14 + 0.06 * sin(t * 0.05), 0.86 + 0.04 * sin(t * 0.037 + 2.0));
   float bloom = exp(-pow(length((uv - bc + rippleWarp * 0.5) * vec2(1.0, 1.35)), 1.6) * 3.2);
-  base = mix(base, uColorBot * 1.04 + vec3(0.05), bloom * 0.42);
+  base = mix(base, uColorTop, bloom * 0.22);
 
   // very gentle drift in tone — smooth, not mottled
   float shade = fbm(auv * 0.9 + swirl * 1.8 - t * 0.02);
@@ -179,10 +192,10 @@ void main(){
   // the ripple's only direct contribution: a faint broad lift on the crests and
   // a small rebound dot at a fresh impact — both in the caustic's own colour, so
   // the rings never separate from the surface
-  col += causticTint * max(ringField, 0.0) * 0.20;      // bright ring crests, on their own
-  col -= causticTint * max(-ringField, 0.0) * 0.07;     // troughs read as thin dark gaps
-  col += causticTint * centrePlop * 0.4;
-  col += vec3(0.86, 0.95, 1.0) * waveGlint * 0.09;      // cool specular skip on the wavefront
+  col += causticTint * max(ringField, 0.0) * 0.52;      // bright ring crests, on their own
+  col -= causticTint * max(-ringField, 0.0) * 0.18;     // troughs read as thin dark gaps
+  col += causticTint * centrePlop * 0.7;
+  col += vec3(0.86, 0.95, 1.0) * waveGlint * 0.22;      // cool specular skip on the wavefront
 
   // ---- vignette: gentle cobalt corners, luminous lower centre ----
   vec2 vd = uv - vec2(0.5, 0.28);
@@ -228,11 +241,10 @@ interface WaterHeroProps {
 }
 
 const WaterHero = ({
-  // 맑고 선명한 블루 그라디언트.
-  // deep vivid blue(화면 대부분을 채우는 톤) → clean azure → light cyan(하단)
-  colorTop = '#0066ff',
-  colorMid = '#4a9dff',
-  colorBot = '#a8e4f8',
+  // Arcade 참조 톤: 좌상단 거의 흰색 → 중간 시안 → 우하단 진한 로열블루.
+  colorTop = '#f5f7f9',
+  colorMid = '#2fb8ea',
+  colorBot = '#0d52d7',
   caustic = 1.0,
   className = '',
 }: WaterHeroProps) => {
@@ -379,37 +391,43 @@ const WaterHero = ({
       writeIdx = (writeIdx + 1) % MAX_RIPPLES;
     };
 
-    // ---------- pointer ---------- (tracked only so the koi can veer around it —
-    // the cursor no longer stamps ripples into the water)
+    // ---------- pointer ---------- cursor-driven water ripple (Unicorn Studio's
+    // "Water Ripple" effect): a moving cursor lays a wake of expanding rings, a
+    // click drops a bigger one. Distance-gated so ring density is speed-
+    // independent (Unicorn "Momentum 0").
     const pointer = { x: 0.5, y: 0.5, active: false, lastMove: -10 };
-    const onPointerMove = (e: PointerEvent) => {
+    let wakeX = 0.5, wakeY = 0.5, wakeT = -10;
+    const pointerNorm = (e: PointerEvent) => {
       const rect = host.getBoundingClientRect();
-      pointer.x = (e.clientX - rect.left) / rect.width;
-      pointer.y = 1 - (e.clientY - rect.top) / rect.height; // gl y-up
-      pointer.active = true;
-      pointer.lastMove = now();
+      return [
+        (e.clientX - rect.left) / rect.width,
+        1 - (e.clientY - rect.top) / rect.height, // gl y-up
+      ] as const;
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      const [px, py] = pointerNorm(e);
+      pointer.x = px; pointer.y = py; pointer.active = true;
+      const t = now();
+      pointer.lastMove = t;
+      const moved = Math.hypot(px - wakeX, py - wakeY);
+      if (moved > 0.028 && t - wakeT > 0.035) {
+        addRipple(px, py, 0.72 + Math.min(moved * 4.5, 0.5));
+        wakeX = px; wakeY = py; wakeT = t;
+      }
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      const [px, py] = pointerNorm(e);
+      addRipple(px, py, 1.35);
+      wakeX = px; wakeY = py; wakeT = now();
     };
     window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('pointerdown', onPointerDown, { passive: true });
 
-    // a drifting ring source, right-of-centre like the reference. Seeded
-    // irregularly (varied age, offset, strength) so it never reads as a loop.
-    const src = { x: 0.62, y: 0.45 };
-    for (let i = 0; i < 4; i++) {
-      const r = ripples[writeIdx] ?? ({} as Ripple);
-      r.x = src.x + (Math.random() - 0.5) * 0.12;
-      r.y = src.y + (Math.random() - 0.5) * 0.12;
-      r.birth = -(0.6 + Math.random() * 5.0);
-      r.strength = 0.3 + Math.random() * 0.28;
-      ripples[writeIdx] = r;
-      writeIdx = (writeIdx + 1) % MAX_RIPPLES;
-    }
-    let srcAcc = 0;
-    let srcNext = 1.4 + Math.random() * 2.6;
+    // Ripples now come only from the cursor — no ambient/auto source.
 
     // ---------- loop ----------
     let raf = 0;
     let prev = 0;
-    let ambientAcc = 0;
     let onScreen = true;
     let pageVisible = !document.hidden;
 
@@ -688,28 +706,6 @@ const WaterHero = ({
       const dt = Math.min(0.05, time - prev || 0.016);
       prev = time;
 
-      // drifting main source, fired at irregular intervals — sometimes a
-      // lone ring, sometimes a quick double, never a fixed beat
-      src.x += (Math.sin(time * 0.13) * 0.5 + Math.sin(time * 0.041 + 1.7) * 0.5) * dt * 0.06;
-      src.y += (Math.sin(time * 0.09 + 3.0) * 0.5 + Math.sin(time * 0.037) * 0.5) * dt * 0.05;
-      src.x = Math.min(0.82, Math.max(0.4, src.x));
-      src.y = Math.min(0.7, Math.max(0.28, src.y));
-      srcAcc += dt;
-      if (srcAcc > srcNext) {
-        srcAcc = 0;
-        srcNext = 1.8 + Math.random() * 3.8;
-        addRipple(src.x + (Math.random() - 0.5) * 0.06, src.y + (Math.random() - 0.5) * 0.06, 0.55 + Math.random() * 0.35);
-        if (Math.random() < 0.35) {
-          addRipple(src.x + (Math.random() - 0.5) * 0.14, src.y + (Math.random() - 0.5) * 0.14, 0.34 + Math.random() * 0.24);
-        }
-      }
-      // occasional faint ripple somewhere else entirely
-      ambientAcc += dt;
-      if (ambientAcc > 3.5 + Math.random() * 4.0) {
-        ambientAcc = 0;
-        addRipple(0.15 + Math.random() * 0.75, 0.25 + Math.random() * 0.6, 0.18 + Math.random() * 0.2);
-      }
-
       // pack ripple uniforms
       let count = 0;
       for (const r of ripples) {
@@ -758,6 +754,7 @@ const WaterHero = ({
       io.disconnect();
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerdown', onPointerDown);
       try { host.removeChild(glCanvas); } catch { /* ignore */ }
       try { host.removeChild(koiCanvas); } catch { /* ignore */ }
       const lose = gl.getExtension('WEBGL_lose_context');

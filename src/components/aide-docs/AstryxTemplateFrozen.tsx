@@ -76,9 +76,14 @@ export function AstryxTemplateFrozen({ t, label }: Props) {
 
   if (!t || failed || !Comp) return <Placeholder label={label} />
   return (
-    // colorScheme:'light' pins CSS light-dark() in the Astryx theme to its light
-    // values; without it the page paints with the dark palette.
-    <div data-theme="light" style={{ width: '100%', height: '100%', minHeight: '100%', colorScheme: 'light' }}>
+    // data-astryx-theme="neutral" opens the @astryxdesign/theme-neutral @scope so
+    // --font-family-* (Figtree) and the theme tokens resolve; colorScheme:'light'
+    // pins CSS light-dark() to its light values, else the page paints dark.
+    <div
+      data-theme="light"
+      data-astryx-theme="neutral"
+      style={{ width: '100%', height: '100%', minHeight: '100%', colorScheme: 'light' }}
+    >
       <Boundary label={label}>
         <Comp />
       </Boundary>

@@ -12,7 +12,8 @@
 		"design:lint": "node scripts/design-system.mjs lint",
 		"design:export": "node scripts/design-system.mjs export",
 		"design:diff": "node scripts/design-system.mjs diff",
-		"icons:export": "node scripts/generate-material-symbols.mjs"
+		"icons:export": "node scripts/generate-material-symbols.mjs",
+		"astryx:thumbs": "node scripts/capture-astryx-thumbs.mjs"
 	},
 	"dependencies": {
 		"@astryxdesign/core": "^0.5.2",

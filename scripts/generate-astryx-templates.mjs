@@ -6,10 +6,8 @@
  *
  * Runs in `prebuild`. Do not edit the generated files by hand.
  *
- * For each ready page template it writes:
- *   <id>.tsx           — the template's page.tsx, verbatim
- *   <id>.skeleton.txt  — `astryx template <id> --skeleton` (layout tree w/ spacing)
- * and one astryx-templates.manifest.json describing the set.
+ * For each ready page template it writes <id>.tsx (the template's page.tsx,
+ * verbatim) plus one astryx-templates.manifest.json describing the set.
  */
 import { execFileSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, readdirSync } from 'node:fs'
@@ -44,10 +42,25 @@ console.log(`astryx-templates: ${pages.length} ready page templates`)
 
 rmSync(TMP, { recursive: true, force: true })
 mkdirSync(TMP, { recursive: true })
-rmSync(OUT_DIR, { recursive: true, force: true })
+// Clear only the generated template files. Leaving astryx-templates.index.ts and
+// the manifest in place (compile-astryx-templates.mjs overwrites them a moment
+// later) avoids a window where `next dev`'s file watcher reads a just-deleted
+// index and spams "No such file or directory" into the console.
 mkdirSync(OUT_DIR, { recursive: true })
+for (const f of readdirSync(OUT_DIR)) {
+  if (f.endsWith('.tsx') || f.endsWith('.skeleton.txt')) rmSync(join(OUT_DIR, f))
+}
 
 const EXTERNAL_DEP = /from '(@heroicons\/react[^']*|recharts|lucide-react)'/g
+
+// A handful of page templates call stylex.create() in userland. StyleX needs its
+// build-time babel plugin to turn those calls into static classes; Aide runs SWC
+// and does not compile StyleX (it only consumes @astryxdesign/core's *precompiled*
+// CSS). Such templates throw "Unexpected 'stylex.create' call at runtime" on mount
+// and would only ever show the dashed placeholder, so drop them from the set
+// rather than ship a picker tile that opens to nothing. Revisit if the StyleX
+// compiler is ever added to the build.
+const NEEDS_STYLEX_COMPILER = /from ['"]@stylexjs\/stylex['"]/
 
 const manifest = []
 for (const page of pages) {
@@ -64,15 +77,11 @@ for (const page of pages) {
     continue
   }
   const source = readFileSync(srcFile, 'utf8')
-  cpSync(srcFile, join(OUT_DIR, `${id}.tsx`))
-
-  let skeleton = ''
-  try {
-    skeleton = astryx(['template', id, '--skeleton']).replace(/^Next step:.*\n/, '')
-    writeFileSync(join(OUT_DIR, `${id}.skeleton.txt`), skeleton)
-  } catch {
-    // skeleton is advisory for the compiler; a missing one is not fatal.
+  if (NEEDS_STYLEX_COMPILER.test(source)) {
+    console.warn(`astryx-templates: skip ${id} — userland stylex.create needs the StyleX babel plugin`)
+    continue
   }
+  cpSync(srcFile, join(OUT_DIR, `${id}.tsx`))
 
   const deps = [...new Set([...source.matchAll(EXTERNAL_DEP)].map((m) => m[1].replace(/\/.*/, '')))]
   manifest.push({
@@ -83,7 +92,6 @@ for (const page of pages) {
     lines: source.split('\n').length,
     deps,
     file: `${id}.tsx`,
-    skeleton: skeleton ? `${id}.skeleton.txt` : null,
   })
 }
 

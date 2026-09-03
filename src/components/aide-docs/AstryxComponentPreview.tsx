@@ -661,10 +661,10 @@ function Rendered({ id, props, slot }: { id: string; props: Props; slot?: ReactN
   return createElement(Comp, attrs, children)
 }
 
-/** Astryx catalog renderer. Wrapper pins light theme + full width. */
+/** Astryx catalog renderer. Wrapper opens the neutral theme scope + pins light. */
 export function AstryxComponentPreview({ id, props = {}, slot }: AstryxComponentPreviewProps) {
   return (
-    <div data-theme="light" style={{ width: '100%' }}>
+    <div data-theme="light" data-astryx-theme="neutral" style={{ width: '100%', colorScheme: 'light' }}>
       <PreviewBoundary id={id}>
         <Rendered id={id} props={props} slot={slot} />
       </PreviewBoundary>

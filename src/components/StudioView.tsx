@@ -816,9 +816,11 @@ interface StudioViewProps {
   triggerPlatform?: string
   historyId?: string
   onBack?: () => void
+  /** Called once when a new board receives its durable local history ID. */
+  onBoardSaved?: (historyId: string) => void
 }
 
-export default function StudioView({ triggerBrief, triggerPreset, triggerPlatform, historyId, onBack }: StudioViewProps) {
+export default function StudioView({ triggerBrief, triggerPreset, triggerPlatform, historyId, onBack, onBoardSaved }: StudioViewProps) {
   const [step, setStep] = useState<Step>(1)
   // 입력 폼은 랜딩 페이지 하나뿐이다. StudioView는 항상 분석→질문지→생성→프로토타입만.
   const [startedFromLanding, setStartedFromLanding] = useState(!!triggerBrief)
@@ -1748,9 +1750,10 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       setCurrentBoardHistoryId(newId)
       setCurrentHistoryId(newId)
       refreshBoardHistoryTabs()
+      onBoardSaved?.(newId)
     }
     return newId
-  }, [answers, bSceneImage, brandColors, brief, currentBoardHistoryId, customDesignMd, designPreset, designSystemDisplayName, generationEngine, logoDataUrl, mainVariants, pickedVariantIdx, platform, questionnaire, refreshBoardHistoryTabs, screens])
+  }, [answers, bSceneImage, brandColors, brief, currentBoardHistoryId, customDesignMd, designPreset, designSystemDisplayName, generationEngine, logoDataUrl, mainVariants, onBoardSaved, pickedVariantIdx, platform, questionnaire, refreshBoardHistoryTabs, screens])
 
   const clearGeneratedBoard = useCallback(() => {
     setVariantGenerationStarted(false)
@@ -2302,7 +2305,10 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
   }
 
   const handleCopyLink = async () => {
-    await navigator.clipboard.writeText(window.location.href)
+    const canonicalUrl = currentBoardHistoryId
+      ? new URL(`/studio/${encodeURIComponent(currentBoardHistoryId)}`, window.location.origin).href
+      : window.location.href
+    await navigator.clipboard.writeText(canonicalUrl)
     setCopyLinkDone(true)
     setShareOpen(false)
     setTimeout(() => setCopyLinkDone(false), 2000)
@@ -3508,7 +3514,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       : <><span className="text-[16px] mt-0.5 shrink-0">🔗</span>
                           <span>
                             <span className="block text-[13px] text-[var(--aui-text)]">링크 복사</span>
-                            <span className="block text-[13px] text-[var(--aui-text-muted)] leading-tight">결과물을 저장하지 않으므로<br />HTML을 먼저 다운로드 하세요</span>
+                            <span className="block text-[13px] text-[var(--aui-text-muted)] leading-tight">이 브라우저에만 저장된 링크입니다.<br />다른 사람과는 HTML을 공유하세요.</span>
                           </span>
                         </>
                     }

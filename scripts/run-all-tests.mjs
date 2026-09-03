@@ -26,6 +26,7 @@ const tests = [
   ['NODE_NO_WARNINGS=1 node --experimental-strip-types', 'test/verify_direction_structure_lock.mjs'],
   ['NODE_NO_WARNINGS=1 node --experimental-strip-types', 'test/verify_structure_to_archetype.mjs'],
   'test/verify_astryx_playground_catalog.mjs',
+  'test/verify_phase0_routes.mjs',
   'scripts/check-studio-contract.mjs'
 ]
 

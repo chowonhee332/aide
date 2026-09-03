@@ -8,8 +8,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "ai-chat.tsx",
-    "skeleton": "ai-chat.skeleton.txt"
+    "file": "ai-chat.tsx"
   },
   {
     "id": "ai-chat-landing",
@@ -20,8 +19,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "ai-chat-landing.tsx",
-    "skeleton": "ai-chat-landing.skeleton.txt"
+    "file": "ai-chat-landing.tsx"
   },
   {
     "id": "dashboard",
@@ -33,8 +31,7 @@
       "recharts",
       "@heroicons"
     ],
-    "file": "dashboard.tsx",
-    "skeleton": "dashboard.skeleton.txt"
+    "file": "dashboard.tsx"
   },
   {
     "id": "login",
@@ -45,8 +42,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "login.tsx",
-    "skeleton": "login.skeleton.txt"
+    "file": "login.tsx"
   },
   {
     "id": "blank",
@@ -55,8 +51,7 @@
     "category": "Shell - Blank",
     "lines": 19,
     "deps": [],
-    "file": "blank.tsx",
-    "skeleton": "blank.skeleton.txt"
+    "file": "blank.tsx"
   },
   {
     "id": "library",
@@ -67,8 +62,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "library.tsx",
-    "skeleton": "library.skeleton.txt"
+    "file": "library.tsx"
   },
   {
     "id": "centered-hero",
@@ -79,8 +73,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "centered-hero.tsx",
-    "skeleton": "centered-hero.skeleton.txt"
+    "file": "centered-hero.tsx"
   },
   {
     "id": "payment-form",
@@ -91,8 +84,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "payment-form.tsx",
-    "skeleton": "payment-form.skeleton.txt"
+    "file": "payment-form.tsx"
   },
   {
     "id": "classic-gallery",
@@ -101,8 +93,7 @@
     "category": "Gallery - Basic",
     "lines": 162,
     "deps": [],
-    "file": "classic-gallery.tsx",
-    "skeleton": "classic-gallery.skeleton.txt"
+    "file": "classic-gallery.tsx"
   },
   {
     "id": "contact-form",
@@ -113,8 +104,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "contact-form.tsx",
-    "skeleton": "contact-form.skeleton.txt"
+    "file": "contact-form.tsx"
   },
   {
     "id": "documentation",
@@ -123,8 +113,7 @@
     "category": "Content - Documentation Catalog",
     "lines": 273,
     "deps": [],
-    "file": "documentation.tsx",
-    "skeleton": "documentation.skeleton.txt"
+    "file": "documentation.tsx"
   },
   {
     "id": "documentation-design",
@@ -135,8 +124,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "documentation-design.tsx",
-    "skeleton": "documentation-design.skeleton.txt"
+    "file": "documentation-design.tsx"
   },
   {
     "id": "documentation-technical",
@@ -147,21 +135,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "documentation-technical.tsx",
-    "skeleton": "documentation-technical.skeleton.txt"
-  },
-  {
-    "id": "dashboard-executive-summary",
-    "name": "Executive Summary Dashoard",
-    "description": "Report-shaped analytics with a prose rail beside the charts: a scorecard of headline numbers with period deltas and status coloring, goal-attainment bars, a tre",
-    "category": "Dashboard - Executive Summary",
-    "lines": 875,
-    "deps": [
-      "recharts",
-      "@heroicons"
-    ],
-    "file": "dashboard-executive-summary.tsx",
-    "skeleton": "dashboard-executive-summary.skeleton.txt"
+    "file": "documentation-technical.tsx"
   },
   {
     "id": "file-explorer",
@@ -172,20 +146,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "file-explorer.tsx",
-    "skeleton": "file-explorer.skeleton.txt"
-  },
-  {
-    "id": "table-filter",
-    "name": "Filterable Table",
-    "description": "Flat row collection built around progressive filtering: a token bar that escalates into full query syntax, saved views that persist a filter set, column and gro",
-    "category": "Table - Filtering",
-    "lines": 4094,
-    "deps": [
-      "lucide-react"
-    ],
-    "file": "table-filter.tsx",
-    "skeleton": "table-filter.skeleton.txt"
+    "file": "file-explorer.tsx"
   },
   {
     "id": "gallery-hero",
@@ -196,8 +157,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "gallery-hero.tsx",
-    "skeleton": "gallery-hero.skeleton.txt"
+    "file": "gallery-hero.tsx"
   },
   {
     "id": "table-grouped",
@@ -208,8 +168,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "table-grouped.tsx",
-    "skeleton": "table-grouped.skeleton.txt"
+    "file": "table-grouped.tsx"
   },
   {
     "id": "ide",
@@ -220,20 +179,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "ide.tsx",
-    "skeleton": "ide.skeleton.txt"
-  },
-  {
-    "id": "kanban-board",
-    "name": "Kanban Board",
-    "description": "Horizontal lanes of draggable cards where the column itself is the status, so drag and drop between lanes is the state change.",
-    "category": "Tools - Kanban Board",
-    "lines": 754,
-    "deps": [
-      "@heroicons"
-    ],
-    "file": "kanban-board.tsx",
-    "skeleton": "kanban-board.skeleton.txt"
+    "file": "ide.tsx"
   },
   {
     "id": "login-card",
@@ -244,8 +190,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "login-card.tsx",
-    "skeleton": "login-card.skeleton.txt"
+    "file": "login-card.tsx"
   },
   {
     "id": "login-split",
@@ -256,8 +201,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "login-split.tsx",
-    "skeleton": "login-split.skeleton.txt"
+    "file": "login-split.tsx"
   },
   {
     "id": "login-sso",
@@ -268,8 +212,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "login-sso.tsx",
-    "skeleton": "login-sso.skeleton.txt"
+    "file": "login-sso.tsx"
   },
   {
     "id": "mixed-gallery",
@@ -278,8 +221,7 @@
     "category": "Gallery - Mixed",
     "lines": 169,
     "deps": [],
-    "file": "mixed-gallery.tsx",
-    "skeleton": "mixed-gallery.skeleton.txt"
+    "file": "mixed-gallery.tsx"
   },
   {
     "id": "detail-page",
@@ -290,8 +232,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "detail-page.tsx",
-    "skeleton": "detail-page.skeleton.txt"
+    "file": "detail-page.tsx"
   },
   {
     "id": "editor",
@@ -302,8 +243,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "editor.tsx",
-    "skeleton": "editor.skeleton.txt"
+    "file": "editor.tsx"
   },
   {
     "id": "dashboard-portfolio",
@@ -315,8 +255,7 @@
       "recharts",
       "@heroicons"
     ],
-    "file": "dashboard-portfolio.tsx",
-    "skeleton": "dashboard-portfolio.skeleton.txt"
+    "file": "dashboard-portfolio.tsx"
   },
   {
     "id": "product-detail",
@@ -327,8 +266,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "product-detail.tsx",
-    "skeleton": "product-detail.skeleton.txt"
+    "file": "product-detail.tsx"
   },
   {
     "id": "product-gallery",
@@ -339,21 +277,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "product-gallery.tsx",
-    "skeleton": "product-gallery.skeleton.txt"
-  },
-  {
-    "id": "dashboard-project-status",
-    "name": "Project Status Dashboard",
-    "description": "Status analytics mixing progress and time-axis shapes: a completion donut, a horizontal timeline of dated bars against a today marker, a per-owner table with pr",
-    "category": "Dashboard - Project Status",
-    "lines": 1140,
-    "deps": [
-      "recharts",
-      "@heroicons"
-    ],
-    "file": "dashboard-project-status.tsx",
-    "skeleton": "dashboard-project-status.skeleton.txt"
+    "file": "product-gallery.tsx"
   },
   {
     "id": "table-page",
@@ -364,20 +288,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "table-page.tsx",
-    "skeleton": "table-page.skeleton.txt"
-  },
-  {
-    "id": "settings-dialog",
-    "name": "Settings Dialog",
-    "description": "Preferences inside a modal container with searchable section navigation, so configuration happens without leaving whatever is underneath.",
-    "category": "Settings - Dialog",
-    "lines": 2604,
-    "deps": [
-      "@heroicons"
-    ],
-    "file": "settings-dialog.tsx",
-    "skeleton": "settings-dialog.skeleton.txt"
+    "file": "table-page.tsx"
   },
   {
     "id": "settings",
@@ -388,8 +299,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "settings.tsx",
-    "skeleton": "settings.skeleton.txt"
+    "file": "settings.tsx"
   },
   {
     "id": "settings-sidebar",
@@ -400,8 +310,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "settings-sidebar.tsx",
-    "skeleton": "settings-sidebar.skeleton.txt"
+    "file": "settings-sidebar.tsx"
   },
   {
     "id": "shell-nav",
@@ -412,8 +321,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "shell-nav.tsx",
-    "skeleton": "shell-nav.skeleton.txt"
+    "file": "shell-nav.tsx"
   },
   {
     "id": "side-gallery",
@@ -422,8 +330,7 @@
     "category": "Gallery - Side",
     "lines": 143,
     "deps": [],
-    "file": "side-gallery.tsx",
-    "skeleton": "side-gallery.skeleton.txt"
+    "file": "side-gallery.tsx"
   },
   {
     "id": "shell-side-nav",
@@ -434,8 +341,7 @@
     "deps": [
       "@heroicons"
     ],
-    "file": "shell-side-nav.tsx",
-    "skeleton": "shell-side-nav.skeleton.txt"
+    "file": "shell-side-nav.tsx"
   },
   {
     "id": "theme-showcase",
@@ -446,20 +352,7 @@
     "deps": [
       "lucide-react"
     ],
-    "file": "theme-showcase.tsx",
-    "skeleton": "theme-showcase.skeleton.txt"
-  },
-  {
-    "id": "shell-top-nav",
-    "name": "Top Nav",
-    "description": "Application frame with horizontal navigation only: a centered bar whose items open full-width mega-menu panels, over placeholder content that keeps the entire w",
-    "category": "Shell - Top Nav",
-    "lines": 225,
-    "deps": [
-      "@heroicons"
-    ],
-    "file": "shell-top-nav.tsx",
-    "skeleton": "shell-top-nav.skeleton.txt"
+    "file": "theme-showcase.tsx"
   },
   {
     "id": "form-two-column",
@@ -468,7 +361,6 @@
     "category": "Form - Two-column",
     "lines": 241,
     "deps": [],
-    "file": "form-two-column.tsx",
-    "skeleton": "form-two-column.skeleton.txt"
+    "file": "form-two-column.tsx"
   }
 ]

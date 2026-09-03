@@ -193,6 +193,9 @@ interface CanvasFrame {
 
 interface BuilderViewProps {
   onBack: () => void;
+  /** Compose mode: open straight into this Astryx template (id or "astryx:<id>"). */
+  initialTemplateId?: string;
+  initialDevice?: FrameDevice;
 }
 
 // ─── Design Tokens ───────────────────────────────────────────────────────────
@@ -753,6 +756,69 @@ function FrameRegion({
 
 type LibraryTab = 'templates' | 'components';
 
+/** One template tile: offline screenshot (public/astryx-thumbs/<id>.webp) + name.
+ *  Falls back to the layout icon if the thumbnail is missing. */
+function TemplateCard({
+  template,
+  active,
+  onApply,
+}: {
+  template: AstryxTemplateEntry;
+  active: boolean;
+  onApply: (template: AstryxTemplateEntry) => void;
+}) {
+  const [thumbFailed, setThumbFailed] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => onApply(template)}
+      title={template.description}
+      style={{
+        padding: 0,
+        border: `1px solid ${active ? AIDE.primary : AIDE.border}`,
+        borderRadius: "var(--aui-radius-sm)",
+        background: active ? AIDE.primarySoft : AIDE.surface,
+        display: 'flex',
+        flexDirection: 'column',
+        textAlign: 'left',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          aspectRatio: '16 / 10',
+          background: AIDE.surfaceHover,
+          borderBottom: `1px solid ${AIDE.border}`,
+          display: 'flex',
+          alignItems: thumbFailed ? 'center' : 'flex-start',
+          justifyContent: 'center',
+          overflow: 'hidden',
+        }}
+      >
+        {thumbFailed ? (
+          <LayoutTemplate size={22} color={AIDE.textMuted} />
+        ) : (
+          <img
+            src={`/astryx-thumbs/${template.id}.webp`}
+            alt=""
+            loading="lazy"
+            onError={() => setThumbFailed(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}
+          />
+        )}
+      </div>
+      <div style={{ padding: `var(--aui-space-2) var(--aui-space-2)`, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", color: active ? AIDE.primary : AIDE.text }}>
+          <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)" }}>{template.name}</span>
+        </span>
+        <span style={{ color: AIDE.textMuted, fontSize: "var(--aui-type-meta-size)", lineHeight: "var(--aui-leading-normal)", display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{template.description}</span>
+      </div>
+    </button>
+  );
+}
+
 function ComponentLibraryPanel({
   tab,
   onTabChange,
@@ -897,35 +963,15 @@ function ComponentLibraryPanel({
               >
                 {group}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)" }}>
-                {templates.map((template) => {
-                  const active = template.id === activeTemplate;
-                  return (
-                    <button
-                      key={template.id}
-                      type="button"
-                      onClick={() => onApplyTemplate(template)}
-                      style={{
-                        padding: `var(--aui-space-2) var(--aui-space-2)`,
-                        border: `1px solid ${active ? AIDE.primary : AIDE.border}`,
-                        borderRadius: "var(--aui-radius-sm)",
-                        background: active ? AIDE.primarySoft : AIDE.surface,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 3,
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      <span style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", color: active ? AIDE.primary : AIDE.text }}>
-                        <LayoutTemplate size={13} />
-                        <span style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)" }}>{template.name}</span>
-                      </span>
-                      <span style={{ color: AIDE.textMuted, fontSize: "var(--aui-type-meta-size)", lineHeight: "var(--aui-leading-normal)", display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{template.description}</span>
-                    </button>
-                  );
-                })}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)" }}>
+                {templates.map((template) => (
+                  <TemplateCard
+                    key={template.id}
+                    template={template}
+                    active={template.id === activeTemplate}
+                    onApply={onApplyTemplate}
+                  />
+                ))}
               </div>
             </div>
           ))}
@@ -1585,7 +1631,7 @@ function restoreFrames(value: string | null, refreshTemplates = false): CanvasFr
   }
 }
 
-export default function BuilderView({ onBack }: BuilderViewProps) {
+export default function BuilderView({ onBack, initialTemplateId, initialDevice }: BuilderViewProps) {
   const [frames, setFramesState] = useState<CanvasFrame[]>(() => [{
     id: 'frame-1',
     name: 'Mobile 1',
@@ -1663,6 +1709,25 @@ export default function BuilderView({ onBack }: BuilderViewProps) {
     });
     return () => { cancelled = true; };
   }, []);
+
+  // Compose mode: replace the canvas with the brief-matched template on first mount.
+  const initialTemplateApplied = useRef(false);
+  useEffect(() => {
+    if (!persistenceReady || initialTemplateApplied.current) return;
+    const id = initialTemplateId?.replace(/^astryx:/, '');
+    const template = id ? ASTRYX_TEMPLATES_BY_ID[id] : undefined;
+    if (!template) return;
+    initialTemplateApplied.current = true;
+    const device: FrameDevice = initialDevice ?? 'mobile';
+    const frame = createFrame(device, astryxTemplateToItems(template, device));
+    frame.name = `${FRAME_DIMENSIONS[device].label} · ${template.name}`;
+    frame.templateId = `astryx:${template.id}`;
+    queueMicrotask(() => {
+      setFramesState([frame]);
+      setActiveFrameId(frame.id);
+      setLibraryTab('components');
+    });
+  }, [persistenceReady, initialTemplateId, initialDevice]);
 
   useEffect(() => {
     if (!persistenceReady) return;

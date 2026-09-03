@@ -570,10 +570,10 @@ contract:
         $value:
           fontFamily: var(--font-pretendard)
           fontSize: 56px
-          fontWeight: "800"
-          lineHeight: 73px
+          fontWeight: "600"
+          lineHeight: 60px
           letterSpacing: -0.0319em
-        $description: Display 1 — landing hero maximum
+        $description: Display 1 — landing hero maximum (semibold weight, tightened leading per product direction)
       display-large:
         $value:
           fontFamily: var(--font-pretendard)
