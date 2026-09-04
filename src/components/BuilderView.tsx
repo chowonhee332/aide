@@ -2233,7 +2233,7 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
     <div
       style={{
         position: 'relative',
-        height: '100vh',
+        height: '100%',
         background: AIDE.bg,
         display: 'flex',
         flexDirection: 'column',
