@@ -16,6 +16,8 @@ import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import { saveHistoryItem, updateHistoryItem, compressThumbnail, loadHistory, deleteHistoryItem, type HistoryItem } from '@/lib/history'
 import { AIDE_UI, DEFAULT_GENERATED_BRAND_COLOR } from '@/lib/aide-ui'
 import { Button } from '@/components/ui/button'
+import { Button as AstryxButton } from '@astryxdesign/core/Button'
+import { IconButton as AstryxIconButton } from '@astryxdesign/core/IconButton'
 import { Chip } from '@/components/ui/chip'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox, Switch } from '@/components/ui/selection-control'
@@ -2342,9 +2344,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       >
         {/* Header */}
         <div className="border-b border-[var(--aui-shadow-soft)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
-          <Button onClick={onBack} aria-label="Aide 홈으로 이동" variant="ghost" className="h-full rounded-none border-r border-[var(--aui-shadow-soft)] px-4 shrink-0">
-            <img src="/logo_aide.png" alt="Aide" className="h-14 w-auto object-contain" />
-          </Button>
+          <div className="flex items-center px-3 border-r border-[var(--aui-shadow-soft)] shrink-0">
+            <AstryxIconButton onClick={onBack} label="Aide 홈으로 이동" icon={<ArrowLeft size={16} aria-hidden />} variant="ghost" />
+          </div>
           <div className="px-5 text-[13px] flex items-center gap-2 text-[var(--aui-text-muted)]">
             {isAnyGenerating ? (
               <>
@@ -2360,27 +2362,25 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           <div className="flex-1" />
           <div className="flex items-center gap-3 px-4">
             {mainVariants.every(v => !v) && !isAnyGenerating && (
-              <Button
+              <AstryxButton
                 onClick={handleGenerate}
-                disabled={isAnyGenerating}
-                size="dense"
-              >
-                <Sparkles size={13} /> 시안 A/B/C 생성
-              </Button>
+                isDisabled={isAnyGenerating}
+                size="sm"
+                label="시안 A/B/C 생성"
+                icon={<Sparkles size={13} aria-hidden />}
+              />
             )}
             {mainVariants.some(v => !!v) && (
-              <Button
+              <AstryxButton
                 onClick={() => handleGenerate()}
-                disabled={isAnyGenerating}
+                isDisabled={isAnyGenerating}
                 variant="ghost"
-                size="dense"
-              >
-                <RefreshCw size={13} /> 다시 생성
-              </Button>
+                size="sm"
+                label="다시 생성"
+                icon={<RefreshCw size={13} aria-hidden />}
+              />
             )}
-            <Button onClick={() => { clearGeneratedBoard(); setStep(2) }} disabled={isAnyGenerating} variant="ghost" size="dense">
-              <ArrowLeft size={14} /> 설문
-            </Button>
+            <AstryxButton onClick={() => { clearGeneratedBoard(); setStep(2) }} isDisabled={isAnyGenerating} variant="ghost" size="sm" label="설문" icon={<ArrowLeft size={14} aria-hidden />} />
           </div>
         </div>
 

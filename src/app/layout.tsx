@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "@material-symbols/font-400/rounded.css";
+import "@astryxdesign/core/astryx.css";
+import "@astryxdesign/theme-neutral/theme.css";
 import { AUI_ROOT_CSS } from "@/lib/aide-product-tokens";
+import { CHROME_THEME_CSS } from "@/lib/aide-chrome-theme";
+import { AppChrome } from "@/components/AppChrome";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -26,6 +30,8 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
+      data-theme="light"
+      data-astryx-theme="neutral"
       className={`${geistMono.variable} h-full antialiased`}
     >
       <head>
@@ -36,8 +42,15 @@ export default function RootLayout({
         {/* Product tokens compiled from aide.md. Loaded after globals.css so the
             contract wins; tokens the md omits keep their globals.css fallback. */}
         <style id="aui-tokens">{AUI_ROOT_CSS}</style>
+        {/* App-chrome-only Astryx token bridge. Wins over aui-tokens; empty (not
+            rendered) when AIDE_CHROME_THEME=aide. Does not affect generated UI. */}
+        {CHROME_THEME_CSS ? (
+          <style id="aui-chrome-theme">{CHROME_THEME_CSS}</style>
+        ) : null}
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <AppChrome>{children}</AppChrome>
+      </body>
     </html>
   );
 }

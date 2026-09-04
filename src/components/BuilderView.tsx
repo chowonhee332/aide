@@ -55,8 +55,9 @@ import {
 } from '@/lib/astryx-templates';
 import { AIDE_UI, AIDE_UI_RAW } from '@/lib/aide-ui';
 import { AUI_ROOT_CSS } from '@/lib/aide-product-tokens';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Badge as AstryxBadge } from '@astryxdesign/core/Badge';
+import { Button as AstryxButton } from '@astryxdesign/core/Button';
+import { IconButton as AstryxIconButton } from '@astryxdesign/core/IconButton';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { PlaygroundComponentPreview as ComponentPreview } from '@/components/aide-docs/PlaygroundComponentPreview';
 import { componentPreviewSize } from '@/lib/aide-docs';
@@ -2243,13 +2244,11 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
     >
       {/* ── Top Bar ─────────────────────────────────────────────────────── */}
       <div style={{ height: 58, padding: `0 var(--aui-space-4)`, flexShrink: 0, display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", background: AIDE.surface, borderBottom: `1px solid ${AIDE.border}`, position: 'relative' }}>
-        <Button type="button" onClick={onBack} title="돌아가기" aria-label="돌아가기" variant="outline" size="icon">
-          <ArrowLeft size={16} />
-        </Button>
+        <AstryxIconButton type="button" onClick={onBack} tooltip="돌아가기" label="돌아가기" icon={<ArrowLeft size={16} aria-hidden />} variant="secondary" />
         <div style={{ minWidth: 180, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
             <span style={{ fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-bold)", color: AIDE.text }}>Playground</span>
-            <Badge variant="info">Astryx</Badge>
+            <AstryxBadge variant="info" label="Astryx" />
           </div>
           <div style={{ marginTop: 2, fontSize: "var(--aui-type-meta-size)", color: AIDE.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {activeFrame ? `${activeFrame.name} · ${flattenCanvasItems(items).length}개 컴포넌트${persistenceReady ? ' · 자동 저장' : ''}` : '새 프레임을 추가하세요'}
@@ -2281,28 +2280,13 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
         ) : null}
 
         <div style={{ width: 1, height: 24, background: AIDE.border }} />
-        <Button type="button" onClick={undo} title="실행 취소 (⌘Z)" aria-label="실행 취소" variant="ghost" size="icon">
-          <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>↶</span>
-        </Button>
-        <Button type="button" onClick={redo} title="다시 실행 (⇧⌘Z)" aria-label="다시 실행" variant="ghost" size="icon">
-          <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>↷</span>
-        </Button>
-        <Button type="button" onClick={() => addFrame()} title="같은 크기의 프레임 추가" aria-label="프레임 추가" variant="outline" size="icon">
-          <Plus size={15} />
-        </Button>
-        <Button type="button" onClick={deleteActiveFrame} disabled={!activeFrame} title="선택한 프레임 삭제" aria-label="프레임 삭제" variant="outline" size="icon">
-          <Trash2 size={14} />
-        </Button>
-        <Button type="button" onClick={() => { if (items.length === 0 || window.confirm('선택한 프레임의 컴포넌트를 모두 지울까요?')) { setItems([]); setSelectedId(null); } }} disabled={items.length === 0} variant="ghost" size="dense">
-          초기화
-        </Button>
-        <Button type="button" onClick={handleExport} disabled={items.length === 0} size="touch">
-          <Download size={14} />
-          HTML
-        </Button>
-        <Button type="button" onClick={togglePreviewMode} variant={previewMode ? 'primary' : 'outline'} size="touch">
-          {previewMode ? '편집으로 돌아가기' : '미리보기'}
-        </Button>
+        <AstryxIconButton type="button" onClick={undo} tooltip="실행 취소 (⌘Z)" label="실행 취소" icon={<span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>↶</span>} variant="ghost" />
+        <AstryxIconButton type="button" onClick={redo} tooltip="다시 실행 (⇧⌘Z)" label="다시 실행" icon={<span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>↷</span>} variant="ghost" />
+        <AstryxIconButton type="button" onClick={() => addFrame()} tooltip="같은 크기의 프레임 추가" label="프레임 추가" icon={<Plus size={15} aria-hidden />} variant="secondary" />
+        <AstryxIconButton type="button" onClick={deleteActiveFrame} isDisabled={!activeFrame} tooltip="선택한 프레임 삭제" label="프레임 삭제" icon={<Trash2 size={14} aria-hidden />} variant="secondary" />
+        <AstryxButton type="button" onClick={() => { if (items.length === 0 || window.confirm('선택한 프레임의 컴포넌트를 모두 지울까요?')) { setItems([]); setSelectedId(null); } }} isDisabled={items.length === 0} variant="ghost" size="sm" label="초기화" />
+        <AstryxButton type="button" onClick={handleExport} isDisabled={items.length === 0} size="sm" label="HTML" icon={<Download size={14} aria-hidden />} />
+        <AstryxButton type="button" onClick={togglePreviewMode} variant={previewMode ? 'primary' : 'secondary'} size="sm" label={previewMode ? '편집으로 돌아가기' : '미리보기'} />
       </div>
 
       {/* ── Main 3-Panel Layout ──────────────────────────────────────────── */}

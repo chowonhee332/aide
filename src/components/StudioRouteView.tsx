@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import StudioView from '@/components/StudioView'
 import { loadHistory } from '@/lib/history'
 import { readStudioNewHandoff, type StudioNewHandoff } from '@/lib/studio-route-handoff'
+import { Button } from '@astryxdesign/core/Button'
+import { EmptyState } from '@astryxdesign/core/EmptyState'
+import { Spinner } from '@astryxdesign/core/Spinner'
 
 type RouteState = 'loading' | 'ready' | 'missing'
 
@@ -12,19 +15,18 @@ function RecoveryState({ title, detail }: { title: string; detail: string }) {
   const router = useRouter()
   return (
     <main className="min-h-screen flex items-center justify-center px-6 bg-[var(--aui-page)] text-[var(--aui-text)]">
-      <section className="max-w-md text-center">
-        <h1 className="text-xl font-semibold">{title}</h1>
-        <p className="mt-3 text-sm leading-6 text-[var(--aui-text-muted)]">{detail}</p>
-        <button type="button" onClick={() => router.push('/')} className="mt-6 px-4 py-2 text-sm font-semibold rounded-[var(--aui-radius-control)] bg-[var(--aui-primary)] text-[var(--aui-on-dark)]">
-          홈으로 돌아가기
-        </button>
-      </section>
+      <EmptyState
+        title={title}
+        description={detail}
+        headingLevel={1}
+        actions={<Button label="홈으로 돌아가기" variant="primary" onClick={() => router.push('/')} />}
+      />
     </main>
   )
 }
 
 function RouteLoading() {
-  return <main className="min-h-screen flex items-center justify-center text-sm text-[var(--aui-text-muted)] bg-[var(--aui-page)]">작업을 불러오는 중…</main>
+  return <main className="min-h-screen flex items-center justify-center bg-[var(--aui-page)]"><Spinner label="작업을 불러오는 중" /></main>
 }
 
 export function StudioHistoryRoute({ historyId }: { historyId: string }) {

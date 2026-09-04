@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo, useRef, useEffect, startTransition } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect, startTransition, Suspense } from 'react'
 import {
   ArrowUp, ArrowRight, FileText, Upload, X,
   Check, ChevronDown, Palette, Share2,
@@ -20,6 +20,11 @@ import { AIDE_UI } from '@/lib/aide-ui'
 import { writeStudioNewHandoff } from '@/lib/studio-route-handoff'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Menu, MenuTrigger, MenuContent, MenuItem } from '@/components/ui/menu'
+import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl'
+import { TextArea } from '@astryxdesign/core/TextArea'
+import { TextInput } from '@astryxdesign/core/TextInput'
+import { useAideDensity } from '@/components/AideDensityProvider'
+import { AIDE_DENSITY_PRESETS, type AideDensity } from '@/lib/aide-density'
 
 const F = {
   canvas:       AIDE_UI.canvas,
@@ -280,12 +285,22 @@ function extractColorsFromImage(dataUrl: string): Promise<string[]> {
 }
 
 export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeRoute />
+    </Suspense>
+  )
+}
+
+function HomeRoute() {
   const settingsPanel = useSearchParams().get('settings')
   return <HomeContent key={settingsPanel ?? 'home'} settingsPanel={settingsPanel} />
 }
 
 function HomeContent({ settingsPanel }: { settingsPanel: string | null }) {
   const router = useRouter()
+  const { density, setDensity } = useAideDensity()
+  const [densityModalOpen, setDensityModalOpen] = useState(settingsPanel === 'density')
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(settingsPanel === 'api')
   const [apiKeyTab, setApiKeyTab] = useState<ApiKeyTab>('gemini')
   const [apiKeyInputs, setApiKeyInputs] = useState<Record<ApiKeyTab, string>>({ gemini: '', unsplash: '', figma: '' })
@@ -1110,6 +1125,10 @@ function HomeContent({ settingsPanel }: { settingsPanel: string | null }) {
         ::placeholder { color: var(--aui-scrim); }
         textarea:focus { outline: none; }
         .hero-brief-card ::placeholder { color: var(--aui-scrim); }
+        .hero-brief-textarea:focus-within,
+        .hero-detail-text-input:focus-within {
+          box-shadow: inset 0 0 0 2px var(--aui-primary-tint) !important;
+        }
         .tpl-scroll { scrollbar-width: none; }
         .tpl-scroll::-webkit-scrollbar { display: none; }
         @keyframes marquee-left { from { transform: translateX(0) } to { transform: translateX(-50%) } }
@@ -1666,54 +1685,21 @@ function HomeContent({ settingsPanel }: { settingsPanel: string | null }) {
 
 
           {/* 생성 방식 토글 — AI가 HTML을 짜는 기존 경로 vs 브리프에 맞는 Astryx 템플릿 1개 열기 */}
-          <div
-            role="radiogroup"
-            aria-label="생성 방식"
-            style={{
-              display: 'inline-flex', alignSelf: 'center', alignItems: 'center', gap: '2px', padding: '4px',
-              marginBottom: '18px', borderRadius: 'var(--aui-radius-pill)',
-              backgroundColor: 'rgba(0,0,0,0.16)',
-              backdropFilter: 'blur(var(--aui-blur-glass-strong))',
-              WebkitBackdropFilter: 'blur(var(--aui-blur-glass-strong))',
-              border: 'none',
-            }}
+          <SegmentedControl
+            value={genMode}
+            onChange={(value) => { setGenMode(value as 'ai' | 'compose'); setTemplateMatchError(null) }}
+            label="생성 방식"
+            style={{ alignSelf: 'center', marginBottom: '18px' }}
           >
-            {([
-              ['ai', 'AI 생성'],
-              ['compose', '템플릿'],
-            ] as const).map(([value, label]) => {
-              const active = genMode === value
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => { setGenMode(value); setTemplateMatchError(null) }}
-                  style={{
-                    flexShrink: 0, whiteSpace: 'nowrap',
-                    padding: '7px 20px', borderRadius: 'var(--aui-radius-pill)',
-                    border: 'none', cursor: 'pointer', transition: 'all 0.15s',
-                    fontSize: 'var(--aui-type-compact-size)', fontWeight: 'var(--aui-weight-semibold)',
-                    letterSpacing: 'var(--aui-tracking-tight)',
-                    backgroundColor: active ? '#ffffff' : 'transparent',
-                    color: active ? F.ink : '#ffffff',
-                    boxShadow: active ? 'var(--aui-shadow-sm)' : 'none',
-                  }}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
+            <SegmentedControlItem value="ai" label="AI 생성" />
+            <SegmentedControlItem value="compose" label="템플릿" />
+          </SegmentedControl>
 
           {/* Input card */}
           <div className="hero-brief-card" style={{
             width: '100%', maxWidth: 'var(--aui-content-narrow)', borderRadius: '24px',
-            background: 'linear-gradient(rgba(255,255,255,0.86), rgba(255,255,255,0.86)) padding-box, linear-gradient(135deg, rgba(255,255,255,0.85), rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.85)) border-box',
-            backdropFilter: 'blur(var(--aui-blur-glass-strong))',
-            WebkitBackdropFilter: 'blur(var(--aui-blur-glass-strong))',
-            border: '1px solid transparent',
+            backgroundColor: 'var(--aui-on-dark)',
+            border: 'none',
             padding: `var(--aui-space-6) var(--aui-space-6) var(--aui-space-4)`,
             boxShadow: 'var(--aui-shadow-floating)',
           }}>
@@ -1744,20 +1730,18 @@ function HomeContent({ settingsPanel }: { settingsPanel: string | null }) {
               )
             })()}
             <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-3)" }}>
-              <div>
-                <textarea
-                  aria-label="어떤 화면이 필요한가요?"
+              <div className="hero-brief-input">
+                <TextArea
+                  className="hero-brief-textarea"
+                  label="어떤 화면이 필요한가요?"
+                  isLabelHidden
                   value={briefDesc}
-                  onChange={e => setBriefDesc(e.target.value)}
+                  onChange={setBriefDesc}
                   onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && briefDesc.trim()) { e.preventDefault(); handleSubmit() } }}
                   placeholder="예) SaaS 고객사에 제안할 VOC 통합관리 어드민. 문의 접수 현황, 상태별 티켓, SLA 지연 알림과 담당자 배정을 한눈에 보여줘."
                   rows={4}
-                  style={{
-                    width: '100%', background: 'none', border: 'none', outline: 'none',
-                    color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-label-size)", lineHeight: "var(--aui-leading-normal)",
-                    letterSpacing: "var(--aui-tracking-tight)", resize: 'none', fontFamily: 'inherit',
-                    caretColor: F.primary,
-                  }}
+                  width="100%"
+                  style={{ border: 'none', boxShadow: 'none', backgroundColor: 'transparent' }}
                 />
               </div>
               <div style={{ borderTop: '1px solid var(--aui-shadow-line)', paddingTop: '10px' }}>
@@ -1767,18 +1751,9 @@ function HomeContent({ settingsPanel }: { settingsPanel: string | null }) {
                 </button>
                 {briefDetailsOpen && (
                   <div className="brief-details-grid">
-                    <label style={{ display: 'grid', gap: '5px', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
-                      주요 사용자
-                      <input value={briefAudience} onChange={event => setBriefAudience(event.target.value)} placeholder="예) CS 운영 담당자와 서비스 기획자" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: `1px solid ${F.hairlineSoft}`, borderRadius: 'var(--aui-radius-control)', background: F.surface, color: F.ink, font: 'inherit', outline: 'none' }} />
-                    </label>
-                    <label style={{ display: 'grid', gap: '5px', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
-                      핵심 기능 또는 필수 정보
-                      <input value={briefFeatures} onChange={event => setBriefFeatures(event.target.value)} placeholder="예) 티켓 목록, 처리 상태, SLA 알림, 주간 리포트" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: `1px solid ${F.hairlineSoft}`, borderRadius: 'var(--aui-radius-control)', background: F.surface, color: F.ink, font: 'inherit', outline: 'none' }} />
-                    </label>
-                    <label style={{ gridColumn: '1 / -1', display: 'grid', gap: '5px', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
-                      강조하거나 피하고 싶은 구성
-                      <input value={briefConstraints} onChange={event => setBriefConstraints(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && briefDesc.trim()) { event.preventDefault(); handleSubmit() } }} placeholder="예) 대량 목록을 빠르게 훑도록, 불필요한 그래프 남발은 피하기" style={{ width: '100%', minHeight: '40px', padding: '0 12px', border: `1px solid ${F.hairlineSoft}`, borderRadius: 'var(--aui-radius-control)', background: F.surface, color: F.ink, font: 'inherit', outline: 'none' }} />
-                    </label>
+                    <TextInput className="hero-detail-text-input" label="주요 사용자" value={briefAudience} onChange={setBriefAudience} placeholder="예) CS 운영 담당자와 서비스 기획자" width="100%" style={{ border: 'none', boxShadow: 'none', backgroundColor: 'transparent' }} />
+                    <TextInput className="hero-detail-text-input" label="핵심 기능 또는 필수 정보" value={briefFeatures} onChange={setBriefFeatures} placeholder="예) 티켓 목록, 처리 상태, SLA 알림, 주간 리포트" width="100%" style={{ border: 'none', boxShadow: 'none', backgroundColor: 'transparent' }} />
+                    <TextInput className="hero-detail-text-input" label="강조하거나 피하고 싶은 구성" value={briefConstraints} onChange={setBriefConstraints} onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && briefDesc.trim()) { event.preventDefault(); handleSubmit() } }} placeholder="예) 대량 목록을 빠르게 훑도록, 불필요한 그래프 남발은 피하기" width="100%" style={{ gridColumn: '1 / -1', border: 'none', boxShadow: 'none', backgroundColor: 'transparent' }} />
                   </div>
                 )}
               </div>
@@ -1810,32 +1785,16 @@ function HomeContent({ settingsPanel }: { settingsPanel: string | null }) {
                   <span style={{ fontSize: "var(--aui-icon-md)", lineHeight: "var(--aui-leading-none)", marginTop: '-1px' }}>+</span>
                 </button>
                 {/* App / Web 토글 — 이 선택이 설문의 "메인 구조" 보기를 결정한다 */}
-                <div role="radiogroup" aria-label="플랫폼" style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '3px', borderRadius: 'var(--aui-radius-pill)', backgroundColor: 'var(--aui-border-subtle)', flexShrink: 0 }}>
-                  {([['mobile', '앱', Smartphone], ['web', '웹', Monitor]] as const).map(([value, label, Icon]) => {
-                    const active = platform === value
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        role="radio"
-                        aria-checked={active}
-                        onClick={() => setPlatform(value)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '5px',
-                          padding: '0 var(--aui-space-3)', height: '32px', borderRadius: 'var(--aui-radius-pill)',
-                          border: 'none', cursor: 'pointer', letterSpacing: 'var(--aui-tracking-tight)',
-                          fontSize: 'var(--aui-type-compact-size)', fontWeight: 'var(--aui-weight-semibold)',
-                          backgroundColor: active ? 'var(--aui-on-dark)' : 'transparent',
-                          color: active ? 'var(--aui-scrim-strong)' : 'var(--aui-scrim)',
-                          boxShadow: active ? 'var(--aui-shadow-sm)' : 'none',
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        <Icon size={13} /> {label}
-                      </button>
-                    )
-                  })}
-                </div>
+                <SegmentedControl
+                  value={platform}
+                  onChange={(value) => setPlatform(value as 'mobile' | 'web')}
+                  label="플랫폼"
+                  size="sm"
+                  style={{ flexShrink: 0 }}
+                >
+                  <SegmentedControlItem value="mobile" label="앱" icon={<Smartphone size={13} aria-hidden />} />
+                  <SegmentedControlItem value="web" label="웹" icon={<Monitor size={13} aria-hidden />} />
+                </SegmentedControl>
 
                 {/* 소스 칩 + DESIGN.md — 조합 모드에선 디자인 시스템이 Astryx 고정이라 노출하지 않는다 */}
                 <div style={{ display: 'contents', visibility: genMode === 'ai' ? 'visible' : 'hidden' }} aria-hidden={genMode !== 'ai'}>
@@ -2031,9 +1990,8 @@ function HomeContent({ settingsPanel }: { settingsPanel: string | null }) {
             <div style={{
               width: '100%', maxWidth: '700px', marginTop: '8px',
               borderRadius: "var(--aui-radius-overlay)",
-              background: 'linear-gradient(rgba(255,255,255,0.6), rgba(255,255,255,0.6)) padding-box, linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.8)) border-box',
-              backdropFilter: 'blur(var(--aui-blur-glass-strong))', WebkitBackdropFilter: 'blur(var(--aui-blur-glass-strong))',
-              border: '1px solid transparent', padding: "var(--aui-space-4)",
+              backgroundColor: 'var(--aui-on-dark)',
+              border: 'none', padding: "var(--aui-space-4)",
             }}>
               <input ref={fileInputRef} type="file" accept=".md,.txt" onChange={handleFileUpload} style={{ display: 'none' }} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: "var(--aui-space-2)", marginBottom: '14px' }}>
@@ -2103,7 +2061,8 @@ function HomeContent({ settingsPanel }: { settingsPanel: string | null }) {
                       disabled={urlAnalyzing}
                       style={{
                         flex: 1, padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)",
-                        border: urlError ? '1px solid color-mix(in srgb, var(--aui-negative) 50%, transparent)' : urlAnalyzing ? `1px solid ${F.primary}` : `1px solid ${F.hairline}`,
+                        border: 'none',
+                        boxShadow: urlError ? 'inset 0 0 0 1px color-mix(in srgb, var(--aui-negative) 50%, transparent)' : urlAnalyzing ? `inset 0 0 0 1px ${F.primary}` : 'none',
                         backgroundColor: urlAnalyzing ? 'var(--aui-primary-tint)' : F.surface2, color: F.ink,
                         fontSize: "var(--aui-type-compact-size)", fontFamily: 'inherit', outline: 'none',
                         letterSpacing: "var(--aui-tracking-tight)", transition: 'all 0.2s',
@@ -2912,6 +2871,63 @@ function HomeContent({ settingsPanel }: { settingsPanel: string | null }) {
                 }}
               >
                 {apiKeyValidating ? (apiKeyTab === 'gemini' ? '검증 중...' : '저장 중...') : apiKeyTab === 'gemini' ? '검증 후 저장' : '저장'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Screen density modal — one control for LNB, component and spacing scale */}
+      {densityModalOpen && (
+        <div
+          onClick={() => setDensityModalOpen(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, backgroundColor: 'var(--aui-scrim)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: F.canvas, borderRadius: "var(--aui-radius-overlay)", padding: "var(--aui-space-8)", width: '480px', maxWidth: 'calc(100vw - 32px)', boxShadow: "var(--aui-shadow-modal)" }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", marginBottom: '8px' }}>
+              <Palette size={20} color={F.primary} />
+              <h2 style={{ fontSize: "var(--aui-type-section-title-size)", fontWeight: "var(--aui-weight-bold)", color: F.ink, margin: 0 }}>화면 밀도</h2>
+            </div>
+            <p style={{ fontSize: "var(--aui-type-compact-size)", color: F.inkMuted, marginBottom: '20px', lineHeight: "var(--aui-leading-relaxed)" }}>
+              메뉴·컴포넌트·여백 크기를 한 번에 조절합니다. 브라우저 localStorage에만 저장됩니다.
+            </p>
+            <div role="radiogroup" aria-label="화면 밀도" style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", marginBottom: '20px' }}>
+              {(Object.keys(AIDE_DENSITY_PRESETS) as AideDensity[]).map(id => {
+                const preset = AIDE_DENSITY_PRESETS[id]
+                const active = density === id
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setDensity(id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: "var(--aui-space-3)",
+                      padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)",
+                      border: `1.5px solid ${active ? F.primary : F.hairline}`,
+                      background: active ? F.primarySoft : F.canvas,
+                      cursor: 'pointer', textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span style={{ fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)", color: F.ink }}>{preset.label}</span>
+                      <span style={{ fontSize: "var(--aui-type-caption-size)", color: F.inkMuted }}>{preset.description}</span>
+                    </span>
+                    {active && <Check size={16} color={F.primary} />}
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setDensityModalOpen(false)}
+                style={{ padding: `var(--aui-space-2) var(--aui-space-5)`, borderRadius: "var(--aui-radius-control)", border: 'none', background: F.primary, color: 'var(--aui-on-dark)', fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)", cursor: 'pointer' }}
+              >
+                완료
               </button>
             </div>
           </div>

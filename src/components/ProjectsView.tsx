@@ -5,6 +5,11 @@ import { useRouter } from 'next/navigation'
 import { type HistoryItem, loadHistory, deleteHistoryItem, relativeTime } from '@/lib/history'
 import { ArrowLeft, Trash2 } from '@/components/ui/material-icon'
 import { AIDE_UI } from '@/lib/aide-ui'
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
+import { EmptyState } from '@astryxdesign/core/EmptyState'
+import { IconButton } from '@astryxdesign/core/IconButton'
+import { Tab, TabList } from '@astryxdesign/core/TabList'
 
 const F = {
   canvas: AIDE_UI.canvas,
@@ -54,60 +59,39 @@ export default function ProjectsView() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button
+          <IconButton
             onClick={() => router.push('/')}
-            aria-label="홈으로"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 'var(--aui-radius-pill)', border: `1px solid ${F.hairline}`, background: 'none', cursor: 'pointer', color: F.ink }}
-          >
-            <ArrowLeft size={16} />
-          </button>
+            label="홈으로"
+            icon={<ArrowLeft size={16} />}
+            variant="secondary"
+          />
           <h1 style={{ fontSize: 20, fontWeight: 'var(--aui-weight-semibold)', color: F.ink, margin: 0 }}>프로젝트</h1>
         </div>
-        <div role="tablist" aria-label="프로젝트 필터" style={{ display: 'flex', gap: 4, padding: 3, borderRadius: 'var(--aui-radius-pill)', backgroundColor: 'var(--aui-fill)' }}>
+        <TabList value={tab} onChange={(value) => setTab(value as ProjectTab)} aria-label="프로젝트 필터">
           {TABS.map(t => {
-            const active = tab === t.id
             const count = items.filter(item => matchesTab(item, t.id)).length
-            return (
-              <button
-                key={t.id}
-                role="tab"
-                aria-selected={active}
-                onClick={() => setTab(t.id)}
-                style={{
-                  padding: '7px 16px', borderRadius: 'var(--aui-radius-pill)', border: 'none', cursor: 'pointer',
-                  fontSize: 'var(--aui-type-compact-size)', fontWeight: 'var(--aui-weight-semibold)',
-                  backgroundColor: active ? F.ink : 'transparent', color: active ? F.canvas : F.inkMuted,
-                }}
-              >
-                {t.label} {count > 0 && `(${count})`}
-              </button>
-            )
+            return <Tab key={t.id} value={t.id} label={`${t.label}${count > 0 ? ` (${count})` : ''}`} />
           })}
-        </div>
+        </TabList>
       </header>
 
       {filtered.length === 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 12, color: F.inkMuted }}>
-          <p style={{ fontSize: 15 }}>아직 프로젝트가 없습니다.</p>
-          <button
-            onClick={() => router.push('/')}
-            style={{ padding: '10px 20px', borderRadius: 'var(--aui-radius-pill)', border: 'none', backgroundColor: F.ink, color: F.canvas, cursor: 'pointer', fontSize: 14, fontWeight: 'var(--aui-weight-semibold)' }}
-          >
-            홈에서 새 프로젝트 시작하기
-          </button>
-        </div>
+        <EmptyState
+          title="아직 프로젝트가 없습니다."
+          actions={<Button label="홈에서 새 프로젝트 시작하기" variant="primary" onClick={() => router.push('/')} />}
+          style={{ minHeight: '50vh', display: 'grid', placeItems: 'center' }}
+        />
       ) : (
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 20,
           padding: '28px 24px 64px', maxWidth: 1400, margin: '0 auto',
         }}>
           {filtered.map(item => (
-            <div
+            <Card
               key={item.id}
               onClick={() => router.push(`/studio/${encodeURIComponent(item.id)}`)}
               style={{
-                cursor: 'pointer', borderRadius: 'var(--aui-radius-card)', overflow: 'hidden',
-                border: `1px solid ${F.hairlineSoft}`, backgroundColor: F.surface,
+                cursor: 'pointer', overflow: 'hidden',
                 display: 'flex', flexDirection: 'column',
               }}
             >
@@ -123,16 +107,16 @@ export default function ProjectsView() {
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: 12, color: F.inkMuted }}>{relativeTime(item.createdAt)}</span>
-                  <button
+                  <IconButton
                     onClick={(e) => { e.stopPropagation(); deleteHistoryItem(item.id).then(refresh) }}
-                    aria-label="삭제"
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--aui-negative)' }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                    label="삭제"
+                    icon={<Trash2 size={13} />}
+                    variant="ghost"
+                    size="sm"
+                  />
                 </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
