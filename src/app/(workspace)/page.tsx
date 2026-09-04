@@ -2225,32 +2225,18 @@ export default function Home() {
               <input ref={refImageInputRef} type="file" accept="image/*" onChange={handleRefImageUpload} style={{ display: 'none' }} />
               <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
 
-              <div style={{ display: 'flex', gap: "var(--aui-space-1)", padding: "var(--aui-space-1)", borderRadius: "var(--aui-radius-control)", backgroundColor: F.surface2, marginBottom: 14 }}>
-                {([
-                  ['planning', '기획/화면 설계'],
-                  ['asis', 'As-is 화면'],
-                  ['reference', '참고자료'],
-                  ['brand', '브랜드'],
-                ] as const).map(([key, label]) => (
-                  <button
-                    key={key}
-                    onClick={() => setSourceTab(key)}
-                    style={{
-                      flex: 1,
-                      height: 34,
-                      border: 'none',
-                      borderRadius: "var(--aui-radius-sm)",
-                      backgroundColor: sourceTab === key ? F.canvas : 'transparent',
-                      color: sourceTab === key ? F.ink : F.inkMuted,
-                      boxShadow: sourceTab === key ? "var(--aui-shadow-subtle)" : 'none',
-                      fontSize: "var(--aui-type-caption-size)",
-                      fontWeight: "var(--aui-weight-bold)",
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
+              <div style={{ marginBottom: 14 }}>
+                <SegmentedControl
+                  value={sourceTab}
+                  onChange={(v) => setSourceTab(v as typeof sourceTab)}
+                  label="첨부 자료 유형"
+                  layout="fill"
+                >
+                  <SegmentedControlItem value="planning" label="기획/화면 설계" />
+                  <SegmentedControlItem value="asis" label="As-is 화면" />
+                  <SegmentedControlItem value="reference" label="참고자료" />
+                  <SegmentedControlItem value="brand" label="브랜드" />
+                </SegmentedControl>
               </div>
 
               <div style={{ marginBottom: 12 }}>
