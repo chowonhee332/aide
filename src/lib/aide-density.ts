@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { ElementSize } from '@astryxdesign/core/SizeContext'
+import { AUI_TOKEN_ENTRIES } from './aide-product-tokens'
 
 export const AIDE_DENSITIES = ['compact', 'default', 'comfortable', 'gigantic'] as const
 export type AideDensity = (typeof AIDE_DENSITIES)[number]
@@ -36,6 +37,12 @@ type RawScale = {
   elementLg: number
   /** Astryx `--spacing-1 … --spacing-12`, in px. Hand-tuned for optical rhythm, not a formula. */
   spacing: readonly [number, number, number, number, number, number, number, number, number, number, number, number]
+  /**
+   * Multiplier applied to Aide's own scalable tokens (`--aui-space-*`,
+   * `--aui-type-*-size/leading`, `--aui-control-*`, `--aui-icon-*`) — the tokens
+   * the bulk of Aide chrome is styled with. `1` = untouched.
+   */
+  scale: number
 }
 
 const RAW: Record<AideDensity, RawScale> = {
@@ -47,6 +54,7 @@ const RAW: Record<AideDensity, RawScale> = {
     fontSm: 0.6875, fontBase: 0.8125, fontLg: 1,
     elementSm: 26, elementMd: 30, elementLg: 34,
     spacing: [3, 6, 10, 12, 16, 20, 24, 28, 32, 36, 40, 44],
+    scale: 0.9,
   },
   default: {
     label: 'Default',
@@ -56,6 +64,7 @@ const RAW: Record<AideDensity, RawScale> = {
     fontSm: 0.75, fontBase: 0.875, fontLg: 1.0625,
     elementSm: 28, elementMd: 32, elementLg: 36,
     spacing: [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48],
+    scale: 1,
   },
   comfortable: {
     label: 'Comfortable',
@@ -65,6 +74,7 @@ const RAW: Record<AideDensity, RawScale> = {
     fontSm: 0.8125, fontBase: 0.9375, fontLg: 1.125,
     elementSm: 30, elementMd: 36, elementLg: 42,
     spacing: [4, 8, 14, 18, 24, 28, 32, 36, 40, 44, 48, 56],
+    scale: 1.08,
   },
   gigantic: {
     label: 'Gigantic',
@@ -74,6 +84,7 @@ const RAW: Record<AideDensity, RawScale> = {
     fontSm: 0.875, fontBase: 1.0625, fontLg: 1.25,
     elementSm: 34, elementMd: 42, elementLg: 50,
     spacing: [5, 10, 16, 22, 28, 34, 40, 46, 52, 58, 64, 72],
+    scale: 1.2,
   },
 }
 
@@ -84,6 +95,7 @@ type DensitySemantics = {
   control: { sm: string; md: string; lg: string }
   spacing: readonly number[]
   astryxSize: ElementSize
+  auiScale: number
 }
 
 function semantics(raw: RawScale): DensitySemantics {
@@ -99,7 +111,27 @@ function semantics(raw: RawScale): DensitySemantics {
     control: { sm: `${raw.elementSm}px`, md: `${raw.elementMd}px`, lg: `${raw.elementLg}px` },
     spacing: raw.spacing,
     astryxSize: raw.astryxSize,
+    auiScale: raw.scale,
   }
+}
+
+/**
+ * Aide tokens the density `scale` multiplies. `control-touch` / `target-touch`
+ * are excluded so the 44px minimum touch target survives a Compact scale-down.
+ */
+const SCALABLE_AUI = /^--aui-(space-\d+|type-.+-(size|leading)|control-(compact|default|prominent)|icon-(sm|md|lg))$/
+
+/** aide.md base values × scale, for every scalable `--aui-*` token whose value is a plain px. */
+function scaledAuiTokens(scale: number): Record<string, string> {
+  if (scale === 1) return {}
+  const out: Record<string, string> = {}
+  for (const { cssVar, value } of AUI_TOKEN_ENTRIES) {
+    if (!SCALABLE_AUI.test(cssVar)) continue
+    const px = value.match(/^(-?[\d.]+)px$/)
+    if (!px) continue
+    out[cssVar] = `${Math.round(Number(px[1]) * scale * 100) / 100}px`
+  }
+  return out
 }
 
 /** Layer 3 — applied. CSS custom properties for the density wrapper `style`. */
@@ -118,6 +150,8 @@ function cssVars(s: DensitySemantics): CSSProperties {
     '--font-size-base': s.type.base,
     '--font-size-lg': s.type.lg,
     ...spacing,
+    // Aide's own scale — reaches the bulk of chrome, which is styled with --aui-*.
+    ...scaledAuiTokens(s.auiScale),
   } as CSSProperties
 }
 
