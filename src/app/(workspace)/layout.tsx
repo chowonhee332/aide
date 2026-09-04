@@ -15,7 +15,7 @@ const NAV_ITEMS = [
 
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const { density } = useAideDensity()
+  const { density, openDensityPicker } = useAideDensity()
   const preset = AIDE_DENSITY_PRESETS[density]
 
   return (
@@ -24,7 +24,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
         header={<SideNavHeading heading="Aide" headingHref="/" icon={<img src="/logo_aide.png" alt="" style={{ height: 'var(--aui-density-logo-size)', width: 'auto' }} />} />}
         footer={
           <SideNavSection title="설정" isHeaderHidden>
-            <SideNavItem label="화면 밀도" icon={<SlidersHorizontal size={preset.navIconSize} aria-hidden />} href="/?settings=density" size={preset.navItemSize} />
+            <SideNavItem label="화면 밀도" icon={<SlidersHorizontal size={preset.navIconSize} aria-hidden />} onClick={openDensityPicker} size={preset.navItemSize} />
             <SideNavItem label="API 설정" icon={<KeyRound size={preset.navIconSize} aria-hidden />} href="/?settings=api" size={preset.navItemSize} />
             <SideNavItem label="과금" icon={<Coins size={preset.navIconSize} aria-hidden />} href="/?settings=billing" size={preset.navItemSize} />
           </SideNavSection>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo, useRef, useEffect, startTransition, Suspense } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect, startTransition } from 'react'
 import {
   ArrowUp, ArrowRight, FileText, Upload, X,
   Check, ChevronDown, Palette, Share2,
@@ -15,7 +15,7 @@ import { DesignMdPreview } from '@/components/DesignMdPreview'
 import { loadHistory } from '@/lib/history'
 import type { GeminiUsageSummary } from '@/lib/gemini-usage'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { AIDE_UI } from '@/lib/aide-ui'
 import { writeStudioNewHandoff } from '@/lib/studio-route-handoff'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -23,8 +23,6 @@ import { Menu, MenuTrigger, MenuContent, MenuItem } from '@/components/ui/menu'
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl'
 import { TextArea } from '@astryxdesign/core/TextArea'
 import { TextInput } from '@astryxdesign/core/TextInput'
-import { useAideDensity } from '@/components/AideDensityProvider'
-import { AIDE_DENSITY_PRESETS, type AideDensity } from '@/lib/aide-density'
 
 const F = {
   canvas:       AIDE_UI.canvas,
@@ -284,24 +282,16 @@ function extractColorsFromImage(dataUrl: string): Promise<string[]> {
   })
 }
 
+/** `?settings=` deep-link, read once on the client. Avoids `useSearchParams`, which
+ * forces a Suspense boundary that does not hydrate cleanly under the app chrome. */
+function readSettingsParam(): string | null {
+  if (typeof window === 'undefined') return null
+  return new URLSearchParams(window.location.search).get('settings')
+}
+
 export default function Home() {
-  return (
-    <Suspense fallback={null}>
-      <HomeRoute />
-    </Suspense>
-  )
-}
-
-function HomeRoute() {
-  const settingsPanel = useSearchParams().get('settings')
-  return <HomeContent key={settingsPanel ?? 'home'} settingsPanel={settingsPanel} />
-}
-
-function HomeContent({ settingsPanel }: { settingsPanel: string | null }) {
   const router = useRouter()
-  const { density, setDensity } = useAideDensity()
-  const [densityModalOpen, setDensityModalOpen] = useState(settingsPanel === 'density')
-  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(settingsPanel === 'api')
+  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(() => readSettingsParam() === 'api')
   const [apiKeyTab, setApiKeyTab] = useState<ApiKeyTab>('gemini')
   const [apiKeyInputs, setApiKeyInputs] = useState<Record<ApiKeyTab, string>>({ gemini: '', unsplash: '', figma: '' })
   const [apiKeyValidating, setApiKeyValidating] = useState(false)
@@ -368,9 +358,9 @@ function HomeContent({ settingsPanel }: { settingsPanel: string | null }) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const [usageModalOpen, setUsageModalOpen] = useState(settingsPanel === 'billing')
+  const [usageModalOpen, setUsageModalOpen] = useState(() => readSettingsParam() === 'billing')
   const [usageSummary, setUsageSummary] = useState<GeminiUsageSummary | null>(null)
-  const [usageLoading, setUsageLoading] = useState(settingsPanel === 'billing')
+  const [usageLoading, setUsageLoading] = useState(() => readSettingsParam() === 'billing')
   useEffect(() => {
     if (!usageModalOpen) return
     fetch('/api/usage')
@@ -2871,63 +2861,6 @@ function HomeContent({ settingsPanel }: { settingsPanel: string | null }) {
                 }}
               >
                 {apiKeyValidating ? (apiKeyTab === 'gemini' ? '검증 중...' : '저장 중...') : apiKeyTab === 'gemini' ? '검증 후 저장' : '저장'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Screen density modal — one control for LNB, component and spacing scale */}
-      {densityModalOpen && (
-        <div
-          onClick={() => setDensityModalOpen(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 1000, backgroundColor: 'var(--aui-scrim)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ background: F.canvas, borderRadius: "var(--aui-radius-overlay)", padding: "var(--aui-space-8)", width: '480px', maxWidth: 'calc(100vw - 32px)', boxShadow: "var(--aui-shadow-modal)" }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", marginBottom: '8px' }}>
-              <Palette size={20} color={F.primary} />
-              <h2 style={{ fontSize: "var(--aui-type-section-title-size)", fontWeight: "var(--aui-weight-bold)", color: F.ink, margin: 0 }}>화면 밀도</h2>
-            </div>
-            <p style={{ fontSize: "var(--aui-type-compact-size)", color: F.inkMuted, marginBottom: '20px', lineHeight: "var(--aui-leading-relaxed)" }}>
-              메뉴·컴포넌트·여백 크기를 한 번에 조절합니다. 브라우저 localStorage에만 저장됩니다.
-            </p>
-            <div role="radiogroup" aria-label="화면 밀도" style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", marginBottom: '20px' }}>
-              {(Object.keys(AIDE_DENSITY_PRESETS) as AideDensity[]).map(id => {
-                const preset = AIDE_DENSITY_PRESETS[id]
-                const active = density === id
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => setDensity(id)}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: "var(--aui-space-3)",
-                      padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)",
-                      border: `1.5px solid ${active ? F.primary : F.hairline}`,
-                      background: active ? F.primarySoft : F.canvas,
-                      cursor: 'pointer', textAlign: 'left',
-                    }}
-                  >
-                    <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)", color: F.ink }}>{preset.label}</span>
-                      <span style={{ fontSize: "var(--aui-type-caption-size)", color: F.inkMuted }}>{preset.description}</span>
-                    </span>
-                    {active && <Check size={16} color={F.primary} />}
-                  </button>
-                )
-              })}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setDensityModalOpen(false)}
-                style={{ padding: `var(--aui-space-2) var(--aui-space-5)`, borderRadius: "var(--aui-radius-control)", border: 'none', background: F.primary, color: 'var(--aui-on-dark)', fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)", cursor: 'pointer' }}
-              >
-                완료
               </button>
             </div>
           </div>
