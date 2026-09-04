@@ -1,6 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { Theme } from '@astryxdesign/core/theme'
+import { LinkProvider } from '@astryxdesign/core/Link'
 import { neutralTheme } from '@astryxdesign/theme-neutral/built'
 import { AideDensityProvider } from '@/components/AideDensityProvider'
 
@@ -9,11 +11,16 @@ import { AideDensityProvider } from '@/components/AideDensityProvider'
  * just the `(workspace)` group — gets the neutral theme (`data-astryx-theme`),
  * light `color-scheme`, and the density scale. `<Theme>` renders a
  * `display: contents` wrapper, so it adds no box to the layout.
+ *
+ * `LinkProvider` routes every Astryx `href` (SideNav, etc.) through `next/link`
+ * so tab switches are client-side navigations, not full document reloads.
  */
 export function AppChrome({ children }: { children: React.ReactNode }) {
   return (
     <Theme theme={neutralTheme} mode="light">
-      <AideDensityProvider>{children}</AideDensityProvider>
+      <LinkProvider component={Link}>
+        <AideDensityProvider>{children}</AideDensityProvider>
+      </LinkProvider>
     </Theme>
   )
 }
