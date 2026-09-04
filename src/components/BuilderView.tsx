@@ -2232,14 +2232,13 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
   return (
     <div
       style={{
-        position: 'fixed',
-        inset: 0,
+        position: 'relative',
+        height: '100vh',
         background: AIDE.bg,
         display: 'flex',
         flexDirection: 'column',
         fontFamily: "'Pretendard Variable', 'Pretendard', -apple-system, sans-serif",
         color: AIDE.text,
-        zIndex: 50,
       }}
     >
       {/* ── Top Bar ─────────────────────────────────────────────────────── */}
