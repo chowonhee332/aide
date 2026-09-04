@@ -1,89 +1,155 @@
 import type { CSSProperties } from 'react'
+import type { ElementSize } from '@astryxdesign/core/SizeContext'
 
 export const AIDE_DENSITIES = ['compact', 'default', 'comfortable', 'gigantic'] as const
 export type AideDensity = (typeof AIDE_DENSITIES)[number]
 
-type DensityPreset = {
+export const DEFAULT_AIDE_DENSITY: AideDensity = 'comfortable'
+export const AIDE_DENSITY_STORAGE_KEY = 'aide-ui-density'
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Aide-wide density. Three layers, top to bottom:
+ *   1. RAW      — the primitive numbers per step. Tune a density here.
+ *   2. semantics — RAW re-grouped by intent (nav / type / spacing / control),
+ *                  plus the one derived value (nav row size from Astryx bucket).
+ *   3. applied  — the CSS custom properties + component props actually consumed
+ *                 by AideDensityProvider and the workspace shell.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Layer 1 — raw scale. One row of primitives per density; everything else derives. */
+type RawScale = {
   label: string
   description: string
-  astryxSize: 'sm' | 'md' | 'lg'
-  navItemSize: 'sm' | 'md' | 'lg'
+  /** Astryx SizeContext bucket for interactive components. */
+  astryxSize: ElementSize
+  /** Left nav, in px. */
+  lnbWidth: number
+  logoSize: number
   navIconSize: number
-  variables: CSSProperties
+  /** Astryx `--font-size-{sm,base,lg}`, in rem. */
+  fontSm: number
+  fontBase: number
+  fontLg: number
+  /** Astryx `--size-element-{sm,md,lg}` control heights, in px. */
+  elementSm: number
+  elementMd: number
+  elementLg: number
+  /** Astryx `--spacing-1 … --spacing-12`, in px. Hand-tuned for optical rhythm, not a formula. */
+  spacing: readonly [number, number, number, number, number, number, number, number, number, number, number, number]
 }
 
-const densityVariables = (values: Record<string, string>): CSSProperties => values as CSSProperties
-
-/**
- * Aide-wide density presets.
- *
- * Primitive sizing values live here. Semantic variables (`--aui-density-*`) are
- * consumed by the workspace shell, while Astryx primitives let direct Astryx
- * components follow the same scale. Component code should use size props only
- * for local exceptions; its default comes from `AideDensityProvider`.
- */
-export const AIDE_DENSITY_PRESETS: Record<AideDensity, DensityPreset> = {
+const RAW: Record<AideDensity, RawScale> = {
   compact: {
     label: 'Compact',
     description: '정보를 많이 보는 밀도',
     astryxSize: 'sm',
-    navItemSize: 'sm',
-    navIconSize: 18,
-    variables: densityVariables({
-      '--aui-density-lnb-width': '224px',
-      '--aui-density-logo-size': '36px',
-      '--aui-density-nav-icon-size': '18px',
-      '--size-element-sm': '26px', '--size-element-md': '30px', '--size-element-lg': '34px',
-      '--font-size-sm': '0.6875rem', '--font-size-base': '0.8125rem', '--font-size-lg': '1rem',
-      '--spacing-1': '3px', '--spacing-2': '6px', '--spacing-3': '10px', '--spacing-4': '12px', '--spacing-5': '16px', '--spacing-6': '20px', '--spacing-7': '24px', '--spacing-8': '28px', '--spacing-9': '32px', '--spacing-10': '36px', '--spacing-11': '40px', '--spacing-12': '44px',
-    }),
+    lnbWidth: 224, logoSize: 36, navIconSize: 18,
+    fontSm: 0.6875, fontBase: 0.8125, fontLg: 1,
+    elementSm: 26, elementMd: 30, elementLg: 34,
+    spacing: [3, 6, 10, 12, 16, 20, 24, 28, 32, 36, 40, 44],
   },
   default: {
     label: 'Default',
     description: '균형 잡힌 기본 밀도',
     astryxSize: 'md',
-    navItemSize: 'md',
-    navIconSize: 20,
-    variables: densityVariables({
-      '--aui-density-lnb-width': '248px',
-      '--aui-density-logo-size': '42px',
-      '--aui-density-nav-icon-size': '20px',
-      '--size-element-sm': '28px', '--size-element-md': '32px', '--size-element-lg': '36px',
-      '--font-size-sm': '0.75rem', '--font-size-base': '0.875rem', '--font-size-lg': '1.0625rem',
-      '--spacing-1': '4px', '--spacing-2': '8px', '--spacing-3': '12px', '--spacing-4': '16px', '--spacing-5': '20px', '--spacing-6': '24px', '--spacing-7': '28px', '--spacing-8': '32px', '--spacing-9': '36px', '--spacing-10': '40px', '--spacing-11': '44px', '--spacing-12': '48px',
-    }),
+    lnbWidth: 248, logoSize: 42, navIconSize: 20,
+    fontSm: 0.75, fontBase: 0.875, fontLg: 1.0625,
+    elementSm: 28, elementMd: 32, elementLg: 36,
+    spacing: [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48],
   },
   comfortable: {
     label: 'Comfortable',
     description: '여유 있는 작업 밀도',
     astryxSize: 'lg',
-    navItemSize: 'lg',
-    navIconSize: 22,
-    variables: densityVariables({
-      '--aui-density-lnb-width': '272px',
-      '--aui-density-logo-size': '48px',
-      '--aui-density-nav-icon-size': '22px',
-      '--size-element-sm': '30px', '--size-element-md': '36px', '--size-element-lg': '42px',
-      '--font-size-sm': '0.8125rem', '--font-size-base': '0.9375rem', '--font-size-lg': '1.125rem',
-      '--spacing-1': '4px', '--spacing-2': '8px', '--spacing-3': '14px', '--spacing-4': '18px', '--spacing-5': '24px', '--spacing-6': '28px', '--spacing-7': '32px', '--spacing-8': '36px', '--spacing-9': '40px', '--spacing-10': '44px', '--spacing-11': '48px', '--spacing-12': '56px',
-    }),
+    lnbWidth: 272, logoSize: 48, navIconSize: 22,
+    fontSm: 0.8125, fontBase: 0.9375, fontLg: 1.125,
+    elementSm: 30, elementMd: 36, elementLg: 42,
+    spacing: [4, 8, 14, 18, 24, 28, 32, 36, 40, 44, 48, 56],
   },
   gigantic: {
     label: 'Gigantic',
     description: '크고 편안한 가독성 중심',
     astryxSize: 'lg',
-    navItemSize: 'lg',
-    navIconSize: 24,
-    variables: densityVariables({
-      '--aui-density-lnb-width': '312px',
-      '--aui-density-logo-size': '56px',
-      '--aui-density-nav-icon-size': '24px',
-      '--size-element-sm': '34px', '--size-element-md': '42px', '--size-element-lg': '50px',
-      '--font-size-sm': '0.875rem', '--font-size-base': '1.0625rem', '--font-size-lg': '1.25rem',
-      '--spacing-1': '5px', '--spacing-2': '10px', '--spacing-3': '16px', '--spacing-4': '22px', '--spacing-5': '28px', '--spacing-6': '34px', '--spacing-7': '40px', '--spacing-8': '46px', '--spacing-9': '52px', '--spacing-10': '58px', '--spacing-11': '64px', '--spacing-12': '72px',
-    }),
+    lnbWidth: 312, logoSize: 56, navIconSize: 24,
+    fontSm: 0.875, fontBase: 1.0625, fontLg: 1.25,
+    elementSm: 34, elementMd: 42, elementLg: 50,
+    spacing: [5, 10, 16, 22, 28, 34, 40, 46, 52, 58, 64, 72],
   },
 }
 
-export const DEFAULT_AIDE_DENSITY: AideDensity = 'comfortable'
-export const AIDE_DENSITY_STORAGE_KEY = 'aide-ui-density'
+/** Layer 2 — density semantics. RAW grouped by intent; `navRowSize` is the one derived value. */
+type DensitySemantics = {
+  nav: { width: string; logo: string; iconSize: number; rowSize: ElementSize }
+  type: { sm: string; base: string; lg: string }
+  control: { sm: string; md: string; lg: string }
+  spacing: readonly number[]
+  astryxSize: ElementSize
+}
+
+function semantics(raw: RawScale): DensitySemantics {
+  return {
+    nav: {
+      width: `${raw.lnbWidth}px`,
+      logo: `${raw.logoSize}px`,
+      iconSize: raw.navIconSize,
+      // Astryx nav rows only have sm/md/lg; the roomier steps share 'lg'.
+      rowSize: raw.astryxSize,
+    },
+    type: { sm: `${raw.fontSm}rem`, base: `${raw.fontBase}rem`, lg: `${raw.fontLg}rem` },
+    control: { sm: `${raw.elementSm}px`, md: `${raw.elementMd}px`, lg: `${raw.elementLg}px` },
+    spacing: raw.spacing,
+    astryxSize: raw.astryxSize,
+  }
+}
+
+/** Layer 3 — applied. CSS custom properties for the density wrapper `style`. */
+function cssVars(s: DensitySemantics): CSSProperties {
+  const spacing = Object.fromEntries(s.spacing.map((px, i) => [`--spacing-${i + 1}`, `${px}px`]))
+  return {
+    // Aide semantic — consumed by the workspace shell.
+    '--aui-density-lnb-width': s.nav.width,
+    '--aui-density-logo-size': s.nav.logo,
+    '--aui-density-nav-icon-size': `${s.nav.iconSize}px`,
+    // Astryx raw — let direct @astryxdesign/core components follow the same scale.
+    '--size-element-sm': s.control.sm,
+    '--size-element-md': s.control.md,
+    '--size-element-lg': s.control.lg,
+    '--font-size-sm': s.type.sm,
+    '--font-size-base': s.type.base,
+    '--font-size-lg': s.type.lg,
+    ...spacing,
+  } as CSSProperties
+}
+
+/** What every consumer reads. Composed from the three layers above. */
+export type AideDensityPreset = {
+  label: string
+  description: string
+  /** Astryx `<SizeProvider>` value. */
+  astryxSize: ElementSize
+  /** `size` prop for Astryx `<SideNavItem>`. */
+  navItemSize: ElementSize
+  /** icon px for nav items. */
+  navIconSize: number
+  /** inline `style` for the density wrapper. */
+  variables: CSSProperties
+}
+
+function buildPreset(raw: RawScale): AideDensityPreset {
+  const s = semantics(raw)
+  return {
+    label: raw.label,
+    description: raw.description,
+    astryxSize: s.astryxSize,
+    navItemSize: s.nav.rowSize,
+    navIconSize: s.nav.iconSize,
+    variables: cssVars(s),
+  }
+}
+
+export const AIDE_DENSITY_PRESETS: Record<AideDensity, AideDensityPreset> = {
+  compact: buildPreset(RAW.compact),
+  default: buildPreset(RAW.default),
+  comfortable: buildPreset(RAW.comfortable),
+  gigantic: buildPreset(RAW.gigantic),
+}
