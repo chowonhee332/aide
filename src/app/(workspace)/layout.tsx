@@ -34,7 +34,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     <div
       style={
         immersive
-          ? { height: '100vh', display: 'flex', gap: 'var(--aui-space-3)', padding: 'var(--aui-space-3)', background: 'var(--aui-page)', colorScheme: 'light', boxSizing: 'border-box' }
+          ? { height: '100vh', display: 'flex', gap: 'var(--aui-space-3)', padding: 'var(--aui-space-3)', background: 'var(--aui-canvas)', colorScheme: 'light', boxSizing: 'border-box' }
           : { minHeight: '100vh', display: 'flex', colorScheme: 'light' }
       }
     >
@@ -53,7 +53,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
           ...(collapsed ? {} : { width: 'var(--aui-density-lnb-width)' }),
           flexShrink: 0,
           ...(immersive
-            ? { height: '100%', borderRadius: 'var(--aui-radius-card)', overflow: 'hidden' }
+            ? { height: '100%', borderRadius: 'var(--aui-radius-card)', overflow: 'hidden', border: '1px solid var(--aui-border-subtle)' }
             : { position: 'sticky', top: 0, alignSelf: 'flex-start', height: '100vh' }),
         }}
       >
@@ -78,7 +78,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
             borderRadius: 'var(--aui-radius-card)',
             overflow: 'hidden',
             background: 'var(--aui-canvas)',
-            boxShadow: 'var(--aui-shadow-card)',
+            border: '1px solid var(--aui-border-subtle)',
           }}
         >
           {children}

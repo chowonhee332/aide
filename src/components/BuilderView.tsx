@@ -202,7 +202,7 @@ interface BuilderViewProps {
 // ─── Design Tokens ───────────────────────────────────────────────────────────
 
 const AIDE = {
-  bg: AIDE_UI.page,
+  bg: AIDE_UI.canvas,
   surface: AIDE_UI.surface,
   surfaceHover: AIDE_UI.surfaceMuted,
   fill: AIDE_UI.fill,
