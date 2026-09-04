@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useMemo, useState, useSyncExternalStore } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { SizeProvider } from '@astryxdesign/core/SizeContext'
 import { Check, Palette } from '@/components/ui/material-icon'
 import {
@@ -19,48 +19,63 @@ type AideDensityContextValue = {
 
 const AideDensityContext = createContext<AideDensityContextValue | null>(null)
 
-/** In-tab subscribers, so a `setDensity` call re-renders every provider without a storage round-trip. */
-const listeners = new Set<() => void>()
-
-function subscribe(onStoreChange: () => void) {
-  listeners.add(onStoreChange)
-  const onStorage = (event: StorageEvent) => {
-    if (event.key === AIDE_DENSITY_STORAGE_KEY) onStoreChange()
+function readStoredDensity(): AideDensity {
+  if (typeof window === 'undefined') return DEFAULT_AIDE_DENSITY
+  try {
+    const saved = window.localStorage.getItem(AIDE_DENSITY_STORAGE_KEY)
+    if (saved && AIDE_DENSITIES.includes(saved as AideDensity)) return saved as AideDensity
+  } catch {
+    /* private mode / storage disabled */
   }
-  window.addEventListener('storage', onStorage)
-  return () => {
-    listeners.delete(onStoreChange)
-    window.removeEventListener('storage', onStorage)
-  }
-}
-
-function getStoredDensity(): AideDensity {
-  const saved = window.localStorage.getItem(AIDE_DENSITY_STORAGE_KEY)
-  return saved && AIDE_DENSITIES.includes(saved as AideDensity) ? (saved as AideDensity) : DEFAULT_AIDE_DENSITY
+  return DEFAULT_AIDE_DENSITY
 }
 
 export function AideDensityProvider({ children }: { children: React.ReactNode }) {
-  const density = useSyncExternalStore(subscribe, getStoredDensity, () => DEFAULT_AIDE_DENSITY)
+  const [density, setDensityState] = useState<AideDensity>(readStoredDensity)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const preset = AIDE_DENSITY_PRESETS[density]
 
   const setDensity = useCallback((next: AideDensity) => {
-    window.localStorage.setItem(AIDE_DENSITY_STORAGE_KEY, next)
-    listeners.forEach((notify) => notify())
+    setDensityState(next)
+    try {
+      window.localStorage.setItem(AIDE_DENSITY_STORAGE_KEY, next)
+    } catch {
+      /* ignore */
+    }
   }, [])
   const openDensityPicker = useCallback(() => setPickerOpen(true), [])
+
+  // Write the density scale straight onto <html> — reaches every element including
+  // portalled overlays, and does not depend on `display:contents` custom-property
+  // inheritance.
+  useEffect(() => {
+    const root = document.documentElement
+    const entries = Object.entries(preset.variables)
+    root.setAttribute('data-aide-density', density)
+    for (const [key, value] of entries) root.style.setProperty(key, String(value))
+    return () => {
+      root.removeAttribute('data-aide-density')
+      for (const [key] of entries) root.style.removeProperty(key)
+    }
+  }, [density, preset])
+
+  // Follow the choice made in another tab.
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === AIDE_DENSITY_STORAGE_KEY) setDensityState(readStoredDensity())
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
 
   const value = useMemo(
     () => ({ density, setDensity, openDensityPicker }),
     [density, setDensity, openDensityPicker],
   )
-  const preset = AIDE_DENSITY_PRESETS[density]
 
   return (
     <AideDensityContext.Provider value={value}>
-      <SizeProvider value={preset.astryxSize}>
-        {/* display:contents — density custom properties still inherit, no layout box added */}
-        <div data-aide-density={density} style={{ display: 'contents', ...preset.variables }}>{children}</div>
-      </SizeProvider>
+      <SizeProvider value={preset.astryxSize}>{children}</SizeProvider>
       {pickerOpen && <DensityPicker density={density} onPick={setDensity} onClose={() => setPickerOpen(false)} />}
     </AideDensityContext.Provider>
   )
@@ -92,8 +107,8 @@ function DensityPicker({
           메뉴·컴포넌트·여백 크기를 한 번에 조절합니다. 브라우저 localStorage에만 저장됩니다.
         </p>
         <div role="radiogroup" aria-label="화면 밀도" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aui-space-2)', marginBottom: '20px' }}>
-          {(AIDE_DENSITIES).map((id) => {
-            const preset = AIDE_DENSITY_PRESETS[id]
+          {AIDE_DENSITIES.map((id) => {
+            const p = AIDE_DENSITY_PRESETS[id]
             const active = density === id
             return (
               <button
@@ -111,8 +126,8 @@ function DensityPicker({
                 }}
               >
                 <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <span style={{ fontSize: 'var(--aui-type-label-size)', fontWeight: 'var(--aui-weight-semibold)', color: 'var(--aui-text)' }}>{preset.label}</span>
-                  <span style={{ fontSize: 'var(--aui-type-caption-size)', color: 'var(--aui-text-muted)' }}>{preset.description}</span>
+                  <span style={{ fontSize: 'var(--aui-type-label-size)', fontWeight: 'var(--aui-weight-semibold)', color: 'var(--aui-text)' }}>{p.label}</span>
+                  <span style={{ fontSize: 'var(--aui-type-caption-size)', color: 'var(--aui-text-muted)' }}>{p.description}</span>
                 </span>
                 {active && <Check size={16} color="var(--aui-primary)" />}
               </button>
