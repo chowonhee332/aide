@@ -3679,9 +3679,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         <div className="text-[12px] font-medium text-[var(--aui-text)] truncate">{section.title || section.type}</div>
                         <div className="text-[10px] text-[var(--aui-text-muted)]">{section.type}</div>
                       </div>
-                      <button disabled={index === 0} onClick={() => moveIrSection(section.id, -1)} className="size-6 text-[12px] disabled:opacity-20" title="위로 이동">↑</button>
-                      <button disabled={index === result.screenIr!.sections.length - 1} onClick={() => moveIrSection(section.id, 1)} className="size-6 text-[12px] disabled:opacity-20" title="아래로 이동">↓</button>
-                      <button disabled={result.screenIr!.sections.length <= 1} onClick={() => removeIrSection(section.id)} className="size-6 text-[12px] text-[var(--aui-negative)] disabled:opacity-20" title="삭제">×</button>
+                      <AstryxIconButton size="sm" variant="ghost" label="위로 이동" tooltip="위로 이동" icon={<span aria-hidden>↑</span>} isDisabled={index === 0} onClick={() => moveIrSection(section.id, -1)} />
+                      <AstryxIconButton size="sm" variant="ghost" label="아래로 이동" tooltip="아래로 이동" icon={<span aria-hidden>↓</span>} isDisabled={index === result.screenIr!.sections.length - 1} onClick={() => moveIrSection(section.id, 1)} />
+                      <AstryxIconButton size="sm" variant="destructive" label="섹션 삭제" tooltip="삭제" icon={<X size={12} />} isDisabled={result.screenIr!.sections.length <= 1} onClick={() => removeIrSection(section.id)} />
                     </div>
                   ))}
                 </div>
@@ -3734,14 +3734,15 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   rows={1}
                   disabled={isRefining}
                 />
-                <button
+                <AstryxIconButton
+                  variant="primary"
+                  icon={<Send size={12} />}
+                  label="대화로 수정 요청"
+                  tooltip="전송"
+                  isDisabled={!chatInput.trim() || isRefining}
+                  isLoading={isRefining}
                   onClick={handleRefine}
-                  disabled={!chatInput.trim() || isRefining}
-                  className="shrink-0 size-7 flex items-center justify-center rounded-full transition-colors"
-                  style={{ backgroundColor: chatInput.trim() && !isRefining ? 'var(--aui-text)' : 'var(--aui-border)' }}
-                >
-                  <Send size={12} style={{ color: chatInput.trim() && !isRefining ? 'var(--aui-on-dark)' : 'var(--aui-text-muted)', marginLeft: '1px' }} />
-                </button>
+                />
               </div>
               <p className="text-[13px] text-[var(--aui-text-muted)] mt-1.5 pl-1">Enter 전송 · Shift+Enter 줄바꿈</p>
             </div>
@@ -3962,9 +3963,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             <div style={{ width: 520, borderLeft: '1px solid var(--aui-shadow-soft)', backgroundColor: 'var(--aui-on-dark)', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
               <div style={{ padding: `var(--aui-space-2) var(--aui-space-3)`, borderBottom: '1px solid var(--aui-shadow-soft)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                 <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text)' }}>Creon Assets</span>
-                <button onClick={() => { sendToIframe({ type: 'aide:pulse', on: false }); setCreonOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: "var(--aui-radius-sm)", border: 'none', background: 'none', cursor: 'pointer', color: 'var(--aui-text-muted)' }}>
-                  <X size={14} />
-                </button>
+                <AstryxIconButton size="sm" variant="ghost" icon={<X size={14} />} label="Creon 패널 닫기" onClick={() => { sendToIframe({ type: 'aide:pulse', on: false }); setCreonOpen(false) }} />
               </div>
               {creonAsset && (
                 <div style={{ padding: `var(--aui-space-2) var(--aui-space-3)`, borderBottom: '1px solid var(--aui-shadow-soft)', backgroundColor: 'var(--aui-page)', flexShrink: 0 }}>
@@ -4360,19 +4359,18 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       {analyzeError}
                     </div>
                     <div style={{ display: 'flex', gap: "var(--aui-space-2)" }}>
-                      <button
+                      <AstryxButton
+                        variant="primary"
+                        label="다시 시도"
                         onClick={handleAnalyze}
-                        disabled={!brief.trim() || isAnalyzing}
-                        style={{ height: 38, padding: `0 var(--aui-space-4)`, borderRadius: "var(--aui-radius-sm)", border: 'none', backgroundColor: F.ink, color: 'var(--aui-on-dark)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", cursor: 'pointer' }}
-                      >
-                        다시 시도
-                      </button>
-                      <button
+                        isLoading={isAnalyzing}
+                        isDisabled={!brief.trim() || isAnalyzing}
+                      />
+                      <AstryxButton
+                        variant="secondary"
+                        label="입력 내용 수정"
                         onClick={() => { setStartedFromLanding(false); setAnalyzeError('') }}
-                        style={{ height: 38, padding: `0 var(--aui-space-4)`, borderRadius: "var(--aui-radius-sm)", border: `1px solid ${F.hairline}`, backgroundColor: F.canvas, color: F.ink, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer' }}
-                      >
-                        입력 내용 수정
-                      </button>
+                      />
                     </div>
                   </div>
                 )}
@@ -4443,16 +4441,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: extractedColors.length > 0 ? `1px solid ${F.hairlineSoft}` : 'none' }}>
                     <img src={logoDataUrl} alt="logo" className="h-8 object-contain" />
                     <span className="flex-1 text-[13px]" style={{ color: F.inkMuted }}>로고가 UI에 자동으로 삽입됩니다</span>
-                    <button
-                      onClick={handleExtractColors}
-                      className="text-[12px] font-semibold px-3 py-1.5 transition-opacity"
-                      style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: F.ink, color: 'var(--aui-on-dark)' }}
-                    >
-                      색상 추출하기
-                    </button>
-                    <button onClick={() => { setLogoDataUrl(null); setBrandColors([]); setExtractedColors([]) }} className="transition-colors ml-1" style={{ color: F.inkMuted }}>
-                      <X size={14} />
-                    </button>
+                    <AstryxButton size="sm" variant="primary" label="색상 추출하기" onClick={handleExtractColors} />
+                    <AstryxIconButton size="sm" variant="ghost" icon={<X size={14} />} label="로고 제거" onClick={() => { setLogoDataUrl(null); setBrandColors([]); setExtractedColors([]) }} />
                   </div>
 
                   {/* Extracted palette */}
