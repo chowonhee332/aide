@@ -4,9 +4,9 @@ import { useState, useCallback, useMemo, useRef, useEffect, startTransition } fr
 import {
   ArrowUp, FileText, Upload, X,
   Check, ChevronDown, Palette, Share2,
-  Trash2, ExternalLink, Link2, KeyRound,
+  Trash2, ExternalLink, Link2,
   Smartphone, Monitor,
-  Download, Eye, EyeOff, Coins,
+  Download,
   LoaderCircle,
 } from '@/components/ui/material-icon'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
@@ -19,6 +19,9 @@ import { writeStudioNewHandoff } from '@/lib/studio-route-handoff'
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl'
 import { TextArea } from '@astryxdesign/core/TextArea'
 import { TextInput } from '@astryxdesign/core/TextInput'
+import { Button } from '@astryxdesign/core/Button'
+import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
+import { Layout, LayoutContent, LayoutFooter } from '@astryxdesign/core/Layout'
 
 const F = {
   canvas:       AIDE_UI.canvas,
@@ -283,13 +286,12 @@ function readSettingsParam(): string | null {
 
 export default function Home() {
   const router = useRouter()
-  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(() => readSettingsParam() === 'api')
+  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
   const [apiKeyTab, setApiKeyTab] = useState<ApiKeyTab>('gemini')
   const [apiKeyInputs, setApiKeyInputs] = useState<Record<ApiKeyTab, string>>(() => readClientApiKeys())
   const [apiKeyValidating, setApiKeyValidating] = useState(false)
   const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
   const [apiKeyError, setApiKeyError] = useState('')
-  const [showApiKey, setShowApiKey] = useState(false)
   const activeApiKeyMeta = API_KEY_META[apiKeyTab]
   const activeApiKeyInput = apiKeyInputs[apiKeyTab]
 
@@ -332,9 +334,18 @@ export default function Home() {
   }
 
 
-  const [usageModalOpen, setUsageModalOpen] = useState(() => readSettingsParam() === 'billing')
+  const [usageModalOpen, setUsageModalOpen] = useState(false)
   const [usageSummary, setUsageSummary] = useState<GeminiUsageSummary | null>(null)
-  const [usageLoading, setUsageLoading] = useState(() => readSettingsParam() === 'billing')
+  const [usageLoading, setUsageLoading] = useState(false)
+
+  // Deep links (/?settings=api|billing) open the matching modal after mount —
+  // reading window in a lazy initializer would desync SSR/CSR hydration.
+  useEffect(() => {
+    const setting = readSettingsParam()
+    if (setting === 'api') setApiKeyModalOpen(true)
+    else if (setting === 'billing') { setUsageLoading(true); setUsageModalOpen(true) }
+  }, [])
+
   useEffect(() => {
     if (!usageModalOpen) return
     fetch('/api/usage')
@@ -2599,161 +2610,80 @@ export default function Home() {
 
             {/* API Key modal */}
       {apiKeyModalOpen && (
-        <div
-          onClick={() => setApiKeyModalOpen(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 1000, backgroundColor: 'var(--aui-scrim)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ background: F.canvas, borderRadius: "var(--aui-radius-overlay)", padding: "var(--aui-space-8)", width: '520px', maxWidth: 'calc(100vw - 32px)', boxShadow: "var(--aui-shadow-modal)" }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", marginBottom: '8px' }}>
-              <KeyRound size={20} color={F.primary} />
-              <h2 style={{ fontSize: "var(--aui-type-section-title-size)", fontWeight: "var(--aui-weight-bold)", color: F.ink, margin: 0 }}>{activeApiKeyMeta.title}</h2>
-            </div>
-            <div style={{ display: 'flex', gap: "var(--aui-space-2)", padding: "var(--aui-space-1)", borderRadius: "var(--aui-radius-control)", background: F.surface1, margin: `var(--aui-space-4) 0 var(--aui-space-4)` }}>
-              {(Object.keys(API_KEY_META) as ApiKeyTab[]).map(tab => {
-                const active = apiKeyTab === tab
-                const saved = Boolean(apiKeyInputs[tab]?.trim())
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => {
-                      setApiKeyTab(tab)
-                      setApiKeyStatus('idle')
-                      setApiKeyError('')
-                      setShowApiKey(false)
-                    }}
-                    style={{
-                      flex: 1,
-                      border: 'none',
-                      borderRadius: "var(--aui-radius-sm)",
-                      padding: `var(--aui-space-2) var(--aui-space-2)`,
-                      background: active ? F.canvas : 'transparent',
-                      color: active ? F.ink : F.inkMuted,
-                      boxShadow: active ? "var(--aui-shadow-subtle)" : 'none',
-                      fontSize: "var(--aui-type-compact-size)",
-                      fontWeight: active ? 700 : 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {API_KEY_META[tab].label}{saved ? ' · 저장됨' : ''}
-                  </button>
-                )
-              })}
-            </div>
-            <p style={{ fontSize: "var(--aui-type-compact-size)", color: F.inkMuted, marginBottom: '20px', lineHeight: "var(--aui-leading-relaxed)" }}>
-              {activeApiKeyMeta.description} 브라우저 localStorage에만 저장됩니다.
-            </p>
-            <div style={{ position: 'relative', marginBottom: apiKeyError ? '8px' : '16px' }}>
-              <input
-                type={showApiKey ? 'text' : 'password'}
-                value={activeApiKeyInput}
-                onChange={e => {
-                  setApiKeyInputs(prev => ({ ...prev, [apiKeyTab]: e.target.value }))
-                  setApiKeyStatus('idle')
-                  setApiKeyError('')
-                }}
-                onKeyDown={e => { if (e.key === 'Enter') handleValidateAndSave() }}
-                placeholder={activeApiKeyMeta.placeholder}
-                autoFocus
-                disabled={apiKeyValidating}
-                style={{
-                  width: '100%', boxSizing: 'border-box', borderRadius: "var(--aui-radius-control)",
-                  border: `1.5px solid ${apiKeyStatus === 'valid' ? 'var(--aui-positive)' : apiKeyStatus === 'invalid' ? 'var(--aui-negative)' : F.hairline}`,
-                  padding: `var(--aui-space-3) var(--aui-space-10) var(--aui-space-3) var(--aui-space-4)`, fontSize: "var(--aui-type-label-size)", color: F.ink, outline: 'none',
-                  fontFamily: 'monospace',
-                  background: apiKeyValidating ? F.surface1 : F.canvas,
-                }}
-                onFocus={e => { if (apiKeyStatus === 'idle') e.currentTarget.style.borderColor = F.primary }}
-                onBlur={e => { if (apiKeyStatus === 'idle') e.currentTarget.style.borderColor = F.hairline }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowApiKey(v => !v)}
-                style={{
-                  position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
-                  background: 'none', border: 'none', padding: "var(--aui-space-1)", cursor: 'pointer',
-                  color: F.inkMuted, display: 'flex', alignItems: 'center',
-                }}
-              >
-                {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            {apiKeyError && (
-              <p style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-negative)', margin: `0 0 var(--aui-space-4)`, lineHeight: "var(--aui-leading-normal)" }}>{apiKeyError}</p>
-            )}
-            {apiKeyStatus === 'valid' && (
-              <p style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-positive)', margin: `0 0 var(--aui-space-4)`, lineHeight: "var(--aui-leading-normal)" }}>✓ 저장되었습니다.</p>
-            )}
-            <div style={{ display: 'flex', gap: "var(--aui-space-2)", justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setApiKeyModalOpen(false)}
-                disabled={apiKeyValidating}
-                style={{ padding: `var(--aui-space-2) var(--aui-space-5)`, borderRadius: "var(--aui-radius-control)", border: `1px solid ${F.hairline}`, background: 'none', fontSize: "var(--aui-type-label-size)", cursor: 'pointer', color: F.inkMuted }}
-              >
-                취소
-              </button>
-              <button
-                onClick={handleValidateAndSave}
-                disabled={apiKeyValidating || !activeApiKeyInput.trim()}
-                style={{
-                  padding: `var(--aui-space-2) var(--aui-space-5)`, borderRadius: "var(--aui-radius-control)", border: 'none',
-                  background: apiKeyValidating || !activeApiKeyInput.trim() ? F.hairline : F.primary,
-                  color: apiKeyValidating || !activeApiKeyInput.trim() ? F.inkMuted : 'var(--aui-on-dark)',
-                  fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)",
-                  cursor: apiKeyValidating || !activeApiKeyInput.trim() ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {apiKeyValidating ? (apiKeyTab === 'gemini' ? '검증 중...' : '저장 중...') : apiKeyTab === 'gemini' ? '검증 후 저장' : '저장'}
-              </button>
-            </div>
-          </div>
-        </div>
+      <Dialog isOpen={apiKeyModalOpen} onOpenChange={(open) => { if (!open) setApiKeyModalOpen(false) }} purpose="form" width={520}>
+        <Layout
+          header={<DialogHeader title={activeApiKeyMeta.title} onOpenChange={(open) => { if (!open) setApiKeyModalOpen(false) }} />}
+          content={
+            <LayoutContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aui-space-4)' }}>
+                <SegmentedControl
+                  label="API 종류"
+                  layout="fill"
+                  value={apiKeyTab}
+                  onChange={(tab) => { setApiKeyTab(tab as ApiKeyTab); setApiKeyStatus('idle'); setApiKeyError('') }}
+                >
+                  {(Object.keys(API_KEY_META) as ApiKeyTab[]).map((tab) => (
+                    <SegmentedControlItem
+                      key={tab}
+                      value={tab}
+                      label={`${API_KEY_META[tab].label}${apiKeyInputs[tab]?.trim() ? ' · 저장됨' : ''}`}
+                    />
+                  ))}
+                </SegmentedControl>
+                <p style={{ fontSize: 'var(--aui-type-compact-size)', color: F.inkMuted, margin: 0, lineHeight: 'var(--aui-leading-relaxed)' }}>
+                  {activeApiKeyMeta.description} 브라우저 localStorage에만 저장됩니다.
+                </p>
+                <TextInput
+                  label={activeApiKeyMeta.title}
+                  isLabelHidden
+                  type="password"
+                  value={activeApiKeyInput}
+                  onChange={(v) => {
+                    setApiKeyInputs((prev) => ({ ...prev, [apiKeyTab]: v }))
+                    setApiKeyStatus('idle')
+                    setApiKeyError('')
+                  }}
+                  onEnter={handleValidateAndSave}
+                  placeholder={activeApiKeyMeta.placeholder}
+                  hasAutoFocus
+                  isDisabled={apiKeyValidating}
+                  status={
+                    apiKeyStatus === 'valid'
+                      ? { type: 'success', message: '저장되었습니다.' }
+                      : apiKeyStatus === 'invalid' || apiKeyError
+                        ? { type: 'error', message: apiKeyError || '유효하지 않은 키입니다.' }
+                        : undefined
+                  }
+                />
+              </div>
+            </LayoutContent>
+          }
+          footer={
+            <LayoutFooter hasDivider>
+              <div style={{ display: 'flex', gap: 'var(--aui-space-2)', justifyContent: 'flex-end' }}>
+                <Button variant="ghost" label="취소" onClick={() => setApiKeyModalOpen(false)} isDisabled={apiKeyValidating} />
+                <Button
+                  variant="primary"
+                  label={apiKeyValidating ? (apiKeyTab === 'gemini' ? '검증 중...' : '저장 중...') : apiKeyTab === 'gemini' ? '검증 후 저장' : '저장'}
+                  onClick={handleValidateAndSave}
+                  isLoading={apiKeyValidating}
+                  isDisabled={apiKeyValidating || !activeApiKeyInput.trim()}
+                />
+              </div>
+            </LayoutFooter>
+          }
+        />
+      </Dialog>
       )}
 
       {/* Usage modal */}
       {usageModalOpen && (
-        <div
-          onClick={() => setUsageModalOpen(false)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 1000,
-            backgroundColor: 'var(--aui-scrim)', backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: "var(--aui-space-6)",
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              width: '100%', maxWidth: '720px', maxHeight: '88vh',
-              borderRadius: "var(--aui-radius-overlay)", backgroundColor: F.canvas,
-              border: `1px solid ${F.hairline}`,
-              boxShadow: "var(--aui-shadow-modal)",
-              display: 'flex', flexDirection: 'column', overflow: 'hidden',
-            }}
-          >
-            <div style={{
-              padding: `var(--aui-space-4) var(--aui-space-6)`, borderBottom: `1px solid ${F.hairlineSoft}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
-                <Coins size={16} color={F.inkMuted} />
-                <span style={{ color: F.ink, fontSize: "var(--aui-type-body-size)", fontWeight: "var(--aui-weight-semibold)", letterSpacing: "var(--aui-tracking-tighter)" }}>Gemini 사용량</span>
-              </div>
-              <button
-                onClick={() => setUsageModalOpen(false)}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: F.inkMuted, display: 'flex', alignItems: 'center',
-                  padding: "var(--aui-space-1)", borderRadius: "var(--aui-radius-sm)", fontFamily: 'inherit',
-                  fontSize: "var(--aui-type-section-title-size)", lineHeight: "var(--aui-leading-none)",
-                }}
-              >
-                ✕
-              </button>
-            </div>
-            <div style={{ padding: "var(--aui-space-6)", overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: "var(--aui-space-4)" }}>
+      <Dialog isOpen={usageModalOpen} onOpenChange={(open) => { if (!open) setUsageModalOpen(false) }} width={720} maxHeight="88vh">
+        <Layout
+          header={<DialogHeader title="Gemini 사용량" onOpenChange={(open) => { if (!open) setUsageModalOpen(false) }} />}
+          content={
+            <LayoutContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aui-space-4)' }}>
               <p style={{ margin: 0, fontSize: "var(--aui-type-caption-size)", color: F.inkMuted, lineHeight: 1.5 }}>
                 Aide가 이 기기에서 직접 호출한 Gemini API 요청 기준 추정치입니다. Google 공식 청구 금액과 다를 수 있습니다.
               </p>
@@ -2786,9 +2716,11 @@ export default function Home() {
                   </div>
                 </>
               )}
-            </div>
-          </div>
-        </div>
+              </div>
+            </LayoutContent>
+          }
+        />
+      </Dialog>
       )}
     </div>
   )
