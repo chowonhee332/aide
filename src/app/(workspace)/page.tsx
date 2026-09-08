@@ -1751,24 +1751,18 @@ export default function Home() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)", backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, marginBottom: '14px' }}>
                   <img src={brandLogo} alt="logo" style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: "var(--aui-radius-sm)" }} />
                   <span style={{ fontSize: "var(--aui-type-caption-size)", color: F.ink, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{brandLogoName}</span>
-                  <button onClick={clearBrand} style={{ border: 'none', background: 'none', cursor: 'pointer', color: F.inkMuted, display: 'flex' }}>
-                    <X size={14} />
-                  </button>
+                  <IconButton size="sm" variant="ghost" icon={<X size={14} />} label="로고 제거" onClick={clearBrand} />
                 </div>
               ) : (
-                <button
-                  onClick={() => logoInputRef.current?.click()}
-                  style={{
-                    width: '100%', padding: "var(--aui-space-4)", borderRadius: "var(--aui-radius-control)", marginBottom: '14px',
-                    border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
-                    color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
-                    letterSpacing: "var(--aui-tracking-tight)",
-                  }}
-                >
-                  <Upload size={13} />
-                  로고 이미지 업로드
-                </button>
+                <div style={{ marginBottom: '14px' }}>
+                  <Button
+                    variant="secondary"
+                    width="100%"
+                    icon={<Upload size={13} />}
+                    label="로고 이미지 업로드"
+                    onClick={() => logoInputRef.current?.click()}
+                  />
+                </div>
               )}
 
               {/* Colors section */}
@@ -1789,31 +1783,21 @@ export default function Home() {
               <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
               {brandLogo && (
                 <div style={{ display: 'flex', gap: "var(--aui-space-2)", marginBottom: 10 }}>
-                  <button
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    label={extractingColors ? '추출 중...' : '컬러 추출'}
                     onClick={handleExtractBrandColors}
-                    disabled={extractingColors}
-                    style={{
-                      height: 32, padding: `0 var(--aui-space-3)`, borderRadius: "var(--aui-radius-sm)",
-                      border: `1px solid ${F.hairline}`, backgroundColor: F.surface2,
-                      color: extractingColors ? F.inkMuted : F.ink, fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)",
-                      cursor: extractingColors ? 'default' : 'pointer',
-                    }}
-                  >
-                    {extractingColors ? '추출 중...' : '컬러 추출'}
-                  </button>
-                  <button
+                    isLoading={extractingColors}
+                    isDisabled={extractingColors}
+                  />
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    label="적용하기"
                     onClick={handleApplyBrandColors}
-                    disabled={extractedBrandColors.length === 0}
-                    style={{
-                      height: 32, padding: `0 var(--aui-space-3)`, borderRadius: "var(--aui-radius-sm)", border: 'none',
-                      backgroundColor: extractedBrandColors.length > 0 ? F.ink : F.hairlineSoft,
-                      color: extractedBrandColors.length > 0 ? 'var(--aui-on-dark)' : F.inkMuted,
-                      fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)",
-                      cursor: extractedBrandColors.length > 0 ? 'pointer' : 'default',
-                    }}
-                  >
-                    적용하기
-                  </button>
+                    isDisabled={extractedBrandColors.length === 0}
+                  />
                 </div>
               )}
               <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", flexWrap: 'wrap' }}>
@@ -1827,22 +1811,25 @@ export default function Home() {
                         style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', border: 'none', padding: 0 }}
                       />
                     </label>
-                    <button
-                      onClick={() => setExtractedBrandColors(extractedBrandColors.filter((_, j) => j !== i))}
-                      style={{ position: 'absolute', top: '-4px', right: '-4px', width: '14px', height: '14px', borderRadius: '50%', backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-                    >
-                      <X size={8} />
-                    </button>
+                    <span style={{ position: 'absolute', top: '-8px', right: '-8px' }}>
+                      <IconButton
+                        size="sm"
+                        variant="ghost"
+                        icon={<X size={8} />}
+                        label="컬러 제거"
+                        onClick={() => setExtractedBrandColors(extractedBrandColors.filter((_, j) => j !== i))}
+                      />
+                    </span>
                     <span style={{ fontSize: "var(--aui-type-meta-size)", fontFamily: 'monospace', color: F.inkMuted }}>{color.toUpperCase()}</span>
                   </div>
                 ))}
                 {extractedBrandColors.length < 5 && (
-                  <button
+                  <IconButton
+                    variant="secondary"
+                    icon={<span style={{ fontSize: 'var(--aui-icon-md)', lineHeight: 'var(--aui-leading-none)' }}>+</span>}
+                    label="컬러 추가"
                     onClick={() => setExtractedBrandColors([...extractedBrandColors, 'var(--aui-inverse-surface)'])}
-                    style={{ width: '36px', height: '36px', borderRadius: '50%', border: `1.5px dashed ${F.hairline}`, backgroundColor: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: F.inkMuted, fontSize: "var(--aui-icon-md)", lineHeight: "var(--aui-leading-none)" }}
-                  >
-                    +
-                  </button>
+                  />
                 )}
                 {extractedBrandColors.length === 0 && !brandLogo && (
                   <span style={{ fontSize: "var(--aui-type-caption-size)", color: F.inkMuted }}>로고를 먼저 업로드해 주세요.</span>
@@ -1911,70 +1898,44 @@ export default function Home() {
                           <div style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", color: F.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.name}</div>
                           <div style={{ fontSize: "var(--aui-type-micro-size)", color: F.inkMuted, marginTop: 2 }}>{entry.text.length.toLocaleString()}자</div>
                         </div>
-                        <button onClick={() => setPrdDocEntries(prev => prev.filter((_, i) => i !== index))} style={{ border: 'none', background: 'none', cursor: 'pointer', color: F.inkMuted, display: 'flex', padding: "var(--aui-space-1)" }}>
-                          <X size={14} />
-                        </button>
+                        <IconButton size="sm" variant="ghost" icon={<X size={14} />} label="문서 제거" onClick={() => setPrdDocEntries(prev => prev.filter((_, i) => i !== index))} />
                       </div>
                     ))}
-                    <button
+                    <Button
+                      variant="secondary"
+                      width="100%"
+                      icon={prdParsing ? undefined : <Upload size={13} />}
+                      label={prdParsing
+                        ? '문서 분석 중… (스캔·캡처는 시간이 걸립니다)'
+                        : prdDocEntries.length ? '문서 추가' : 'RFP · 요구사항 업로드 (PDF, 캡처 이미지, .txt, .md, .html)'}
                       onClick={() => prdFileInputRef.current?.click()}
-                      disabled={prdParsing}
-                      style={{
-                        width: '100%', padding: "var(--aui-space-4)", borderRadius: "var(--aui-radius-control)",
-                        border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
-                        color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)",
-                        cursor: prdParsing ? 'wait' : 'pointer', opacity: prdParsing ? 0.6 : 1,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
-                        letterSpacing: "var(--aui-tracking-tight)",
-                      }}
-                    >
-                      {prdParsing ? (
-                        <>
-                          <div className="size-3 rounded-full animate-spin" style={{ border: `2px solid ${F.hairline}`, borderTopColor: F.ink }} />
-                          문서 분석 중… (스캔·캡처는 시간이 걸립니다)
-                        </>
-                      ) : (
-                        <>
-                          <Upload size={13} />
-                          {prdDocEntries.length ? '문서 추가' : 'RFP · 요구사항 업로드 (PDF, 캡처 이미지, .txt, .md, .html)'}
-                        </>
-                      )}
-                    </button>
+                      isLoading={prdParsing}
+                      isDisabled={prdParsing}
+                    />
                   </div>
 
                   <div style={{ marginBottom: 10 }}>
                     <p style={{ fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)", color: F.inkMuted, marginBottom: '8px', letterSpacing: "var(--aui-tracking-tight)" }}>HTML 화면기획서 링크</p>
-                    <div style={{ display: 'flex', gap: "var(--aui-space-2)" }}>
-                      <input
-                        type="text"
-                        value={htmlSourceUrlInput}
-                        onChange={e => { setHtmlSourceUrlInput(e.target.value); setRefError(null) }}
-                        onKeyDown={e => e.key === 'Enter' && handleHtmlSourceUrlImport()}
-                        placeholder="HTML 화면기획서 URL 붙여넣기"
-                        style={{
-                          flex: 1, padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)",
-                          border: refError ? '1px solid color-mix(in srgb, var(--aui-negative) 50%, transparent)' : `1px solid ${F.hairline}`,
-                          backgroundColor: F.surface2, color: F.ink,
-                          fontSize: "var(--aui-type-compact-size)", fontFamily: 'inherit', outline: 'none',
-                          letterSpacing: "var(--aui-tracking-tight)",
-                        }}
-                      />
-                      <button
+                    <div style={{ display: 'flex', gap: "var(--aui-space-2)", alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1 }}>
+                        <TextInput
+                          label="HTML 화면기획서 링크"
+                          isLabelHidden
+                          value={htmlSourceUrlInput}
+                          onChange={(v) => { setHtmlSourceUrlInput(v); setRefError(null) }}
+                          onEnter={handleHtmlSourceUrlImport}
+                          placeholder="HTML 화면기획서 URL 붙여넣기"
+                          status={refError ? { type: 'error', message: refError } : undefined}
+                        />
+                      </div>
+                      <Button
+                        variant="primary"
+                        icon={<Link2 size={12} />}
+                        label={htmlSourceLoading ? '가져오는 중…' : '가져오기'}
                         onClick={handleHtmlSourceUrlImport}
-                        disabled={!htmlSourceUrlInput.trim() || htmlSourceLoading}
-                        style={{
-                          padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)", flexShrink: 0,
-                          border: 'none', cursor: htmlSourceUrlInput.trim() && !htmlSourceLoading ? 'pointer' : 'default',
-                          backgroundColor: htmlSourceUrlInput.trim() && !htmlSourceLoading ? F.ink : F.surface2,
-                          color: htmlSourceUrlInput.trim() && !htmlSourceLoading ? F.canvas : 'var(--aui-scrim-soft)',
-                          fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", letterSpacing: "var(--aui-tracking-tight)",
-                          transition: 'all 0.15s', whiteSpace: 'nowrap',
-                          display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)",
-                        }}
-                      >
-                        <Link2 size={12} />
-                        {htmlSourceLoading ? '가져오는 중…' : '가져오기'}
-                      </button>
+                        isLoading={htmlSourceLoading}
+                        isDisabled={!htmlSourceUrlInput.trim() || htmlSourceLoading}
+                      />
                     </div>
                   </div>
 
@@ -1989,39 +1950,29 @@ export default function Home() {
                             <div style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", color: F.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{iaImageFileName}</div>
                             <div style={{ fontSize: "var(--aui-type-micro-size)", color: F.inkMuted, marginTop: 2 }}>텍스트 파싱 완료 · {iaText.length.toLocaleString()}자</div>
                           </div>
-                          <button onClick={() => { setIaText(null); setIaImageFileName(null) }}
-                            style={{ marginLeft: 'auto', width: 24, height: 24, borderRadius: '50%', border: 'none', backgroundColor: F.hairline, color: F.inkMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <X size={12} />
-                          </button>
+                          <span style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                            <IconButton size="sm" variant="ghost" icon={<X size={12} />} label="파싱 결과 제거" onClick={() => { setIaText(null); setIaImageFileName(null) }} />
+                          </span>
                         </div>
                       </div>
                     ) : iaImage ? (
                       <div style={{ position: 'relative', borderRadius: "var(--aui-radius-control)", overflow: 'hidden', border: `1px solid ${F.hairline}`, backgroundColor: F.surface2 }}>
                         <img src={`data:image/png;base64,${iaImage}`} alt="IA" style={{ width: '100%', maxHeight: 160, objectFit: 'contain', display: 'block' }} />
                         <div style={{ position: 'absolute', top: 6, right: 6 }}>
-                          <button onClick={() => { setIaImage(null); setIaImageFileName(null) }}
-                            style={{ width: 24, height: 24, borderRadius: '50%', border: 'none', backgroundColor: 'var(--aui-scrim-strong)', color: 'var(--aui-on-dark)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <X size={12} />
-                          </button>
+                          <IconButton size="sm" variant="secondary" icon={<X size={12} />} label="이미지 제거" onClick={() => { setIaImage(null); setIaImageFileName(null) }} />
                         </div>
                         {iaImageFileName && (
                           <div style={{ padding: `var(--aui-space-2) var(--aui-space-3)`, fontSize: "var(--aui-type-micro-size)", color: F.inkMuted }}>{iaImageFileName}</div>
                         )}
                       </div>
                     ) : (
-                      <button
+                      <Button
+                        variant="secondary"
+                        width="100%"
+                        icon={<Upload size={13} />}
+                        label="IA · 와이어프레임 · HTML 업로드"
                         onClick={() => iaImageInputRef.current?.click()}
-                        style={{
-                          width: '100%', padding: "var(--aui-space-4)", borderRadius: "var(--aui-radius-control)",
-                          border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
-                          color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
-                          letterSpacing: "var(--aui-tracking-tight)",
-                        }}
-                      >
-                        <Upload size={13} />
-                        IA · 와이어프레임 · HTML 업로드
-                      </button>
+                      />
                     )}
                   </div>
                   <div style={{ marginTop: 10, padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)", backgroundColor: 'var(--aui-primary-tint)', border: `1px solid var(--aui-primary-muted)`, color: F.inkMuted, fontSize: "var(--aui-type-caption-size)", lineHeight: "var(--aui-leading-relaxed)" }}>
@@ -2042,27 +1993,21 @@ export default function Home() {
                         {asIsAnalysis.layoutType} · 섹션 {asIsAnalysis.sections.length}개 · CTA {asIsAnalysis.primaryCtas.length}개
                       </div>
                     </div>
-                    <button onClick={clearAsIs} style={{ border: 'none', background: 'none', cursor: 'pointer', color: F.inkMuted, display: 'flex', padding: "var(--aui-space-1)" }}>
-                      <X size={14} />
-                    </button>
+                    <IconButton size="sm" variant="ghost" icon={<X size={14} />} label="As-is 분석 제거" onClick={clearAsIs} />
                   </div>
                 </div>
               )}
 
               {(sourceTab === 'wireframe' || sourceTab === 'reference') && (
-                <button
-                  onClick={() => refImageInputRef.current?.click()}
-                  style={{
-                    width: '100%', padding: "var(--aui-space-4)", borderRadius: "var(--aui-radius-control)",
-                    border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
-                    color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
-                    marginBottom: '14px', letterSpacing: "var(--aui-tracking-tight)",
-                  }}
-                >
-                  <Upload size={13} />
-                  {sourceTab === 'wireframe' ? '와이어프레임 이미지 업로드' : '참고 이미지 업로드'}
-                </button>
+                <div style={{ marginBottom: '14px' }}>
+                  <Button
+                    variant="secondary"
+                    width="100%"
+                    icon={<Upload size={13} />}
+                    label={sourceTab === 'wireframe' ? '와이어프레임 이미지 업로드' : '참고 이미지 업로드'}
+                    onClick={() => refImageInputRef.current?.click()}
+                  />
+                </div>
               )}
 
               {sourceTab === 'reference' && (
@@ -2072,34 +2017,24 @@ export default function Home() {
                     <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-micro-size)", letterSpacing: "var(--aui-tracking-tight)" }}>또는 드리블·앱스토어 검색</span>
                     <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
                   </div>
-                  <div style={{ display: 'flex', gap: "var(--aui-space-2)", marginBottom: '10px' }}>
-                    <input
-                      type="text"
-                      value={refSearchQuery}
-                      onChange={e => setRefSearchQuery(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleRefSearch()}
-                      placeholder="예: coffee app, 배달 앱, fitness tracker"
-                      style={{
-                        flex: 1, padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)",
-                        border: `1px solid ${F.hairline}`, backgroundColor: F.surface2,
-                        color: F.ink, fontSize: "var(--aui-type-compact-size)", fontFamily: 'inherit', outline: 'none',
-                        letterSpacing: "var(--aui-tracking-tight)",
-                      }}
-                    />
-                    <button
+                  <div style={{ display: 'flex', gap: "var(--aui-space-2)", marginBottom: '10px', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <TextInput
+                        label="레퍼런스 검색"
+                        isLabelHidden
+                        value={refSearchQuery}
+                        onChange={setRefSearchQuery}
+                        onEnter={handleRefSearch}
+                        placeholder="예: coffee app, 배달 앱, fitness tracker"
+                      />
+                    </div>
+                    <Button
+                      variant="primary"
+                      label={refSearching ? '검색 중…' : '검색'}
                       onClick={handleRefSearch}
-                      disabled={!refSearchQuery.trim() || refSearching}
-                      style={{
-                        padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)", flexShrink: 0,
-                        border: 'none', cursor: refSearchQuery.trim() && !refSearching ? 'pointer' : 'default',
-                        backgroundColor: refSearchQuery.trim() && !refSearching ? F.ink : F.surface2,
-                        color: refSearchQuery.trim() && !refSearching ? F.canvas : 'var(--aui-scrim-soft)',
-                        fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", letterSpacing: "var(--aui-tracking-tight)",
-                        transition: 'all 0.15s', whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {refSearching ? '검색 중…' : '검색'}
-                    </button>
+                      isLoading={refSearching}
+                      isDisabled={!refSearchQuery.trim() || refSearching}
+                    />
                   </div>
                   {refSearchResults.length > 0 && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: "var(--aui-space-2)", marginBottom: '12px' }}>
@@ -2147,24 +2082,18 @@ export default function Home() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)", backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, marginBottom: '14px' }}>
                       <img src={brandLogo} alt="logo" style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: "var(--aui-radius-sm)" }} />
                       <span style={{ fontSize: "var(--aui-type-caption-size)", color: F.ink, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{brandLogoName}</span>
-                      <button onClick={clearBrand} style={{ border: 'none', background: 'none', cursor: 'pointer', color: F.inkMuted, display: 'flex' }}>
-                        <X size={14} />
-                      </button>
+                      <IconButton size="sm" variant="ghost" icon={<X size={14} />} label="로고 제거" onClick={clearBrand} />
                     </div>
                   ) : (
-                    <button
-                      onClick={() => logoInputRef.current?.click()}
-                      style={{
-                        width: '100%', padding: "var(--aui-space-4)", borderRadius: "var(--aui-radius-control)", marginBottom: '14px',
-                        border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
-                        color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
-                        letterSpacing: "var(--aui-tracking-tight)",
-                      }}
-                    >
-                      <Upload size={13} />
-                      로고 이미지 업로드
-                    </button>
+                    <div style={{ marginBottom: '14px' }}>
+                      <Button
+                        variant="secondary"
+                        width="100%"
+                        icon={<Upload size={13} />}
+                        label="로고 이미지 업로드"
+                        onClick={() => logoInputRef.current?.click()}
+                      />
+                    </div>
                   )}
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", marginBottom: '8px' }}>
@@ -2174,31 +2103,21 @@ export default function Home() {
                   </div>
                   {brandLogo && (
                     <div style={{ display: 'flex', gap: "var(--aui-space-2)", marginBottom: 10 }}>
-                      <button
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        label={extractingColors ? '추출 중...' : '컬러 추출'}
                         onClick={handleExtractBrandColors}
-                        disabled={extractingColors}
-                        style={{
-                          height: 32, padding: `0 var(--aui-space-3)`, borderRadius: "var(--aui-radius-sm)",
-                          border: `1px solid ${F.hairline}`, backgroundColor: F.surface2,
-                          color: extractingColors ? F.inkMuted : F.ink, fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)",
-                          cursor: extractingColors ? 'default' : 'pointer',
-                        }}
-                      >
-                        {extractingColors ? '추출 중...' : '컬러 추출'}
-                      </button>
-                      <button
+                        isLoading={extractingColors}
+                        isDisabled={extractingColors}
+                      />
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        label="적용하기"
                         onClick={handleApplyBrandColors}
-                        disabled={extractedBrandColors.length === 0}
-                        style={{
-                          height: 32, padding: `0 var(--aui-space-3)`, borderRadius: "var(--aui-radius-sm)", border: 'none',
-                          backgroundColor: extractedBrandColors.length > 0 ? F.ink : F.hairlineSoft,
-                          color: extractedBrandColors.length > 0 ? 'var(--aui-on-dark)' : F.inkMuted,
-                          fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-bold)",
-                          cursor: extractedBrandColors.length > 0 ? 'pointer' : 'default',
-                        }}
-                      >
-                        적용하기
-                      </button>
+                        isDisabled={extractedBrandColors.length === 0}
+                      />
                     </div>
                   )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", flexWrap: 'wrap' }}>
@@ -2212,22 +2131,25 @@ export default function Home() {
                             style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', border: 'none', padding: 0 }}
                           />
                         </label>
-                        <button
-                          onClick={() => setExtractedBrandColors(extractedBrandColors.filter((_, j) => j !== i))}
-                          style={{ position: 'absolute', top: '-4px', right: '-4px', width: '14px', height: '14px', borderRadius: '50%', backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-                        >
-                          <X size={8} />
-                        </button>
+                        <span style={{ position: 'absolute', top: '-8px', right: '-8px' }}>
+                          <IconButton
+                            size="sm"
+                            variant="ghost"
+                            icon={<X size={8} />}
+                            label="컬러 제거"
+                            onClick={() => setExtractedBrandColors(extractedBrandColors.filter((_, j) => j !== i))}
+                          />
+                        </span>
                         <span style={{ fontSize: "var(--aui-type-meta-size)", fontFamily: 'monospace', color: F.inkMuted }}>{color.toUpperCase()}</span>
                       </div>
                     ))}
                     {extractedBrandColors.length < 5 && (
-                      <button
+                      <IconButton
+                        variant="secondary"
+                        icon={<span style={{ fontSize: 'var(--aui-icon-md)', lineHeight: 'var(--aui-leading-none)' }}>+</span>}
+                        label="컬러 추가"
                         onClick={() => setExtractedBrandColors([...extractedBrandColors, 'var(--aui-inverse-surface)'])}
-                        style={{ width: '36px', height: '36px', borderRadius: '50%', border: `1.5px dashed ${F.hairline}`, backgroundColor: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: F.inkMuted, fontSize: "var(--aui-icon-md)", lineHeight: "var(--aui-leading-none)" }}
-                      >
-                        +
-                      </button>
+                      />
                     )}
                     {extractedBrandColors.length === 0 && !brandLogo && (
                       <span style={{ fontSize: "var(--aui-type-caption-size)", color: F.inkMuted }}>로고를 먼저 업로드해 주세요.</span>
@@ -2265,46 +2187,31 @@ export default function Home() {
                         <div key={`${shot.name}-${index}`} style={{ position: 'relative', width: 56, height: 96, borderRadius: "var(--aui-radius-sm)", overflow: 'hidden', border: `1px solid ${F.hairline}`, backgroundColor: F.surface2 }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={`data:${shot.mimeType};base64,${shot.data}`} alt={shot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          <button
-                            onClick={() => setAsIsShots(prev => prev.filter((_, i) => i !== index))}
-                            aria-label={`${shot.name} 제거`}
-                            style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', border: 'none', cursor: 'pointer', backgroundColor: 'var(--aui-scrim-strong)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-                          >
-                            <X size={10} />
-                          </button>
+                          <span style={{ position: 'absolute', top: 2, right: 2 }}>
+                            <IconButton size="sm" variant="secondary" icon={<X size={10} />} label={`${shot.name} 제거`} onClick={() => setAsIsShots(prev => prev.filter((_, i) => i !== index))} />
+                          </span>
                         </div>
                       ))}
                     </div>
                   )}
-                  <div style={{ display: 'flex', gap: "var(--aui-space-2)", marginBottom: '14px' }}>
-                    <button
-                      onClick={() => asIsShotInputRef.current?.click()}
-                      style={{
-                        flex: 1, padding: "var(--aui-space-4)", borderRadius: "var(--aui-radius-control)",
-                        border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
-                        color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
-                        letterSpacing: "var(--aui-tracking-tight)",
-                      }}
-                    >
-                      <Upload size={13} />
-                      {asIsShots.length ? `캡처 추가 (${asIsShots.length}/12)` : '앱·화면 캡처 업로드 (URL 없을 때)'}
-                    </button>
+                  <div style={{ display: 'flex', gap: "var(--aui-space-2)", marginBottom: '14px', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <Button
+                        variant="secondary"
+                        width="100%"
+                        icon={<Upload size={13} />}
+                        label={asIsShots.length ? `캡처 추가 (${asIsShots.length}/12)` : '앱·화면 캡처 업로드 (URL 없을 때)'}
+                        onClick={() => asIsShotInputRef.current?.click()}
+                      />
+                    </div>
                     {asIsShots.length > 0 && (
-                      <button
+                      <Button
+                        variant="primary"
+                        label={refCapturing ? '분석 중…' : '캡처 분석하기'}
                         onClick={handleAsIsShotAnalyze}
-                        disabled={refCapturing}
-                        style={{
-                          padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)", flexShrink: 0,
-                          border: 'none', cursor: refCapturing ? 'default' : 'pointer',
-                          backgroundColor: refCapturing ? F.surface2 : F.ink,
-                          color: refCapturing ? 'var(--aui-scrim-soft)' : F.canvas,
-                          fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", letterSpacing: "var(--aui-tracking-tight)",
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {refCapturing ? '분석 중…' : '캡처 분석하기'}
-                      </button>
+                        isLoading={refCapturing}
+                        isDisabled={refCapturing}
+                      />
                     )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", marginBottom: '14px' }}>
@@ -2315,44 +2222,28 @@ export default function Home() {
                 </>
               )}
 
-              <div style={{ display: 'flex', gap: "var(--aui-space-2)" }}>
-                <input
-                  type="text"
-                  value={refPageUrlInput}
-                  onChange={e => { setRefPageUrlInput(e.target.value); setRefError(null) }}
-                  onKeyDown={e => e.key === 'Enter' && (sourceTab === 'asis' ? handleAsIsAnalyze() : handleRefCapture())}
-                  placeholder={sourceTab === 'asis' ? '리뉴얼할 기존 서비스 URL (예: company.com)' : '참고할 서비스 URL (예: airbnb.com)'}
-                  style={{
-                    flex: 1, padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)",
-                    border: refError ? '1px solid color-mix(in srgb, var(--aui-negative) 50%, transparent)' : `1px solid ${F.hairline}`,
-                    backgroundColor: F.surface2, color: F.ink,
-                    fontSize: "var(--aui-type-compact-size)", fontFamily: 'inherit', outline: 'none',
-                    letterSpacing: "var(--aui-tracking-tight)",
-                  }}
-                />
-                <button
+              <div style={{ display: 'flex', gap: "var(--aui-space-2)", alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                  <TextInput
+                    label={sourceTab === 'asis' ? '기존 서비스 URL' : '참고 서비스 URL'}
+                    isLabelHidden
+                    value={refPageUrlInput}
+                    onChange={(v) => { setRefPageUrlInput(v); setRefError(null) }}
+                    onEnter={() => (sourceTab === 'asis' ? handleAsIsAnalyze() : handleRefCapture())}
+                    placeholder={sourceTab === 'asis' ? '리뉴얼할 기존 서비스 URL (예: company.com)' : '참고할 서비스 URL (예: airbnb.com)'}
+                    status={refError ? { type: 'error', message: refError } : undefined}
+                  />
+                </div>
+                <Button
+                  variant="primary"
+                  icon={<Link2 size={12} />}
+                  label={refCapturing ? (sourceTab === 'asis' ? '분석 중…' : '캡처 중…') : (sourceTab === 'asis' ? '분석하기' : '캡처하기')}
                   onClick={sourceTab === 'asis' ? handleAsIsAnalyze : handleRefCapture}
-                  disabled={!refPageUrlInput.trim() || refCapturing}
-                  style={{
-                    padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)", flexShrink: 0,
-                    border: 'none', cursor: refPageUrlInput.trim() && !refCapturing ? 'pointer' : 'default',
-                    backgroundColor: refPageUrlInput.trim() && !refCapturing ? F.ink : F.surface2,
-                    color: refPageUrlInput.trim() && !refCapturing ? F.canvas : 'var(--aui-scrim-soft)',
-                    fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", letterSpacing: "var(--aui-tracking-tight)",
-                    transition: 'all 0.15s', whiteSpace: 'nowrap',
-                    display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)",
-                  }}
-                >
-                  <Link2 size={12} />
-                  {refCapturing ? (sourceTab === 'asis' ? '분석 중…' : '캡처 중…') : (sourceTab === 'asis' ? '분석하기' : '캡처하기')}
-                </button>
+                  isLoading={refCapturing}
+                  isDisabled={!refPageUrlInput.trim() || refCapturing}
+                />
               </div>
                 </>
-              )}
-              {refError && (
-                <p style={{ color: 'var(--aui-negative)', fontSize: "var(--aui-type-caption-size)", marginTop: '6px', letterSpacing: "var(--aui-tracking-tight)" }}>
-                  {refError}
-                </p>
               )}
             </div>
           )}
