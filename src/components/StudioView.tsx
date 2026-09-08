@@ -3932,7 +3932,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       />
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
                         <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-assistive)' }}>20%</span>
-                        <button onClick={() => setCreonImageWidth(100)} style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>초기화</button>
+                        <AstryxButton size="sm" variant="ghost" label="초기화" onClick={() => setCreonImageWidth(100)} />
                         <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-assistive)' }}>200%</span>
                       </div>
                     </div>
@@ -3945,7 +3945,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: "var(--aui-space-1)", marginTop: 6 }}>
                         {!isIcon && (
-                          <button
+                          <AstryxButton
+                            variant="primary"
+                            width="100%"
+                            size="sm"
+                            label="선택된 요소에 적용"
                             onClick={() => {
                               const isSyncMode = syncAllScreens && selectedSharedClasses.length > 0
                               const selector = isSyncMode ? '.aide-screen ' + selectedSharedClasses.map(c => '.' + c).join('') : ''
@@ -3960,13 +3964,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                               }
                               sendToIframe({ type: 'aide:pulse', on: false })
                             }}
-                            style={{ width: '100%', padding: `var(--aui-space-1) 0`, fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-on-dark)', backgroundColor: 'var(--aui-text)', border: 'none', borderRadius: "var(--aui-radius-sm)", cursor: 'pointer' }}
-                          >
-                            선택된 요소에 적용
-                          </button>
+                          />
                         )}
                         {isIcon && (
-                          <button
+                          <AstryxButton
+                            variant="primary"
+                            width="100%"
+                            size="sm"
+                            label="Aide에 적용하기"
                             onClick={() => {
                               if (syncAllScreens && selectedSharedClasses.length > 0) {
                                 const selector = '.aide-screen ' + selectedSharedClasses.map(c => '.' + c).join('')
@@ -3976,10 +3981,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                               }
                               sendToIframe({ type: 'aide:pulse', on: false })
                             }}
-                            style={{ width: '100%', padding: `var(--aui-space-1) 0`, fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-on-dark)', backgroundColor: 'var(--aui-text)', border: 'none', borderRadius: "var(--aui-radius-sm)", cursor: 'pointer' }}
-                          >
-                            Aide에 적용하기
-                          </button>
+                          />
                         )}
                       </div>
                     )
@@ -4025,13 +4027,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     <p className="text-[15px] font-semibold text-[var(--aui-text)] mb-1">내보내기 실패</p>
                     <p className="text-[13px] text-[var(--aui-text-muted)] leading-relaxed">{figmaExportError}</p>
                   </div>
-                  <button
-                    onClick={() => setFigmaExportOpen(false)}
-                    className="w-full py-2.5 text-[13px] font-semibold rounded-xl transition-colors"
-                    style={{ backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)' }}
-                  >
-                    닫기
-                  </button>
+                  <AstryxButton variant="primary" width="100%" label="닫기" onClick={() => setFigmaExportOpen(false)} />
                 </div>
               ) : isFigmaExporting ? (
                 <div className="flex flex-col items-center gap-5 px-8 py-10">
@@ -4086,21 +4082,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
                   <div className="px-6 pb-6 flex flex-col gap-2">
                     {!figmaClipboardCopied && figmaClipboardHtml && (
-                      <button
+                      <AstryxButton
+                        variant="primary"
+                        width="100%"
+                        label="Figma 클립보드 복사"
                         onClick={async () => setFigmaClipboardCopied(await copyFigmaClipboard(figmaClipboardHtml))}
-                        className="w-full py-2.5 text-[13px] font-semibold rounded-xl transition-colors"
-                        style={{ backgroundColor: 'var(--aui-primary)', color: 'var(--aui-on-dark)' }}
-                      >
-                        Figma 클립보드 복사
-                      </button>
+                      />
                     )}
-                    <button
-                      onClick={() => setFigmaExportOpen(false)}
-                      className="w-full py-2.5 text-[13px] font-semibold rounded-xl transition-colors"
-                      style={{ backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)' }}
-                    >
-                      닫기
-                    </button>
+                    <AstryxButton variant="secondary" width="100%" label="닫기" onClick={() => setFigmaExportOpen(false)} />
                   </div>
                 </div>
               )}
