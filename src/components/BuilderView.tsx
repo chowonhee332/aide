@@ -861,38 +861,16 @@ function ComponentLibraryPanel({
       }}
     >
       {/* Tab bar */}
-      <div
-        style={{
-          display: 'flex',
-          borderBottom: `1px solid ${AIDE.border}`,
-          flexShrink: 0,
-        }}
-      >
-        {(['templates', 'components'] as LibraryTab[]).map((t) => {
-          const label = t === 'templates' ? '템플릿' : '컴포넌트';
-          const active = tab === t;
-          return (
-            <button
-              key={t}
-              onClick={() => onTabChange(t)}
-              style={{
-                flex: 1,
-                height: 42,
-                background: 'transparent',
-                border: 'none',
-                borderBottom: active ? `2px solid ${AIDE.primary}` : '2px solid transparent',
-                color: active ? AIDE.text : AIDE.textMuted,
-                fontSize: "var(--aui-type-compact-size)",
-                fontWeight: active ? 600 : 400,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                transition: 'color 0.12s',
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
+      <div style={{ padding: "var(--aui-space-2)", borderBottom: `1px solid ${AIDE.border}`, flexShrink: 0 }}>
+        <SegmentedControl
+          label="라이브러리 유형"
+          layout="fill"
+          value={tab}
+          onChange={(t) => onTabChange(t as LibraryTab)}
+        >
+          <SegmentedControlItem value="templates" label="템플릿" />
+          <SegmentedControlItem value="components" label="컴포넌트" />
+        </SegmentedControl>
       </div>
 
       {/* Tab content */}
@@ -1036,24 +1014,22 @@ function ComponentDetailsPanel({
         <span>속성</span>
         {selectedItem ? (
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
-            <button
-              type="button"
+            <AstryxIconButton
+              size="sm"
+              variant="ghost"
+              icon={<RefreshCw size={14} />}
+              label="컴포넌트 기본값으로 초기화"
+              tooltip="기본값으로 초기화"
               onClick={() => onReset(selectedItem.instanceId)}
-              title="기본값으로 초기화"
-              aria-label="컴포넌트 기본값으로 초기화"
-              style={{ width: 28, height: 28, border: 'none', borderRadius: 8, background: 'transparent', color: AIDE.textMuted, display: 'grid', placeItems: 'center', cursor: 'pointer' }}
-            >
-              <RefreshCw size={14} />
-            </button>
-            <button
-              type="button"
+            />
+            <AstryxIconButton
+              size="sm"
+              variant="destructive"
+              icon={<Trash2 size={15} />}
+              label="선택한 컴포넌트 삭제"
+              tooltip="선택한 컴포넌트 삭제"
               onClick={() => onRemove(selectedItem.instanceId)}
-              title="선택한 컴포넌트 삭제"
-              aria-label="선택한 컴포넌트 삭제"
-              style={{ width: 28, height: 28, border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--aui-negative)', display: 'grid', placeItems: 'center', cursor: 'pointer' }}
-            >
-              <Trash2 size={15} />
-            </button>
+            />
           </div>
         ) : null}
       </div>
@@ -2358,20 +2334,18 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
                   작업할 화면 크기를 선택하세요
                 </div>
                 <div style={{ marginTop: 16, display: 'flex', gap: "var(--aui-space-2)" }}>
-                  <button
-                    type="button"
+                  <AstryxButton
+                    variant="secondary"
+                    icon={<Smartphone size={14} />}
+                    label="375×812"
                     onClick={() => addFrame('mobile')}
-                    style={{ height: 36, padding: `0 var(--aui-space-4)`, border: `1px solid ${AIDE.border}`, borderRadius: "var(--aui-radius-sm)", background: AIDE.surface, color: AIDE.text, display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", cursor: 'pointer' }}
-                  >
-                    <Smartphone size={14} /> 375×812
-                  </button>
-                  <button
-                    type="button"
+                  />
+                  <AstryxButton
+                    variant="secondary"
+                    icon={<Monitor size={14} />}
+                    label="1920×1080"
                     onClick={() => addFrame('desktop')}
-                    style={{ height: 36, padding: `0 var(--aui-space-4)`, border: `1px solid ${AIDE.border}`, borderRadius: "var(--aui-radius-sm)", background: AIDE.surface, color: AIDE.text, display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", cursor: 'pointer' }}
-                  >
-                    <Monitor size={14} /> 1920×1080
-                  </button>
+                  />
                 </div>
               </div>
               ) : (
@@ -2528,26 +2502,15 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
                     fontSize: 'var(--aui-type-compact-size)',
                   }}
                 />
-                <button
+                <AstryxIconButton
                   type="submit"
-                  disabled={!aiPrompt.trim() || aiComposeState === 'loading'}
-                  title="AI로 화면 편집"
-                  aria-label="AI로 화면 편집"
-                  style={{
-                    width: 42,
-                    height: 42,
-                    flexShrink: 0,
-                    border: 'none',
-                    borderRadius: 13,
-                    background: aiPrompt.trim() && aiComposeState !== 'loading' ? AIDE.primary : AIDE.surfaceHover,
-                    color: aiPrompt.trim() && aiComposeState !== 'loading' ? 'var(--aui-on-primary)' : AIDE.textSubtle,
-                    display: 'grid',
-                    placeItems: 'center',
-                    cursor: aiPrompt.trim() && aiComposeState !== 'loading' ? 'pointer' : 'default',
-                  }}
-                >
-                  <ArrowUp size={18} />
-                </button>
+                  variant="primary"
+                  icon={<ArrowUp size={18} />}
+                  label="AI로 화면 편집"
+                  tooltip="AI로 화면 편집"
+                  isDisabled={!aiPrompt.trim() || aiComposeState === 'loading'}
+                  isLoading={aiComposeState === 'loading'}
+                />
               </form>
               {aiComposeMessage ? (
                 <div
