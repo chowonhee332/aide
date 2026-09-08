@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect, startTransition } from 'react'
 import {
   ArrowUp, FileText, Upload, X,
-  Check, ChevronDown, Palette, Share2,
+  Check, Palette, Share2,
   Link2,
   Smartphone, Monitor,
   Download,
@@ -23,6 +23,8 @@ import { Button } from '@astryxdesign/core/Button'
 import { IconButton } from '@astryxdesign/core/IconButton'
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
 import { Layout, LayoutContent, LayoutFooter } from '@astryxdesign/core/Layout'
+import { Link } from '@astryxdesign/core/Link'
+import { Collapsible } from '@astryxdesign/core/Collapsible'
 
 const F = {
   canvas:       AIDE_UI.canvas,
@@ -1470,17 +1472,21 @@ export default function Home() {
                 />
               </div>
               <div style={{ borderTop: '1px solid var(--aui-shadow-line)', paddingTop: '10px' }}>
-                <button type="button" aria-expanded={briefDetailsOpen} onClick={() => setBriefDetailsOpen(value => !value)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0', border: 0, background: 'transparent', color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)', cursor: 'pointer' }}>
-                  <ChevronDown size={14} style={{ transform: briefDetailsOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s ease' }} />
-                  상세 입력 <span style={{ color: F.inkSubtle, fontWeight: 'var(--aui-weight-regular)' }}>선택사항</span>
-                </button>
-                {briefDetailsOpen && (
+                <Collapsible
+                  isOpen={briefDetailsOpen}
+                  onOpenChange={setBriefDetailsOpen}
+                  trigger={
+                    <span style={{ fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)', color: F.inkMuted }}>
+                      상세 입력 <span style={{ color: F.inkSubtle, fontWeight: 'var(--aui-weight-regular)' }}>선택사항</span>
+                    </span>
+                  }
+                >
                   <div className="brief-details-grid">
                     <TextInput className="hero-detail-text-input" label="주요 사용자" value={briefAudience} onChange={setBriefAudience} placeholder="예) CS 운영 담당자와 서비스 기획자" width="100%" style={{ border: 'none', boxShadow: 'none', backgroundColor: 'transparent' }} />
                     <TextInput className="hero-detail-text-input" label="핵심 기능 또는 필수 정보" value={briefFeatures} onChange={setBriefFeatures} placeholder="예) 티켓 목록, 처리 상태, SLA 알림, 주간 리포트" width="100%" style={{ border: 'none', boxShadow: 'none', backgroundColor: 'transparent' }} />
                     <TextInput className="hero-detail-text-input" label="강조하거나 피하고 싶은 구성" value={briefConstraints} onChange={setBriefConstraints} onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && briefDesc.trim()) { event.preventDefault(); handleSubmit() } }} placeholder="예) 대량 목록을 빠르게 훑도록, 불필요한 그래프 남발은 피하기" width="100%" style={{ gridColumn: '1 / -1', border: 'none', boxShadow: 'none', backgroundColor: 'transparent' }} />
                   </div>
-                )}
+                </Collapsible>
               </div>
             </div>
             <div style={{
@@ -2233,19 +2239,15 @@ export default function Home() {
           )}
 
           <div style={{ display: 'flex', visibility: genMode === 'ai' ? 'visible' : 'hidden', alignItems: 'center', gap: "var(--aui-space-4)", marginTop: '14px', flexWrap: 'wrap', justifyContent: 'center' }} aria-hidden={genMode !== 'ai'}>
-            <button
+            <Link
               onClick={() => setGenMdModalOpen(true)}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: '#ffffff', fontSize: "var(--aui-type-compact-size)", letterSpacing: "var(--aui-tracking-tight)",
-                display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)", padding: 0,
-                fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: '3px',
-                textDecorationColor: 'rgba(255,255,255,0.55)',
-              }}
+              hasUnderline
+              size="xsm"
+              style={{ '--color-text-accent': '#ffffff', display: 'inline-flex', alignItems: 'center', gap: 'var(--aui-space-1)', cursor: 'pointer', letterSpacing: 'var(--aui-tracking-tight)' } as React.CSSProperties}
             >
               <FileText size={12} />
               design.md 없으신가요? URL·화면 캡처로 자동 생성하기
-            </button>
+            </Link>
           </div>
 
         </main>
