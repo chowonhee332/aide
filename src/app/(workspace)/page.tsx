@@ -1129,366 +1129,247 @@ export default function Home() {
 
       {/* ── URL → design.md 생성 모달 ── */}
       {genMdModalOpen && (
-        <div
-          onClick={closeGenMdModal}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 9999,
-            backgroundColor: 'var(--aui-scrim-strong)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: "var(--aui-space-6)",
-          }}
+        <Dialog
+          isOpen={genMdModalOpen}
+          onOpenChange={(open) => { if (!open) closeGenMdModal() }}
+          purpose="form"
+          width={640}
+          maxHeight="calc(100vh - 48px)"
         >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              width: '100%', maxWidth: '640px',
-              backgroundColor: 'var(--aui-on-dark)', borderRadius: "var(--aui-radius-overlay)",
-              boxShadow: "var(--aui-shadow-modal)",
-              overflow: 'hidden', display: 'flex', flexDirection: 'column',
-              maxHeight: 'calc(100vh - 48px)',
-            }}
-          >
-            {/* 헤더 */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: `var(--aui-space-5) var(--aui-space-6)`, borderBottom: `1px solid ${F.hairlineSoft}`, flexShrink: 0,
-            }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", marginBottom: '2px' }}>
-                  <FileText size={16} color={F.primary} />
-                  <span style={{ fontWeight: "var(--aui-weight-bold)", fontSize: "var(--aui-type-body-size)", color: F.ink, letterSpacing: "var(--aui-tracking-tighter)" }}>
-                    design.md 자동 생성
-                  </span>
-                </div>
-                <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", margin: 0, letterSpacing: "var(--aui-tracking-tight)" }}>
-                  서비스 URL 또는 화면 캡처로 AI가 디자인 시스템 파일을 만들어드려요
-                </p>
-              </div>
-              <button
-                onClick={closeGenMdModal}
-                style={{
-                  width: '32px', height: '32px', borderRadius: '50%', border: 'none',
-                  backgroundColor: F.surface2, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                }}
-              >
-                <X size={14} color={F.inkMuted} />
-              </button>
-            </div>
-
-            {/* 본문 */}
-            <div style={{ padding: `var(--aui-space-5) var(--aui-space-6)`, overflowY: 'auto', flex: 1 }}>
-              {!genMdResult ? (
-                <>
-                  {/* URL 입력 */}
-                  <div style={{ display: 'flex', gap: "var(--aui-space-2)", marginBottom: genMdError ? '8px' : '0' }}>
-                    <input
-                      type="text"
-                      value={genMdUrl}
-                      onChange={e => { setGenMdUrl(e.target.value); setGenMdError(null) }}
-                      onKeyDown={e => e.key === 'Enter' && handleGenMdAnalyze()}
-                      placeholder="서비스 URL 입력 (예: ktds.com, toss.im)"
-                      autoFocus
-                      style={{
-                        flex: 1, padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)",
-                        border: genMdError ? '1.5px solid color-mix(in srgb, var(--aui-negative) 50%, transparent)' : `1.5px solid ${F.hairline}`,
-                        backgroundColor: F.surface1, color: F.ink,
-                        fontSize: "var(--aui-type-label-size)", fontFamily: 'inherit', outline: 'none',
-                        letterSpacing: "var(--aui-tracking-tight)",
-                      }}
-                    />
-                    <button
-                      onClick={handleGenMdAnalyze}
-                      disabled={!genMdUrl.trim() || genMdAnalyzing}
-                      style={{
-                        padding: `var(--aui-space-3) var(--aui-space-5)`, borderRadius: "var(--aui-radius-control)", flexShrink: 0,
-                        border: 'none',
-                        cursor: genMdUrl.trim() && !genMdAnalyzing ? 'pointer' : 'default',
-                        backgroundColor: genMdUrl.trim() && !genMdAnalyzing ? F.ink : F.surface2,
-                        color: genMdUrl.trim() && !genMdAnalyzing ? 'var(--aui-on-dark)' : 'var(--aui-scrim-soft)',
-                        fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)", letterSpacing: "var(--aui-tracking-tight)",
-                        transition: 'all 0.15s', whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {genMdAnalyzing ? '분석 중…' : '생성하기'}
-                    </button>
-                  </div>
-
-                  {genMdError && (
-                    <p style={{ color: 'var(--aui-negative)', fontSize: "var(--aui-type-caption-size)", margin: `var(--aui-space-2) 0 0`, letterSpacing: "var(--aui-tracking-tight)" }}>
-                      {genMdError}
-                    </p>
-                  )}
-
-                  {/* URL이 없는 서비스(네이티브 앱·사내 시스템)는 캡처로만 만들 수 있다. */}
-                  {!genMdAnalyzing && (
-                    <>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", margin: `var(--aui-space-4) 0` }}>
-                        <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
-                        <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-micro-size)", letterSpacing: "var(--aui-tracking-tight)" }}>또는 화면 캡처로</span>
-                        <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
+          <Layout
+            header={
+              <DialogHeader
+                title="design.md 자동 생성"
+                subtitle="서비스 URL 또는 화면 캡처로 AI가 디자인 시스템 파일을 만들어드려요"
+                startContent={<FileText size={16} color={F.primary} />}
+                onOpenChange={(open) => { if (!open) closeGenMdModal() }}
+              />
+            }
+            content={
+              <LayoutContent>
+                {!genMdResult ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aui-space-3)' }}>
+                    {/* URL 입력 */}
+                    <div style={{ display: 'flex', gap: 'var(--aui-space-2)', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1 }}>
+                        <TextInput
+                          label="서비스 URL"
+                          isLabelHidden
+                          value={genMdUrl}
+                          onChange={(v) => { setGenMdUrl(v); setGenMdError(null) }}
+                          onEnter={handleGenMdAnalyze}
+                          placeholder="서비스 URL 입력 (예: ktds.com, toss.im)"
+                          hasAutoFocus
+                          isDisabled={genMdAnalyzing}
+                          status={genMdError ? { type: 'error', message: genMdError } : undefined}
+                        />
                       </div>
-
-                      <input
-                        ref={genMdShotInputRef}
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                        multiple
-                        onChange={handleGenMdShotUpload}
-                        style={{ display: 'none' }}
+                      <Button
+                        variant="primary"
+                        label={genMdAnalyzing ? '분석 중…' : '생성하기'}
+                        onClick={handleGenMdAnalyze}
+                        isLoading={genMdAnalyzing}
+                        isDisabled={!genMdUrl.trim() || genMdAnalyzing}
                       />
+                    </div>
 
-                      {genMdShots.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: "var(--aui-space-2)", marginBottom: "var(--aui-space-3)" }}>
-                          {genMdShots.map((shot, index) => (
-                            <div key={`${shot.name}-${index}`} style={{ position: 'relative', width: 52, height: 90, borderRadius: "var(--aui-radius-sm)", overflow: 'hidden', border: `1px solid ${F.hairline}`, backgroundColor: F.surface2 }}>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={`data:${shot.mimeType};base64,${shot.data}`} alt={shot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              <button
-                                onClick={() => setGenMdShots(prev => prev.filter((_, i) => i !== index))}
-                                aria-label={`${shot.name} 제거`}
-                                style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', border: 'none', cursor: 'pointer', backgroundColor: 'var(--aui-scrim-strong)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-                              >
-                                <X size={10} />
-                              </button>
-                            </div>
-                          ))}
+                    {/* URL이 없는 서비스(네이티브 앱·사내 시스템)는 캡처로만 만들 수 있다. */}
+                    {!genMdAnalyzing && (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--aui-space-3)', margin: 'var(--aui-space-1) 0' }}>
+                          <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
+                          <span style={{ color: F.inkMuted, fontSize: 'var(--aui-type-micro-size)', letterSpacing: 'var(--aui-tracking-tight)' }}>또는 화면 캡처로</span>
+                          <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
                         </div>
-                      )}
 
-                      <div style={{ display: 'flex', gap: "var(--aui-space-2)" }}>
-                        <button
-                          onClick={() => genMdShotInputRef.current?.click()}
-                          style={{
-                            flex: 1, padding: "var(--aui-space-4)", borderRadius: "var(--aui-radius-control)",
-                            border: `1px dashed ${F.hairline}`, backgroundColor: F.surface1,
-                            color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
-                            letterSpacing: "var(--aui-tracking-tight)",
-                          }}
-                        >
-                          <Upload size={13} />
-                          {genMdShots.length ? `캡처 추가 (${genMdShots.length}/10)` : '앱·화면 캡처 업로드'}
-                        </button>
+                        <input
+                          ref={genMdShotInputRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          multiple
+                          onChange={handleGenMdShotUpload}
+                          style={{ display: 'none' }}
+                        />
+
                         {genMdShots.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--aui-space-2)' }}>
+                            {genMdShots.map((shot, index) => (
+                              <div key={`${shot.name}-${index}`} style={{ position: 'relative', width: 52, height: 90, borderRadius: 'var(--aui-radius-sm)', overflow: 'hidden', border: `1px solid ${F.hairline}`, backgroundColor: F.surface2 }}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={`data:${shot.mimeType};base64,${shot.data}`} alt={shot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <button
+                                  onClick={() => setGenMdShots(prev => prev.filter((_, i) => i !== index))}
+                                  aria-label={`${shot.name} 제거`}
+                                  style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', border: 'none', cursor: 'pointer', backgroundColor: 'var(--aui-scrim-strong)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                                >
+                                  <X size={10} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: 'var(--aui-space-2)' }}>
                           <button
-                            onClick={handleGenMdShotAnalyze}
+                            onClick={() => genMdShotInputRef.current?.click()}
                             style={{
-                              padding: `var(--aui-space-3) var(--aui-space-5)`, borderRadius: "var(--aui-radius-control)", flexShrink: 0,
-                              border: 'none', cursor: 'pointer', backgroundColor: F.ink, color: 'var(--aui-on-dark)',
-                              fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)",
-                              letterSpacing: "var(--aui-tracking-tight)", whiteSpace: 'nowrap',
+                              flex: 1, padding: 'var(--aui-space-4)', borderRadius: 'var(--aui-radius-control)',
+                              border: `1px dashed ${F.hairline}`, backgroundColor: F.surface1,
+                              color: F.inkMuted, fontSize: 'var(--aui-type-compact-size)', fontWeight: 'var(--aui-weight-medium)', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--aui-space-2)',
+                              letterSpacing: 'var(--aui-tracking-tight)',
                             }}
                           >
-                            캡처로 생성
+                            <Upload size={13} />
+                            {genMdShots.length ? `캡처 추가 (${genMdShots.length}/10)` : '앱·화면 캡처 업로드'}
                           </button>
+                          {genMdShots.length > 0 && (
+                            <Button variant="primary" label="캡처로 생성" onClick={handleGenMdShotAnalyze} />
+                          )}
+                        </div>
+
+                        {genMdShots.length > 0 && (
+                          <p style={{ color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', margin: 0, lineHeight: 'var(--aui-leading-relaxed)', letterSpacing: 'var(--aui-tracking-tight)' }}>
+                            캡처에는 기본 상태만 담겨 있어 hover·pressed 같은 상태값과 정확한 폰트 이름은 추정되지 않습니다.
+                            같은 화면이 여러 장일수록 토큰이 정확해집니다. 생성 후 값을 확인해 주세요.
+                          </p>
                         )}
-                      </div>
+                      </>
+                    )}
 
-                      {genMdShots.length > 0 && (
-                        <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-caption-size)", margin: `var(--aui-space-3) 0 0`, lineHeight: "var(--aui-leading-relaxed)", letterSpacing: "var(--aui-tracking-tight)" }}>
-                          캡처에는 기본 상태만 담겨 있어 hover·pressed 같은 상태값과 정확한 폰트 이름은 추정되지 않습니다.
-                          같은 화면이 여러 장일수록 토큰이 정확해집니다. 생성 후 값을 확인해 주세요.
-                        </p>
-                      )}
-                    </>
-                  )}
-
-                  {/* 로딩 상태 */}
-                  {genMdAnalyzing && (
-                    <div style={{
-                      marginTop: '24px', padding: "var(--aui-space-8)", borderRadius: "var(--aui-radius-card)",
-                      backgroundColor: F.surface1, border: `1px solid ${F.hairlineSoft}`,
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: "var(--aui-space-4)",
-                    }}>
+                    {/* 로딩 상태 */}
+                    {genMdAnalyzing && (
                       <div style={{
-                        width: '40px', height: '40px', borderRadius: '50%',
-                        border: `3px solid ${F.hairlineSoft}`,
-                        borderTopColor: F.primary,
-                        animation: 'spin 0.9s linear infinite',
-                      }} />
-                      <div style={{ textAlign: 'center' }}>
-                        <p style={{ color: F.ink, fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-semibold)", margin: `0 0 var(--aui-space-1)`, letterSpacing: "var(--aui-tracking-tight)" }}>
-                          {genMdShots.length ? '캡처 화면을 분석하고 있어요' : '웹사이트를 분석하고 있어요'}
-                        </p>
-                        <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", margin: 0, letterSpacing: "var(--aui-tracking-tight)" }}>
-                          {genMdShots.length ? '배율을 환산하고 색상·타이포그래피를 읽는 중입니다' : '색상, 타이포그래피, 레이아웃을 읽는 중입니다'}
+                        padding: 'var(--aui-space-8)', borderRadius: 'var(--aui-radius-card)',
+                        backgroundColor: F.surface1, border: `1px solid ${F.hairlineSoft}`,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--aui-space-4)',
+                      }}>
+                        <div style={{
+                          width: '40px', height: '40px', borderRadius: '50%',
+                          border: `3px solid ${F.hairlineSoft}`,
+                          borderTopColor: F.primary,
+                          animation: 'spin 0.9s linear infinite',
+                        }} />
+                        <div style={{ textAlign: 'center' }}>
+                          <p style={{ color: F.ink, fontSize: 'var(--aui-type-label-size)', fontWeight: 'var(--aui-weight-semibold)', margin: '0 0 var(--aui-space-1)', letterSpacing: 'var(--aui-tracking-tight)' }}>
+                            {genMdShots.length ? '캡처 화면을 분석하고 있어요' : '웹사이트를 분석하고 있어요'}
+                          </p>
+                          <p style={{ color: F.inkMuted, fontSize: 'var(--aui-type-compact-size)', margin: 0, letterSpacing: 'var(--aui-tracking-tight)' }}>
+                            {genMdShots.length ? '배율을 환산하고 색상·타이포그래피를 읽는 중입니다' : '색상, 타이포그래피, 레이아웃을 읽는 중입니다'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 안내 */}
+                    {!genMdAnalyzing && !genMdError && (
+                      <div style={{
+                        padding: 'var(--aui-space-4)', borderRadius: 'var(--aui-radius-control)',
+                        backgroundColor: `${F.primary}08`, border: `1px solid ${F.primary}15`,
+                      }}>
+                        <p style={{ color: F.inkMuted, fontSize: 'var(--aui-type-caption-size)', margin: 0, lineHeight: 'var(--aui-leading-relaxed)', letterSpacing: 'var(--aui-tracking-tight)' }}>
+                          URL을 넣으면 사이트를 스크린샷하고 CSS까지 읽어 정확한 토큰을 뽑습니다.<br />
+                          URL이 없는 앱·사내 시스템은 화면 캡처로 만들 수 있고, 이 경우 값은 추정치입니다.
                         </p>
                       </div>
-                    </div>
-                  )}
-
-                  {/* 안내 */}
-                  {!genMdAnalyzing && !genMdError && (
-                    <div style={{
-                      marginTop: '16px', padding: "var(--aui-space-4)", borderRadius: "var(--aui-radius-control)",
-                      backgroundColor: `${F.primary}08`, border: `1px solid ${F.primary}15`,
-                    }}>
-                      <p style={{ color: F.inkMuted, fontSize: "var(--aui-type-caption-size)", margin: 0, lineHeight: "var(--aui-leading-relaxed)", letterSpacing: "var(--aui-tracking-tight)" }}>
-                        URL을 넣으면 사이트를 스크린샷하고 CSS까지 읽어 정확한 토큰을 뽑습니다.<br />
-                        URL이 없는 앱·사내 시스템은 화면 캡처로 만들 수 있고, 이 경우 값은 추정치입니다.
-                      </p>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* 보안 차단 경고 배너 */}
-                  {genMdCaptureStatus === 'blocked' && (
-                    <div style={{
-                      marginBottom: '12px', padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)",
-                      backgroundColor: 'var(--aui-caution-soft)', border: '1px solid var(--aui-caution-border)',
-                      display: 'flex', gap: "var(--aui-space-3)", alignItems: 'flex-start',
-                    }}>
-                      <span style={{ fontSize: "var(--aui-icon-sm)", lineHeight: "var(--aui-leading-none)", flexShrink: 0 }}>⚠️</span>
-                      <div>
-                        <p style={{ margin: `0 0 var(--aui-space-1) 0`, fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-caution-text)', letterSpacing: "var(--aui-tracking-tight)" }}>
-                          보안으로 인해 사이트 직접 확인 불가
-                        </p>
-                        <p style={{ margin: 0, fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-caution-text)', lineHeight: "var(--aui-leading-relaxed)", letterSpacing: "var(--aui-tracking-tight)" }}>
-                          Cloudflare 또는 봇 차단으로 실제 디자인을 캡처하지 못했습니다.
-                          로고에서 추출된 브랜드 컬러와 범용 디자인시스템을 기반으로 생성했습니다.
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aui-space-3)' }}>
+                    {/* 보안 차단 경고 배너 */}
+                    {genMdCaptureStatus === 'blocked' && (
+                      <div style={{
+                        padding: 'var(--aui-space-3) var(--aui-space-4)', borderRadius: 'var(--aui-radius-control)',
+                        backgroundColor: 'var(--aui-caution-soft)', border: '1px solid var(--aui-caution-border)',
+                        display: 'flex', gap: 'var(--aui-space-3)', alignItems: 'flex-start',
+                      }}>
+                        <span style={{ fontSize: 'var(--aui-icon-sm)', lineHeight: 'var(--aui-leading-none)', flexShrink: 0 }}>⚠️</span>
+                        <div>
+                          <p style={{ margin: '0 0 var(--aui-space-1) 0', fontSize: 'var(--aui-type-caption-size)', fontWeight: 'var(--aui-weight-semibold)', color: 'var(--aui-caution-text)', letterSpacing: 'var(--aui-tracking-tight)' }}>
+                            보안으로 인해 사이트 직접 확인 불가
+                          </p>
+                          <p style={{ margin: 0, fontSize: 'var(--aui-type-caption-size)', color: 'var(--aui-caution-text)', lineHeight: 'var(--aui-leading-relaxed)', letterSpacing: 'var(--aui-tracking-tight)' }}>
+                            Cloudflare 또는 봇 차단으로 실제 디자인을 캡처하지 못했습니다.
+                            로고에서 추출된 브랜드 컬러와 범용 디자인시스템을 기반으로 생성했습니다.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {genMdCaptureStatus === 'partial' && (
+                      <div style={{
+                        padding: 'var(--aui-space-3) var(--aui-space-4)', borderRadius: 'var(--aui-radius-control)',
+                        backgroundColor: 'var(--aui-primary-soft)', border: '1px solid var(--aui-primary-muted)',
+                        display: 'flex', gap: 'var(--aui-space-2)', alignItems: 'center',
+                      }}>
+                        <span style={{ fontSize: 'var(--aui-type-label-size)', flexShrink: 0 }}>ℹ️</span>
+                        <p style={{ margin: 0, fontSize: 'var(--aui-type-caption-size)', color: 'var(--aui-primary-strong)', lineHeight: 'var(--aui-leading-normal)', letterSpacing: 'var(--aui-tracking-tight)' }}>
+                          CSS 소스 추출이 제한되어 스크린샷 기반으로 분석했습니다.
                         </p>
                       </div>
-                    </div>
-                  )}
-                  {genMdCaptureStatus === 'partial' && (
-                    <div style={{
-                      marginBottom: '12px', padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)",
-                      backgroundColor: 'var(--aui-primary-soft)', border: '1px solid var(--aui-primary-muted)',
-                      display: 'flex', gap: "var(--aui-space-2)", alignItems: 'center',
-                    }}>
-                      <span style={{ fontSize: "var(--aui-type-label-size)", flexShrink: 0 }}>ℹ️</span>
-                      <p style={{ margin: 0, fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-primary-strong)', lineHeight: "var(--aui-leading-normal)", letterSpacing: "var(--aui-tracking-tight)" }}>
-                        CSS 소스 추출이 제한되어 스크린샷 기반으로 분석했습니다.
-                      </p>
-                    </div>
-                  )}
+                    )}
 
-                  <DesignMdPreview
-                    md={genMdResult}
-                    url={genMdUrl}
-                    screenshot={genMdScreenshot ?? undefined}
-                    onApply={handleGenMdUseInStudio}
-                    onBack={() => { setGenMdResult(null); setGenMdScreenshot(null); setGenMdCaptureStatus(null) }}
-                    variant="light"
+                    <DesignMdPreview
+                      md={genMdResult}
+                      url={genMdUrl}
+                      screenshot={genMdScreenshot ?? undefined}
+                      onApply={handleGenMdUseInStudio}
+                      onBack={() => { setGenMdResult(null); setGenMdScreenshot(null); setGenMdCaptureStatus(null) }}
+                      variant="light"
+                    />
+                  </div>
+                )}
+              </LayoutContent>
+            }
+            footer={genMdResult ? (
+              <LayoutFooter hasDivider>
+                <div style={{ display: 'flex', gap: 'var(--aui-space-2)', justifyContent: 'flex-end' }}>
+                  <Button variant="secondary" label=".md 저장" icon={<Download size={13} />} onClick={handleGenMdDownload} />
+                  <Button
+                    variant="secondary"
+                    label={genMdCopied ? '복사됨' : '복사'}
+                    icon={genMdCopied ? <Check size={13} /> : <Share2 size={13} />}
+                    onClick={handleGenMdCopy}
                   />
-                </>
-              )}
-            </div>
-
-            {/* 푸터 액션 */}
-            {genMdResult && (
-              <div style={{
-                padding: `var(--aui-space-4) var(--aui-space-6)`, borderTop: `1px solid ${F.hairlineSoft}`,
-                display: 'flex', gap: "var(--aui-space-2)", flexShrink: 0, justifyContent: 'flex-end',
-              }}>
-                <button
-                  onClick={handleGenMdDownload}
-                  style={{
-                    padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)",
-                    border: `1px solid ${F.hairline}`, backgroundColor: 'var(--aui-on-dark)',
-                    color: F.ink, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
-                    letterSpacing: "var(--aui-tracking-tight)", display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)",
-                  }}
-                >
-                  <Download size={13} />
-                  .md 저장
-                </button>
-                <button
-                  onClick={handleGenMdCopy}
-                  style={{
-                    padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)",
-                    border: `1px solid ${F.hairline}`, backgroundColor: 'var(--aui-on-dark)',
-                    color: genMdCopied ? 'var(--aui-positive)' : F.ink, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
-                    letterSpacing: "var(--aui-tracking-tight)", display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)",
-                    transition: 'color 0.15s',
-                  }}
-                >
-                  {genMdCopied ? <Check size={13} /> : <Share2 size={13} />}
-                  {genMdCopied ? '복사됨' : '복사'}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+                </div>
+              </LayoutFooter>
+            ) : undefined}
+          />
+        </Dialog>
       )}
 
       {/* ── 레퍼런스 이미지 전체보기 모달 ── */}
       {refPreviewOpen && refPageImage && (
-        <div
-          onClick={() => setRefPreviewOpen(false)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 9999,
-            backgroundColor: 'var(--aui-inverse-surface)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: "var(--aui-space-6)",
-          }}
+        <Dialog
+          isOpen={refPreviewOpen && !!refPageImage}
+          onOpenChange={(open) => { if (!open) setRefPreviewOpen(false) }}
+          purpose="info"
+          width={960}
+          maxHeight="calc(100vh - 48px)"
         >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              width: '100%', maxWidth: '960px',
-              backgroundColor: F.surface1, borderRadius: "var(--aui-radius-card)",
-              border: `1px solid ${F.hairline}`,
-              overflow: 'hidden', display: 'flex', flexDirection: 'column',
-              maxHeight: 'calc(100vh - 48px)',
-            }}
-          >
-            {/* 헤더 */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: `var(--aui-space-3) var(--aui-space-4)`, borderBottom: `1px solid ${F.hairlineSoft}`, flexShrink: 0,
-            }}>
-              <span style={{ color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", letterSpacing: "var(--aui-tracking-tight)" }}>
-                현재 페이지 레퍼런스
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
-                <button
-                  onClick={() => { setRefPreviewOpen(false); setRefPanelOpen(true); setDesignPanelOpen(false) }}
-                  style={{
-                    padding: `var(--aui-space-2) var(--aui-space-3)`, borderRadius: "var(--aui-radius-sm)", border: `1px solid ${F.hairline}`,
-                    backgroundColor: F.canvas, color: F.ink,
-                    fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)",
-                    fontFamily: 'inherit',
-                  }}
-                >
-                  변경하기
-                </button>
-                <button
-                  onClick={() => { clearRefPage(); setRefPreviewOpen(false) }}
-                  style={{
-                    padding: `var(--aui-space-2) var(--aui-space-3)`, borderRadius: "var(--aui-radius-sm)", border: '1px solid var(--aui-negative-border)',
-                    backgroundColor: 'var(--aui-negative-soft)', color: 'var(--aui-negative)',
-                    fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)",
-                    fontFamily: 'inherit',
-                  }}
-                >
-                  제거
-                </button>
-                <button
-                  onClick={() => setRefPreviewOpen(false)}
-                  style={{
-                    width: '28px', height: '28px', borderRadius: '50%', border: 'none',
-                    backgroundColor: F.surface2, color: F.inkMuted,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            </div>
-            {/* 이미지 */}
-            <div style={{ overflow: 'auto', flexShrink: 1 }}>
-              <img
-                src={`data:image/png;base64,${refPageImage}`}
-                alt="reference page"
-                style={{ width: '100%', display: 'block' }}
+          <Layout
+            header={
+              <DialogHeader
+                title="현재 페이지 레퍼런스"
+                onOpenChange={(open) => { if (!open) setRefPreviewOpen(false) }}
+                endContent={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--aui-space-2)' }}>
+                    <Button size="sm" variant="secondary" label="변경하기" onClick={() => { setRefPreviewOpen(false); setRefPanelOpen(true); setDesignPanelOpen(false) }} />
+                    <Button size="sm" variant="destructive" label="제거" onClick={() => { clearRefPage(); setRefPreviewOpen(false) }} />
+                  </div>
+                }
               />
-            </div>
-          </div>
-        </div>
+            }
+            content={
+              <LayoutContent>
+                <img
+                  src={`data:image/png;base64,${refPageImage}`}
+                  alt="reference page"
+                  style={{ width: '100%', display: 'block', borderRadius: 'var(--aui-radius-sm)' }}
+                />
+              </LayoutContent>
+            }
+          />
+        </Dialog>
       )}
 
       {/* ══════════════════════════════════════════
