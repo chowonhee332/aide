@@ -1508,6 +1508,7 @@ export default function Home() {
                     icon={<span style={{ fontSize: 'var(--aui-icon-md)', lineHeight: 'var(--aui-leading-none)' }}>+</span>}
                     label="리디자인 소스 추가"
                     tooltip="리디자인 소스 추가"
+                    size="sm"
                     variant={refPanelOpen ? 'primary' : 'secondary'}
                     tabIndex={genMode === 'ai' ? 0 : -1}
                     onClick={() => { setRefPanelOpen(v => !v); setDesignPanelOpen(false); setBrandPanelOpen(false) }}
