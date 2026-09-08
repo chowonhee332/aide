@@ -112,7 +112,6 @@ export default function ProjectsView() {
                     label="삭제"
                     icon={<Trash2 size={13} />}
                     variant="ghost"
-                    size="sm"
                   />
                 </div>
               </div>

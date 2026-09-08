@@ -1199,7 +1199,7 @@ export default function Home() {
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src={`data:${shot.mimeType};base64,${shot.data}`} alt={shot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 <span style={{ position: 'absolute', top: 2, right: 2 }}>
-                                  <IconButton size="sm" variant="secondary" icon={<X size={10} />} label={`${shot.name} 제거`} onClick={() => setGenMdShots(prev => prev.filter((_, i) => i !== index))} />
+                                  <IconButton variant="secondary" icon={<X size={10} />} label={`${shot.name} 제거`} onClick={() => setGenMdShots(prev => prev.filter((_, i) => i !== index))} />
                                 </span>
                               </div>
                             ))}
@@ -1446,7 +1446,6 @@ export default function Home() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", marginBottom: '10px' }}>
                   <Badge icon={<FileText size={11} />} label={chipLabel} />
                   <IconButton
-                    size="sm"
                     variant="ghost"
                     icon={<X size={11} />}
                     label="디자인 시스템 해제"
@@ -1539,7 +1538,7 @@ export default function Home() {
                       }
                       onClick={() => { setRefPanelOpen(true); setSourceTab('asis'); setDesignPanelOpen(false) }}
                     />
-                    <IconButton size="sm" variant="ghost" icon={<X size={12} />} label="As-is 제거" onClick={clearAsIs} />
+                    <IconButton variant="ghost" icon={<X size={12} />} label="As-is 제거" onClick={clearAsIs} />
                   </div>
                 ) : null}
 
@@ -1557,7 +1556,7 @@ export default function Home() {
                       label={refImageKind === 'wireframe' ? '와이어프레임' : '참고자료'}
                       onClick={() => setRefPreviewOpen(true)}
                     />
-                    <IconButton size="sm" variant="ghost" icon={<X size={12} />} label="참고자료 제거" onClick={clearRefPage} />
+                    <IconButton variant="ghost" icon={<X size={12} />} label="참고자료 제거" onClick={clearRefPage} />
                   </div>
                 ) : null}
 
@@ -1578,7 +1577,7 @@ export default function Home() {
                       ) : undefined}
                       onClick={() => { setRefPanelOpen(true); setSourceTab('brand'); setDesignPanelOpen(false) }}
                     />
-                    <IconButton size="sm" variant="ghost" icon={<X size={12} />} label="브랜드 제거" onClick={clearBrand} />
+                    <IconButton variant="ghost" icon={<X size={12} />} label="브랜드 제거" onClick={clearBrand} />
                   </div>
                 )}
 
@@ -1590,7 +1589,7 @@ export default function Home() {
                       label={`기획/화면 설계${[prdDoc, iaImage, iaText].filter(Boolean).length > 1 ? ` ${[prdDoc, iaImage, iaText].filter(Boolean).length}` : ''}`}
                       onClick={() => { setRefPanelOpen(true); setSourceTab('planning'); setDesignPanelOpen(false) }}
                     />
-                    <IconButton size="sm" variant="ghost" icon={<X size={12} />} label="기획 자료 제거" onClick={clearPlanning} />
+                    <IconButton variant="ghost" icon={<X size={12} />} label="기획 자료 제거" onClick={clearPlanning} />
                   </div>
                 )}
 
@@ -1734,7 +1733,7 @@ export default function Home() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)", backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, marginBottom: '14px' }}>
                   <img src={brandLogo} alt="logo" style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: "var(--aui-radius-sm)" }} />
                   <span style={{ fontSize: "var(--aui-type-caption-size)", color: F.ink, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{brandLogoName}</span>
-                  <IconButton size="sm" variant="ghost" icon={<X size={14} />} label="로고 제거" onClick={clearBrand} />
+                  <IconButton variant="ghost" icon={<X size={14} />} label="로고 제거" onClick={clearBrand} />
                 </div>
               ) : (
                 <div style={{ marginBottom: '14px' }}>
@@ -1794,7 +1793,6 @@ export default function Home() {
                     </label>
                     <span style={{ position: 'absolute', top: '-8px', right: '-8px' }}>
                       <IconButton
-                        size="sm"
                         variant="ghost"
                         icon={<X size={8} />}
                         label="컬러 제거"
@@ -1879,7 +1877,7 @@ export default function Home() {
                           <div style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", color: F.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.name}</div>
                           <div style={{ fontSize: "var(--aui-type-micro-size)", color: F.inkMuted, marginTop: 2 }}>{entry.text.length.toLocaleString()}자</div>
                         </div>
-                        <IconButton size="sm" variant="ghost" icon={<X size={14} />} label="문서 제거" onClick={() => setPrdDocEntries(prev => prev.filter((_, i) => i !== index))} />
+                        <IconButton variant="ghost" icon={<X size={14} />} label="문서 제거" onClick={() => setPrdDocEntries(prev => prev.filter((_, i) => i !== index))} />
                       </div>
                     ))}
                     <Button
@@ -1932,7 +1930,7 @@ export default function Home() {
                             <div style={{ fontSize: "var(--aui-type-micro-size)", color: F.inkMuted, marginTop: 2 }}>텍스트 파싱 완료 · {iaText.length.toLocaleString()}자</div>
                           </div>
                           <span style={{ marginLeft: 'auto', flexShrink: 0 }}>
-                            <IconButton size="sm" variant="ghost" icon={<X size={12} />} label="파싱 결과 제거" onClick={() => { setIaText(null); setIaImageFileName(null) }} />
+                            <IconButton variant="ghost" icon={<X size={12} />} label="파싱 결과 제거" onClick={() => { setIaText(null); setIaImageFileName(null) }} />
                           </span>
                         </div>
                       </div>
@@ -1940,7 +1938,7 @@ export default function Home() {
                       <div style={{ position: 'relative', borderRadius: "var(--aui-radius-control)", overflow: 'hidden', border: `1px solid ${F.hairline}`, backgroundColor: F.surface2 }}>
                         <img src={`data:image/png;base64,${iaImage}`} alt="IA" style={{ width: '100%', maxHeight: 160, objectFit: 'contain', display: 'block' }} />
                         <div style={{ position: 'absolute', top: 6, right: 6 }}>
-                          <IconButton size="sm" variant="secondary" icon={<X size={12} />} label="이미지 제거" onClick={() => { setIaImage(null); setIaImageFileName(null) }} />
+                          <IconButton variant="secondary" icon={<X size={12} />} label="이미지 제거" onClick={() => { setIaImage(null); setIaImageFileName(null) }} />
                         </div>
                         {iaImageFileName && (
                           <div style={{ padding: `var(--aui-space-2) var(--aui-space-3)`, fontSize: "var(--aui-type-micro-size)", color: F.inkMuted }}>{iaImageFileName}</div>
@@ -1974,7 +1972,7 @@ export default function Home() {
                         {asIsAnalysis.layoutType} · 섹션 {asIsAnalysis.sections.length}개 · CTA {asIsAnalysis.primaryCtas.length}개
                       </div>
                     </div>
-                    <IconButton size="sm" variant="ghost" icon={<X size={14} />} label="As-is 분석 제거" onClick={clearAsIs} />
+                    <IconButton variant="ghost" icon={<X size={14} />} label="As-is 분석 제거" onClick={clearAsIs} />
                   </div>
                 </div>
               )}
@@ -2063,7 +2061,7 @@ export default function Home() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)", backgroundColor: F.surface2, border: `1px solid ${F.hairline}`, marginBottom: '14px' }}>
                       <img src={brandLogo} alt="logo" style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: "var(--aui-radius-sm)" }} />
                       <span style={{ fontSize: "var(--aui-type-caption-size)", color: F.ink, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{brandLogoName}</span>
-                      <IconButton size="sm" variant="ghost" icon={<X size={14} />} label="로고 제거" onClick={clearBrand} />
+                      <IconButton variant="ghost" icon={<X size={14} />} label="로고 제거" onClick={clearBrand} />
                     </div>
                   ) : (
                     <div style={{ marginBottom: '14px' }}>
@@ -2112,7 +2110,6 @@ export default function Home() {
                         </label>
                         <span style={{ position: 'absolute', top: '-8px', right: '-8px' }}>
                           <IconButton
-                            size="sm"
                             variant="ghost"
                             icon={<X size={8} />}
                             label="컬러 제거"
@@ -2167,7 +2164,7 @@ export default function Home() {
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={`data:${shot.mimeType};base64,${shot.data}`} alt={shot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           <span style={{ position: 'absolute', top: 2, right: 2 }}>
-                            <IconButton size="sm" variant="secondary" icon={<X size={10} />} label={`${shot.name} 제거`} onClick={() => setAsIsShots(prev => prev.filter((_, i) => i !== index))} />
+                            <IconButton variant="secondary" icon={<X size={10} />} label={`${shot.name} 제거`} onClick={() => setAsIsShots(prev => prev.filter((_, i) => i !== index))} />
                           </span>
                         </div>
                       ))}
@@ -2231,7 +2228,6 @@ export default function Home() {
             <Link
               onClick={() => setGenMdModalOpen(true)}
               hasUnderline
-              size="xsm"
               style={{ '--color-text-accent': '#ffffff', display: 'inline-flex', alignItems: 'center', gap: 'var(--aui-space-1)', cursor: 'pointer', letterSpacing: 'var(--aui-tracking-tight)' } as React.CSSProperties}
             >
               <FileText size={12} />

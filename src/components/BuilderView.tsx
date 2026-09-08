@@ -1001,7 +1001,7 @@ function ComponentDetailsPanel({
     >
       <div
         style={{
-          height: 42,
+          minHeight: 48,
           padding: `0 var(--aui-space-4)`,
           borderBottom: `1px solid ${AIDE.border}`,
           display: 'flex',
@@ -1015,7 +1015,6 @@ function ComponentDetailsPanel({
         {selectedItem ? (
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
             <AstryxIconButton
-              size="sm"
               variant="ghost"
               icon={<RefreshCw size={14} />}
               label="컴포넌트 기본값으로 초기화"
@@ -1023,7 +1022,6 @@ function ComponentDetailsPanel({
               onClick={() => onReset(selectedItem.instanceId)}
             />
             <AstryxIconButton
-              size="sm"
               variant="destructive"
               icon={<Trash2 size={15} />}
               label="선택한 컴포넌트 삭제"
