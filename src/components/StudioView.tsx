@@ -20,6 +20,8 @@ import { Button as AstryxButton } from '@astryxdesign/core/Button'
 import { IconButton as AstryxIconButton } from '@astryxdesign/core/IconButton'
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl'
 import { TextInput } from '@astryxdesign/core/TextInput'
+import { TextArea } from '@astryxdesign/core/TextArea'
+import { Switch as AstryxSwitch } from '@astryxdesign/core/Switch'
 import { Chip } from '@/components/ui/chip'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox, Switch } from '@/components/ui/selection-control'
@@ -2689,13 +2691,14 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
                     {/* CTA */}
                     {variant && (
-                      <button
-                        onClick={() => handlePickVariant(variantIdx as 0|1|2)}
-                        className="hover:!bg-[var(--aui-text-neutral)]"
-                        style={{ marginTop: 16, width: '100%', padding: `var(--aui-space-3) 0`, borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", border: 'none', cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)", transition: 'background 0.15s' }}
-                      >
-                        이 시안으로 진행
-                      </button>
+                      <div style={{ marginTop: 16 }}>
+                        <AstryxButton
+                          variant="primary"
+                          width="100%"
+                          label="이 시안으로 진행"
+                          onClick={() => handlePickVariant(variantIdx as 0|1|2)}
+                        />
+                      </div>
                     )}
                     {!variant && (
                       <div style={{ marginTop: 16, width: '100%', padding: `var(--aui-space-3) 0`, borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-surface-muted)', color: 'var(--aui-text-disabled)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", textAlign: 'center', letterSpacing: "var(--aui-tracking-tight)" }}>
@@ -4319,9 +4322,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 <h1 className="text-[22px] font-bold mb-1" style={{ letterSpacing: "var(--aui-tracking-tighter)" }}>이 기준으로 만들게요</h1>
                 <p className="text-[14px] text-[var(--aui-text-muted)]">{questionnaire.projectSummary}</p>
               </div>
-              <button onClick={() => { clearGeneratedBoard(); setStartedFromLanding(false); onBack?.() }} className="flex items-center gap-1.5 text-sm text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors mt-1">
-                <ArrowLeft size={14} /> 뒤로
-              </button>
+              <AstryxButton size="sm" variant="ghost" icon={<ArrowLeft size={14} />} label="뒤로" onClick={() => { clearGeneratedBoard(); setStartedFromLanding(false); onBack?.() }} />
+
             </div>
 
             {brief.trim() && (
@@ -4453,16 +4455,17 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         : <span className="text-[12px] flex-1" style={{ color: F.inkSubtle }}>{hint}</span>
                       }
                       {color && (
-                        <button
+                        <AstryxIconButton
+                          size="sm"
+                          variant="ghost"
+                          icon={<X size={12} />}
+                          label="컬러 지정 해제"
                           onClick={() => setBrandColors(prev =>
                             idx === 0
                               ? (prev[1] ? [prev[1]] : [])
                               : (prev[0] ? [prev[0]] : [])
                           )}
-                          style={{ color: F.inkMuted }}
-                        >
-                          <X size={12} />
-                        </button>
+                        />
                       )}
                     </div>
                   )
@@ -5102,18 +5105,16 @@ function AlignField({ value, prop, onUpdate }: { value: string; prop: string; on
     { value: 'right', icon: <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 2h10M4 5h7M2 8h9M5 11h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
   ]
   return (
-    <div className="flex gap-0.5">
+    <SegmentedControl
+      label="정렬"
+      size="sm"
+      value={value || 'left'}
+      onChange={(v) => onUpdate(prop, v)}
+    >
       {options.map(opt => (
-        <button
-          key={opt.value}
-          onClick={() => onUpdate(prop, opt.value)}
-          className="flex items-center justify-center w-7 h-6 rounded transition-colors"
-          style={value === opt.value ? { background: 'var(--aui-text)', color: 'var(--aui-on-dark)' } : { background: 'var(--aui-border)', color: 'var(--aui-text-muted)' }}
-        >
-          {opt.icon}
-        </button>
+        <SegmentedControlItem key={opt.value} value={opt.value} label={opt.value} isLabelHidden icon={opt.icon} />
       ))}
-    </div>
+    </SegmentedControl>
   )
 }
 
@@ -5165,19 +5166,8 @@ function SliderField({ variable, value, onChange }: {
   )
 }
 
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      onClick={() => onChange(!on)}
-      className="relative w-10 h-5 rounded-full transition-colors"
-      style={{ backgroundColor: on ? 'var(--aui-primary)' : 'var(--aui-text-disabled)' }}
-    >
-      <div
-        className="absolute top-0.5 size-4 bg-white rounded-full shadow transition-all"
-        style={{ left: on ? '22px' : '2px' }}
-      />
-    </button>
-  )
+function Toggle({ on, onChange, label = '토글' }: { on: boolean; onChange: (v: boolean) => void; label?: string }) {
+  return <AstryxSwitch label={label} isLabelHidden size="sm" value={on} onChange={onChange} />
 }
 
 /** "메인 구조" 질문 — LLM이 이 서비스 전용으로 작성한 구조 5개를 결정론 와이어프레임으로 보여준다.
@@ -5292,38 +5282,32 @@ function QuestionCard({ index, question, answer, onAnswer }: {
 
       <div className="pl-9">
         {question.type === 'text' ? (
-          <textarea
+          <TextArea
+            label="답변"
+            isLabelHidden
             value={(answer as string) ?? ''}
-            onChange={e => onAnswer(e.target.value)}
-            className="w-full bg-[var(--aui-border-subtle)] border p-3 text-sm text-[var(--aui-text)] placeholder:text-[var(--aui-text-muted)] resize-none"
-            style={{ borderRadius: "var(--aui-radius-sm)", outline: 'none', borderColor: 'var(--aui-shadow-soft)' }}
+            onChange={onAnswer}
             rows={3}
+            width="100%"
             placeholder="자유롭게 입력해주세요..."
-            onFocus={e => { e.currentTarget.style.borderColor = 'var(--aui-scrim)' }}
-            onBlur={e => { e.currentTarget.style.borderColor = 'var(--aui-shadow-soft)' }}
           />
         ) : (
           <div className="flex flex-wrap gap-2">
             {question.options?.map(option => (
-              <button
+              <AstryxButton
                 key={option}
+                size="sm"
+                variant={isSelected(option) ? 'primary' : 'secondary'}
+                icon={isSelected(option) ? <Check size={13} /> : undefined}
+                label={option}
                 onClick={() => onAnswer(option)}
-                className="px-4 py-2 text-sm border transition-all inline-flex items-center gap-1.5"
-                style={{ borderRadius: "var(--aui-radius-sm)", ...(isSelected(option) ? { backgroundColor: 'var(--aui-primary-soft)', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}
-              >
-                {isSelected(option) && <Check size={13} />}
-                {option}
-              </button>
+              />
             ))}
             {question.hasDecideForMe && (
-              <button onClick={() => onAnswer('AI가 결정')} className="px-4 py-2 text-sm border flex items-center gap-1.5 transition-all" style={{ borderRadius: "var(--aui-radius-sm)", borderStyle: 'dashed', ...(isSelected('AI가 결정') ? { backgroundColor: 'var(--aui-primary-soft)', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}>
-                <Sparkles size={12} /> AI가 결정
-              </button>
+              <AstryxButton size="sm" variant={isSelected('AI가 결정') ? 'primary' : 'ghost'} icon={<Sparkles size={12} />} label="AI가 결정" onClick={() => onAnswer('AI가 결정')} />
             )}
             {question.hasExplore && (
-              <button onClick={() => onAnswer('다양하게 보기')} className="px-4 py-2 text-sm border transition-all" style={{ borderRadius: "var(--aui-radius-sm)", borderStyle: 'dashed', ...(isSelected('다양하게 보기') ? { backgroundColor: 'var(--aui-primary-soft)', borderColor: F.primary, color: F.primary } : { backgroundColor: F.surface, borderColor: F.hairline, color: F.ink }) }}>
-                ✦ 다양하게 보기
-              </button>
+              <AstryxButton size="sm" variant={isSelected('다양하게 보기') ? 'primary' : 'ghost'} label="✦ 다양하게 보기" onClick={() => onAnswer('다양하게 보기')} />
             )}
           </div>
         )}
