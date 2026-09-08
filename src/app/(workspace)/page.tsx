@@ -1112,12 +1112,10 @@ export default function Home() {
         .marquee-left { animation: marquee-left 32s linear infinite; display: flex; width: max-content; }
         .marquee-right { animation: marquee-right 28s linear infinite; display: flex; width: max-content; }
         .brief-details-grid { display: grid; grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr); gap: 12px; padding-top: 10px; }
-        .landing-hero-shell { padding: var(--aui-space-4); box-sizing: border-box; }
-        .landing-hero-card { min-height: calc(100vh - var(--aui-space-6) - (var(--aui-space-4) * 2)); border-radius: 16px; }
+        .landing-hero-shell { padding: 0; box-sizing: border-box; }
+        .landing-hero-card { min-height: calc(100vh - var(--aui-space-6)); border-radius: 0; }
         @media (max-width: 720px) {
           .brief-details-grid { grid-template-columns: 1fr; }
-          .landing-hero-shell { padding: var(--aui-space-3); }
-          .landing-hero-card { min-height: calc(100vh - var(--aui-space-6) - (var(--aui-space-3) * 2)); border-radius: 12px; }
         }
         .history-card:hover .history-card-overlay { opacity: 1 !important; }
         @keyframes scroll-cue {
