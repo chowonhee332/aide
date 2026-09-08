@@ -33,7 +33,7 @@ assert.deepEqual(
   'every documented pattern must have a formal contract.patterns entry',
 )
 
-const llmsRouteSource = read('src/app/aide-ui/llms.txt/route.ts')
+const llmsRouteSource = read('src/app/(workspace)/aide-ui/llms.txt/route.ts')
 assert.match(llmsRouteSource, /dict\(AIDE_DESIGN_CONTRACT\.ai\)\.interaction_principles/, 'llms.txt must derive AI interaction principles from the contract')
 assert.match(llmsRouteSource, /Object\.entries\(patterns\)/, 'llms.txt must derive its pattern index from contract.patterns')
 const designParserSource = read('src/lib/design-md-contract.ts')

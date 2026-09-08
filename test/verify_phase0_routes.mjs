@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 
 const read = (file) => fs.readFileSync(file, 'utf8')
-const home = read('src/app/page.tsx')
+const home = read('src/app/(workspace)/page.tsx')
 const studio = read('src/components/StudioView.tsx')
 const studioRoute = read('src/components/StudioRouteView.tsx')
 const playgroundRoute = read('src/components/PlaygroundRouteView.tsx')

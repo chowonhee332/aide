@@ -9,7 +9,7 @@ const generate = read('src/app/api/generate/route.ts')
 const expand = read('src/app/api/expand/route.ts')
 const refine = read('src/app/api/refine/route.ts')
 const policy = read('src/lib/gemini-model-policy.ts')
-const landing = read('src/app/page.tsx')
+const landing = read('src/app/(workspace)/page.tsx')
 const studio = read('src/components/StudioView.tsx')
 
 const failures = []

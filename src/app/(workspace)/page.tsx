@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useRef, useEffect, startTransition } fr
 import {
   ArrowUp, FileText, Upload, X,
   Check, ChevronDown, Palette, Share2,
-  Trash2, ExternalLink, Link2,
+  Link2,
   Smartphone, Monitor,
   Download,
   LoaderCircle,
@@ -342,8 +342,8 @@ export default function Home() {
   // reading window in a lazy initializer would desync SSR/CSR hydration.
   useEffect(() => {
     const setting = readSettingsParam()
-    if (setting === 'api') setApiKeyModalOpen(true)
-    else if (setting === 'billing') { setUsageLoading(true); setUsageModalOpen(true) }
+    if (setting === 'api') startTransition(() => setApiKeyModalOpen(true))
+    else if (setting === 'billing') startTransition(() => { setUsageLoading(true); setUsageModalOpen(true) })
   }, [])
 
   useEffect(() => {
