@@ -5110,19 +5110,18 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
 // ─── UI primitives ────────────────────────────────────────────────────────────
 
 function PrimaryButton({ onClick, disabled, loading, loadingText, children }: {
-  onClick: () => void; disabled: boolean; loading: boolean; loadingText: string; children: React.ReactNode
+  onClick: () => void; disabled: boolean; loading: boolean; loadingText: string; children: string
 }) {
   return (
-    <Button
+    <AstryxButton
       type="button"
       onClick={onClick}
-      disabled={disabled}
+      isDisabled={disabled}
+      isLoading={loading}
       size="lg"
-      className="w-full"
-      aria-busy={loading}
-    >
-      {loading ? <><Spinner />{loadingText}</> : children}
-    </Button>
+      style={{ width: '100%' }}
+      label={loading ? loadingText : children}
+    />
   )
 }
 

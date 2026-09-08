@@ -58,7 +58,7 @@ import { AUI_ROOT_CSS } from '@/lib/aide-product-tokens';
 import { Badge as AstryxBadge } from '@astryxdesign/core/Badge';
 import { Button as AstryxButton } from '@astryxdesign/core/Button';
 import { IconButton as AstryxIconButton } from '@astryxdesign/core/IconButton';
-import { SegmentedControl } from '@/components/ui/segmented-control';
+import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { PlaygroundComponentPreview as ComponentPreview } from '@/components/aide-docs/PlaygroundComponentPreview';
 import { componentPreviewSize } from '@/lib/aide-docs';
 import DotField from '@/components/DotField';
@@ -903,9 +903,13 @@ function ComponentLibraryPanel({
               <SegmentedControl
                 label="디자인 시스템"
                 value={designSystem}
-                onValueChange={(value) => onDesignSystemChange(value as DesignSystemId)}
-                options={DESIGN_SYSTEM_OPTIONS}
-              />
+                onChange={(value) => onDesignSystemChange(value as DesignSystemId)}
+                layout="fill"
+              >
+                {DESIGN_SYSTEM_OPTIONS.map((option) => (
+                  <SegmentedControlItem key={option.value} value={option.value} label={option.label} />
+                ))}
+              </SegmentedControl>
             </div>
           ) : null}
           <div style={{ margin: `0 var(--aui-space-1) var(--aui-space-2)`, display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", color: AIDE.textMuted, fontSize: "var(--aui-type-meta-size)" }}>
@@ -2257,25 +2261,23 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
         <SegmentedControl
           label="프레임 기기"
           value={activeFrame?.device ?? activeDevice}
-          onValueChange={(device) => selectFrameDevice(device as FrameDevice)}
-          className="min-w-[220px]"
-          options={([
-            { value: 'mobile', label: <span className="inline-flex items-center gap-1.5"><Smartphone size={14}/>Mobile <small>{FRAME_DIMENSIONS.mobile.width}</small></span> },
-            { value: 'desktop', label: <span className="inline-flex items-center gap-1.5"><Monitor size={14}/>Desktop <small>{FRAME_DIMENSIONS.desktop.width}</small></span> },
-          ])}
-        />
+          onChange={(device) => selectFrameDevice(device as FrameDevice)}
+          style={{ minWidth: 220 }}
+        >
+          <SegmentedControlItem value="mobile" label={`Mobile ${FRAME_DIMENSIONS.mobile.width}`} icon={<Smartphone size={14} aria-hidden />} />
+          <SegmentedControlItem value="desktop" label={`Desktop ${FRAME_DIMENSIONS.desktop.width}`} icon={<Monitor size={14} aria-hidden />} />
+        </SegmentedControl>
 
         {activeFrame?.device === 'desktop' ? (
           <SegmentedControl
             label="PC 레이아웃"
             value={activeFrame.layout ?? 'stack'}
-            onValueChange={(layout) => setFrameLayout(layout as 'stack' | 'grid-2' | 'grid-3')}
-            options={[
-              { value: 'stack', label: '1열' },
-              { value: 'grid-2', label: '2열' },
-              { value: 'grid-3', label: '3열' },
-            ]}
-          />
+            onChange={(layout) => setFrameLayout(layout as 'stack' | 'grid-2' | 'grid-3')}
+          >
+            <SegmentedControlItem value="stack" label="1열" />
+            <SegmentedControlItem value="grid-2" label="2열" />
+            <SegmentedControlItem value="grid-3" label="3열" />
+          </SegmentedControl>
         ) : null}
 
         <div style={{ width: 1, height: 24, background: AIDE.border }} />
