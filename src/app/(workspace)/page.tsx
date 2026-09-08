@@ -2,24 +2,20 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect, startTransition } from 'react'
 import {
-  ArrowUp, ArrowRight, FileText, Upload, X,
+  ArrowUp, FileText, Upload, X,
   Check, ChevronDown, Palette, Share2,
-  Clock, Trash2, ExternalLink, Link2, KeyRound,
+  Trash2, ExternalLink, Link2, KeyRound,
   Smartphone, Monitor,
-  Download, Eye, EyeOff, Coins, Menu as MenuIcon,
+  Download, Eye, EyeOff, Coins,
   LoaderCircle,
 } from '@/components/ui/material-icon'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import Grainient from '@/components/Grainient'
 import { DesignMdPreview } from '@/components/DesignMdPreview'
-import { loadHistory } from '@/lib/history'
 import type { GeminiUsageSummary } from '@/lib/gemini-usage'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AIDE_UI } from '@/lib/aide-ui'
 import { writeStudioNewHandoff } from '@/lib/studio-route-handoff'
-import { Button, buttonVariants } from '@/components/ui/button'
-import { Menu, MenuTrigger, MenuContent, MenuItem } from '@/components/ui/menu'
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl'
 import { TextArea } from '@astryxdesign/core/TextArea'
 import { TextInput } from '@astryxdesign/core/TextInput'
@@ -38,10 +34,6 @@ const F = {
   hairline:     AIDE_UI.border,
   hairlineSoft: AIDE_UI.borderSubtle,
 }
-
-// Home is entered through the persistent workspace LNB. Do not render a
-// second, landing-specific global navigation above the canvas.
-const LANDING_GNB_ENABLED = false
 
 function formatCompactTokens(value: number) {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`
@@ -293,21 +285,13 @@ export default function Home() {
   const router = useRouter()
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(() => readSettingsParam() === 'api')
   const [apiKeyTab, setApiKeyTab] = useState<ApiKeyTab>('gemini')
-  const [apiKeyInputs, setApiKeyInputs] = useState<Record<ApiKeyTab, string>>({ gemini: '', unsplash: '', figma: '' })
+  const [apiKeyInputs, setApiKeyInputs] = useState<Record<ApiKeyTab, string>>(() => readClientApiKeys())
   const [apiKeyValidating, setApiKeyValidating] = useState(false)
   const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
   const [apiKeyError, setApiKeyError] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
   const activeApiKeyMeta = API_KEY_META[apiKeyTab]
   const activeApiKeyInput = apiKeyInputs[apiKeyTab]
-
-  const openApiKeyModal = () => {
-    setApiKeyInputs(readClientApiKeys())
-    setApiKeyTab('gemini')
-    setApiKeyStatus('idle')
-    setApiKeyError('')
-    setApiKeyModalOpen(true)
-  }
 
   const handleValidateAndSave = async () => {
     const trimmed = activeApiKeyInput.trim()
@@ -347,16 +331,6 @@ export default function Home() {
     }
   }
 
-
-  // GNB: full-width transparent bar at the top, collapses to a floating
-  // frosted pill once the page is scrolled
-  const [navScrolled, setNavScrolled] = useState(false)
-  useEffect(() => {
-    const onScroll = () => setNavScrolled(window.scrollY > 24)
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
 
   const [usageModalOpen, setUsageModalOpen] = useState(() => readSettingsParam() === 'billing')
   const [usageSummary, setUsageSummary] = useState<GeminiUsageSummary | null>(null)
@@ -1537,121 +1511,6 @@ export default function Home() {
                   centerX={0} centerY={0} zoom={0.9}
                 />}
           </div>
-
-        {LANDING_GNB_ENABLED && <header
-          style={{
-            position: 'fixed',
-            top: navScrolled ? '32px' : '16px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 50,
-            width: navScrolled ? 'auto' : 'calc(100% - 32px)',
-            maxWidth: navScrolled ? 'calc(100% - 64px)' : '1400px',
-            transition: 'top .32s cubic-bezier(.4,0,.2,1), max-width .32s cubic-bezier(.4,0,.2,1)',
-          }}
-        >
-          <div style={{
-            backgroundColor: navScrolled ? 'var(--aui-glass-surface-strong)' : 'transparent',
-            backdropFilter: navScrolled ? 'blur(24px) saturate(1.5)' : 'none',
-            WebkitBackdropFilter: navScrolled ? 'blur(24px) saturate(1.5)' : 'none',
-            border: navScrolled ? '1px solid rgba(255,255,255,0.4)' : '1px solid transparent',
-            borderRadius: 'var(--aui-radius-pill)',
-            padding: navScrolled ? '10px 14px 10px 16px' : '24px 24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: navScrolled ? '64px' : "var(--aui-space-6)",
-            boxShadow: navScrolled ? "0 8px 32px rgba(8, 30, 90, 0.2)" : 'none',
-            transition: 'background-color .32s ease, padding .32s ease, box-shadow .32s ease, border-color .32s ease, gap .32s ease',
-          }}>
-            {/* 좌측: 로고 */}
-            <div style={{ display: 'flex', flexShrink: 0 }}>
-              <Button
-                type="button"
-                aria-label="Aide 홈으로 이동"
-                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                variant="ghost"
-                className="h-auto p-0 hover:bg-transparent"
-              >
-                <img src="/logo_aide_wh.png" alt="Aide" style={{ height: 42, width: 'auto', display: 'block', objectFit: 'contain', filter: 'invert(1)' }} />
-              </Button>
-            </div>
-
-            {/* 우측: 액션 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", flexShrink: 0 }}>
-              {!navScrolled && (
-                <>
-                  <Button onClick={() => { setUsageLoading(true); setUsageModalOpen(true) }} variant="ghost" size="icon" aria-label="Price" title="Price" className="rounded-[var(--aui-radius-pill)] text-[var(--aui-text-strong)] hover:bg-[var(--aui-glass-surface-strong)] hover:text-[var(--aui-text-strong)]">
-                    <Coins size={18} />
-                  </Button>
-                  <Button onClick={() => router.push('/projects')} variant="ghost" size="icon" aria-label="Projects" title="Projects" className="rounded-[var(--aui-radius-pill)] text-[var(--aui-text-strong)] hover:bg-[var(--aui-glass-surface-strong)] hover:text-[var(--aui-text-strong)]">
-                    <Clock size={18} />
-                  </Button>
-                  <Button onClick={openApiKeyModal} variant="ghost" size="icon" aria-label="API" title="API" className="rounded-[var(--aui-radius-pill)] text-[var(--aui-text-strong)] hover:bg-[var(--aui-glass-surface-strong)] hover:text-[var(--aui-text-strong)]">
-                    <KeyRound size={18} />
-                  </Button>
-                </>
-              )}
-
-              <Link href="/aide-ui" className={buttonVariants({ variant: 'ghost', className: 'group/ds relative rounded-[var(--aui-radius-pill)] px-3.5 text-[var(--aui-text-strong)] hover:bg-[var(--aui-glass-surface-strong)] hover:text-[var(--aui-text-strong)]' })}>
-                <span className="inline-block transition-transform duration-200 group-hover/ds:-translate-x-1.5">Design System</span>
-                <ArrowRight
-                  size={16}
-                  className="pointer-events-none absolute right-1.5 top-1/2 -translate-x-1 -translate-y-1/2 opacity-0 transition-[opacity,transform] duration-200 group-hover/ds:translate-x-0 group-hover/ds:opacity-100"
-                />
-              </Link>
-
-              <Button
-                onClick={() => router.push('/playground')}
-                variant="ghost"
-                className="group/pg relative rounded-[var(--aui-radius-pill)] px-3.5 text-[var(--aui-text-strong)] hover:bg-[var(--aui-glass-surface-strong)] hover:text-[var(--aui-text-strong)]"
-              >
-                <span className="inline-block transition-transform duration-200 group-hover/pg:-translate-x-1.5">Playground</span>
-                <ArrowRight
-                  size={16}
-                  className="pointer-events-none absolute right-1.5 top-1/2 -translate-x-1 -translate-y-1/2 opacity-0 transition-[opacity,transform] duration-200 group-hover/pg:translate-x-0 group-hover/pg:opacity-100"
-                />
-              </Button>
-
-              <Button
-                onClick={async () => {
-                  const items = await loadHistory()
-                  if (items.length > 0) router.push(`/studio/${encodeURIComponent(items[0].id)}`)
-                }}
-                className="group/st relative rounded-[var(--aui-radius-pill)] px-3.5 bg-[var(--aui-glass-surface-strong)] text-[var(--aui-text-strong)] shadow-[var(--aui-shadow-raised)] hover:bg-white/90"
-              >
-                <span className="inline-block transition-transform duration-200 group-hover/st:-translate-x-1.5">Studio</span>
-                <ArrowRight
-                  size={16}
-                  className="pointer-events-none absolute right-1.5 top-1/2 -translate-x-1 -translate-y-1/2 opacity-0 transition-[opacity,transform] duration-200 group-hover/st:translate-x-0 group-hover/st:opacity-100"
-                />
-              </Button>
-
-              {navScrolled && (
-                <Menu>
-                  <MenuTrigger
-                    aria-label="메뉴"
-                    title="메뉴"
-                    className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'rounded-[var(--aui-radius-pill)] text-[var(--aui-text-strong)] hover:bg-[var(--aui-glass-surface-strong)] hover:text-[var(--aui-text-strong)]' })}
-                  >
-                    <MenuIcon size={20} />
-                  </MenuTrigger>
-                  <MenuContent className="min-w-[184px] bg-white p-1.5">
-                    <MenuItem onClick={() => { setUsageLoading(true); setUsageModalOpen(true) }}>
-                      <Coins size={16} /> Price
-                    </MenuItem>
-                    <MenuItem onClick={() => router.push('/projects')}>
-                      <Clock size={16} /> 프로젝트
-                    </MenuItem>
-                    <MenuItem onClick={openApiKeyModal}>
-                      <KeyRound size={16} /> API
-                    </MenuItem>
-                  </MenuContent>
-                </Menu>
-              )}
-            </div>
-          </div>
-        </header>}
 
 
         <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 pt-24" style={{ paddingBottom: '100px' }}>
