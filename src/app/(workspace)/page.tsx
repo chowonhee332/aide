@@ -1346,8 +1346,8 @@ export default function Home() {
                 onOpenChange={(open) => { if (!open) setRefPreviewOpen(false) }}
                 endContent={
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--aui-space-2)' }}>
-                    <Button size="sm" variant="secondary" label="변경하기" onClick={() => { setRefPreviewOpen(false); setRefPanelOpen(true); setDesignPanelOpen(false) }} />
-                    <Button size="sm" variant="destructive" label="제거" onClick={() => { clearRefPage(); setRefPreviewOpen(false) }} />
+                    <Button variant="secondary" label="변경하기" onClick={() => { setRefPreviewOpen(false); setRefPanelOpen(true); setDesignPanelOpen(false) }} />
+                    <Button variant="destructive" label="제거" onClick={() => { clearRefPage(); setRefPreviewOpen(false) }} />
                   </div>
                 }
               />
@@ -1508,7 +1508,6 @@ export default function Home() {
                     icon={<span style={{ fontSize: 'var(--aui-icon-md)', lineHeight: 'var(--aui-leading-none)' }}>+</span>}
                     label="리디자인 소스 추가"
                     tooltip="리디자인 소스 추가"
-                    size="sm"
                     variant={refPanelOpen ? 'primary' : 'secondary'}
                     tabIndex={genMode === 'ai' ? 0 : -1}
                     onClick={() => { setRefPanelOpen(v => !v); setDesignPanelOpen(false); setBrandPanelOpen(false) }}
@@ -1519,7 +1518,6 @@ export default function Home() {
                   value={platform}
                   onChange={(value) => setPlatform(value as 'mobile' | 'web')}
                   label="플랫폼"
-                  size="sm"
                   style={{ flexShrink: 0 }}
                 >
                   <SegmentedControlItem value="mobile" label="앱" icon={<Smartphone size={13} aria-hidden />} />
@@ -1531,7 +1529,6 @@ export default function Home() {
                 {asIsAnalysis ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}>
                     <Button
-                      size="sm"
                       variant="secondary"
                       icon={<Link2 size={12} />}
                       label="As-is"
@@ -1549,7 +1546,6 @@ export default function Home() {
                 {refPageImage ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}>
                     <Button
-                      size="sm"
                       variant="secondary"
                       icon={
                         <img
@@ -1568,7 +1564,6 @@ export default function Home() {
                 {(brandLogo !== null || brandColors.length > 0) && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}>
                     <Button
-                      size="sm"
                       variant="secondary"
                       icon={brandLogo
                         ? <img src={brandLogo} alt="logo" style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: 'var(--aui-radius-sm)' }} />
@@ -1590,7 +1585,6 @@ export default function Home() {
                 {(prdDoc !== null || iaImage !== null || iaText !== null) && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}>
                     <Button
-                      size="sm"
                       variant="primary"
                       icon={<FileText size={11} />}
                       label={`기획/화면 설계${[prdDoc, iaImage, iaText].filter(Boolean).length > 1 ? ` ${[prdDoc, iaImage, iaText].filter(Boolean).length}` : ''}`}
@@ -1602,7 +1596,6 @@ export default function Home() {
 
                 {/* DESIGN.md button */}
                 <Button
-                  size="sm"
                   variant="secondary"
                   icon={<FileText size={11} />}
                   label="design.md"
@@ -1658,7 +1651,6 @@ export default function Home() {
                   return (
                     <Button
                       key={key}
-                      size="sm"
                       width="100%"
                       variant={isActive ? 'primary' : 'secondary'}
                       icon={<span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: preset.color, flexShrink: 0, display: 'inline-block' }} />}
@@ -1775,7 +1767,6 @@ export default function Home() {
               {brandLogo && (
                 <div style={{ display: 'flex', gap: "var(--aui-space-2)", marginBottom: 10 }}>
                   <Button
-                    size="sm"
                     variant="secondary"
                     label={extractingColors ? '추출 중...' : '컬러 추출'}
                     onClick={handleExtractBrandColors}
@@ -1783,7 +1774,6 @@ export default function Home() {
                     isDisabled={extractingColors}
                   />
                   <Button
-                    size="sm"
                     variant="primary"
                     label="적용하기"
                     onClick={handleApplyBrandColors}
@@ -2095,7 +2085,6 @@ export default function Home() {
                   {brandLogo && (
                     <div style={{ display: 'flex', gap: "var(--aui-space-2)", marginBottom: 10 }}>
                       <Button
-                        size="sm"
                         variant="secondary"
                         label={extractingColors ? '추출 중...' : '컬러 추출'}
                         onClick={handleExtractBrandColors}
@@ -2103,7 +2092,6 @@ export default function Home() {
                         isDisabled={extractingColors}
                       />
                       <Button
-                        size="sm"
                         variant="primary"
                         label="적용하기"
                         onClick={handleApplyBrandColors}
