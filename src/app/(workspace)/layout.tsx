@@ -59,7 +59,6 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
           height: '100%',
           borderRadius: 'var(--aui-radius-card)',
           overflow: 'hidden',
-          border: '1px solid var(--aui-border-subtle)',
         }}
       >
         <SideNavSection title="탐색" isHeaderHidden>
