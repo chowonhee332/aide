@@ -1665,24 +1665,15 @@ export default function Home() {
                   const preset = DESIGN_PRESETS[key]
                   const isActive = designPreset === key
                   return (
-                    <button
+                    <Button
                       key={key}
+                      size="sm"
+                      width="100%"
+                      variant={isActive ? 'primary' : 'secondary'}
+                      icon={<span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: preset.color, flexShrink: 0, display: 'inline-block' }} />}
+                      label={preset.label}
                       onClick={() => { setDesignPreset(isActive ? 'none' : key); if (!isActive) setDesignPanelOpen(false) }}
-                      style={{
-                        padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)", textAlign: 'left',
-                        cursor: 'pointer',
-                        border: isActive ? `1px solid ${preset.color}40` : `1px solid ${F.hairlineSoft}`,
-                        backgroundColor: isActive ? `${preset.color}18` : F.surface2,
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
-                        <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: preset.color, flexShrink: 0 }} />
-                        <span style={{ color: isActive ? preset.color : F.ink, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", letterSpacing: "var(--aui-tracking-tighter)" }}>
-                          {preset.label}
-                        </span>
-                      </div>
-                    </button>
+                    />
                   )
                 })}
               </div>
@@ -1693,19 +1684,15 @@ export default function Home() {
                 <div style={{ flex: 1, height: '1px', backgroundColor: F.hairlineSoft }} />
               </div>
 
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                style={{
-                  width: '100%', padding: "var(--aui-space-4)", borderRadius: "var(--aui-radius-control)",
-                  border: `1px dashed ${F.hairline}`, backgroundColor: F.surface2,
-                  color: F.inkMuted, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: "var(--aui-space-2)",
-                  marginBottom: '10px', letterSpacing: "var(--aui-tracking-tight)",
-                }}
-              >
-                <Upload size={13} />
-                DESIGN.md 파일 업로드
-              </button>
+              <div style={{ marginBottom: '10px' }}>
+                <Button
+                  variant="secondary"
+                  width="100%"
+                  icon={<Upload size={13} />}
+                  label="DESIGN.md 파일 업로드"
+                  onClick={() => fileInputRef.current?.click()}
+                />
+              </div>
 
               {urlPreviewMd ? (
                 <DesignMdPreview
@@ -1717,53 +1704,30 @@ export default function Home() {
                 />
               ) : (
                 <div>
-                  <div style={{ display: 'flex', gap: "var(--aui-space-2)" }}>
-                    <input
-                      type="text"
-                      value={urlInput}
-                      onChange={e => { setUrlInput(e.target.value); setUrlError(null) }}
-                      onKeyDown={e => e.key === 'Enter' && handleUrlAnalyze()}
-                      placeholder="타사 서비스 URL 붙여넣기 (예: airbnb.com)"
-                      disabled={urlAnalyzing}
-                      style={{
-                        flex: 1, padding: `var(--aui-space-3) var(--aui-space-3)`, borderRadius: "var(--aui-radius-control)",
-                        border: 'none',
-                        boxShadow: urlError ? 'inset 0 0 0 1px color-mix(in srgb, var(--aui-negative) 50%, transparent)' : urlAnalyzing ? `inset 0 0 0 1px ${F.primary}` : 'none',
-                        backgroundColor: urlAnalyzing ? 'var(--aui-primary-tint)' : F.surface2, color: F.ink,
-                        fontSize: "var(--aui-type-compact-size)", fontFamily: 'inherit', outline: 'none',
-                        letterSpacing: "var(--aui-tracking-tight)", transition: 'all 0.2s',
-                      }}
-                    />
-                    <button
+                  <div style={{ display: 'flex', gap: "var(--aui-space-2)", alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <TextInput
+                        label="타사 서비스 URL"
+                        isLabelHidden
+                        value={urlInput}
+                        onChange={(v) => { setUrlInput(v); setUrlError(null) }}
+                        onEnter={handleUrlAnalyze}
+                        placeholder="타사 서비스 URL 붙여넣기 (예: airbnb.com)"
+                        isDisabled={urlAnalyzing}
+                        status={urlError ? { type: 'error', message: urlError } : undefined}
+                      />
+                    </div>
+                    <Button
+                      variant="primary"
+                      label={urlAnalyzing ? '분석 중…' : '분석하기'}
                       onClick={handleUrlAnalyze}
-                      disabled={!urlInput.trim() || urlAnalyzing}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)",
-                        padding: `var(--aui-space-3) var(--aui-space-4)`, borderRadius: "var(--aui-radius-control)", flexShrink: 0,
-                        border: 'none', cursor: urlInput.trim() && !urlAnalyzing ? 'pointer' : 'default',
-                        backgroundColor: urlInput.trim() && !urlAnalyzing ? F.ink : F.surface2,
-                        color: urlInput.trim() && !urlAnalyzing ? F.canvas : 'var(--aui-scrim-soft)',
-                        fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)", letterSpacing: "var(--aui-tracking-tight)",
-                        transition: 'all 0.15s', whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {urlAnalyzing && (
-                        <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" strokeOpacity="0.3" />
-                          <path d="M21 12a9 9 0 00-9-9" />
-                        </svg>
-                      )}
-                      {urlAnalyzing ? '분석 중…' : '분석하기'}
-                    </button>
+                      isLoading={urlAnalyzing}
+                      isDisabled={!urlInput.trim() || urlAnalyzing}
+                    />
                   </div>
                   {urlAnalyzing && (
                     <p style={{ fontSize: "var(--aui-type-micro-size)", color: F.primary, marginTop: '6px', letterSpacing: "var(--aui-tracking-tight)", opacity: 0.7 }}>
                       페이지를 열고 디자인 토큰을 추출하고 있습니다 (10~30초)
-                    </p>
-                  )}
-                  {urlError && (
-                    <p style={{ color: 'var(--aui-negative)', fontSize: "var(--aui-type-caption-size)", marginTop: '6px', letterSpacing: "var(--aui-tracking-tight)" }}>
-                      {urlError}
                     </p>
                   )}
                 </div>
