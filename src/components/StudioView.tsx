@@ -18,6 +18,7 @@ import { AIDE_UI, DEFAULT_GENERATED_BRAND_COLOR } from '@/lib/aide-ui'
 import { Button } from '@/components/ui/button'
 import { Button as AstryxButton } from '@astryxdesign/core/Button'
 import { IconButton as AstryxIconButton } from '@astryxdesign/core/IconButton'
+import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl'
 import { Chip } from '@/components/ui/chip'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox, Switch } from '@/components/ui/selection-control'
@@ -3181,26 +3182,16 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     )}
                     {/* B 시안 히어로 스타일 토글 */}
                     {letter === 'B' && variant && (
-                      <div className="ml-auto flex items-center" style={{ gap: "var(--aui-space-1)", padding: "var(--aui-space-1)", borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-border-subtle)' }}>
-                        <button
-                          onClick={e => { e.stopPropagation(); setBHeroStyle('object') }}
-                          style={{ padding: `var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-sm)", fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-medium)", border: 'none', cursor: 'pointer', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'object' ? 'var(--aui-on-dark)' : 'transparent', color: bHeroStyle === 'object' ? 'var(--aui-text)' : 'var(--aui-text-muted)', boxShadow: bHeroStyle === 'object' ? "var(--aui-shadow-subtle)" : 'none' }}
+                      <div className="ml-auto" onClick={e => e.stopPropagation()}>
+                        <SegmentedControl
+                          label="B 시안 히어로 스타일"
+                          size="sm"
+                          value={bHeroStyle}
+                          onChange={(v) => { if (v === 'object') setBHeroStyle('object'); else if (bSceneImage) setBHeroStyle('scene') }}
                         >
-                          오브젝트
-                        </button>
-                        <button
-                          onClick={e => { e.stopPropagation(); if (bSceneImage) setBHeroStyle('scene') }}
-                          disabled={!bSceneImage && !isGeneratingBScene}
-                          style={{ padding: `var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-sm)", fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-medium)", border: 'none', cursor: bSceneImage ? 'pointer' : 'not-allowed', transition: 'all 0.12s', backgroundColor: bHeroStyle === 'scene' ? 'var(--aui-on-dark)' : 'transparent', color: bHeroStyle === 'scene' ? 'var(--aui-text)' : bSceneImage ? 'var(--aui-text-muted)' : 'var(--aui-text-disabled)', boxShadow: bHeroStyle === 'scene' ? "var(--aui-shadow-subtle)" : 'none', display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}
-                        >
-                          {isGeneratingBScene && bHeroStyle !== 'scene' && (
-                            <svg className="animate-spin" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                              <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" strokeOpacity="0.3" />
-                              <path d="M21 12a9 9 0 00-9-9" />
-                            </svg>
-                          )}
-                          씬
-                        </button>
+                          <SegmentedControlItem value="object" label="오브젝트" />
+                          <SegmentedControlItem value="scene" label={isGeneratingBScene && bHeroStyle !== 'scene' ? '씬 생성 중…' : '씬'} isDisabled={!bSceneImage && !isGeneratingBScene} />
+                        </SegmentedControl>
                       </div>
                     )}
                     {letter !== 'B' && variant?.imageWarnings?.length ? (
@@ -3281,9 +3272,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     ) : isFailed ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
                         <span className="text-[13px] text-[var(--aui-text-muted)]">생성 실패</span>
-                        <button onClick={handleGenerate} className="flex items-center gap-1 text-[13px] text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors">
-                          <RefreshCw size={11} /> 다시 시도
-                        </button>
+                        <AstryxButton size="sm" variant="ghost" icon={<RefreshCw size={11} />} label="다시 시도" onClick={handleGenerate} />
                       </div>
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
@@ -3292,13 +3281,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     )}
                   </div>
                   {variant && (
-                    <button
+                    <AstryxButton
+                      variant="primary"
+                      width="100%"
+                      label="이 시안으로 진행"
                       onClick={() => handlePickVariant(idx as 0|1|2)}
-                      className="w-full py-2.5 text-[13px] font-medium text-white transition-colors hover:!bg-[var(--aui-text-neutral)]"
-                      style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-text)' }}
-                    >
-                      이 시안으로 진행
-                    </button>
+                    />
                   )}
                 </div>
               )
@@ -3338,37 +3326,25 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     {!isExpandingPrototype && result && (
                       <>
                         <span className="text-[12px]" style={{ color: 'var(--aui-positive)' }}>완료</span>
-                        <button
-                          onClick={() => setStep(4)}
-                          className="ml-auto flex items-center gap-1 text-[12px] font-semibold transition-colors"
-                          style={{ color: 'var(--aui-primary)' }}
-                        >
-                          편집 →
-                        </button>
+                        <span className="ml-auto">
+                          <AstryxButton size="sm" variant="ghost" label="편집 →" onClick={() => setStep(4)} />
+                        </span>
                       </>
                     )}
                   </div>
 
                   {/* 서브 화면 탭 (screens가 있을 때만) */}
                   {!isExpandingPrototype && screens.length > 1 && (
-                    <div style={{ display: 'flex', gap: "var(--aui-space-1)", flexWrap: 'wrap' }}>
+                    <SegmentedControl
+                      label="서브 화면"
+                      size="sm"
+                      value={activeScreenId ?? screens[0].id}
+                      onChange={(id) => { setActiveScreenId(id); sendToIframe({ type: 'aide:navigate', id }) }}
+                    >
                       {screens.map(s => (
-                        <button
-                          key={s.id}
-                          onClick={() => {
-                            setActiveScreenId(s.id)
-                            sendToIframe({ type: 'aide:navigate', id: s.id })
-                          }}
-                          style={{
-                            padding: `var(--aui-space-1) var(--aui-space-3)`, borderRadius: "var(--aui-radius-pill)", fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-medium)", border: 'none', cursor: 'pointer', transition: 'all 0.12s',
-                            backgroundColor: activeScreenId === s.id ? 'var(--aui-text)' : 'var(--aui-border-subtle)',
-                            color: activeScreenId === s.id ? 'var(--aui-on-dark)' : 'var(--aui-text-muted)',
-                          }}
-                        >
-                          {s.label}
-                        </button>
+                        <SegmentedControlItem key={s.id} value={s.id} label={s.label} />
                       ))}
-                    </div>
+                    </SegmentedControl>
                   )}
 
                   {/* 프레임 */}
@@ -3460,52 +3436,38 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   >
                     {item.brief.length > 16 ? item.brief.slice(0, 16) + '…' : item.brief}
                   </button>
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation()
-                      await deleteHistoryItem(item.id)
-                      const updated = gnbHistory.filter(h => h.id !== item.id)
-                      setGnbHistory(updated)
-                      if (isActive) {
-                        if (updated.length > 0) loadHistoryItemIntoEditor(updated[0])
-                        else { setStartedFromLanding(false); onBack?.() }
-                      }
-                    }}
-                    style={{
-                      flexShrink: 0,
-                      width: 16,
-                      height: 16,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: "var(--aui-radius-sm)",
-                      border: 'none',
-                      backgroundColor: 'transparent',
-                      cursor: 'pointer',
-                      color: 'var(--aui-text-muted)',
-                      fontSize: "var(--aui-type-micro-size)",
-                      opacity: 0,
-                      transition: 'opacity 0.1s, background-color 0.1s',
-                      padding: 0,
-                    }}
-                    className="group-hover:!opacity-100 hover:!bg-[var(--aui-border-subtle)] hover:!text-[var(--aui-text-neutral)]"
-                    title="탭 닫기"
-                  >
-                    ✕
-                  </button>
+                  <span className="opacity-0 group-hover:!opacity-100 transition-opacity">
+                    <AstryxIconButton
+                      size="sm"
+                      variant="ghost"
+                      icon={<X size={12} />}
+                      label="탭 닫기"
+                      tooltip="탭 닫기"
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        await deleteHistoryItem(item.id)
+                        const updated = gnbHistory.filter(h => h.id !== item.id)
+                        setGnbHistory(updated)
+                        if (isActive) {
+                          if (updated.length > 0) loadHistoryItemIntoEditor(updated[0])
+                          else { setStartedFromLanding(false); onBack?.() }
+                        }
+                      }}
+                    />
+                  </span>
                 </div>
               )
             })}
           </div>
           <div className="flex items-center gap-3 px-4">
             <div className="relative" ref={shareRef}>
-              <button
+              <AstryxButton
+                size="sm"
+                variant="secondary"
+                label="공유"
+                endContent={<ChevronDown size={11} />}
                 onClick={() => setShareOpen(o => !o)}
-                className="text-[13px] font-medium text-[var(--aui-text)] px-4 py-1.5 transition-colors shrink-0 flex items-center gap-1.5 hover:!bg-[var(--aui-border)]"
-                style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-on-dark)' }}
-              >
-                공유 <ChevronDown size={11} />
-              </button>
+              />
               {shareOpen && (
                 <div className="absolute right-0 top-full mt-1.5 w-52 bg-white overflow-hidden z-50" style={{ borderRadius: "var(--aui-radius-sm)", boxShadow: "var(--aui-shadow-floating)", border: `1px solid ${F.hairlineSoft}` }}>
                   <button onClick={handleCopyLink} className="w-full flex items-start gap-2.5 px-4 py-2.5 hover:bg-[var(--aui-border-subtle)] transition-colors text-left">
@@ -3542,39 +3504,23 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
         {/* Toolbar */}
         <div className="h-9 border-b border-[var(--aui-shadow-soft)] flex items-center px-4 shrink-0 bg-white">
           <div className="flex items-center gap-1">
-            <button
-              onClick={handleUndo}
-              disabled={!canUndo}
-              className="flex items-center justify-center size-7 rounded hover:bg-[var(--aui-border)] transition-colors disabled:opacity-30"
-              style={{ color: 'var(--aui-text-muted)' }}
-              title="실행 취소 (⌘Z)"
-            >
-              <CornerUpLeft size={14} />
-            </button>
-            <button
-              onClick={handleRedo}
-              disabled={!canRedo}
-              className="flex items-center justify-center size-7 rounded hover:bg-[var(--aui-border)] transition-colors disabled:opacity-30"
-              style={{ color: 'var(--aui-text-muted)' }}
-              title="다시 실행 (⌘⇧Z)"
-            >
-              <CornerUpRight size={14} />
-            </button>
+            <AstryxIconButton size="sm" variant="ghost" icon={<CornerUpLeft size={14} />} label="실행 취소" tooltip="실행 취소 (⌘Z)" isDisabled={!canUndo} onClick={handleUndo} />
+            <AstryxIconButton size="sm" variant="ghost" icon={<CornerUpRight size={14} />} label="다시 실행" tooltip="다시 실행 (⌘⇧Z)" isDisabled={!canRedo} onClick={handleRedo} />
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-3">
-            <div className="flex items-center rounded overflow-hidden border border-[var(--aui-shadow-soft)]">
-              <button
-                onClick={() => { setPlatform('mobile'); setPreviewWidth(390); setZoom(100) }}
-                className="px-3 py-1 text-[12px] font-medium transition-colors"
-                style={platform === 'mobile' ? { background: 'var(--aui-text)', color: 'var(--aui-on-dark)' } : { color: 'var(--aui-text-muted)', background: 'transparent' }}
-              >앱</button>
-              <button
-                onClick={() => { setPlatform('web'); setPreviewWidth(1440); setZoom(60) }}
-                className="px-3 py-1 text-[12px] font-medium transition-colors border-l border-[var(--aui-shadow-soft)]"
-                style={platform === 'web' ? { background: 'var(--aui-text)', color: 'var(--aui-on-dark)' } : { color: 'var(--aui-text-muted)', background: 'transparent' }}
-              >웹</button>
-            </div>
+            <SegmentedControl
+              label="플랫폼"
+              size="sm"
+              value={platform}
+              onChange={(p) => {
+                if (p === 'mobile') { setPlatform('mobile'); setPreviewWidth(390); setZoom(100) }
+                else { setPlatform('web'); setPreviewWidth(1440); setZoom(60) }
+              }}
+            >
+              <SegmentedControlItem value="mobile" label="앱" />
+              <SegmentedControlItem value="web" label="웹" />
+            </SegmentedControl>
             <div className="w-px h-4 bg-[var(--aui-shadow-soft)]" />
             <div className="flex items-center gap-2 text-[13px] text-[var(--aui-text-muted)]">
               <SlidersHorizontal size={12} />
@@ -3582,38 +3528,38 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               <Toggle on={tweaksOpen} onChange={setTweaksOpen} />
             </div>
             <div className="w-px h-4 bg-[var(--aui-shadow-soft)]" />
-            <button
+            <AstryxButton
+              size="sm"
+              variant={editMode ? 'primary' : 'ghost'}
+              icon={<Pencil size={12} />}
+              label="Edit"
               onClick={() => { if (editMode) commitIframeHtml(); setEditMode(e => !e); setSelectedStyles(null); setSelectedSharedClasses([]); setSyncAllScreens(false) }}
-              className="flex items-center gap-1.5 text-[13px] px-2.5 py-1 border transition-colors"
-              style={{ borderRadius: "var(--aui-radius-sm)", ...(editMode ? { backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)', borderColor: 'var(--aui-text)' } : { color: 'var(--aui-text-muted)', borderColor: 'var(--aui-shadow-soft)' }) }}
-            >
-              <Pencil size={12} /> Edit
-            </button>
-            <button
+            />
+            <AstryxButton
+              size="sm"
+              variant={creonOpen ? 'primary' : 'ghost'}
+              icon={<ImageIcon size={12} />}
+              label="Creon"
+              tooltip="Creon 에셋 패널"
               onClick={() => setCreonOpen(o => !o)}
-              className="flex items-center gap-1.5 text-[13px] px-2.5 py-1 border transition-colors"
-              style={{ borderRadius: "var(--aui-radius-sm)", ...(creonOpen ? { backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)', borderColor: 'var(--aui-text)' } : { color: 'var(--aui-text-muted)', borderColor: 'var(--aui-shadow-soft)' }) }}
-              title="Creon 에셋 패널"
-            >
-              <ImageIcon size={12} /> Creon
-            </button>
-            <button
+            />
+            <AstryxIconButton
+              size="sm"
+              variant="ghost"
+              icon={darkMode ? <Sun size={14} /> : <Moon size={14} />}
+              label={darkMode ? '라이트 모드' : '다크 모드'}
+              tooltip={darkMode ? '라이트 모드' : '다크 모드'}
               onClick={() => { const next = !darkMode; setDarkMode(next); sendToIframe({ type: 'aide:dark', on: next }) }}
-              className="flex items-center justify-center size-7 rounded hover:bg-[var(--aui-border)] transition-colors"
-              style={{ color: 'var(--aui-text-muted)' }}
-              title={darkMode ? '라이트 모드' : '다크 모드'}
-            >
-              {darkMode ? <Sun size={14} /> : <Moon size={14} />}
-            </button>
+            />
             <div className="w-px h-4 bg-[var(--aui-shadow-soft)]" />
             <div className="relative" ref={zoomRef}>
-              <button
+              <AstryxButton
+                size="sm"
+                variant="ghost"
+                label={`${zoom}%`}
+                endContent={<ChevronDown size={11} />}
                 onClick={() => setZoomOpen(o => !o)}
-                className="flex items-center gap-1 text-[13px] text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors"
-              >
-                <span>{zoom}%</span>
-                <ChevronDown size={11} />
-              </button>
+              />
               {zoomOpen && (
                 <div className="absolute right-0 top-full mt-1.5 w-28 bg-white overflow-hidden z-50" style={{ borderRadius: "var(--aui-radius-sm)", boxShadow: "var(--aui-shadow-floating)", border: `1px solid ${F.hairlineSoft}` }}>
                   {[50, 60, 75, 100].map(z => (
@@ -3631,28 +3577,24 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               )}
             </div>
             <div className="w-px h-4 bg-[var(--aui-shadow-soft)]" />
-            <button onClick={downloadHtml} className="flex items-center gap-1 text-[13px] text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors">
-              <Download size={12} />HTML
-            </button>
-            <button onClick={handleReset} className="flex items-center gap-1 text-[13px] text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors ml-1">
-              <RefreshCw size={11} />새로 만들기
-            </button>
+            <AstryxButton size="sm" variant="ghost" icon={<Download size={12} />} label="HTML" onClick={downloadHtml} />
+            <AstryxButton size="sm" variant="ghost" icon={<RefreshCw size={11} />} label="새로 만들기" onClick={handleReset} />
           </div>
         </div>
 
         {/* Screen navigation */}
         {screens.length > 0 && (
-          <div className="h-9 border-b border-[var(--aui-shadow-soft)] flex items-center px-4 gap-1 shrink-0 overflow-x-auto bg-white">
-            {screens.map(s => (
-              <button
-                key={s.id}
-                onClick={() => { setActiveScreenId(s.id); sendToIframe({ type: 'aide:navigate', id: s.id }) }}
-                className="px-3 py-1 text-[13px] shrink-0 transition-colors"
-                style={{ borderRadius: "var(--aui-radius-sm)", ...(activeScreenId === s.id ? { backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)' } : { color: 'var(--aui-text-muted)' }) }}
-              >
-                {s.label}
-              </button>
-            ))}
+          <div className="h-9 border-b border-[var(--aui-shadow-soft)] flex items-center px-4 shrink-0 overflow-x-auto bg-white">
+            <SegmentedControl
+              label="화면 이동"
+              size="sm"
+              value={activeScreenId ?? screens[0].id}
+              onChange={(id) => { setActiveScreenId(id); sendToIframe({ type: 'aide:navigate', id }) }}
+            >
+              {screens.map(s => (
+                <SegmentedControlItem key={s.id} value={s.id} label={s.label} />
+              ))}
+            </SegmentedControl>
           </div>
         )}
 
