@@ -7,7 +7,6 @@ import {
   Link2,
   Smartphone, Monitor,
   Download,
-  LoaderCircle,
 } from '@/components/ui/material-icon'
 import { type DesignPreset, DESIGN_PRESETS } from '@/lib/design-presets'
 import Grainient from '@/components/Grainient'
@@ -20,6 +19,7 @@ import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/Segme
 import { TextArea } from '@astryxdesign/core/TextArea'
 import { TextInput } from '@astryxdesign/core/TextInput'
 import { Button } from '@astryxdesign/core/Button'
+import { IconButton } from '@astryxdesign/core/IconButton'
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
 import { Layout, LayoutContent, LayoutFooter } from '@astryxdesign/core/Layout'
 
@@ -1506,25 +1506,23 @@ export default function Home() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
                 {/* + source button — 조합 모드는 디자인 시스템이 Astryx로 고정이라 소스/DESIGN.md가 없다 */}
-                <button
-                  onClick={() => { setRefPanelOpen(v => !v); setDesignPanelOpen(false); setBrandPanelOpen(false) }}
+                <span
                   style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: '38px', height: '38px', borderRadius: '50%',
-                    border: 'none',
-                    backgroundColor: refPanelOpen ? F.ink : 'var(--aui-border-subtle)',
-                    color: refPanelOpen ? F.canvas : 'var(--aui-scrim-strong)',
-                    cursor: genMode === 'ai' ? 'pointer' : 'default',
-                    transition: 'all 0.15s', flexShrink: 0,
+                    display: 'inline-flex', flexShrink: 0,
                     visibility: genMode === 'ai' ? 'visible' : 'hidden',
                     pointerEvents: genMode === 'ai' ? 'auto' : 'none',
                   }}
-                  title="리디자인 소스 추가"
-                  tabIndex={genMode === 'ai' ? 0 : -1}
                   aria-hidden={genMode !== 'ai'}
                 >
-                  <span style={{ fontSize: "var(--aui-icon-md)", lineHeight: "var(--aui-leading-none)", marginTop: '-1px' }}>+</span>
-                </button>
+                  <IconButton
+                    icon={<span style={{ fontSize: 'var(--aui-icon-md)', lineHeight: 'var(--aui-leading-none)' }}>+</span>}
+                    label="리디자인 소스 추가"
+                    tooltip="리디자인 소스 추가"
+                    variant={refPanelOpen ? 'primary' : 'secondary'}
+                    tabIndex={genMode === 'ai' ? 0 : -1}
+                    onClick={() => { setRefPanelOpen(v => !v); setDesignPanelOpen(false); setBrandPanelOpen(false) }}
+                  />
+                </span>
                 {/* App / Web 토글 — 이 선택이 설문의 "메인 구조" 보기를 결정한다 */}
                 <SegmentedControl
                   value={platform}
@@ -1541,137 +1539,82 @@ export default function Home() {
                 <div style={{ display: 'contents', visibility: genMode === 'ai' ? 'visible' : 'hidden' }} aria-hidden={genMode !== 'ai'}>
                 {asIsAnalysis ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}>
-                    <button
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      icon={<Link2 size={12} />}
+                      label="As-is"
+                      endContent={
+                        <span style={{ color: 'var(--aui-text-muted)', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {(() => { try { return new URL(asIsAnalysis.sourceUrl).hostname.replace(/^www\./, '') } catch { return asIsAnalysis.pageTitle || '분석됨' } })()}
+                        </span>
+                      }
                       onClick={() => { setRefPanelOpen(true); setSourceTab('asis'); setDesignPanelOpen(false) }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)",
-                        padding: `0 var(--aui-space-3)`, height: '38px', borderRadius: "var(--aui-radius-pill)",
-                        border: 'none', backgroundColor: 'var(--aui-border-subtle)',
-                        color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)",
-                        cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)",
-                      }}
-                    >
-                      <Link2 size={12} />
-                      As-is
-                      <span style={{ color: 'var(--aui-text-muted)', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {(() => { try { return new URL(asIsAnalysis.sourceUrl).hostname.replace(/^www\./, '') } catch { return asIsAnalysis.pageTitle || '분석됨' } })()}
-                      </span>
-                    </button>
-                    <button
-                      onClick={clearAsIs}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: '22px', height: '22px', borderRadius: '50%',
-                        border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: 'var(--aui-text-muted)',
-                      }}
-                    >
-                      <X size={12} />
-                    </button>
+                    />
+                    <IconButton size="sm" variant="ghost" icon={<X size={12} />} label="As-is 제거" onClick={clearAsIs} />
                   </div>
                 ) : null}
 
                 {refPageImage ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}>
-                    <button
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      icon={
+                        <img
+                          src={`data:image/png;base64,${refPageImage}`}
+                          alt="ref"
+                          style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 'var(--aui-radius-sm)', flexShrink: 0 }}
+                        />
+                      }
+                      label={refImageKind === 'wireframe' ? '와이어프레임' : '참고자료'}
                       onClick={() => setRefPreviewOpen(true)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)",
-                        padding: `var(--aui-space-1) var(--aui-space-3) var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-pill)",
-                        border: '1px solid var(--aui-shadow-medium)', backgroundColor: 'var(--aui-on-dark)',
-                        color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)",
-                        cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)",
-                      }}
-                    >
-                      <img
-                        src={`data:image/png;base64,${refPageImage}`}
-                        alt="ref"
-                        style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: "var(--aui-radius-sm)", flexShrink: 0 }}
-                      />
-                      {refImageKind === 'wireframe' ? '와이어프레임' : '참고자료'}
-                    </button>
-                    <button
-                      onClick={clearRefPage}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: '22px', height: '22px', borderRadius: '50%',
-                        border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: 'var(--aui-text-muted)',
-                      }}
-                    >
-                      <X size={12} />
-                    </button>
+                    />
+                    <IconButton size="sm" variant="ghost" icon={<X size={12} />} label="참고자료 제거" onClick={clearRefPage} />
                   </div>
                 ) : null}
 
                 {(brandLogo !== null || brandColors.length > 0) && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}>
-                    <button
-                      onClick={() => { setRefPanelOpen(true); setSourceTab('brand'); setDesignPanelOpen(false) }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)",
-                        padding: `0 var(--aui-space-3)`, height: '38px', borderRadius: "var(--aui-radius-pill)",
-                        border: 'none', backgroundColor: 'var(--aui-border-subtle)',
-                        color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)",
-                        cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)",
-                      }}
-                    >
-                      {brandLogo ? (
-                        <img src={brandLogo} alt="logo" style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: "var(--aui-radius-sm)" }} />
-                      ) : (
-                        <Palette size={11} />
-                      )}
-                      브랜드
-                      {brandColors.length > 0 && (
-                        <div style={{ display: 'flex', gap: "var(--aui-space-1)" }}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      icon={brandLogo
+                        ? <img src={brandLogo} alt="logo" style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: 'var(--aui-radius-sm)' }} />
+                        : <Palette size={11} />}
+                      label="브랜드"
+                      endContent={brandColors.length > 0 ? (
+                        <span style={{ display: 'inline-flex', gap: 'var(--aui-space-1)' }}>
                           {brandColors.slice(0, 3).map((c, i) => (
                             <span key={i} style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: c, display: 'inline-block' }} />
                           ))}
-                        </div>
-                      )}
-                    </button>
-                    <button
-                      onClick={clearBrand}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: '22px', height: '22px', borderRadius: '50%',
-                        border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: 'var(--aui-text-muted)',
-                      }}
-                    >
-                      <X size={12} />
-                    </button>
+                        </span>
+                      ) : undefined}
+                      onClick={() => { setRefPanelOpen(true); setSourceTab('brand'); setDesignPanelOpen(false) }}
+                    />
+                    <IconButton size="sm" variant="ghost" icon={<X size={12} />} label="브랜드 제거" onClick={clearBrand} />
                   </div>
                 )}
 
                 {(prdDoc !== null || iaImage !== null || iaText !== null) && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)" }}>
-                    <button
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      icon={<FileText size={11} />}
+                      label={`기획/화면 설계${[prdDoc, iaImage, iaText].filter(Boolean).length > 1 ? ` ${[prdDoc, iaImage, iaText].filter(Boolean).length}` : ''}`}
                       onClick={() => { setRefPanelOpen(true); setSourceTab('planning'); setDesignPanelOpen(false) }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)",
-                        padding: `0 var(--aui-space-3)`, height: '38px', borderRadius: "var(--aui-radius-pill)",
-                        border: 'none', backgroundColor: `${F.primary}18`,
-                        color: F.primary, fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)",
-                        cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)",
-                      }}
-                    >
-                      <FileText size={11} />
-                      기획/화면 설계
-                      {[prdDoc, iaImage, iaText].filter(Boolean).length > 1 ? ` ${[prdDoc, iaImage, iaText].filter(Boolean).length}` : ''}
-                    </button>
-                    <button
-                      onClick={clearPlanning}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: '22px', height: '22px', borderRadius: '50%',
-                        border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: 'var(--aui-text-muted)',
-                      }}
-                    >
-                      <X size={12} />
-                    </button>
+                    />
+                    <IconButton size="sm" variant="ghost" icon={<X size={12} />} label="기획 자료 제거" onClick={clearPlanning} />
                   </div>
                 )}
 
                 {/* DESIGN.md button */}
-                <button
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={<FileText size={11} />}
+                  label="design.md"
                   onClick={() => {
                     const isOpening = !designPanelOpen
                     if (isOpening && designMdFileName?.startsWith('http') && designMdContent) {
@@ -1685,39 +1628,21 @@ export default function Home() {
                     setDesignPanelOpen(v => !v)
                     setBrandPanelOpen(false)
                   }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)",
-                    padding: `0 var(--aui-space-3)`, height: '38px', borderRadius: "var(--aui-radius-pill)",
-                    border: 'none',
-                    backgroundColor: 'var(--aui-border-subtle)',
-                    color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-medium)",
-                    cursor: 'pointer', letterSpacing: "var(--aui-tracking-tight)", transition: 'all 0.15s',
-                  }}
-                >
-                  <FileText size={11} />
-                  design.md
-                </button>
+                />
                 </div>
 
               </div>
 
               {/* 모델은 기능별 정책으로 자동 라우팅한다. 사용자는 생성만 실행한다. */}
               <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", flexShrink: 0, position: 'relative' }}>
-                <button
+                <IconButton
+                  icon={<ArrowUp size={17} strokeWidth={2.2} />}
+                  label="생성하기"
+                  variant="primary"
                   onClick={handleSubmit}
-                  disabled={!canSubmit || templateMatching}
-                  style={{
-                    width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: canSubmit && !templateMatching ? 'pointer' : 'default', transition: 'all 0.2s',
-                    backgroundColor: canSubmit ? F.ink : F.surface2,
-                    color: canSubmit ? F.canvas : 'var(--aui-scrim-soft)', border: 'none',
-                  }}
-                >
-                  {templateMatching
-                    ? <LoaderCircle size={16} style={{ animation: 'spin 0.8s linear infinite' }} />
-                    : <ArrowUp size={17} strokeWidth={2.2} />}
-                </button>
+                  isDisabled={!canSubmit || templateMatching}
+                  isLoading={templateMatching}
+                />
               </div>
             </div>
             {genMode === 'compose' && (templateMatchError || templateMatching) && (
