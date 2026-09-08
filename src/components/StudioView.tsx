@@ -3187,7 +3187,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       <div className="ml-auto" onClick={e => e.stopPropagation()}>
                         <SegmentedControl
                           label="B 시안 히어로 스타일"
-                          size="sm"
                           value={bHeroStyle}
                           onChange={(v) => { if (v === 'object') setBHeroStyle('object'); else if (bSceneImage) setBHeroStyle('scene') }}
                         >
@@ -3274,7 +3273,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                     ) : isFailed ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
                         <span className="text-[13px] text-[var(--aui-text-muted)]">생성 실패</span>
-                        <AstryxButton size="sm" variant="ghost" icon={<RefreshCw size={11} />} label="다시 시도" onClick={handleGenerate} />
+                        <AstryxButton variant="ghost" icon={<RefreshCw size={11} />} label="다시 시도" onClick={handleGenerate} />
                       </div>
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
@@ -3329,7 +3328,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       <>
                         <span className="text-[12px]" style={{ color: 'var(--aui-positive)' }}>완료</span>
                         <span className="ml-auto">
-                          <AstryxButton size="sm" variant="ghost" label="편집 →" onClick={() => setStep(4)} />
+                          <AstryxButton variant="ghost" label="편집 →" onClick={() => setStep(4)} />
                         </span>
                       </>
                     )}
@@ -3339,7 +3338,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   {!isExpandingPrototype && screens.length > 1 && (
                     <SegmentedControl
                       label="서브 화면"
-                      size="sm"
                       value={activeScreenId ?? screens[0].id}
                       onChange={(id) => { setActiveScreenId(id); sendToIframe({ type: 'aide:navigate', id }) }}
                     >
@@ -3440,7 +3438,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   </button>
                   <span className="opacity-0 group-hover:!opacity-100 transition-opacity">
                     <AstryxIconButton
-                      size="sm"
                       variant="ghost"
                       icon={<X size={12} />}
                       label="탭 닫기"
@@ -3464,7 +3461,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
           <div className="flex items-center gap-3 px-4">
             <div className="relative" ref={shareRef}>
               <AstryxButton
-                size="sm"
                 variant="secondary"
                 label="공유"
                 endContent={<ChevronDown size={11} />}
@@ -3504,16 +3500,15 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
         </div>
 
         {/* Toolbar */}
-        <div className="h-9 border-b border-[var(--aui-shadow-soft)] flex items-center px-4 shrink-0 bg-white">
+        <div className="min-h-9 py-1.5 border-b border-[var(--aui-shadow-soft)] flex items-center px-4 shrink-0 bg-white">
           <div className="flex items-center gap-1">
-            <AstryxIconButton size="sm" variant="ghost" icon={<CornerUpLeft size={14} />} label="실행 취소" tooltip="실행 취소 (⌘Z)" isDisabled={!canUndo} onClick={handleUndo} />
-            <AstryxIconButton size="sm" variant="ghost" icon={<CornerUpRight size={14} />} label="다시 실행" tooltip="다시 실행 (⌘⇧Z)" isDisabled={!canRedo} onClick={handleRedo} />
+            <AstryxIconButton variant="ghost" icon={<CornerUpLeft size={14} />} label="실행 취소" tooltip="실행 취소 (⌘Z)" isDisabled={!canUndo} onClick={handleUndo} />
+            <AstryxIconButton variant="ghost" icon={<CornerUpRight size={14} />} label="다시 실행" tooltip="다시 실행 (⌘⇧Z)" isDisabled={!canRedo} onClick={handleRedo} />
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-3">
             <SegmentedControl
               label="플랫폼"
-              size="sm"
               value={platform}
               onChange={(p) => {
                 if (p === 'mobile') { setPlatform('mobile'); setPreviewWidth(390); setZoom(100) }
@@ -3531,14 +3526,12 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             </div>
             <div className="w-px h-4 bg-[var(--aui-shadow-soft)]" />
             <AstryxButton
-              size="sm"
               variant={editMode ? 'primary' : 'ghost'}
               icon={<Pencil size={12} />}
               label="Edit"
               onClick={() => { if (editMode) commitIframeHtml(); setEditMode(e => !e); setSelectedStyles(null); setSelectedSharedClasses([]); setSyncAllScreens(false) }}
             />
             <AstryxButton
-              size="sm"
               variant={creonOpen ? 'primary' : 'ghost'}
               icon={<ImageIcon size={12} />}
               label="Creon"
@@ -3546,7 +3539,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               onClick={() => setCreonOpen(o => !o)}
             />
             <AstryxIconButton
-              size="sm"
               variant="ghost"
               icon={darkMode ? <Sun size={14} /> : <Moon size={14} />}
               label={darkMode ? '라이트 모드' : '다크 모드'}
@@ -3556,7 +3548,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             <div className="w-px h-4 bg-[var(--aui-shadow-soft)]" />
             <div className="relative" ref={zoomRef}>
               <AstryxButton
-                size="sm"
                 variant="ghost"
                 label={`${zoom}%`}
                 endContent={<ChevronDown size={11} />}
@@ -3579,17 +3570,16 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               )}
             </div>
             <div className="w-px h-4 bg-[var(--aui-shadow-soft)]" />
-            <AstryxButton size="sm" variant="ghost" icon={<Download size={12} />} label="HTML" onClick={downloadHtml} />
-            <AstryxButton size="sm" variant="ghost" icon={<RefreshCw size={11} />} label="새로 만들기" onClick={handleReset} />
+            <AstryxButton variant="ghost" icon={<Download size={12} />} label="HTML" onClick={downloadHtml} />
+            <AstryxButton variant="ghost" icon={<RefreshCw size={11} />} label="새로 만들기" onClick={handleReset} />
           </div>
         </div>
 
         {/* Screen navigation */}
         {screens.length > 0 && (
-          <div className="h-9 border-b border-[var(--aui-shadow-soft)] flex items-center px-4 shrink-0 overflow-x-auto bg-white">
+          <div className="min-h-9 py-1.5 border-b border-[var(--aui-shadow-soft)] flex items-center px-4 shrink-0 overflow-x-auto bg-white">
             <SegmentedControl
               label="화면 이동"
-              size="sm"
               value={activeScreenId ?? screens[0].id}
               onChange={(id) => { setActiveScreenId(id); sendToIframe({ type: 'aide:navigate', id }) }}
             >
@@ -3623,9 +3613,9 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         <div className="text-[12px] font-medium text-[var(--aui-text)] truncate">{section.title || section.type}</div>
                         <div className="text-[10px] text-[var(--aui-text-muted)]">{section.type}</div>
                       </div>
-                      <AstryxIconButton size="sm" variant="ghost" label="위로 이동" tooltip="위로 이동" icon={<span aria-hidden>↑</span>} isDisabled={index === 0} onClick={() => moveIrSection(section.id, -1)} />
-                      <AstryxIconButton size="sm" variant="ghost" label="아래로 이동" tooltip="아래로 이동" icon={<span aria-hidden>↓</span>} isDisabled={index === result.screenIr!.sections.length - 1} onClick={() => moveIrSection(section.id, 1)} />
-                      <AstryxIconButton size="sm" variant="destructive" label="섹션 삭제" tooltip="삭제" icon={<X size={12} />} isDisabled={result.screenIr!.sections.length <= 1} onClick={() => removeIrSection(section.id)} />
+                      <AstryxIconButton variant="ghost" label="위로 이동" tooltip="위로 이동" icon={<span aria-hidden>↑</span>} isDisabled={index === 0} onClick={() => moveIrSection(section.id, -1)} />
+                      <AstryxIconButton variant="ghost" label="아래로 이동" tooltip="아래로 이동" icon={<span aria-hidden>↓</span>} isDisabled={index === result.screenIr!.sections.length - 1} onClick={() => moveIrSection(section.id, 1)} />
+                      <AstryxIconButton variant="destructive" label="섹션 삭제" tooltip="삭제" icon={<X size={12} />} isDisabled={result.screenIr!.sections.length <= 1} onClick={() => removeIrSection(section.id)} />
                     </div>
                   ))}
                 </div>
@@ -3909,7 +3899,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             <div style={{ width: 520, borderLeft: '1px solid var(--aui-shadow-soft)', backgroundColor: 'var(--aui-on-dark)', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
               <div style={{ padding: `var(--aui-space-2) var(--aui-space-3)`, borderBottom: '1px solid var(--aui-shadow-soft)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                 <span style={{ fontSize: "var(--aui-type-compact-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text)' }}>Creon Assets</span>
-                <AstryxIconButton size="sm" variant="ghost" icon={<X size={14} />} label="Creon 패널 닫기" onClick={() => { sendToIframe({ type: 'aide:pulse', on: false }); setCreonOpen(false) }} />
+                <AstryxIconButton variant="ghost" icon={<X size={14} />} label="Creon 패널 닫기" onClick={() => { sendToIframe({ type: 'aide:pulse', on: false }); setCreonOpen(false) }} />
               </div>
               {creonAsset && (
                 <div style={{ padding: `var(--aui-space-2) var(--aui-space-3)`, borderBottom: '1px solid var(--aui-shadow-soft)', backgroundColor: 'var(--aui-page)', flexShrink: 0 }}>
@@ -3936,7 +3926,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       />
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
                         <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-assistive)' }}>20%</span>
-                        <AstryxButton size="sm" variant="ghost" label="초기화" onClick={() => setCreonImageWidth(100)} />
+                        <AstryxButton variant="ghost" label="초기화" onClick={() => setCreonImageWidth(100)} />
                         <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-assistive)' }}>200%</span>
                       </div>
                     </div>
@@ -3952,7 +3942,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                           <AstryxButton
                             variant="primary"
                             width="100%"
-                            size="sm"
                             label="선택된 요소에 적용"
                             onClick={() => {
                               const isSyncMode = syncAllScreens && selectedSharedClasses.length > 0
@@ -3974,7 +3963,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                           <AstryxButton
                             variant="primary"
                             width="100%"
-                            size="sm"
                             label="Aide에 적용하기"
                             onClick={() => {
                               if (syncAllScreens && selectedSharedClasses.length > 0) {
@@ -4322,7 +4310,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 <h1 className="text-[22px] font-bold mb-1" style={{ letterSpacing: "var(--aui-tracking-tighter)" }}>이 기준으로 만들게요</h1>
                 <p className="text-[14px] text-[var(--aui-text-muted)]">{questionnaire.projectSummary}</p>
               </div>
-              <AstryxButton size="sm" variant="ghost" icon={<ArrowLeft size={14} />} label="뒤로" onClick={() => { clearGeneratedBoard(); setStartedFromLanding(false); onBack?.() }} />
+              <AstryxButton variant="ghost" icon={<ArrowLeft size={14} />} label="뒤로" onClick={() => { clearGeneratedBoard(); setStartedFromLanding(false); onBack?.() }} />
 
             </div>
 
@@ -4375,8 +4363,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                   <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: extractedColors.length > 0 ? `1px solid ${F.hairlineSoft}` : 'none' }}>
                     <img src={logoDataUrl} alt="logo" className="h-8 object-contain" />
                     <span className="flex-1 text-[13px]" style={{ color: F.inkMuted }}>로고가 UI에 자동으로 삽입됩니다</span>
-                    <AstryxButton size="sm" variant="primary" label="색상 추출하기" onClick={handleExtractColors} />
-                    <AstryxIconButton size="sm" variant="ghost" icon={<X size={14} />} label="로고 제거" onClick={() => { setLogoDataUrl(null); setBrandColors([]); setExtractedColors([]) }} />
+                    <AstryxButton variant="primary" label="색상 추출하기" onClick={handleExtractColors} />
+                    <AstryxIconButton variant="ghost" icon={<X size={14} />} label="로고 제거" onClick={() => { setLogoDataUrl(null); setBrandColors([]); setExtractedColors([]) }} />
                   </div>
 
                   {/* Extracted palette */}
@@ -4456,7 +4444,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                       }
                       {color && (
                         <AstryxIconButton
-                          size="sm"
                           variant="ghost"
                           icon={<X size={12} />}
                           label="컬러 지정 해제"
@@ -4739,10 +4726,10 @@ function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange, share
       {(onCreonReplace || onIconChange) && (
         <div className="px-3 py-3 border-t border-[var(--aui-shadow-line)] flex flex-col gap-2 shrink-0">
           {onCreonReplace && (
-            <AstryxButton variant="primary" width="100%" size="sm" icon={<ImageIcon size={13} />} label="Creon에서 변경" onClick={onCreonReplace} />
+            <AstryxButton variant="primary" width="100%" icon={<ImageIcon size={13} />} label="Creon에서 변경" onClick={onCreonReplace} />
           )}
           {onIconChange && (
-            <AstryxButton variant="secondary" width="100%" size="sm" icon={<Shapes size={13} />} label="아이콘 변경" onClick={onIconChange} />
+            <AstryxButton variant="secondary" width="100%" icon={<Shapes size={13} />} label="아이콘 변경" onClick={onIconChange} />
           )}
         </div>
       )}
@@ -4829,7 +4816,7 @@ function IconPickerPanel({ pickedIcon, onPick, onApply, onCancel }: {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--aui-shadow-line)] shrink-0">
         <span className="text-[14px] font-semibold text-[var(--aui-text)]">아이콘 변경</span>
-        <AstryxIconButton size="sm" variant="ghost" icon={<X size={15} />} label="닫기" onClick={onCancel} />
+        <AstryxIconButton variant="ghost" icon={<X size={15} />} label="닫기" onClick={onCancel} />
       </div>
 
       {/* Search */}
@@ -4904,7 +4891,7 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
       <div className="pointer-events-auto bg-white w-72 overflow-y-auto max-h-[90vh]" style={{ borderRadius: "var(--aui-radius-card)", boxShadow: "var(--aui-shadow-floating)", border: `1px solid ${F.hairlineSoft}` }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--aui-shadow-line)]">
           <span className="text-[14px] font-semibold text-[var(--aui-text)]">Tweaks</span>
-          <AstryxIconButton size="sm" variant="ghost" icon={<X size={16} />} label="Tweaks 닫기" onClick={onClose} />
+          <AstryxIconButton variant="ghost" icon={<X size={16} />} label="Tweaks 닫기" onClick={onClose} />
         </div>
 
         {/* 시나리오 */}
@@ -4917,7 +4904,6 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
           ) : tweakSpec?.states.length ? (
             <SegmentedControl
               label="시나리오"
-              size="sm"
               layout="fill"
               value={activeStateId}
               onChange={onStateChange}
@@ -4958,7 +4944,6 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
                   key={ev.id}
                   variant="secondary"
                   width="100%"
-                  size="sm"
                   icon={<Zap size={13} style={{ color: 'var(--aui-caution)' }} />}
                   label={ev.label}
                   onClick={() => onEvent(ev.script)}
@@ -5005,7 +4990,6 @@ function PrimaryButton({ onClick, disabled, loading, loadingText, children }: {
       onClick={onClick}
       isDisabled={disabled}
       isLoading={loading}
-      size="lg"
       style={{ width: '100%' }}
       label={loading ? loadingText : children}
     />
@@ -5107,7 +5091,6 @@ function AlignField({ value, prop, onUpdate }: { value: string; prop: string; on
   return (
     <SegmentedControl
       label="정렬"
-      size="sm"
       value={value || 'left'}
       onChange={(v) => onUpdate(prop, v)}
     >
@@ -5167,7 +5150,7 @@ function SliderField({ variable, value, onChange }: {
 }
 
 function Toggle({ on, onChange, label = '토글' }: { on: boolean; onChange: (v: boolean) => void; label?: string }) {
-  return <AstryxSwitch label={label} isLabelHidden size="sm" value={on} onChange={onChange} />
+  return <AstryxSwitch label={label} isLabelHidden value={on} onChange={onChange} />
 }
 
 /** "메인 구조" 질문 — LLM이 이 서비스 전용으로 작성한 구조 5개를 결정론 와이어프레임으로 보여준다.
@@ -5296,7 +5279,6 @@ function QuestionCard({ index, question, answer, onAnswer }: {
             {question.options?.map(option => (
               <AstryxButton
                 key={option}
-                size="sm"
                 variant={isSelected(option) ? 'primary' : 'secondary'}
                 icon={isSelected(option) ? <Check size={13} /> : undefined}
                 label={option}
@@ -5304,10 +5286,10 @@ function QuestionCard({ index, question, answer, onAnswer }: {
               />
             ))}
             {question.hasDecideForMe && (
-              <AstryxButton size="sm" variant={isSelected('AI가 결정') ? 'primary' : 'ghost'} icon={<Sparkles size={12} />} label="AI가 결정" onClick={() => onAnswer('AI가 결정')} />
+              <AstryxButton variant={isSelected('AI가 결정') ? 'primary' : 'ghost'} icon={<Sparkles size={12} />} label="AI가 결정" onClick={() => onAnswer('AI가 결정')} />
             )}
             {question.hasExplore && (
-              <AstryxButton size="sm" variant={isSelected('다양하게 보기') ? 'primary' : 'ghost'} label="✦ 다양하게 보기" onClick={() => onAnswer('다양하게 보기')} />
+              <AstryxButton variant={isSelected('다양하게 보기') ? 'primary' : 'ghost'} label="✦ 다양하게 보기" onClick={() => onAnswer('다양하게 보기')} />
             )}
           </div>
         )}

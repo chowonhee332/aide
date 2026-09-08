@@ -24,7 +24,7 @@ if (gemini.includes('const variantStructure = hasCanvasDirection')) {
 }
 
 // The viewport toggle (SegmentedControl) must switch platform, not only resize.
-const viewportToggle = studio.match(/label="플랫폼"\s+size="sm"\s+value=\{platform\}\s+onChange=\{[\s\S]{0,400}?SegmentedControlItem value="web"/);
+const viewportToggle = studio.match(/label="플랫폼"\s+value=\{platform\}\s+onChange=\{[\s\S]{0,400}?SegmentedControlItem value="web"/);
 if (!viewportToggle || !viewportToggle[0].includes("setPlatform('mobile')") || !viewportToggle[0].includes("setPlatform('web')")) {
   failures.push('The viewport toggle must set platform to mobile/web, not only preview width.');
 }
