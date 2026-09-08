@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Button as AstryxButton } from '@astryxdesign/core/Button'
 import { IconButton as AstryxIconButton } from '@astryxdesign/core/IconButton'
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl'
+import { TextInput } from '@astryxdesign/core/TextInput'
 import { Chip } from '@/components/ui/chip'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox, Switch } from '@/components/ui/selection-control'
@@ -4735,24 +4736,10 @@ function PropertiesPanel({ styles, onUpdate, onCreonReplace, onIconChange, share
       {(onCreonReplace || onIconChange) && (
         <div className="px-3 py-3 border-t border-[var(--aui-shadow-line)] flex flex-col gap-2 shrink-0">
           {onCreonReplace && (
-            <button
-              onClick={onCreonReplace}
-              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-semibold"
-              style={{ backgroundColor: 'var(--aui-text)', color: 'var(--aui-on-dark)', border: 'none', cursor: 'pointer' }}
-            >
-              <ImageIcon size={13} />
-              Creon에서 변경
-            </button>
+            <AstryxButton variant="primary" width="100%" size="sm" icon={<ImageIcon size={13} />} label="Creon에서 변경" onClick={onCreonReplace} />
           )}
           {onIconChange && (
-            <button
-              onClick={onIconChange}
-              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-semibold"
-              style={{ backgroundColor: 'var(--aui-border-subtle)', color: 'var(--aui-text)', border: '1px solid var(--aui-shadow-soft)', cursor: 'pointer' }}
-            >
-              <Shapes size={13} />
-              아이콘 변경
-            </button>
+            <AstryxButton variant="secondary" width="100%" size="sm" icon={<Shapes size={13} />} label="아이콘 변경" onClick={onIconChange} />
           )}
         </div>
       )}
@@ -4839,20 +4826,17 @@ function IconPickerPanel({ pickedIcon, onPick, onApply, onCancel }: {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--aui-shadow-line)] shrink-0">
         <span className="text-[14px] font-semibold text-[var(--aui-text)]">아이콘 변경</span>
-        <button onClick={onCancel} className="text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors">
-          <X size={15} />
-        </button>
+        <AstryxIconButton size="sm" variant="ghost" icon={<X size={15} />} label="닫기" onClick={onCancel} />
       </div>
 
       {/* Search */}
       <div className="px-3 py-2 border-b border-[var(--aui-shadow-line)] shrink-0">
-        <input
-          type="text"
+        <TextInput
+          label="아이콘 검색"
+          isLabelHidden
           value={query}
-          onChange={e => setQuery(e.target.value)}
+          onChange={setQuery}
           placeholder="아이콘 검색..."
-          className="w-full bg-[var(--aui-border-subtle)] text-[13px] text-[var(--aui-text)] placeholder:text-[var(--aui-text-muted)] px-3 py-1.5 outline-none"
-          style={{ borderRadius: "var(--aui-radius-sm)", border: '1px solid var(--aui-shadow-soft)' }}
         />
       </div>
 
@@ -4895,21 +4879,8 @@ function IconPickerPanel({ pickedIcon, onPick, onApply, onCancel }: {
 
       {/* Apply / Cancel */}
       <div className="px-3 py-3 border-t border-[var(--aui-shadow-line)] flex gap-2 shrink-0">
-        <button
-          onClick={onCancel}
-          className="flex-1 py-2 text-[13px] font-medium border transition-all"
-          style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-border-subtle)', borderColor: 'var(--aui-shadow-soft)', color: 'var(--aui-text-muted)' }}
-        >
-          취소
-        </button>
-        <button
-          onClick={onApply}
-          disabled={!pickedIcon}
-          className="flex-1 py-2 text-[13px] font-medium border transition-all disabled:opacity-40"
-          style={{ borderRadius: "var(--aui-radius-sm)", backgroundColor: 'var(--aui-text)', borderColor: 'var(--aui-text)', color: 'var(--aui-on-dark)' }}
-        >
-          적용
-        </button>
+        <AstryxButton variant="secondary" label="취소" onClick={onCancel} style={{ flex: 1 }} />
+        <AstryxButton variant="primary" label="적용" onClick={onApply} isDisabled={!pickedIcon} style={{ flex: 1 }} />
       </div>
     </div>
   )
@@ -4930,9 +4901,7 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
       <div className="pointer-events-auto bg-white w-72 overflow-y-auto max-h-[90vh]" style={{ borderRadius: "var(--aui-radius-card)", boxShadow: "var(--aui-shadow-floating)", border: `1px solid ${F.hairlineSoft}` }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--aui-shadow-line)]">
           <span className="text-[14px] font-semibold text-[var(--aui-text)]">Tweaks</span>
-          <button onClick={onClose} className="text-[var(--aui-text-muted)] hover:text-[var(--aui-text)] transition-colors">
-            <X size={16} />
-          </button>
+          <AstryxIconButton size="sm" variant="ghost" icon={<X size={16} />} label="Tweaks 닫기" onClick={onClose} />
         </div>
 
         {/* 시나리오 */}
@@ -4943,23 +4912,17 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
               <Spinner /> 분석 중...
             </div>
           ) : tweakSpec?.states.length ? (
-            <div className="flex gap-1.5">
+            <SegmentedControl
+              label="시나리오"
+              size="sm"
+              layout="fill"
+              value={activeStateId}
+              onChange={onStateChange}
+            >
               {tweakSpec.states.map(state => (
-                <button
-                  key={state.id}
-                  onClick={() => onStateChange(state.id)}
-                  className="flex-1 text-[13px] py-1.5 border transition-all"
-                  style={{
-                    borderRadius: "var(--aui-radius-sm)",
-                    ...(activeStateId === state.id
-                      ? { background: 'var(--aui-text)', color: 'var(--aui-on-dark)', borderColor: 'var(--aui-text)' }
-                      : { background: 'var(--aui-border-subtle)', color: 'var(--aui-text-muted)', borderColor: 'var(--aui-shadow-soft)' }),
-                  }}
-                >
-                  {state.label}
-                </button>
+                <SegmentedControlItem key={state.id} value={state.id} label={state.label} />
               ))}
-            </div>
+            </SegmentedControl>
           ) : (
             <p className="text-[13px] text-[var(--aui-text-muted)]">UI를 생성하면 시나리오가 분석됩니다</p>
           )}
@@ -4988,15 +4951,15 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
             <p className="text-[13px] font-semibold text-[var(--aui-text-muted)] uppercase tracking-wider mb-2.5">핵심 순간</p>
             <div className="flex flex-col gap-2">
               {tweakSpec.events.map(ev => (
-                <button
+                <AstryxButton
                   key={ev.id}
+                  variant="secondary"
+                  width="100%"
+                  size="sm"
+                  icon={<Zap size={13} style={{ color: 'var(--aui-caution)' }} />}
+                  label={ev.label}
                   onClick={() => onEvent(ev.script)}
-                  className="flex items-center gap-2 w-full text-left text-[13px] py-2 px-3 border transition-all hover:bg-[var(--aui-surface-muted)]"
-                  style={{ borderRadius: "var(--aui-radius-sm)", borderColor: 'var(--aui-shadow-soft)', background: 'var(--aui-page)', color: 'var(--aui-text)' }}
-                >
-                  <Zap size={13} style={{ color: 'var(--aui-caution)', flexShrink: 0 }} />
-                  {ev.label}
-                </button>
+                />
               ))}
             </div>
           </div>
