@@ -18,6 +18,7 @@ import { writeStudioNewHandoff } from '@/lib/studio-route-handoff'
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl'
 import { TextArea } from '@astryxdesign/core/TextArea'
 import { TextInput } from '@astryxdesign/core/TextInput'
+import { Badge } from '@astryxdesign/core/Badge'
 import { Button } from '@astryxdesign/core/Button'
 import { IconButton } from '@astryxdesign/core/IconButton'
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
@@ -1197,32 +1198,24 @@ export default function Home() {
                               <div key={`${shot.name}-${index}`} style={{ position: 'relative', width: 52, height: 90, borderRadius: 'var(--aui-radius-sm)', overflow: 'hidden', border: `1px solid ${F.hairline}`, backgroundColor: F.surface2 }}>
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src={`data:${shot.mimeType};base64,${shot.data}`} alt={shot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                <button
-                                  onClick={() => setGenMdShots(prev => prev.filter((_, i) => i !== index))}
-                                  aria-label={`${shot.name} 제거`}
-                                  style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', border: 'none', cursor: 'pointer', backgroundColor: 'var(--aui-scrim-strong)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-                                >
-                                  <X size={10} />
-                                </button>
+                                <span style={{ position: 'absolute', top: 2, right: 2 }}>
+                                  <IconButton size="sm" variant="secondary" icon={<X size={10} />} label={`${shot.name} 제거`} onClick={() => setGenMdShots(prev => prev.filter((_, i) => i !== index))} />
+                                </span>
                               </div>
                             ))}
                           </div>
                         )}
 
-                        <div style={{ display: 'flex', gap: 'var(--aui-space-2)' }}>
-                          <button
-                            onClick={() => genMdShotInputRef.current?.click()}
-                            style={{
-                              flex: 1, padding: 'var(--aui-space-4)', borderRadius: 'var(--aui-radius-control)',
-                              border: `1px dashed ${F.hairline}`, backgroundColor: F.surface1,
-                              color: F.inkMuted, fontSize: 'var(--aui-type-compact-size)', fontWeight: 'var(--aui-weight-medium)', cursor: 'pointer',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--aui-space-2)',
-                              letterSpacing: 'var(--aui-tracking-tight)',
-                            }}
-                          >
-                            <Upload size={13} />
-                            {genMdShots.length ? `캡처 추가 (${genMdShots.length}/10)` : '앱·화면 캡처 업로드'}
-                          </button>
+                        <div style={{ display: 'flex', gap: 'var(--aui-space-2)', alignItems: 'flex-start' }}>
+                          <div style={{ flex: 1 }}>
+                            <Button
+                              variant="secondary"
+                              width="100%"
+                              icon={<Upload size={13} />}
+                              label={genMdShots.length ? `캡처 추가 (${genMdShots.length}/10)` : '앱·화면 캡처 업로드'}
+                              onClick={() => genMdShotInputRef.current?.click()}
+                            />
+                          </div>
                           {genMdShots.length > 0 && (
                             <Button variant="primary" label="캡처로 생성" onClick={handleGenMdShotAnalyze} />
                           )}
@@ -1451,21 +1444,14 @@ export default function Home() {
                 : `${designPreset}.md`
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)", marginBottom: '10px' }}>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: "var(--aui-space-1)",
-                    padding: `var(--aui-space-1) var(--aui-space-3) var(--aui-space-1) var(--aui-space-2)`, borderRadius: "var(--aui-radius-pill)",
-                    border: `1px solid ${F.hairlineSoft}`, backgroundColor: 'var(--aui-on-dark)',
-                    color: 'var(--aui-scrim-strong)', fontSize: "var(--aui-type-caption-size)", fontWeight: "var(--aui-weight-medium)",
-                  }}>
-                    <FileText size={11} />
-                    <span>{chipLabel}</span>
-                    <button
-                      onClick={designButtonLabel ? clearDesign : () => setDesignPreset('none')}
-                      style={{ display: 'flex', alignItems: 'center', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--aui-scrim)', padding: 0, marginLeft: '2px' }}
-                    >
-                      <X size={11} />
-                    </button>
-                  </div>
+                  <Badge icon={<FileText size={11} />} label={chipLabel} />
+                  <IconButton
+                    size="sm"
+                    variant="ghost"
+                    icon={<X size={11} />}
+                    label="디자인 시스템 해제"
+                    onClick={designButtonLabel ? clearDesign : () => setDesignPreset('none')}
+                  />
                   <span style={{ fontSize: "var(--aui-type-caption-size)", color: 'var(--aui-scrim)' }}>이 design.md 파일의 디자인 시스템 사용</span>
                 </div>
               )
