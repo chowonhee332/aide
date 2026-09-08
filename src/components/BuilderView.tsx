@@ -2261,9 +2261,9 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
         <AstryxIconButton type="button" onClick={redo} tooltip="다시 실행 (⇧⌘Z)" label="다시 실행" icon={<span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>↷</span>} variant="ghost" />
         <AstryxIconButton type="button" onClick={() => addFrame()} tooltip="같은 크기의 프레임 추가" label="프레임 추가" icon={<Plus size={15} aria-hidden />} variant="secondary" />
         <AstryxIconButton type="button" onClick={deleteActiveFrame} isDisabled={!activeFrame} tooltip="선택한 프레임 삭제" label="프레임 삭제" icon={<Trash2 size={14} aria-hidden />} variant="secondary" />
-        <AstryxButton type="button" onClick={() => { if (items.length === 0 || window.confirm('선택한 프레임의 컴포넌트를 모두 지울까요?')) { setItems([]); setSelectedId(null); } }} isDisabled={items.length === 0} variant="ghost" size="sm" label="초기화" />
-        <AstryxButton type="button" onClick={handleExport} isDisabled={items.length === 0} size="sm" label="HTML" icon={<Download size={14} aria-hidden />} />
-        <AstryxButton type="button" onClick={togglePreviewMode} variant={previewMode ? 'primary' : 'secondary'} size="sm" label={previewMode ? '편집으로 돌아가기' : '미리보기'} />
+        <AstryxButton type="button" onClick={() => { if (items.length === 0 || window.confirm('선택한 프레임의 컴포넌트를 모두 지울까요?')) { setItems([]); setSelectedId(null); } }} isDisabled={items.length === 0} variant="ghost" label="초기화" />
+        <AstryxButton type="button" onClick={handleExport} isDisabled={items.length === 0} label="HTML" icon={<Download size={14} aria-hidden />} />
+        <AstryxButton type="button" onClick={togglePreviewMode} variant={previewMode ? 'primary' : 'secondary'} label={previewMode ? '편집으로 돌아가기' : '미리보기'} />
       </div>
 
       {/* ── Main 3-Panel Layout ──────────────────────────────────────────── */}
