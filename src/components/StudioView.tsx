@@ -2369,7 +2369,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
               <AstryxButton
                 onClick={handleGenerate}
                 isDisabled={isAnyGenerating}
-                size="sm"
                 label="시안 A/B/C 생성"
                 icon={<Sparkles size={13} aria-hidden />}
               />
@@ -2379,12 +2378,11 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 onClick={() => handleGenerate()}
                 isDisabled={isAnyGenerating}
                 variant="ghost"
-                size="sm"
                 label="다시 생성"
                 icon={<RefreshCw size={13} aria-hidden />}
               />
             )}
-            <AstryxButton onClick={() => { clearGeneratedBoard(); setStep(2) }} isDisabled={isAnyGenerating} variant="ghost" size="sm" label="설문" icon={<ArrowLeft size={14} aria-hidden />} />
+            <AstryxButton onClick={() => { clearGeneratedBoard(); setStep(2) }} isDisabled={isAnyGenerating} variant="ghost" label="설문" icon={<ArrowLeft size={14} aria-hidden />} />
           </div>
         </div>
 
