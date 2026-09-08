@@ -83,7 +83,6 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
           overflow: 'auto',
           background: 'var(--aui-canvas)',
           border: '1px solid var(--aui-border-subtle)',
-          boxShadow: 'var(--aui-shadow-card)',
         }}
       >
         {children}
