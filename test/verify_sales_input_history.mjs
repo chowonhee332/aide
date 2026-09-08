@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 
-const landing = fs.readFileSync('src/app/page.tsx', 'utf8')
+const landing = fs.readFileSync('src/app/(workspace)/page.tsx', 'utf8')
 const studio = fs.readFileSync('src/components/StudioView.tsx', 'utf8')
 const history = fs.readFileSync('src/lib/history.ts', 'utf8')
 const failures = []

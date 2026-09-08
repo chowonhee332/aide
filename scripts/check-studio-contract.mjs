@@ -23,14 +23,10 @@ if (gemini.includes('const variantStructure = hasCanvasDirection')) {
   failures.push('DesignDirection must not disable UIStructureIR and its deterministic quality gates.');
 }
 
-const appButton = studio.match(/onClick=\{\(\) => \{[^}]*\}\}\s*className=[\s\S]{0,400}>\s*앱\s*<\/button>/);
-if (!appButton || !appButton[0].includes("setPlatform('mobile')")) {
-  failures.push('The 앱 viewport button must set platform to mobile, not only preview width.');
-}
-
-const webButton = studio.match(/onClick=\{\(\) => \{[^}]*\}\}\s*className=[\s\S]{0,400}>\s*웹\s*<\/button>/);
-if (!webButton || !webButton[0].includes("setPlatform('web')")) {
-  failures.push('The 웹 viewport button must set platform to web, not only preview width.');
+// The viewport toggle (SegmentedControl) must switch platform, not only resize.
+const viewportToggle = studio.match(/label="플랫폼"\s+size="sm"\s+value=\{platform\}\s+onChange=\{[\s\S]{0,400}?SegmentedControlItem value="web"/);
+if (!viewportToggle || !viewportToggle[0].includes("setPlatform('mobile')") || !viewportToggle[0].includes("setPlatform('web')")) {
+  failures.push('The viewport toggle must set platform to mobile/web, not only preview width.');
 }
 
 if (failures.length > 0) {

@@ -3668,18 +3668,20 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             </div>
             <div className="p-3 border-t border-[var(--aui-shadow-line)] shrink-0">
               <div className="flex items-end gap-2 bg-[var(--aui-border-subtle)] px-3 py-2" style={{ borderRadius: "var(--aui-radius-control)" }}>
-                <textarea
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleRefine() }
-                  }}
-                  placeholder="수정 요청을 입력하세요..."
-                  className="flex-1 bg-transparent text-[13px] text-[var(--aui-text)] placeholder:text-[var(--aui-text-muted)] resize-none outline-none leading-[1.5]"
-                  style={{ maxHeight: '96px', minHeight: '20px' }}
-                  rows={1}
-                  disabled={isRefining}
-                />
+                <div className="flex-1">
+                  <TextArea
+                    label="수정 요청"
+                    isLabelHidden
+                    value={chatInput}
+                    onChange={setChatInput}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleRefine() } }}
+                    placeholder="수정 요청을 입력하세요..."
+                    rows={1}
+                    width="100%"
+                    isDisabled={isRefining}
+                    style={{ border: 'none', boxShadow: 'none', backgroundColor: 'transparent' }}
+                  />
+                </div>
                 <AstryxIconButton
                   variant="primary"
                   icon={<Send size={12} />}
