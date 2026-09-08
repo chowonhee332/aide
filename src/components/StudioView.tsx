@@ -21,6 +21,7 @@ import { IconButton as AstryxIconButton } from '@astryxdesign/core/IconButton'
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl'
 import { TextInput } from '@astryxdesign/core/TextInput'
 import { TextArea } from '@astryxdesign/core/TextArea'
+import { Slider } from '@astryxdesign/core/Slider'
 import { Switch as AstryxSwitch } from '@astryxdesign/core/Switch'
 import { Chip } from '@/components/ui/chip'
 import { Badge } from '@/components/ui/badge'
@@ -3916,13 +3917,15 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         <span style={{ fontSize: "var(--aui-type-micro-size)", color: 'var(--aui-text-muted)' }}>이미지 크기</span>
                         <span style={{ fontSize: "var(--aui-type-micro-size)", fontWeight: "var(--aui-weight-semibold)", color: 'var(--aui-text)', fontVariantNumeric: 'tabular-nums' }}>{creonImageWidth}%</span>
                       </div>
-                      <input
-                        type="range"
+                      <Slider
+                        label="이미지 크기"
+                        isLabelHidden
                         min={20}
                         max={200}
                         value={creonImageWidth}
-                        onChange={e => setCreonImageWidth(Number(e.target.value))}
-                        style={{ width: '100%', accentColor: 'var(--aui-text)' }}
+                        onChange={setCreonImageWidth}
+                        valueDisplay="none"
+                        width="100%"
                       />
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
                         <span style={{ fontSize: "var(--aui-type-meta-size)", color: 'var(--aui-text-assistive)' }}>20%</span>
@@ -5127,19 +5130,16 @@ function SliderField({ variable, value, onChange }: {
           {formatVarDisplay(display, variable)}
         </span>
       </div>
-      <input
-        type="range"
+      <Slider
+        label={variable.label}
+        isLabelHidden
         min={variable.min}
         max={variable.max}
         step={variable.step}
         value={display}
-        onChange={e => {
-          const v = Number(e.target.value)
-          setDisplay(v)
-          onChange(variable.id, v)
-        }}
-        className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-        style={{ accentColor: 'var(--aui-primary)' }}
+        onChange={(v: number) => { setDisplay(v); onChange(variable.id, v) }}
+        valueDisplay="none"
+        width="100%"
       />
       <div className="flex justify-between mt-1">
         <span className="text-[13px] text-[var(--aui-text-muted)]">{formatVarDisplay(variable.min, variable)}</span>
@@ -5294,30 +5294,28 @@ function QuestionCard({ index, question, answer, onAnswer }: {
           </div>
         )}
         {isDomainOther && (
-          <input
-            type="text"
-            value={customDomainText}
-            onChange={e => onAnswer(e.target.value ? `기타: ${e.target.value}` : '기타')}
-            className="mt-2 w-full bg-[var(--aui-border-subtle)] border px-3 py-2 text-sm text-[var(--aui-text)] placeholder:text-[var(--aui-text-muted)]"
-            style={{ borderRadius: "var(--aui-radius-sm)", outline: 'none', borderColor: 'var(--aui-shadow-soft)' }}
-            placeholder="예: 부동산, 물류, 교육 등..."
-            autoFocus
-            onFocus={e => { e.currentTarget.style.borderColor = 'var(--aui-scrim)' }}
-            onBlur={e => { e.currentTarget.style.borderColor = 'var(--aui-shadow-soft)' }}
-          />
+          <div className="mt-2">
+            <TextInput
+              label="기타 도메인"
+              isLabelHidden
+              value={customDomainText}
+              onChange={(v) => onAnswer(v ? `기타: ${v}` : '기타')}
+              placeholder="예: 부동산, 물류, 교육 등..."
+              hasAutoFocus
+              width="100%"
+            />
+          </div>
         )}
         {isHero3DManual && (
           <div className="mt-2">
-            <input
-              type="text"
+            <TextInput
+              label="3D 키워드"
+              isLabelHidden
               value={hero3DKeyword}
-              onChange={e => onAnswer(e.target.value ? `직접 입력: ${e.target.value}` : '직접 입력')}
-              className="w-full bg-[var(--aui-border-subtle)] border px-3 py-2 text-sm text-[var(--aui-text)] placeholder:text-[var(--aui-text-muted)]"
-              style={{ borderRadius: "var(--aui-radius-sm)", outline: 'none', borderColor: 'var(--aui-shadow-soft)' }}
+              onChange={(v) => onAnswer(v ? `직접 입력: ${v}` : '직접 입력')}
               placeholder="예: 귀여운 로봇, 스마트폰 캐릭터, 달리는 강아지..."
-              autoFocus
-              onFocus={e => { e.currentTarget.style.borderColor = 'var(--aui-scrim)' }}
-              onBlur={e => { e.currentTarget.style.borderColor = 'var(--aui-shadow-soft)' }}
+              hasAutoFocus
+              width="100%"
             />
             <p className="text-[11px] text-[var(--aui-text-muted)] mt-1">한국어로 입력해도 돼요. Creon 3D 스타일로 생성됩니다.</p>
           </div>

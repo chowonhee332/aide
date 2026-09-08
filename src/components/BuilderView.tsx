@@ -59,6 +59,9 @@ import { Badge as AstryxBadge } from '@astryxdesign/core/Badge';
 import { Button as AstryxButton } from '@astryxdesign/core/Button';
 import { IconButton as AstryxIconButton } from '@astryxdesign/core/IconButton';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
+import { TextInput } from '@astryxdesign/core/TextInput';
+import { TextArea } from '@astryxdesign/core/TextArea';
+import { Selector } from '@astryxdesign/core/Selector';
 import { PlaygroundComponentPreview as ComponentPreview } from '@/components/aide-docs/PlaygroundComponentPreview';
 import { componentPreviewSize } from '@/lib/aide-docs';
 import DotField from '@/components/DotField';
@@ -1045,10 +1048,9 @@ function ComponentDetailsPanel({
                 <div style={{ marginTop: 2, color: AIDE.textMuted, fontSize: 11 }}>{flattenCanvasItems(activeFrame.items).length}개 컴포넌트</div>
               </div>
             </div>
-            <label style={{ display: 'block', marginTop: 16, color: AIDE.textMuted, fontSize: 11, fontWeight: 600 }}>
-              이름
-              <input value={activeFrame.name} onChange={(event) => onFrameNameChange(event.target.value)} style={{ width: '100%', height: 36, marginTop: 6, padding: '0 10px', border: `1px solid ${AIDE.border}`, borderRadius: 7, background: AIDE.bg, color: AIDE.text, font: 'inherit', fontSize: 12, outline: 'none' }} />
-            </label>
+            <div style={{ marginTop: 16 }}>
+              <TextInput label="이름" value={activeFrame.name} onChange={onFrameNameChange} width="100%" />
+            </div>
             <div style={{ marginTop: 16, color: AIDE.textMuted, fontSize: 11, fontWeight: 600 }}>크기</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 6 }}>
               {(['width', 'height'] as const).map((axis) => (
@@ -1061,11 +1063,16 @@ function ComponentDetailsPanel({
             {activeFrame.device === 'desktop' ? (
               <div style={{ marginTop: 16 }}>
                 <div style={{ marginBottom: 6, color: AIDE.textMuted, fontSize: 11, fontWeight: 600 }}>콘텐츠 레이아웃</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, padding: 4, borderRadius: 8, background: AIDE.surfaceHover }}>
-                  {([['stack', '1열'], ['grid-2', '2열'], ['grid-3', '3열']] as const).map(([value, label]) => (
-                    <button key={value} type="button" onClick={() => onFrameLayoutChange(value)} style={{ height: 30, border: `1px solid ${(activeFrame.layout ?? 'stack') === value ? AIDE.border : 'transparent'}`, borderRadius: 6, background: (activeFrame.layout ?? 'stack') === value ? AIDE.surface : 'transparent', color: AIDE.text, fontFamily: 'inherit', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{label}</button>
-                  ))}
-                </div>
+                <SegmentedControl
+                  label="콘텐츠 레이아웃"
+                  layout="fill"
+                  value={activeFrame.layout ?? 'stack'}
+                  onChange={(value) => onFrameLayoutChange(value as 'stack' | 'grid-2' | 'grid-3')}
+                >
+                  <SegmentedControlItem value="stack" label="1열" />
+                  <SegmentedControlItem value="grid-2" label="2열" />
+                  <SegmentedControlItem value="grid-3" label="3열" />
+                </SegmentedControl>
               </div>
             ) : null}
             <p style={{ margin: '18px 0 0', color: AIDE.textSubtle, fontSize: 11, lineHeight: 1.6 }}>프레임을 선택하면 화면 단위 속성을, 컴포넌트를 선택하면 해당 요소의 콘텐츠·스타일·상태를 편집합니다.</p>
@@ -1169,12 +1176,16 @@ function PropertiesContent({
           </p>
         )}
         {allowedRegionsForComponent(item.componentId, device).length > 1 ? (
-          <label style={{ display: 'block', marginTop: 12, color: AIDE.textMuted, fontSize: 'var(--aui-type-micro-size)', fontWeight: 'var(--aui-weight-semibold)' }}>
-            배치 영역
-            <select value={item.region} onChange={(event) => onRegionChange(item.instanceId, event.target.value as CanvasRegion)} style={{ width: '100%', height: 36, marginTop: 6, padding: `0 var(--aui-space-3)`, border: `1px solid ${AIDE.border}`, borderRadius: 'var(--aui-radius-sm)', background: AIDE.bg, color: AIDE.text, fontFamily: 'inherit' }}>
-              {allowedRegionsForComponent(item.componentId, device).map((region) => <option key={region} value={region}>{REGION_LABELS[region]}</option>)}
-            </select>
-          </label>
+          <div style={{ marginTop: 12 }}>
+            <Selector
+              label="배치 영역"
+              variant="input"
+              width="100%"
+              value={item.region}
+              onChange={(region) => onRegionChange(item.instanceId, region as CanvasRegion)}
+              options={allowedRegionsForComponent(item.componentId, device).map((region) => ({ value: region, label: REGION_LABELS[region] }))}
+            />
+          </div>
         ) : null}
         {def.source && (
           <details style={{ marginTop: 10, borderTop: `1px solid ${AIDE.border}`, paddingTop: 9 }}>
@@ -1276,17 +1287,6 @@ function PropInput({
   display?: 'default' | 'segmented';
   onChange: (v: string) => void;
 }) {
-  const base: React.CSSProperties = {
-    width: '100%',
-    background: AIDE.bg,
-    border: `1px solid ${AIDE.border}`,
-    borderRadius: "var(--aui-radius-sm)",
-    color: AIDE.text,
-    fontSize: "var(--aui-type-compact-size)",
-    fontFamily: 'inherit',
-    outline: 'none',
-    boxSizing: 'border-box',
-  };
   const optionLabels: Record<string, string> = {
     true: '사용', false: '미사용', horizontal: '가로', vertical: '세로', primary: '주요', secondary: '보조',
     outline: '외곽선', ghost: '텍스트', default: '기본', selected: '선택', success: '성공', warning: '주의',
@@ -1300,46 +1300,11 @@ function PropInput({
 
   if (type === 'select' && options && (display === 'segmented' || (display !== 'default' && options.length <= 3))) {
     return (
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))`,
-          gap: "var(--aui-space-1)",
-          padding: "var(--aui-space-1)",
-          border: `1px solid ${AIDE.border}`,
-          borderRadius: "var(--aui-radius-sm)",
-          background: AIDE.surfaceHover,
-        }}
-      >
-        {options.map((option) => {
-          const active = option === value;
-          const label = optionLabel(option);
-          return (
-            <button
-              key={option}
-              type="button"
-              onClick={() => onChange(option)}
-              style={{
-                minHeight: 32,
-                minWidth: 0,
-                border: 'none',
-                borderRadius: "var(--aui-radius-sm)",
-                background: active ? AIDE.surface : 'transparent',
-                color: active ? AIDE.primary : AIDE.textMuted,
-                boxShadow: active ? "var(--aui-shadow-subtle)" : 'none',
-                fontSize: "var(--aui-type-micro-size)",
-                fontWeight: active ? 700 : 500,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
+      <SegmentedControl label="옵션" layout="fill" value={value} onChange={onChange}>
+        {options.map((option) => (
+          <SegmentedControlItem key={option} value={option} label={optionLabel(option)} />
+        ))}
+      </SegmentedControl>
     );
   }
 
@@ -1358,53 +1323,35 @@ function PropInput({
             cursor: 'pointer',
             padding: "var(--aui-space-1)",
             background: 'transparent',
+            flexShrink: 0,
           }}
         />
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          style={{ ...base, flex: 1, height: 'var(--aui-control-compact)', padding: `0 var(--aui-space-3)` }}
-        />
+        <div style={{ flex: 1 }}>
+          <TextInput label="색상 값" isLabelHidden value={value} onChange={onChange} width="100%" />
+        </div>
       </div>
     );
   }
 
   if (type === 'select' && options) {
     return (
-      <select
+      <Selector
+        label="옵션"
+        isLabelHidden
+        variant="input"
+        width="100%"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        style={{ ...base, height: 36, padding: `0 var(--aui-space-3)`, cursor: 'pointer' }}
-      >
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {optionLabel(o)}
-          </option>
-        ))}
-      </select>
-    );
-  }
-
-  if (type === 'textarea') {
-    return (
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={4}
-        style={{ ...base, minHeight: 88, padding: `var(--aui-space-3)`, resize: 'vertical', lineHeight: "var(--aui-leading-normal)" }}
+        onChange={onChange}
+        options={options.map((o) => ({ value: o, label: optionLabel(o) }))}
       />
     );
   }
 
-  return (
-    <input
-      type={type === 'number' ? 'number' : 'text'}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      style={{ ...base, height: 36, padding: `0 var(--aui-space-3)` }}
-    />
-  );
+  if (type === 'textarea') {
+    return <TextArea label="값" isLabelHidden value={value} onChange={onChange} rows={4} width="100%" />;
+  }
+
+  return <TextInput label="값" isLabelHidden value={value} onChange={onChange} width="100%" />;
 }
 
 // ─── HTML Export ──────────────────────────────────────────────────────────────
@@ -2476,30 +2423,24 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
                 onClick={(event) => event.stopPropagation()}
               >
                 <Sparkles size={18} style={{ flexShrink: 0, color: AIDE.primary }} />
-                <input
-                  value={aiPrompt}
-                  onChange={(event) => {
-                    setAiPrompt(event.target.value);
-                    if (aiComposeState !== 'loading') {
-                      setAiComposeState('idle');
-                      setAiComposeMessage('');
-                    }
-                  }}
-                  disabled={aiComposeState === 'loading'}
-                  placeholder={`${activeFrame?.name ?? '현재 화면'}을 어떻게 구성할까요?`}
-                  aria-label="AI 화면 편집 요청"
-                  style={{
-                    minWidth: 0,
-                    flex: 1,
-                    height: '100%',
-                    border: 'none',
-                    outline: 'none',
-                    background: 'transparent',
-                    color: AIDE.text,
-                    fontFamily: 'inherit',
-                    fontSize: 'var(--aui-type-compact-size)',
-                  }}
-                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <TextInput
+                    label="AI 화면 편집 요청"
+                    isLabelHidden
+                    value={aiPrompt}
+                    onChange={(next) => {
+                      setAiPrompt(next);
+                      if (aiComposeState !== 'loading') {
+                        setAiComposeState('idle');
+                        setAiComposeMessage('');
+                      }
+                    }}
+                    isDisabled={aiComposeState === 'loading'}
+                    placeholder={`${activeFrame?.name ?? '현재 화면'}을 어떻게 구성할까요?`}
+                    width="100%"
+                    style={{ border: 'none', boxShadow: 'none', backgroundColor: 'transparent' }}
+                  />
+                </div>
                 <AstryxIconButton
                   type="submit"
                   variant="primary"
