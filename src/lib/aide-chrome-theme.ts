@@ -40,7 +40,9 @@ export const AIDE_CHROME_THEME_ACTIVE = AIDE_CHROME_THEME === 'astryx'
  */
 const ASTRYX = {
   surface: '#ffffff',
-  body: '#f1f1f1',
+  // Gmail/Google-Cloud-style ground: a faint blue tint of the #0064e0 accent so the
+  // white content card reads as a floating panel. (theme-neutral's own body is #f1f1f1.)
+  body: '#eef3fb',
   card: '#ffffff',
   muted: '#f1f1f1',
   gray: '#e5e5e5',

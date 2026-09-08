@@ -32,11 +32,15 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
   return (
     <div
-      style={
-        immersive
-          ? { height: '100vh', display: 'flex', gap: 'var(--aui-space-3)', padding: 'var(--aui-space-3)', background: 'var(--aui-canvas)', colorScheme: 'light', boxSizing: 'border-box' }
-          : { minHeight: '100vh', display: 'flex', colorScheme: 'light' }
-      }
+      style={{
+        height: '100vh',
+        display: 'flex',
+        gap: 'var(--aui-space-3)',
+        padding: 'var(--aui-space-3)',
+        background: 'var(--aui-page)',
+        colorScheme: 'light',
+        boxSizing: 'border-box',
+      }}
     >
       <SideNav
         header={<SideNavHeading heading="Aide" headingHref="/" icon={<img src="/logo_aide.png" alt="" style={{ height: 'var(--aui-density-logo-size)', width: 'auto' }} />} />}
@@ -52,9 +56,10 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
         style={{
           ...(collapsed ? {} : { width: 'var(--aui-density-lnb-width)' }),
           flexShrink: 0,
-          ...(immersive
-            ? { height: '100%', borderRadius: 'var(--aui-radius-card)', overflow: 'hidden', border: '1px solid var(--aui-border-subtle)' }
-            : { position: 'sticky', top: 0, alignSelf: 'flex-start', height: '100vh' }),
+          height: '100%',
+          borderRadius: 'var(--aui-radius-card)',
+          overflow: 'hidden',
+          border: '1px solid var(--aui-border-subtle)',
         }}
       >
         <SideNavSection title="탐색" isHeaderHidden>
@@ -70,22 +75,20 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
           ))}
         </SideNavSection>
       </SideNav>
-      {immersive ? (
-        <main
-          style={{
-            flex: 1,
-            minWidth: 0,
-            borderRadius: 'var(--aui-radius-card)',
-            overflow: 'hidden',
-            background: 'var(--aui-canvas)',
-            border: '1px solid var(--aui-border-subtle)',
-          }}
-        >
-          {children}
-        </main>
-      ) : (
-        <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
-      )}
+      <main
+        style={{
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+          borderRadius: 'var(--aui-radius-card)',
+          overflow: 'auto',
+          background: 'var(--aui-canvas)',
+          border: '1px solid var(--aui-border-subtle)',
+          boxShadow: 'var(--aui-shadow-card)',
+        }}
+      >
+        {children}
+      </main>
     </div>
   )
 }

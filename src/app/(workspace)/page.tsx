@@ -1113,11 +1113,11 @@ export default function Home() {
         .marquee-right { animation: marquee-right 28s linear infinite; display: flex; width: max-content; }
         .brief-details-grid { display: grid; grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr); gap: 12px; padding-top: 10px; }
         .landing-hero-shell { padding: var(--aui-space-4); box-sizing: border-box; }
-        .landing-hero-card { min-height: calc(100vh - (var(--aui-space-4) * 2)); border-radius: 16px; }
+        .landing-hero-card { min-height: calc(100vh - var(--aui-space-6) - (var(--aui-space-4) * 2)); border-radius: 16px; }
         @media (max-width: 720px) {
           .brief-details-grid { grid-template-columns: 1fr; }
           .landing-hero-shell { padding: var(--aui-space-3); }
-          .landing-hero-card { min-height: calc(100vh - (var(--aui-space-3) * 2)); border-radius: 12px; }
+          .landing-hero-card { min-height: calc(100vh - var(--aui-space-6) - (var(--aui-space-3) * 2)); border-radius: 12px; }
         }
         .history-card:hover .history-card-overlay { opacity: 1 !important; }
         @keyframes scroll-cue {
@@ -1368,7 +1368,7 @@ export default function Home() {
       {/* ══════════════════════════════════════════
           HERO
       ══════════════════════════════════════════ */}
-      <section className="landing-hero-shell" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', backgroundColor: F.canvas }}>
+      <section className="landing-hero-shell" style={{ minHeight: 'calc(100vh - var(--aui-space-6))', display: 'flex', flexDirection: 'column', position: 'relative', backgroundColor: F.canvas }}>
         <div className="landing-hero-card" style={{ display: 'flex', flex: 1, flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
           {/* The moving field is a self-contained WebGL card (mesh gradient +
               slow domain warp + grain, matched to arcade.software's hero),

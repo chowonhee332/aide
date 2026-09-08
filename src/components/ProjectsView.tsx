@@ -52,7 +52,7 @@ export default function ProjectsView() {
   const filtered = items.filter(item => matchesTab(item, tab))
 
   return (
-    <main style={{ minHeight: '100vh', backgroundColor: F.canvas, fontFamily: 'inherit' }}>
+    <main style={{ minHeight: 'calc(100vh - var(--aui-space-6))', backgroundColor: F.canvas, fontFamily: 'inherit' }}>
       <header style={{
         position: 'sticky', top: 0, zIndex: 10, backgroundColor: F.canvas,
         borderBottom: `1px solid ${F.hairlineSoft}`, padding: '20px 24px',
