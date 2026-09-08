@@ -1421,7 +1421,7 @@ export default function Home() {
             value={genMode}
             onChange={(value) => { setGenMode(value as 'ai' | 'compose'); setTemplateMatchError(null) }}
             label="생성 방식"
-            style={{ alignSelf: 'center', marginBottom: '18px' }}
+            style={{ alignSelf: 'center', marginBottom: '18px', '--color-text-secondary': '#ffffff' } as React.CSSProperties}
           >
             <SegmentedControlItem value="ai" label="AI 생성" />
             <SegmentedControlItem value="compose" label="템플릿" />

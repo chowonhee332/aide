@@ -57,7 +57,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
           ...(collapsed ? {} : { width: 'var(--aui-density-lnb-width)' }),
           flexShrink: 0,
           height: '100%',
-          borderRadius: 'var(--aui-radius-card)',
+          borderRadius: '20px',
           overflow: 'hidden',
         }}
       >
@@ -79,10 +79,9 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
           flex: 1,
           minWidth: 0,
           minHeight: 0,
-          borderRadius: 'var(--aui-radius-card)',
+          borderRadius: '20px',
           overflow: 'auto',
           background: 'var(--aui-canvas)',
-          border: '1px solid var(--aui-border-subtle)',
         }}
       >
         {children}
