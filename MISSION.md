@@ -65,6 +65,8 @@ Brain이 목표를 아래 역할로 쪼개 서브에이전트에 배정한다. �
 
 ## 4. 상태 보드 — Brain이 갱신
 
+- **Brain (2026-09-09) — Gemini 단계별 방법론 MD**: ✅ 1차 연결 구현·정적 검증. 분석·구성·이미지·검수·확장 5개 MD, 기존 호출/토큰/셸/선택안 조립 유지. 오프라인 요청 검증 통과, build ✓, lint 0 errors/기존21 warnings, test 19/21(기존 키보드 안내·라우트 실패2건). 추가 유료 호출·리뷰 활성화·커밋/푸시 없음. 실제 품질 비교 미실행. 상세: `docs/generation-methodology.md`.
+
 서브에이전트 보고를 받아 Brain이 갱신한다. 형식: `상태 · 무엇을 · 다음 검증`
 
 - **기획**: 🟡 대기 — 아직 이번 사이클 착수 안 함
@@ -83,6 +85,8 @@ Brain이 목표를 아래 역할로 쪼개 서브에이전트에 배정한다. �
 - **Brain 직접(2026-09-08) — Gmail·구글클라우드식 셸**: 🟢 커밋 `7150edf`. `--aui-page` 그레이 `#f1f1f1`→옅은 블루 `#eef3fb`(액센트 `#0064e0` 틴트). `(workspace)/layout.tsx`를 모든 라우트 통일: `100vh` flex 지면 위에 LNB 라운드 카드 + 화이트 콘텐츠 카드(`--aui-radius-card`·`--aui-shadow-card`·내부 스크롤). 몰입형(playground·aide-ui) LNB 아이콘 레일 자동 접힘 유지. 홈 히어로·프로젝트 목록 `100vh`→`calc(100vh - space-6)`(카드 안쪽 높이). Studio(`/studio/*`, `(workspace)` 밖)는 미변경 — DotField 캔버스 충돌 회피. 4개 라우트 브라우저 검증. `lint` 0 err · `build` ✓. **후속 다듬기**(`63fb105`·`26004a6`·`ea5751a`·`04ae643`·`7a9bee8`·`074ede2`): LNB 아웃라인·콘텐츠 카드 그림자/테두리 제거, 카드 radius 20px, 홈 히어로 이중 프레임 제거(그라데이션이 카드 배경 그 자체)·미선택 토글 텍스트 화이트, 지면 배경 `#f5f6fc`.
 
 - **Brain 직접(2026-09-08) — 컨트롤 크기 밀도 상속(전량)**: 🟢 커밋 `02b57a4`·`12d0300`·`d990868`·`f8d2d66`·`2afddf4`(미푸시). `AideDensityProvider`가 앱 루트에서 Astryx `<SizeProvider>`(comfortable→lg)를 내려주는데(`Button`=`useSize(sizeProp,'md')`), 개별 `size="sm"` 하드코딩이 무력화해 한 행에서 42/30px가 섞였다. 방향(사용자 결정): **"하드코딩 다 없애고 귀속되게"** — 앱 UI의 Astryx 컨트롤 `size="sm|lg|xsm"` 전량 제거. page.tsx·ProjectsView·BuilderView(속성 헤더 `height:42`→`minHeight:48`)·StudioView(39곳, 편집기 툴바 `h-9`→`min-h-9 py-1.5`, `PrimaryButton`/`Toggle` primitive 포함). `check-studio-contract.mjs` 플랫폼 토글 정규식에서 `size="sm"` 매칭 제거. **남긴 것**: `/aide-ui` 쇼케이스 specimen(사이즈 변형 시연이 목적), `generated/astryx-templates/*`(upstream 산출물, 수정 금지). `build`·`lint`·`check-studio-contract` ✓. **미검증**: Studio 생성 플로우 Step3~4는 실 API 필요 — 브라우저 확인 못 함. **후속(`e7689ee`)**: 손수 폼 컨트롤 교체 — BuilderView `PropInput`의 `<select>/<textarea>/<input>/<button>` 그리드 → `Selector/TextArea/TextInput/SegmentedControl`, 프레임 이름·AI편집 `<input>` → `TextInput`, 콘텐츠 레이아웃 `<button>` → `SegmentedControl`, 배치영역 `<select>` → `Selector`. StudioView Creon·Tweaks `<input type=range>` → `Slider`, 질문 "기타"·"직접입력" `<input type=text>` → `TextInput`. **유지**: native `<input type=color>`, `EditField` 스크러버(전용 드래그), 프리뷰 그리드·드롭다운 메뉴(AGENTS 예외). Playground 프레임 속성 패널만 브라우저 확인 — 컴포넌트별 `PropInput`(drag-drop 필요)·Studio 플로우는 클릭 검증 못 함. **후속 칩**: `task_7abf68fd`(밀도 하이드레이션 mismatch).
+
+- **Brain 직접(2026-09-09) — 홈 첨부 패널 유리→솔리드**: 🟢 커밋 `8d39fff`(미푸시). Phase 5 잔여였던 소스첨부/브랜드 플로팅 패널이 파란 히어로 위 반투명 글래스라 안의 Astryx `secondary` 버튼·`TextInput`이 무대비로 번져 "미완성"으로 읽혔다. 두 패널 배경 `backdropFilter blur`+흰색 그라데이션 보더 → `F.surface` 솔리드 + `hairlineSoft` 보더 + `shadow-card`. 내부 컨트롤은 이미 Astryx라 무변경. `lint` 0 err · `build` ✓. 패널 *내부* 남은 인라인 style은 순수 레이아웃 div·라벨 `<p>` 타이포(`--aui-type-*`)뿐 — 표준 허용, Phase 5 사실상 종료.
 
 범례: 🟢 진행 중 · 🟡 대기 · 🔴 막힘 · ✅ 완료(다음 갱신 때 삭제)
 
