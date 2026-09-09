@@ -1721,9 +1721,9 @@ export default function Home() {
             <div style={{
               width: '100%', maxWidth: '700px', marginTop: '8px',
               borderRadius: "var(--aui-radius-overlay)",
-              background: 'linear-gradient(rgba(255,255,255,0.6), rgba(255,255,255,0.6)) padding-box, linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.8)) border-box',
-              backdropFilter: 'blur(var(--aui-blur-glass-strong))', WebkitBackdropFilter: 'blur(var(--aui-blur-glass-strong))',
-              border: '1px solid transparent', padding: "var(--aui-space-4)",
+              background: F.surface,
+              border: `1px solid ${F.hairlineSoft}`, padding: "var(--aui-space-4)",
+              boxShadow: 'var(--aui-shadow-card)',
             }}>
               <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
 
@@ -1824,9 +1824,9 @@ export default function Home() {
             <div style={{
               width: '100%', maxWidth: '700px', marginTop: '8px',
               borderRadius: "var(--aui-radius-overlay)",
-              background: 'linear-gradient(rgba(255,255,255,0.6), rgba(255,255,255,0.6)) padding-box, linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.8)) border-box',
-              backdropFilter: 'blur(var(--aui-blur-glass-strong))', WebkitBackdropFilter: 'blur(var(--aui-blur-glass-strong))',
-              border: '1px solid transparent', padding: "var(--aui-space-4)",
+              background: F.surface,
+              border: `1px solid ${F.hairlineSoft}`, padding: "var(--aui-space-4)",
+              boxShadow: 'var(--aui-shadow-card)',
             }}>
               <input ref={refImageInputRef} type="file" accept="image/*" onChange={handleRefImageUpload} style={{ display: 'none' }} />
               <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
