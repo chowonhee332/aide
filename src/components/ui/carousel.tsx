@@ -1,10 +1,32 @@
 import * as React from "react"
-import { cn } from "@/lib/utils"
+import { Carousel as AstryxCarousel } from "@astryxdesign/core/Carousel"
 
-function Carousel({ items, label = "가로 목록", className }: { items: React.ReactNode[]; label?: string; className?: string }) {
-  return <div data-slot="carousel" role="group" aria-label={label} tabIndex={0}
-    className={cn("flex snap-x snap-mandatory gap-[var(--aui-space-3)] overflow-x-auto rounded-[var(--aui-radius-card)] outline-none focus-visible:shadow-[var(--aui-shadow-focus)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}>
-    {items.map((item, index) => <div key={index} className="w-[70%] shrink-0 snap-start rounded-[var(--aui-radius-card)] bg-[var(--aui-surface-muted)] p-[var(--aui-space-4)] text-sm text-[var(--aui-text-neutral)]">{item}</div>)}
-  </div>
+/**
+ * `carousel` from the aide.md `component_registry`, rendered by Astryx `Carousel`.
+ *
+ * The `items` array API is kept so callers do not change; Astryx takes children,
+ * so each item becomes one child. Astryx supplies the scroll container, edge fade
+ * and prev/next buttons that this component used to approximate with overflow CSS.
+ */
+function Carousel({
+  items,
+  label = "가로 목록",
+  className,
+}: {
+  items: React.ReactNode[]
+  label?: string
+  className?: string
+}) {
+  return (
+    <div className={className}>
+      <AstryxCarousel aria-label={label} hasSnap gap={3}>
+        {items.map((item, index) => (
+          <div key={index} style={{ width: "70%", flexShrink: 0 }}>
+            {item}
+          </div>
+        ))}
+      </AstryxCarousel>
+    </div>
+  )
 }
 export { Carousel }

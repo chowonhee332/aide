@@ -1,14 +1,33 @@
-import * as React from "react"
-import { Avatar } from "@/components/ui/asset"
-import { cn } from "@/lib/utils"
+import { Avatar } from "@astryxdesign/core/Avatar"
+import { AvatarGroup as AstryxAvatarGroup, AvatarGroupOverflow } from "@astryxdesign/core/AvatarGroup"
 
-function AvatarGroup({ names, max = 4, className }: { names: string[]; max?: number; className?: string }) {
+/**
+ * `avatar-group` from the aide.md `component_registry`, rendered by Astryx.
+ *
+ * The `names` array API is kept so callers do not change. Astryx owns the overlap,
+ * the ring against the surface and the "+N" overflow slot, which this component
+ * used to build from negative margins and ring utilities.
+ */
+function AvatarGroup({
+  names,
+  max = 4,
+  className,
+}: {
+  names: string[]
+  max?: number
+  className?: string
+}) {
   const shown = names.slice(0, max)
   const overflow = names.length - shown.length
-  return <div data-slot="avatar-group" className={cn("flex items-center", className)}>
-    {shown.map((name) => <span key={name} className="-ml-2 rounded-[var(--aui-radius-pill)] ring-2 ring-[var(--aui-surface)] first:ml-0"><Avatar fallback={name.slice(0, 1)} alt={name}/></span>)}
-    {overflow > 0 && <span className="-ml-2 grid size-[var(--aui-component-avatar-default-size)] place-items-center rounded-[var(--aui-radius-pill)] bg-[var(--aui-fill)] text-xs font-semibold text-[var(--aui-text-neutral)] ring-2 ring-[var(--aui-surface)]">+{overflow}</span>}
-    <span className="sr-only">{names.length}명</span>
-  </div>
+  return (
+    <div className={className}>
+      <AstryxAvatarGroup>
+        {shown.map((name) => (
+          <Avatar key={name} name={name} />
+        ))}
+        {overflow > 0 ? <AvatarGroupOverflow count={overflow} /> : null}
+      </AstryxAvatarGroup>
+    </div>
+  )
 }
 export { AvatarGroup }

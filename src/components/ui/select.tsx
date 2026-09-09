@@ -1,8 +1,71 @@
-import * as React from "react"
-import { ChevronDown } from "@/components/ui/material-icon"
-import { cn } from "@/lib/utils"
+"use client"
 
-function Select({ className, children, ...props }: React.ComponentProps<"select">) {
-  return <span data-slot="select" className={cn("relative block", className)}><select className="h-[var(--aui-component-control-touch-height)] w-full appearance-none rounded-[var(--aui-radius-control)] border border-[var(--aui-border)] bg-[var(--aui-surface)] px-[var(--aui-component-control-inline-padding)] pr-10 text-sm text-[var(--aui-text)] outline-none focus-visible:border-[var(--aui-primary)] focus-visible:shadow-[var(--aui-shadow-focus)] disabled:cursor-not-allowed disabled:bg-[var(--aui-fill)] disabled:text-[var(--aui-text-disabled)] md:h-[var(--aui-component-control-default-height)]" {...props}>{children}</select><ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 size-[var(--aui-component-control-icon-size)] -translate-y-1/2 text-[var(--aui-text-muted)]"/></span>
+import * as React from "react"
+import { Selector } from "@astryxdesign/core/Selector"
+
+/**
+ * `select` from the aide.md `component_registry`, rendered by Astryx `Selector`.
+ *
+ * Callers pass `<option>` children like a native select; Astryx takes an `options`
+ * array instead, so the children are read here rather than changing every call
+ * site. Anything that is not an `<option>` element is ignored, which is what a
+ * native select does with stray children anyway.
+ */
+type SelectProps = {
+  label?: string
+  value?: string
+  defaultValue?: string
+  onChange?: (value: string) => void
+  disabled?: boolean
+  placeholder?: string
+  className?: string
+  children?: React.ReactNode
+}
+
+function optionsFromChildren(children: React.ReactNode): { value: string; label: string }[] {
+  const collected: { value: string; label: string }[] = []
+  React.Children.forEach(children, (child) => {
+    if (!React.isValidElement(child) || child.type !== "option") return
+    const props = child.props as { value?: string | number; children?: React.ReactNode }
+    const text = React.Children.toArray(props.children)
+      .filter((node): node is string | number => typeof node === "string" || typeof node === "number")
+      .join("")
+    collected.push({ value: String(props.value ?? text), label: text })
+  })
+  return collected
+}
+
+function Select({
+  label,
+  value,
+  defaultValue,
+  onChange,
+  disabled,
+  placeholder,
+  className,
+  children,
+}: SelectProps) {
+  const options = React.useMemo(() => optionsFromChildren(children), [children])
+  const [internal, setInternal] = React.useState(defaultValue ?? "")
+  const current = value ?? internal
+
+  return (
+    <div className={className}>
+      {/* Astryx requires an accessible label; callers usually wrap this in `Field`,
+          which renders the visible one, so hide ours when none was given. */}
+      <Selector
+        label={label ?? "선택"}
+        isLabelHidden={!label}
+        options={options}
+        value={current}
+        placeholder={placeholder}
+        isDisabled={disabled}
+        onChange={(next: string) => {
+          setInternal(next)
+          onChange?.(next)
+        }}
+      />
+    </div>
+  )
 }
 export { Select }

@@ -1,11 +1,23 @@
 import * as React from "react"
-import { ExternalLink } from "@/components/ui/material-icon"
-import { cn } from "@/lib/utils"
+import { Link } from "@astryxdesign/core/Link"
 
-function Anchor({ className, external, children, ...props }: React.ComponentProps<"a"> & { external?: boolean }) {
-  return <a data-slot="anchor" target={external ? "_blank" : undefined} rel={external ? "noreferrer" : undefined}
-    className={cn("inline-flex items-center gap-[var(--aui-space-1)] rounded-[var(--aui-radius-sm)] text-sm font-semibold text-[var(--aui-primary)] underline underline-offset-2 outline-none hover:text-[var(--aui-primary-heavy)] focus-visible:shadow-[var(--aui-shadow-focus)]", className)} {...props}>
-    {children}{external && <><ExternalLink aria-hidden className="size-4"/><span className="sr-only">새 창에서 열림</span></>}
-  </a>
+/**
+ * `anchor` from the aide.md `component_registry`, rendered by Astryx `Link`.
+ *
+ * Astryx's `isExternalLink` already does what this component used to assemble by
+ * hand: opens a new tab, merges the safe `rel` tokens, appends the external icon
+ * and announces the new tab to screen readers. `newTabLabel` keeps that
+ * announcement Korean.
+ */
+function Anchor({
+  external,
+  children,
+  ...props
+}: Omit<React.ComponentProps<typeof Link>, "isExternalLink" | "newTabLabel"> & { external?: boolean }) {
+  return (
+    <Link isExternalLink={external} newTabLabel="(새 창에서 열림)" {...props}>
+      {children}
+    </Link>
+  )
 }
 export { Anchor }
