@@ -45,6 +45,10 @@ const DotField = memo<DotFieldProps>(({
     function doResize() {
       const rect = canvas.parentElement!.getBoundingClientRect()
       const w = rect.width, h = rect.height
+      // Parent can be 0×0 on first mount (inside a not-yet-laid-out flex/grid or
+      // a panel animating in). Building 0-size offscreen canvases makes tick()'s
+      // drawImage throw InvalidStateError every frame; skip until it has a size.
+      if (w < 1 || h < 1) return
       canvas.width = w * dpr
       canvas.height = h * dpr
       canvas.style.width = `${w}px`
@@ -112,11 +116,16 @@ const DotField = memo<DotFieldProps>(({
     function tick() {
       const { w, h } = sizeRef.current
       const m = mouseRef.current
-      
+
+      if (w < 1 || h < 1) {
+        rafRef.current = requestAnimationFrame(tick)
+        return
+      }
+
       ctx.clearRect(0, 0, w, h)
 
       // 전체 화면에 기본 도트 깔기
-      if (baseCanvasRef.current) {
+      if (baseCanvasRef.current && baseCanvasRef.current.width > 0) {
         ctx.drawImage(baseCanvasRef.current, 0, 0, w, h)
       }
 
@@ -160,12 +169,18 @@ const DotField = memo<DotFieldProps>(({
     window.addEventListener('resize', resize)
     window.addEventListener('mousemove', onMouseMove, { passive: true })
     window.addEventListener('mouseout', onMouseLeave, { passive: true })
-    
+
+    // Recover when the parent gets a real size after mounting at 0×0.
+    const parent = canvas.parentElement
+    const observer = parent ? new ResizeObserver(resize) : null
+    if (parent) observer!.observe(parent)
+
     rafRef.current = requestAnimationFrame(tick)
 
     return () => {
       cancelAnimationFrame(rafRef.current)
       clearTimeout(resizeTimer)
+      observer?.disconnect()
       window.removeEventListener('resize', resize)
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('mouseout', onMouseLeave)

@@ -14,7 +14,7 @@ import { Button } from '@astryxdesign/core/Button'
 import { IconButton } from '@astryxdesign/core/IconButton'
 import { ToggleButton, ToggleButtonGroup } from '@astryxdesign/core/ToggleButton'
 import { ButtonGroup } from '@astryxdesign/core/ButtonGroup'
-import { Link } from '@astryxdesign/core/Link'
+import { Link, LinkProvider } from '@astryxdesign/core/Link'
 import { Text, Heading } from '@astryxdesign/core/Text'
 import { Blockquote } from '@astryxdesign/core/Blockquote'
 import { Avatar } from '@astryxdesign/core/Avatar'
@@ -665,9 +665,15 @@ function Rendered({ id, props, slot }: { id: string; props: Props; slot?: ReactN
 export function AstryxComponentPreview({ id, props = {}, slot }: AstryxComponentPreviewProps) {
   return (
     <div data-theme="light" data-astryx-theme="neutral" style={{ width: '100%', colorScheme: 'light' }}>
-      <PreviewBoundary id={id}>
-        <Rendered id={id} props={props} slot={slot} />
-      </PreviewBoundary>
+      {/* These are static thumbnails, not navigable UI. Override the app-wide
+          next/link provider with a native <a> so a specimen without an href
+          (e.g. TopNavItem) doesn't trip next/link's required-string-href check
+          and collapse the whole preview into the error boundary. */}
+      <LinkProvider component="a">
+        <PreviewBoundary id={id}>
+          <Rendered id={id} props={props} slot={slot} />
+        </PreviewBoundary>
+      </LinkProvider>
     </div>
   )
 }
