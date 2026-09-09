@@ -2973,8 +2973,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                         </div>
                       </div>
                       <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: "var(--aui-space-2)", overflow: 'hidden' }}>
-                        <Skeleton className="w-[82%] h-[6px]" />
-                        <Skeleton className="w-[56%] h-[6px]" />
+                        <Skeleton width="82%" height={6} index={0} />
+                        <Skeleton width="56%" height={6} index={1} />
                       </div>
                       <div style={{ backgroundColor: cellBg, padding: `var(--aui-space-3)`, flex: 1, display: 'flex', flexDirection: 'column', gap: "var(--aui-space-2)", justifyContent: 'center', fontSize: "var(--aui-type-caption-size)", overflow: 'hidden' }}>
                         <Switch defaultChecked>프로토타입 모드</Switch>

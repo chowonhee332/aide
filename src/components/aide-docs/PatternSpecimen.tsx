@@ -313,7 +313,7 @@ function LoadingPattern({ content }: { content: Contract }) {
         <CardHeader><CardTitle>Determinate</CardTitle><CardDescription>구조를 미리 보여주는 스켈레톤</CardDescription></CardHeader>
         <CardContent className="grid gap-[var(--aui-space-3)]">
           <Progress value={45} label="Generating screen 2 of 4"/>
-          <div className="grid gap-[var(--aui-space-2)]"><Skeleton className="h-4 w-2/3"/><Skeleton className="h-3 w-full"/><Skeleton className="h-3 w-4/5"/></div>
+          <div className="grid gap-[var(--aui-space-2)]"><Skeleton width="66%" height={16} index={0}/><Skeleton width="100%" height={12} index={1}/><Skeleton width="80%" height={12} index={2}/></div>
         </CardContent>
       </Card>
     </ResponsiveGrid>

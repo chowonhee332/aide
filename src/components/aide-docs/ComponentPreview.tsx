@@ -184,7 +184,7 @@ export function ComponentPreview({ id, props = {}, device = 'desktop', context =
     case 'toast':
       return <Toast tone={props.state === 'error' ? 'error' : props.state === 'warning' ? 'warning' : 'success'} title={label} description={description}/>
     case 'loading':
-      return <div className="docs-loading-preview"><Loader label={description || 'Loading component...'}/><div className="docs-loading-skeleton"><Skeleton className="h-4 w-2/3"/><Skeleton className="h-3 w-full"/><Skeleton className="h-3 w-4/5"/></div></div>
+      return <div className="docs-loading-preview"><Loader label={description || 'Loading component...'}/><div className="docs-loading-skeleton"><Skeleton width="66%" height={16} index={0}/><Skeleton width="100%" height={12} index={1}/><Skeleton width="80%" height={12} index={2}/></div></div>
     case 'empty-state':
       return <Result figure={<Search size={22}/>} title={title} description={description}/>
     case 'result':
