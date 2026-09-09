@@ -1,3 +1,5 @@
+import { getGenerationMethodology } from './generation-methodology'
+
 export interface DesignVisualReview {
   score: number
   needsPatch: boolean
@@ -59,12 +61,7 @@ ${(args.directionPlan || '지정 없음').slice(0, 4500)}
 DOM 인벤토리:
 ${htmlInventory(args.html)}
 
-판단 기준:
-- focal point가 0.5초 안에 보이는가
-- 정보 계층·여백·정렬·밀도가 안정적인가
-- 기존의 평범한 header + hero + 같은 카드 반복으로 환원하지 않았는가
-- 이미지·CTA·타이포그래피가 경쟁하거나 겹치지 않는가
-- 텍스트 잘림, 세로 글자, 과도한 라운드 카드, 빈 영역이 없는가
+${getGenerationMethodology('review')}
 
 수정 규칙:
 - HTML이나 새 요소를 작성하지 말라.

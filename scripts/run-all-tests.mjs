@@ -10,6 +10,7 @@ const projectRoot = path.resolve(__dirname, '..')
 const tests = [
   'test/verify_prompt_contracts.mjs',
   'test/verify_prompt_budget.mjs',
+  'test/verify_generation_methodology.mjs',
   'test/verify_model_routing.mjs',
   'test/verify_sales_input_history.mjs',
   'test/verify_unified_aide_design_system.mjs',

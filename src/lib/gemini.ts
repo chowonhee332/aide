@@ -22,6 +22,7 @@ import { logGeminiUsage } from './gemini-usage';
 import { parseFencedDesignContract } from './design-md-contract';
 import { selectRelevantComponents, hintsFromDirectionPlan, type ComponentRetrievalHints } from './design-component-retrieval';
 import { injectPlatformBaseline, normalizePageContainer } from './platform-baseline';
+import { getGenerationMethodology } from './generation-methodology';
 export type { AppDomain } from './domain-constants';
 export { DOMAIN_KEY_TO_LABEL, DOMAIN_LABEL_TO_KEY, DOMAIN_HOME_EMPHASIS_OPTIONS, DOMAIN_PRIMARY_JOURNEY_OPTIONS, DOMAIN_FIRST_SCREEN_FOCUS_OPTIONS } from './domain-constants';
 
@@ -894,50 +895,12 @@ export async function analyzeAndGenerateQuestions(
     ? `\n## PRD / IA 문서 (기획 문서 원문)\n아래는 사용자가 첨부한 PRD·IA·메뉴 구조 문서입니다. 이 문서를 기반으로 도메인, 핵심 기능, 화면 구조, 유저 플로우를 정확히 파악하여 질문과 분석에 반영하세요.\n\`\`\`\n${prdDoc.slice(0, 8000)}\n\`\`\`\n`
     : ''
   const prompt = `
-당신은 제품 기획자입니다. 기획서를 분석해 아래 세 가지만 추출하세요.
+당신은 제품 기획자입니다. 기획서를 분석해 아래 JSON 계약에 맞게 응답하세요.
+${getGenerationMethodology('analysis')}
 
 ## 기획서
 ${brief}
 ${prdContext}${designSystemContext}
-
-## 3D 히어로 이미지 판단
-
-히어로 섹션에 AI 생성 3D 이미지가 필요한지 판단하세요.
-
-**⚠️ 절대 최우선 조건 — 아래 해당하면 다른 조건 무시하고 generate: true:**
-- 브리프에 캐릭터·마스코트·펫·동물 캐릭터가 등장한다 (예: "단디", "귀여운 강아지", "마스코트", "캐릭터", "펫", "동료", "companion")
-- 브리프에 "3D", "3D 캐릭터", "3D 히어로", "캐릭터 생성"처럼 3D 비주얼을 명시적으로 요청했다
-- 브리프가 게임형·리워드형·성장형 앱이다 (예: "리워드", "코인", "레벨업", "캐릭터 성장", "뽑기")
-- 위 조건에 해당하면 모바일 앱 홈 화면이라도 generate: true. 아래 false 조건을 읽지 마라.
-
-**generate: true 조건 (위 절대 조건 외):**
-- B2C 랜딩페이지 / 브랜드 소개 / 제품 쇼케이스
-- 앱·서비스 소개 페이지 (SaaS, 스타트업, 앱 마케팅)
-- 포트폴리오 / 에이전시 홈
-- premium 분위기가 핵심인 브랜드
-
-**generate: false 조건 (절대 최우선 조건에 해당하지 않고, 하나라도 해당하면):**
-- 내부 대시보드 / 관리자 툴 / B2B 엔터프라이즈
-- 캐릭터·마스코트가 없는 일반 모바일 앱 메인화면
-- 캐릭터·마스코트가 없는 모바일 주문/피드/탐색 앱 홈 화면
-- 정보 조회·CRUD·폼 위주 서비스
-- 커뮤니티·SNS·뉴스 피드 서비스
-
-generate: true일 때:
-- **최우선 규칙**: 사용자가 브리프에서 3D 오브젝트를 명시한 경우 반드시 그것을 사용하세요.
-  - 감지 패턴: "3D는 X로", "X 캐릭터로", "X로 만들어줘", "히어로 이미지는 X", "3D 이미지는 X", "X 마스코트", "X 캐릭터 써줘"
-  - 예: "3D는 토끼 캐릭터로 해줘" → heroSubject: "a cute rabbit character"
-  - 예: "강아지 마스코트로 만들어줘" → heroSubject: "a friendly dog mascot"
-  - 명시된 경우 AI가 임의로 다른 오브젝트로 바꾸지 말 것
-- 명시가 없을 때: 서비스를 상징하는 단일 오브젝트 자동 선정
-- prompt는 **영어**로, Creon 3D Studio 스타일에 적합한 단일 오브젝트/캐릭터 프롬프트 작성:
-  - 스타일: cute isometric 3D mascot/icon, glossy plastic, soft studio lighting, clean shape
-  - 예: "a cute sandwich mascot holding a coupon", "a delivery box mascot", "a friendly credit card character"
-- heroSubject는 이 서비스를 상징하는 **단일 오브젝트**를 **영어 명사구** 2~5단어로 작성:
-  - 예: "a sleek smartphone", "a credit card", "a running shoe", "a delivery box", "a laptop with UI"
-  - 반드시 isometric 3D 아이콘으로 표현 가능한 구체적 사물이어야 함
-
-generate: false일 때: heroSubject는 빈 문자열("")로 설정
 
 ## 플랫폼 추천
 
@@ -3406,7 +3369,7 @@ export async function generateHeroImage(
     // dramatic object 렌더는 단색 배경이라 Creon 레퍼런스(귀여운 아이콘)를 섞지 않는다.
     const refImages = mode === 'transparent' && !dramatic ? loadCreonRefImages() : []
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [
-      { text: prompt },
+      { text: `${getGenerationMethodology('image')}\n\n${prompt}` },
       ...refImages,
     ]
     const imageModels = [...new Set(modelOverride
@@ -3496,10 +3459,8 @@ ${domainBlock}
    - 첫 화면에는 명확한 focal point를 하나 만든다. 사용자가 처음 보는 순간 무엇을 해야 하는지 보여야 한다.
    - 주요 CTA는 한 화면에서 가장 빠르게 발견되어야 한다.
    - 카드들은 같은 크기, 같은 간격, 같은 정렬 리듬을 가진다.
-   - 화면을 3개 영역으로 나눈다: 핵심 요약, 주요 행동, 보조 탐색.
    - 와이어프레임처럼 보이는 회색 박스, 빈 카드, 의미 없는 skeleton block은 실패다.
    - 각 카드에는 제목, 설명, 상태/시간/가격/진행률/수치/메타 중 최소 2개 이상을 포함한다.
-   - 첫 화면은 반드시 3개 이상의 의미 있는 영역으로 구성한다: 상단 내비/검색, 핵심 가치 또는 요약, 주요 콘텐츠 리스트/카드, 하단 액션/내비.
    - 한글 문장은 세로로 한 글자씩 쌓지 않는다. writing-mode, text-orientation, 과도하게 좁은 텍스트 column 사용 금지.
    - 짧은 한글 UI 라벨이 어색하게 줄바꿈되지 않아야 한다. 버튼·칩·배지·탭·메타 라벨은 기본적으로 한 줄이어야 한다.
    - 짧은 UI 라벨: white-space: nowrap; word-break: keep-all; overflow-wrap: normal; min-width: max-content; flex: 0 0 auto;
@@ -3739,53 +3700,7 @@ ${domainBlock}
 }
 
 function buildArtDirectionLayer(effectivePlatform: PlatformType): string {
-  return `## 화면 설계 선행 단계 — 내부적으로 먼저 결정하고 코드에 반영 (출력에는 설명 금지)
-
-HTML을 쓰기 전에 아래 7가지를 내부 설계안으로 먼저 확정한 뒤, 그 결정이 실제 레이아웃과 콘텐츠에 보이게 구현하세요.
-
-1. **Focal Point**
-   - 첫 화면에서 사용자가 0.5초 안에 보는 하나의 중심을 정한다.
-   - focal point 후보: 핵심 KPI, 대표 상품/혜택, 검색창, 주문 CTA, 주요 이미지, 업무 상태 요약.
-   - focal point가 2개 이상 경쟁하면 실패다.
-
-2. **Primary Action Path**
-   - 사용자가 가장 먼저 해야 할 행동 1개와 그 다음 행동 1개를 정한다.
-   - primary CTA는 첫 화면에서 가장 빨리 발견되어야 한다.
-   - secondary CTA는 같은 스타일 강도로 경쟁하지 않는다.
-
-3. **Three-Zone Composition**
-   - 화면을 반드시 3개 영역으로 설계한다:
-     A. 핵심 요약 또는 히어로
-     B. 주요 행동 또는 주요 콘텐츠
-     C. 보조 탐색 또는 신뢰/상태 정보
-   - 세 영역은 여백, 구분선, 표면색, 카드 리듬 중 DESIGN.md가 허용하는 방식으로 구분한다.
-
-4. **Real Content Density**
-   - 모든 카드/리스트/섹션에는 실제 서비스처럼 구체적 텍스트와 수치를 넣는다.
-   - 예: 가격, 평점, 시간, 상태, 날짜, 담당자, 진행률, 카테고리, 혜택, 주문/신청 가능 여부.
-   - 빈 박스, lorem ipsum, 추상 문구, 같은 문구 반복은 실패다.
-
-5. **Visual Rhythm**
-   - 같은 성격의 카드와 리스트는 같은 높이, 같은 gap, 같은 정보 순서, 같은 액션 위치를 가진다.
-   - 카드 안의 이미지/텍스트/메타/CTA 비율을 안정적으로 맞춘다.
-   - ${effectivePlatform === 'web' ? '웹은 한 화면에 12컬럼 기반의 가로 밀도와 명확한 섹션 폭을 만든다.' : '모바일은 390px 폭에서 텍스트 줄바꿈이 자연스럽고, 하단 내비/CTA가 콘텐츠를 가리지 않게 한다.'}
-
-6. **Responsive Strategy**
-   - 기준 플랫폼은 첫 preview의 시작점일 뿐입니다. 최종 HTML은 반드시 모바일/태블릿/데스크탑 폭에서 모두 깨지지 않게 동작해야 합니다.
-   - px 고정 폭만으로 화면을 만들지 말고, width:100%, max-width, clamp(), minmax(), grid auto-fit/auto-fill, @media 쿼리를 함께 사용합니다.
-   - 모바일 앱형 화면도 넓은 viewport에서는 중앙 정렬 컨테이너 또는 보조 정보 패널로 자연스럽게 확장하고, 웹형 화면도 390px에서는 1컬럼으로 접습니다.
-   - 3D/실사 히어로 이미지는 컨테이너 비율에 맞춰 clamp()로 크기를 제어하고, 너무 작은 장식/과한 크롭/CTA 가림이 발생하지 않게 합니다.
-
-7. **Image Direction**
-   - 이미지가 필요한 도메인은 이미지가 정보 구조의 일부가 되게 배치한다.
-   - 3D는 히어로 1회만, 반복 썸네일은 실제 도메인에 맞는 Unsplash placeholder를 사용한다.
-   - 이미지 없는 화면도 아이콘 나열 대신 데이터/카피/CTA로 중심을 만든다.
-
-8. **Design-System Expressiveness**
-   - 디자인 시스템은 제한이 아니라 재료다. 토큰을 바꾸지 말고, 섹션 비율·정렬·타입 계층·콘텐츠 밀도로 완성도를 만든다.
-   - 예쁘게 보이려고 임의 컬러/그림자/라운드를 추가하지 말고, DESIGN.md 안에서 가장 표현력 있는 조합을 선택한다.
-
-위 설계안은 출력하지 말고, 최종 HTML/CSS 결과에만 반영하세요.`;
+  return `${getGenerationMethodology('composition')}\n기준 플랫폼: ${effectivePlatform}`;
 }
 
 function buildMediaLayoutSafetyLayer(heroImagePrompt?: string): string {
@@ -4491,31 +4406,6 @@ ${JSON.stringify(variantStructure, null, 2)}
 가장 중요한 목표는 "어떤 서비스를 만들든 선택한 디자인 시스템처럼 보이게 만드는 것"입니다.
 선택된 DESIGN.md의 스타일이 전체 화면에 일관되게 적용되어야 합니다. 기본값이면 Aide 스타일, ktds.md를 선택하면 KTDS 스타일, 다른 md를 선택하면 그 md의 토큰과 컴포넌트 규칙을 따릅니다.
 
-## 🎨 시각적 완성도 기준
-
-### 디자인 시스템 우선
-- 색상, 폰트, 간격, 라운드, 카드, 입력, 버튼, 그림자는 [디자인 시스템]의 토큰과 컴포넌트 규칙을 최우선으로 적용한다.
-- 디자인 시스템에 없는 임의의 hex, px, radius, shadow를 새로 만들지 않는다.
-- A/B/C 시안 차이는 스타일 변경이 아니라 정보 구조, 강조점, 레이아웃 구성 차이로 만든다.
-
-### 타이포그래피와 계층
-- typography 토큰의 크기/굵기 계층을 사용해 제목, 섹션, 카드, 본문, 보조 텍스트를 명확히 구분한다.
-- 디자인 시스템에 정의된 타입 스케일 밖의 임의 크기를 만들지 않는다.
-
-### 레이아웃 완성도
-- 서비스 핵심 목적이 첫 화면에서 바로 이해되어야 한다.
-- 카드/리스트/폼/차트는 브리프에 필요한 경우에만 사용하고, 각 요소는 실제 서비스처럼 충분한 정보를 담는다.
-- 반응형은 플랫폼 가이드와 DESIGN.md의 breakpoint/navigation 규칙을 우선한다.
-
-### 인터랙션
-- hover, active, disabled, focus는 DESIGN.md의 interaction/component state 규칙을 따른다.
-- 카드에 shadow나 border를 추가할 때도 DESIGN.md에 정의된 방식만 사용한다.
-
-### 서비스 맥락
-- B2B는 정보 탐색, 비교, 업무 처리 속도를 우선한다.
-- B2C는 탐색, 선택, 구매/예약/신청 같은 전환 흐름을 우선한다.
-- 단, B2B/B2C 표현 방식도 선택한 DESIGN.md의 카드, 버튼, 컬러, 간격 규칙 안에서만 구성한다.
-
 ${hasDesignSystem ? `
 ╔══════════════════════════════════════════════════════════════╗
 ║  ⚠️  디자인 시스템 강제 적용 — 절대 규칙                        ║
@@ -4917,7 +4807,7 @@ ${mainOnly ? `### 단일 메인 화면 (비교 선택용)
 - ${effectivePlatform === 'mobile' ? '모바일 앱은 390px 내외 폭에서도 텍스트가 가로로 자연스럽게 읽혀야 한다. 세로 글자, 잘린 카드, 하단 내비와 겹친 콘텐츠는 실패.' : '웹 화면은 1440px 기준에서 좌우 컬럼, 카드 그리드, 리스트가 균형 있게 채워져야 한다.'}
 - 배달/커머스류 홈이면 최소한 검색/주소, 카테고리, 추천 메뉴 또는 가게 카드 여러 개, 가격/평점/시간, 장바구니/주문 액션이 첫 화면에 보여야 한다.
 - 단일 메인 화면은 "상단만 예쁜 포스터"가 아니라 실제 서비스 홈이어야 한다. 모바일 첫 viewport 안에 서비스 목적에 맞는 충분한 정보, 선택지, 다음 행동이 보여야 한다.
-- 시안 A/B/C는 서로 다른 레이아웃 골격을 가져야 한다. 같은 header + hero + chip + card list 구조를 이름만 바꿔 반복하면 실패다.
+- 시안 A/B/C는 각자 선택된 구조를 보존한다. 구조가 같다면 허용된 정보 강조·영역 비율·타입 위계로 차별화하고, 다르게 보이려고 확정 골격을 바꾸지 않는다.
 ` : `### 멀티스크린 프로토타입 (필수)
 기획서를 분석해 **3~5개의 핵심 화면**을 하나의 HTML에 생성하세요.
 
@@ -5326,7 +5216,7 @@ export async function expandToPrototype(mainHtml: string, params: GenerateParams
     : `앱바와 하단 탭바 사이의 스크롤 가능한 콘텐츠 영역`
 
   const prompt = `당신은 선택한 디자인 시스템을 유지하면서 멀티스크린 프로토타입을 확장하는 시니어 프로덕트 디자이너이자 프론트엔드 개발자입니다.
-아래 메인 화면의 디자인 시스템, 컴포넌트 스타일, 정보 밀도를 그대로 유지하면서 서브 화면을 확장하세요.
+${getGenerationMethodology('expansion')}
 
 ## 메인 화면 HTML
 \`\`\`html

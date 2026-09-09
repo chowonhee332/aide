@@ -43,7 +43,12 @@ const CEILINGS = {
 let total = 0
 const report = []
 for (const [name, ceiling] of Object.entries(CEILINGS)) {
-  const size = functionSpan(name).length
+  // The art-direction prose is now a runtime MD asset, not inline TS. Count
+  // its full source too so externalization cannot silently evade this gate.
+  const externalSize = name === 'buildArtDirectionLayer'
+    ? readFileSync(new URL('../src/lib/generation-methods/composition.md', import.meta.url), 'utf8').length
+    : 0
+  const size = functionSpan(name).length + externalSize
   total += size
   report.push(`  ${name.padEnd(34)} ${String(size).padStart(6)} / ${ceiling}`)
   assert.ok(size <= ceiling, `${name} is ${size} chars, over ceiling ${ceiling}.`)
