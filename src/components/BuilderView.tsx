@@ -27,6 +27,8 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   ArrowLeft,
   ArrowUp,
+  CornerUpLeft,
+  CornerUpRight,
   Download,
   LayoutTemplate,
   Monitor,
@@ -2194,23 +2196,13 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
           <SegmentedControlItem value="desktop" label={`Desktop ${FRAME_DIMENSIONS.desktop.width}`} icon={<Monitor size={14} aria-hidden />} />
         </SegmentedControl>
 
-        {activeFrame?.device === 'desktop' ? (
-          <SegmentedControl
-            label="PC 레이아웃"
-            value={activeFrame.layout ?? 'stack'}
-            onChange={(layout) => setFrameLayout(layout as 'stack' | 'grid-2' | 'grid-3')}
-          >
-            <SegmentedControlItem value="stack" label="1열" />
-            <SegmentedControlItem value="grid-2" label="2열" />
-            <SegmentedControlItem value="grid-3" label="3열" />
-          </SegmentedControl>
-        ) : null}
-
         <div style={{ width: 1, height: 24, background: AIDE.border }} />
-        <AstryxIconButton type="button" onClick={undo} tooltip="실행 취소 (⌘Z)" label="실행 취소" icon={<span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>↶</span>} variant="ghost" />
-        <AstryxIconButton type="button" onClick={redo} tooltip="다시 실행 (⇧⌘Z)" label="다시 실행" icon={<span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>↷</span>} variant="ghost" />
+        <AstryxIconButton type="button" onClick={undo} tooltip="실행 취소 (⌘Z)" label="실행 취소" icon={<CornerUpLeft size={16} aria-hidden />} variant="ghost" />
+        <AstryxIconButton type="button" onClick={redo} tooltip="다시 실행 (⇧⌘Z)" label="다시 실행" icon={<CornerUpRight size={16} aria-hidden />} variant="ghost" />
         <AstryxIconButton type="button" onClick={() => addFrame()} tooltip="같은 크기의 프레임 추가" label="프레임 추가" icon={<Plus size={15} aria-hidden />} variant="secondary" />
         <AstryxIconButton type="button" onClick={deleteActiveFrame} isDisabled={!activeFrame} tooltip="선택한 프레임 삭제" label="프레임 삭제" icon={<Trash2 size={14} aria-hidden />} variant="secondary" />
+
+        <div style={{ width: 1, height: 24, background: AIDE.border }} />
         <AstryxButton type="button" onClick={() => { if (items.length === 0 || window.confirm('선택한 프레임의 컴포넌트를 모두 지울까요?')) { setItems([]); setSelectedId(null); } }} isDisabled={items.length === 0} variant="ghost" label="초기화" />
         <AstryxButton type="button" onClick={handleExport} isDisabled={items.length === 0} label="HTML" icon={<Download size={14} aria-hidden />} />
         <AstryxButton type="button" onClick={togglePreviewMode} variant={previewMode ? 'primary' : 'secondary'} label={previewMode ? '편집으로 돌아가기' : '미리보기'} />
@@ -2494,7 +2486,7 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
             onRemove={removeItem}
             onReset={resetItem}
             onFrameNameChange={(name) => setFrames((previous) => previous.map((frame) => frame.id === activeFrameId ? { ...frame, name } : frame))}
-            onFrameLayoutChange={(layout) => setFrames((previous) => previous.map((frame) => frame.id === activeFrameId ? { ...frame, layout } : frame))}
+            onFrameLayoutChange={setFrameLayout}
           />
         </div>
 
