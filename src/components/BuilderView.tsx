@@ -57,6 +57,7 @@ import {
 } from '@/lib/astryx-templates';
 import { AIDE_UI, AIDE_UI_RAW } from '@/lib/aide-ui';
 import { AUI_ROOT_CSS } from '@/lib/aide-product-tokens';
+import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { Badge as AstryxBadge } from '@astryxdesign/core/Badge';
 import { Button as AstryxButton } from '@astryxdesign/core/Button';
 import { IconButton as AstryxIconButton } from '@astryxdesign/core/IconButton';
@@ -1580,6 +1581,13 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiComposeState, setAiComposeState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [aiComposeMessage, setAiComposeMessage] = useState('');
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    description: string;
+    actionLabel: string;
+    actionVariant?: 'destructive' | 'primary';
+    onConfirm: () => void;
+  } | null>(null);
   const canvasViewportRef = useRef<HTMLDivElement>(null);
   const panSessionRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
   const undoStackRef = useRef<CanvasFrame[][]>([]);
@@ -1811,37 +1819,57 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
 
   const deleteActiveFrame = () => {
     if (!activeFrame) return;
-    if (!window.confirm(`${activeFrame.name} 프레임을 삭제할까요?`)) return;
-    const remaining = frames.filter((frame) => frame.id !== activeFrame.id);
-    setFrames(remaining);
-    if (remaining[0]) focusCanvasFrame(remaining[0], remaining);
-    else {
-      setActiveFrameId('');
-      setSelectedId(null);
-    }
+    const target = activeFrame;
+    setConfirmState({
+      title: '프레임 삭제',
+      description: `${target.name} 프레임과 그 안의 컴포넌트를 모두 삭제합니다.`,
+      actionLabel: '삭제',
+      onConfirm: () => {
+        const remaining = frames.filter((frame) => frame.id !== target.id);
+        setFrames(remaining);
+        if (remaining[0]) focusCanvasFrame(remaining[0], remaining);
+        else {
+          setActiveFrameId('');
+          setSelectedId(null);
+        }
+      },
+    });
   };
 
   const applyStructureTemplate = (template: AstryxTemplateEntry) => {
-    if (flattenCanvasItems(items).length > 0 && !window.confirm('현재 프레임의 구성 대신 선택한 템플릿을 적용할까요?')) return;
-    const device = activeFrame?.device ?? activeDevice;
-    const nextItems = astryxTemplateToItems(template, device);
-    const name = `${FRAME_DIMENSIONS[device].label} · ${template.name}`;
+    const doApply = () => {
+      const device = activeFrame?.device ?? activeDevice;
+      const nextItems = astryxTemplateToItems(template, device);
+      const name = `${FRAME_DIMENSIONS[device].label} · ${template.name}`;
 
-    if (!activeFrame) {
-      const frame = createFrame(device, nextItems);
-      frame.name = name;
-      frame.templateId = `astryx:${template.id}`;
-      setFrames((previousFrames) => [...previousFrames, frame]);
-      setActiveFrameId(frame.id);
-    } else {
-      setFrames((previousFrames) => previousFrames.map((frame) => (
-        frame.id === activeFrame.id
-          ? { ...frame, name, items: nextItems, templateId: `astryx:${template.id}` }
-          : frame
-      )));
+      if (!activeFrame) {
+        const frame = createFrame(device, nextItems);
+        frame.name = name;
+        frame.templateId = `astryx:${template.id}`;
+        setFrames((previousFrames) => [...previousFrames, frame]);
+        setActiveFrameId(frame.id);
+      } else {
+        setFrames((previousFrames) => previousFrames.map((frame) => (
+          frame.id === activeFrame.id
+            ? { ...frame, name, items: nextItems, templateId: `astryx:${template.id}` }
+            : frame
+        )));
+      }
+      setSelectedId(null);
+      setLibraryTab('components');
+    };
+
+    if (flattenCanvasItems(items).length === 0) {
+      doApply();
+      return;
     }
-    setSelectedId(null);
-    setLibraryTab('components');
+    setConfirmState({
+      title: '템플릿 적용',
+      description: '현재 프레임의 구성을 지우고 선택한 템플릿으로 대체합니다.',
+      actionLabel: '적용',
+      actionVariant: 'primary',
+      onConfirm: doApply,
+    });
   };
 
   const sensors = useSensors(
@@ -2203,7 +2231,7 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
         <AstryxIconButton type="button" onClick={deleteActiveFrame} isDisabled={!activeFrame} tooltip="선택한 프레임 삭제" label="프레임 삭제" icon={<Trash2 size={14} aria-hidden />} variant="secondary" />
 
         <div style={{ width: 1, height: 24, background: AIDE.border }} />
-        <AstryxButton type="button" onClick={() => { if (items.length === 0 || window.confirm('선택한 프레임의 컴포넌트를 모두 지울까요?')) { setItems([]); setSelectedId(null); } }} isDisabled={items.length === 0} variant="ghost" label="초기화" />
+        <AstryxButton type="button" onClick={() => { if (items.length === 0) return; setConfirmState({ title: '프레임 초기화', description: '선택한 프레임의 컴포넌트를 모두 지웁니다.', actionLabel: '초기화', onConfirm: () => { setItems([]); setSelectedId(null); } }); }} isDisabled={items.length === 0} variant="ghost" label="초기화" />
         <AstryxButton type="button" onClick={handleExport} isDisabled={items.length === 0} label="HTML" icon={<Download size={14} aria-hidden />} />
         <AstryxButton type="button" onClick={togglePreviewMode} variant={previewMode ? 'primary' : 'secondary'} label={previewMode ? '편집으로 돌아가기' : '미리보기'} />
       </div>
@@ -2495,6 +2523,19 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
           {overlayComponent ? <DragPreview componentId={overlayComponent.componentId} props={overlayComponent.props} device={activeDevice} /> : null}
         </DragOverlay>
       </DndContext>
+
+      {confirmState ? (
+        <AlertDialog
+          isOpen
+          onOpenChange={(open) => { if (!open) setConfirmState(null); }}
+          title={confirmState.title}
+          description={confirmState.description}
+          cancelLabel="취소"
+          actionLabel={confirmState.actionLabel}
+          actionVariant={confirmState.actionVariant ?? 'destructive'}
+          onAction={() => { confirmState.onConfirm(); setConfirmState(null); }}
+        />
+      ) : null}
     </div>
   );
 }
