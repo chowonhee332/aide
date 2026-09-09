@@ -2524,18 +2524,17 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
         </DragOverlay>
       </DndContext>
 
-      {confirmState ? (
-        <AlertDialog
-          isOpen
-          onOpenChange={(open) => { if (!open) setConfirmState(null); }}
-          title={confirmState.title}
-          description={confirmState.description}
-          cancelLabel="취소"
-          actionLabel={confirmState.actionLabel}
-          actionVariant={confirmState.actionVariant ?? 'destructive'}
-          onAction={() => { confirmState.onConfirm(); setConfirmState(null); }}
-        />
-      ) : null}
+      {/* Stays mounted; AlertDialog manages its own open/close + focus. */}
+      <AlertDialog
+        isOpen={confirmState !== null}
+        onOpenChange={(open) => { if (!open) setConfirmState(null); }}
+        title={confirmState?.title ?? ''}
+        description={confirmState?.description ?? ''}
+        cancelLabel="취소"
+        actionLabel={confirmState?.actionLabel ?? '확인'}
+        actionVariant={confirmState?.actionVariant ?? 'destructive'}
+        onAction={() => { confirmState?.onConfirm(); setConfirmState(null); }}
+      />
     </div>
   );
 }
