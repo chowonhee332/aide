@@ -1943,6 +1943,10 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
     setAiComposeMessage('요청을 컴포넌트 구조로 바꾸는 중…');
     try {
       const geminiKey = window.localStorage.getItem('aide_gemini_api_key') ?? '';
+      // A frozen template renders as one opaque block; tell the planner what the
+      // current screen actually is so additions fit its purpose.
+      const templateId = activeFrame.templateId?.replace(/^astryx:/, '');
+      const template = templateId ? ASTRYX_TEMPLATES_BY_ID[templateId] : undefined;
       const response = await fetch('/api/playground-compose', {
         method: 'POST',
         headers: {
@@ -1952,6 +1956,7 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
         body: JSON.stringify({
           prompt,
           device: activeFrame.device,
+          templateContext: template ? `${template.name} — ${template.description} (${template.category})` : undefined,
           currentItems: activeFrame.items.filter((item) => !item.hidden).map((item) => ({ componentId: item.componentId, props: item.props })),
         }),
       });

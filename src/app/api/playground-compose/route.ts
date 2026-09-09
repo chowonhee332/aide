@@ -25,10 +25,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json() as {
       prompt?: string;
       device?: BuilderDevice;
+      templateContext?: string;
       currentItems?: Array<{ componentId: string; props?: Record<string, string> }>;
     };
     const prompt = body.prompt?.trim();
     const device = body.device === 'desktop' ? 'desktop' : 'mobile';
+    const templateContext = typeof body.templateContext === 'string' ? body.templateContext.slice(0, 400) : '';
     if (!prompt) return NextResponse.json({ error: '요청 내용을 입력해주세요.' }, { status: 400 });
 
     const apiKey = request.headers.get('x-gemini-key')?.trim() || process.env.GEMINI_API_KEY;
@@ -60,6 +62,7 @@ Rules:
 - Keep the plan compact and useful; do not add decorative components unless requested.
 
 Device: ${device}
+${templateContext ? `Current screen (verbatim template, not individually editable): ${templateContext}` : ''}
 Current components: ${JSON.stringify(body.currentItems ?? [])}
 Available catalog: ${JSON.stringify(catalog)}
 User request: ${prompt}`,

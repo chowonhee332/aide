@@ -5,18 +5,50 @@ import { GEMINI_ECONOMY_MODEL } from '@/lib/gemini-model-policy';
 
 // Compose mode: the brief picks ONE Astryx page template to open in the Playground
 // (no A/B/C). A small LLM 1-pass over the template catalog — no regex keyword map
-// (AGENTS.md) — with a deterministic fallback so an offline/failed model still
-// opens something sensible.
+// (AGENTS.md) — with a deterministic word-overlap fallback so an offline / no-key
+// / failed model still opens the closest template instead of dead-ending.
 
 function extractJson(text: string): unknown {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
   return JSON.parse((fenced ?? text).trim());
 }
 
+/** Lowercased word/character tokens for loose brief↔catalog overlap scoring. */
+function tokenize(text: string): string[] {
+  const lower = text.toLowerCase();
+  const words = lower.match(/[a-z0-9]{3,}/g) ?? [];
+  const hangul = lower.match(/[가-힣]{2,}/g) ?? [];
+  return [...words, ...hangul];
+}
+
+/**
+ * Deterministic fallback: the catalog row sharing the most tokens with the brief.
+ * The catalog is English-only, so a Korean brief usually scores 0 across the
+ * board — in that case fall back to a neutral scaffold rather than whatever
+ * happens to sort first.
+ */
+function pickTemplateByOverlap(brief: string): { id: string; name: string } {
+  const briefTokens = new Set(tokenize(brief));
+  let best: (typeof ASTRYX_TEMPLATES)[number] | undefined;
+  let bestScore = 0;
+  for (const template of ASTRYX_TEMPLATES) {
+    const haystack = tokenize(`${template.name} ${template.description} ${template.category}`);
+    let score = 0;
+    for (const token of haystack) if (briefTokens.has(token)) score += 1;
+    if (score > bestScore) {
+      bestScore = score;
+      best = template;
+    }
+  }
+  const chosen = best ?? ASTRYX_TEMPLATES_BY_ID['blank'] ?? ASTRYX_TEMPLATES[0];
+  return { id: chosen.id, name: chosen.name };
+}
+
 export async function POST(request: NextRequest) {
+  let brief = '';
   try {
     const body = (await request.json()) as { brief?: string };
-    const brief = body.brief?.trim();
+    brief = body.brief?.trim() ?? '';
     if (!brief) {
       return NextResponse.json({ error: '브리프를 입력해주세요.' }, { status: 400 });
     }
@@ -30,7 +62,8 @@ export async function POST(request: NextRequest) {
 
     const apiKey = request.headers.get('x-gemini-key')?.trim() || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'Gemini API Key를 먼저 설정해주세요.' }, { status: 400 });
+      const fallback = pickTemplateByOverlap(brief);
+      return NextResponse.json({ ...fallback, confidence: null, reason: '오프라인 추정 (API Key 없음)' });
     }
 
     const ai = new GoogleGenAI({ apiKey });
@@ -57,7 +90,8 @@ Brief: ${brief}`,
     const raw = extractJson(result.text ?? '') as { id?: string; confidence?: number; reason?: string };
     const matched = raw.id && ASTRYX_TEMPLATES_BY_ID[raw.id];
     if (!matched) {
-      return NextResponse.json({ error: '브리프에 맞는 템플릿을 찾지 못했습니다.' }, { status: 422 });
+      const fallback = pickTemplateByOverlap(brief);
+      return NextResponse.json({ ...fallback, confidence: null, reason: '오프라인 추정 (모델 응답 불명확)' });
     }
 
     return NextResponse.json({
@@ -67,15 +101,13 @@ Brief: ${brief}`,
       reason: typeof raw.reason === 'string' ? raw.reason : null,
     });
   } catch (error) {
+    // Model call failed (network, quota, invalid key, timeout). Still open the
+    // closest template rather than blocking compose mode.
+    if (brief) {
+      const fallback = pickTemplateByOverlap(brief);
+      return NextResponse.json({ ...fallback, confidence: null, reason: '오프라인 추정 (모델 호출 실패)' });
+    }
     const message = error instanceof Error ? error.message : '알 수 없는 오류';
-    const isAuthError = /API_KEY_INVALID|API key not valid|PERMISSION_DENIED|401/i.test(message);
-    return NextResponse.json(
-      {
-        error: isAuthError
-          ? 'Gemini API Key가 없거나 유효하지 않습니다. 홈의 API 설정에서 키를 확인해주세요.'
-          : `템플릿 매칭에 실패했습니다: ${message}`,
-      },
-      { status: isAuthError ? 401 : 500 },
-    );
+    return NextResponse.json({ error: `템플릿 매칭에 실패했습니다: ${message}` }, { status: 500 });
   }
 }
