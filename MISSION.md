@@ -42,7 +42,7 @@
 | C3 | 생성 프롬프트의 단계별 방법론이 버전·예산이 검증되는 단일 원본 | 개발 | ✅ `6879102` |
 | C4 | 방법론 MD ↔ 대형 프롬프트 모순 0 | 개발 | 🟡 3영역 해소, 골격 차별화·12컬럼 잔존 |
 | C5 | 기존 RED 테스트 2건을 별도 이슈로 분리 처리 | 검증 | ⬜ 미착수 |
-| C6 | Aide 스타일이 이식 가능한 단일 원본 — Tailwind 제거의 선행 | Brain | 🟡 S1 완료 `a048576`, S2~S5 남음 |
+| C6 | Aide 스타일이 이식 가능한 단일 원본 — Tailwind 제거의 선행 | Brain | 🟡 S1·S2 완료, S3 진행 중(16/51) |
 
 **다음 사이클 (진입조건: C4·C5 종료)** — 유료 A/B 비교로 A/B/C 생성 품질 실측.
 대표 브리프 6개·고정 변수·토큰/지연/보정 횟수 기록은 `docs/generation-methodology.md`,
@@ -90,6 +90,8 @@ Brain이 목표를 아래 역할로 쪼개 서브에이전트에 배정한다. �
 
 
 - **Brain 직접(2026-09-09) — Aide 테마화(§2 C6 S1)**: 🟡 `a048576`(미푸시). `src/theme/aide-theme.ts`가 `defineTheme`으로 저술한 정식 Astryx 테마. theme-neutral의 토큰표·components·icons를 **값으로 상속**하고 편차 7개만 선언(accent `#0064e0` 3종, 지면 `#f5f6fc`, `--radius-page` 1rem, `--font-family-body/heading` 한글 폴백). `npm run theme:build` → `src/theme/generated/aide.css|js`, `theme:check`가 stale 차단, `verify_aide_theme.mjs`가 편차 집합 고정(스프레드 제거 시 실패). `layout.tsx` `data-astryx-theme="aide"` + aide.css import, `AppChrome`이 `aideTheme` 제공, 브리지의 accent 패치 블록 제거(테마가 대체). **실측**: Astryx core 기본값 ≠ theme-neutral(11개 중 10개 상이, core는 푸른회색 #0a1317·px 반경) → core 상속은 전면 리스타일이라 금지. `color:{accent}` 설정은 중성색을 accent hue로 물들이고 accent를 대비 보정(#0064E0→#0058D2)하므로 미사용. 토큰 스프레드가 `typography`를 덮어 한글 폴백이 사라지는 함정 확인·회피. 브라우저(fresh tab, 콘솔 0): 홈·Playground·`/aide-ui` 정상, 크롬 토큰 현행과 동일, 프리즈 템플릿 내부는 neutral scope 유지(verbatim 보존). **남음**: S2 테마+CLI JSON → `aide.md` 토큰·레지스트리 생성기 · S3 `/aide-ui`를 Astryx로(→`ui/*` 50파일·Tailwind 158 제거) · S4 `aide-docs` specimen 204곳 · S5 StudioView 362 + `@import "tailwindcss"` 제거. **Tailwind 제거는 S3·S4 이후에만 물리적으로 가능.**
+
+- **Brain 직접(2026-09-09) — C6 S2·S3(§2 C6, 이어서 할 일)**: 🟡 `a03e9c2`·`af21e3c`·`bc77359`·`5b0952c`·`adf7004`(미푸시). **S2**: `scripts/astryx-component-map.mjs`가 `component_registry` 70개를 MAPPED 51 / NO_COUNTERPART 19로 전부 분류. `verify_astryx_component_map.mjs`가 aide.md에서 id를 직접 파싱하고 Astryx 이름을 CLI 카탈로그(163개)로 대조 — 계약 변경·버전업이 이전이 아니라 테스트에서 실패한다. **S3 아키텍처(검증됨)**: `@/components/ui/*` **모듈 경계를 유지하고 내부 구현만 교체**하면 import 지점 107개를 안 건드린다. 어댑터가 기존 prop 형태를 Astryx 모델로 변환. **제약**: Astryx는 `className`을 안 받고 레이아웃 API가 `xstyle`(StyleX)인데 이 빌드엔 babel 플러그인이 없어 userland `stylex.create()`가 throw → props로 넘기고 바깥 여백만 래퍼가 갖는다. **완료 16/51**: progress·loading / anchor·carousel·avatar-group·select·number-field·textarea / accordion·slider·file-uploader·field-group / date-picker·time-picker·stepper·pagination·pagination-dots·responsive-grid·chip. **매핑 4건 교정**(구현하며 발견): `prose`→Markdown 불가(마크다운 *문자열* 렌더러 vs JSX children) → NO_COUNTERPART; `field-group`→InputGroup 아님(단일 입력 장식) → `FormLayout`+fieldset 조합; `chip`은 두 역할 → `Token`+`ToggleButton` 분기; `pagination-dots`는 `Pagination variant="dots"`로 커버 → MAPPED. **브라우저에서만 잡힌 회귀 1건**: Astryx `NumberInput`의 `hasNumberSteppers` 기본값 false라 −/+ 버튼 소실 → 명시적으로 켬. `ui/*` className **286 → 124**. **다음(호출부 수 순)**: navigation 7 · sheet 10 · tabs 11 · tooltip 12 · popover 13 · field 20 · segmented-control 24 · dialog 26 · list-row 44 · badge 47 · table 56 · card 161 · button 232, 그 다음 REBUILD 19개(사용자 결정: Astryx 프리미티브로 재구현), 마지막에 S4 aide-docs specimen 204곳 · S5 StudioView 362 + `@import "tailwindcss"` 제거. 배치마다 build→lint→test→브라우저(fresh tab, 콘솔 0) 후 커밋.
 
 범례: 🟢 진행 중 · 🟡 대기 · 🔴 막힘 · ✅ 완료(다음 갱신 때 삭제)
 
