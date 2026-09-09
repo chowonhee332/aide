@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "vendor/**",
     // Vendored @astryxdesign/core page templates (prebuild output) — not Aide's to lint.
     "src/lib/design-systems/generated/astryx-templates/**",
+    // `astryx theme build` output for src/theme/aide-theme.ts — regenerate, don't edit.
+    "src/theme/generated/**",
   ]),
 ]);
 

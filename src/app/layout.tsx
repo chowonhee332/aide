@@ -4,6 +4,9 @@ import "./globals.css";
 import "@material-symbols/font-400/rounded.css";
 import "@astryxdesign/core/astryx.css";
 import "@astryxdesign/theme-neutral/theme.css";
+// Aide theme: theme-neutral + blue accent, our ground and page radius.
+// Built from src/theme/aide-theme.ts by `npm run theme:build`.
+import "@/theme/generated/aide.css";
 import { AUI_ROOT_CSS } from "@/lib/aide-product-tokens";
 import { CHROME_THEME_CSS } from "@/lib/aide-chrome-theme";
 import { AppChrome } from "@/components/AppChrome";
@@ -31,7 +34,7 @@ export default function RootLayout({
     <html
       lang="ko"
       data-theme="light"
-      data-astryx-theme="neutral"
+      data-astryx-theme="aide"
       className={`${geistMono.variable} h-full antialiased`}
     >
       <head>

@@ -157,23 +157,15 @@ const decls = Object.entries(OVERRIDES)
   .join('')
 
 /**
- * Astryx's own accent tokens for literal `@astryxdesign/core` components (SideNav
- * selection, focus ring, primary Button, SelectableCard). `theme-neutral` sets
- * these to monochrome on `[data-astryx-theme="neutral"]`; this block, injected
- * later and matching the same wrapper, restores the blue.
- */
-const astryxAccent =
-  `--color-accent:${ASTRYX.accent};` +
-  `--color-accent-muted:${ASTRYX.accentTint};` +
-  `--color-text-accent:${ASTRYX.accent};` +
-  `--color-icon-accent:${ASTRYX.accent};` +
-  `--color-on-accent:#ffffff;`
-
-/**
  * Override block for `layout.tsx`. Empty string when the bridge is off, so the
  * caller can skip rendering the `<style>` entirely.
+ *
+ * Astryx's own `--color-accent*` used to be patched back to blue here, because
+ * `theme-neutral` greys it out. That is now the Aide theme's job
+ * (`src/theme/aide-theme.ts` pins the accent, `layout.tsx` scopes the page to
+ * `data-astryx-theme="aide"`), so this block only re-points `--aui-*` — the
+ * custom properties Aide's own primitives read.
  */
 export const CHROME_THEME_CSS = AIDE_CHROME_THEME_ACTIVE
-  ? `:root{color-scheme:light;--font-pretendard:${FIGTREE_STACK};${decls}}` +
-    `[data-astryx-theme]{${astryxAccent}}`
+  ? `:root{color-scheme:light;--font-pretendard:${FIGTREE_STACK};${decls}}`
   : ''
