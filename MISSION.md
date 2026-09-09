@@ -42,6 +42,7 @@
 | C3 | 생성 프롬프트의 단계별 방법론이 버전·예산이 검증되는 단일 원본 | 개발 | ✅ `6879102` |
 | C4 | 방법론 MD ↔ 대형 프롬프트 모순 0 | 개발 | 🟡 3영역 해소, 골격 차별화·12컬럼 잔존 |
 | C5 | 기존 RED 테스트 2건을 별도 이슈로 분리 처리 | 검증 | ⬜ 미착수 |
+| C6 | Aide 스타일이 이식 가능한 단일 원본 — Tailwind 제거의 선행 | Brain | 🟡 S1 완료 `a048576`, S2~S5 남음 |
 
 **다음 사이클 (진입조건: C4·C5 종료)** — 유료 A/B 비교로 A/B/C 생성 품질 실측.
 대표 브리프 6개·고정 변수·토큰/지연/보정 횟수 기록은 `docs/generation-methodology.md`,
@@ -87,6 +88,8 @@ Brain이 목표를 아래 역할로 쪼개 서브에이전트에 배정한다. �
 - **개발 + Brain(2026-09-09) — 단계별 방법론 MD 런타임 연결(§2 C3)**: ✅ `6879102`(미푸시, Codex 구현 + Brain 리뷰 수정). `src/lib/generation-methods/*.md` 5개를 `generation-methodology.ts`가 정적 import로 로딩·검증하고 호출마다 한 단계만 주입. analysis→`analyzeAndGenerateQuestions`, composition→`buildArtDirectionLayer`, image→`generateHeroImage`, review→`reviewDesignScreenshot`, expansion→`expandToPrototype`. 새 호출·모델 교체·의존성 추가 없음. ID/버전/필수 섹션/문자 예산은 모듈 로드 시 검증(실패 시 빌드 깨짐), 방법론 텍스트는 `.next/server`에만(client 번들 없음). **Brain 리뷰 수정**: `buildQualityRules`의 무조건 3영역 강제 2줄이 composition MD와 모순이고 매 호출 전송되어 삭제 + 재유입 차단 assertion. **§2 C4 잔존 모순**: `variantStrategyRule` "세 방향" 분기, `## 이 시안의 조형 차별화 의무`, 웹 "12컬럼 그리드" — `variantStyle`이 설정되는 실제 3-병렬 생성마다 함께 전송됨. 유료 A/B 비교와 묶어 해소. **미실행**: 유료 Gemini 생성. 이번 검증 범위는 프롬프트 조립·출력 계약·빌드 회귀이며 시안 품질 개선은 아직 미검증.
 
 
+
+- **Brain 직접(2026-09-09) — Aide 테마화(§2 C6 S1)**: 🟡 `a048576`(미푸시). `src/theme/aide-theme.ts`가 `defineTheme`으로 저술한 정식 Astryx 테마. theme-neutral의 토큰표·components·icons를 **값으로 상속**하고 편차 7개만 선언(accent `#0064e0` 3종, 지면 `#f5f6fc`, `--radius-page` 1rem, `--font-family-body/heading` 한글 폴백). `npm run theme:build` → `src/theme/generated/aide.css|js`, `theme:check`가 stale 차단, `verify_aide_theme.mjs`가 편차 집합 고정(스프레드 제거 시 실패). `layout.tsx` `data-astryx-theme="aide"` + aide.css import, `AppChrome`이 `aideTheme` 제공, 브리지의 accent 패치 블록 제거(테마가 대체). **실측**: Astryx core 기본값 ≠ theme-neutral(11개 중 10개 상이, core는 푸른회색 #0a1317·px 반경) → core 상속은 전면 리스타일이라 금지. `color:{accent}` 설정은 중성색을 accent hue로 물들이고 accent를 대비 보정(#0064E0→#0058D2)하므로 미사용. 토큰 스프레드가 `typography`를 덮어 한글 폴백이 사라지는 함정 확인·회피. 브라우저(fresh tab, 콘솔 0): 홈·Playground·`/aide-ui` 정상, 크롬 토큰 현행과 동일, 프리즈 템플릿 내부는 neutral scope 유지(verbatim 보존). **남음**: S2 테마+CLI JSON → `aide.md` 토큰·레지스트리 생성기 · S3 `/aide-ui`를 Astryx로(→`ui/*` 50파일·Tailwind 158 제거) · S4 `aide-docs` specimen 204곳 · S5 StudioView 362 + `@import "tailwindcss"` 제거. **Tailwind 제거는 S3·S4 이후에만 물리적으로 가능.**
 
 범례: 🟢 진행 중 · 🟡 대기 · 🔴 막힘 · ✅ 완료(다음 갱신 때 삭제)
 
