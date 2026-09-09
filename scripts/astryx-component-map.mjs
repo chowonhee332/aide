@@ -18,7 +18,7 @@ export const MAPPED = {
   // actions
   button: ['Button'],
   'icon-button': ['IconButton'],
-  chip: ['Token'],
+  chip: ['Token', 'ToggleButton'],
   anchor: ['Link'],
 
   // inputs
@@ -49,6 +49,7 @@ export const MAPPED = {
   'bottom-app-bar': ['MobileNav'],
   breadcrumb: ['Breadcrumbs', 'BreadcrumbItem'],
   pagination: ['Pagination'],
+  'pagination-dots': ['Pagination'],
 
   // layout
   panel: ['LayoutPanel'],
@@ -101,7 +102,6 @@ export const NO_COUNTERPART = {
   'global-navigation': 'GNB — Aide 고유 분류, TopNav 와 경계가 다름',
   'local-navigation': 'LNB — Aide 고유 분류, SideNav 와 경계가 다름',
   'app-footer': '앱 푸터 — LayoutFooter 는 셸 슬롯이지 컴포넌트가 아님',
-  'pagination-dots': '캐러셀 도트 — Astryx 없음',
   'list-section': '리스트 섹션 헤더 — Astryx 없음',
   metric: '지표 카드 — Astryx 없음',
   'bar-chart': '막대 차트 — Astryx에 차트 없음',

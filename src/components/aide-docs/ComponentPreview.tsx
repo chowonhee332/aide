@@ -241,7 +241,7 @@ export function ComponentPreview({ id, props = {}, device = 'desktop', context =
     case 'pagination-dots':
       return <PaginationDots total={Math.max(3, Math.min(7, options.length || 4))} index={0}/>
     case 'date-picker':
-      return <div className="docs-preview-stack"><DatePicker label={props.label || 'Visit date'} days={12} disabled={disabled}/></div>
+      return <div className="docs-preview-stack"><DatePicker label={props.label || 'Visit date'} disabled={disabled}/></div>
     case 'time-picker':
       return <div className="docs-preview-stack"><TimePicker label={props.label || 'Visit time'} disabled={disabled}/></div>
     case 'rating':
