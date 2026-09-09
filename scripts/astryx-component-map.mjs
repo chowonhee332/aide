@@ -23,7 +23,7 @@ export const MAPPED = {
 
   // inputs
   field: ['Field', 'FieldLabel', 'FieldStatus'],
-  'field-group': ['InputGroup', 'InputGroupText'],
+  'field-group': ['FormLayout'],
   textarea: ['TextArea'],
   'number-field': ['NumberInput'],
   select: ['Selector', 'SelectorOption'],
@@ -64,7 +64,6 @@ export const MAPPED = {
   'list-cell': ['Item'],
   'list-row': ['ListItem'],
   table: ['Table', 'TableRow', 'TableCell', 'TableHeader'],
-  prose: ['Markdown'],
   accordion: ['Collapsible', 'CollapsibleGroup'],
   carousel: ['Carousel'],
 
@@ -110,5 +109,7 @@ export const NO_COUNTERPART = {
   'page-header': '페이지 헤더 — Astryx 없음',
   'section-header': '섹션 헤더 — Astryx 없음',
   asset: '이미지/에셋 — Thumbnail 은 용도가 좁음',
+  prose:
+    '리치 텍스트 래퍼 — Astryx `Markdown` 은 마크다운 *문자열* 렌더러라 임의 JSX children 을 받지 못한다',
   result: '결과 화면 — EmptyState 는 빈 상태 전용',
 }

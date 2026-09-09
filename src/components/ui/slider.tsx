@@ -1,11 +1,52 @@
 "use client"
 
 import * as React from "react"
-import { cn } from "@/lib/utils"
+import { Slider as AstryxSlider } from "@astryxdesign/core/Slider"
 
-function Slider({ label, showValue = true, className, value, defaultValue, onChange, ...props }: React.ComponentProps<"input"> & { label: string; showValue?: boolean }) {
-  const [internal, setInternal] = React.useState(Number(defaultValue ?? props.min ?? 0))
+/**
+ * `slider` from the aide.md `component_registry`, rendered by Astryx `Slider`.
+ *
+ * Callers use the native range-input prop shape, so the numeric `onChange` Astryx
+ * reports is turned back into a change event before it is handed on. Astryx shows
+ * the value in a tooltip by default; `showValue` maps to its always-visible text.
+ */
+function Slider({
+  label,
+  showValue = true,
+  className,
+  value,
+  defaultValue,
+  onChange,
+  min,
+  max,
+  step,
+  disabled,
+}: Omit<React.ComponentProps<"input">, "onChange"> & {
+  label: string
+  showValue?: boolean
+  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void
+}) {
+  const [internal, setInternal] = React.useState(Number(defaultValue ?? min ?? 0))
   const current = value === undefined ? internal : Number(value)
-  return <label data-slot="slider" className={cn("grid gap-[var(--aui-component-slider-gap)]", className)}><span className="flex justify-between text-sm font-semibold text-[var(--aui-text)]"><span>{label}</span>{showValue&&<output className="font-medium tabular-nums text-[var(--aui-text-muted)]">{current}</output>}</span><input type="range" aria-label={label} value={current} className="h-[var(--aui-component-slider-target-height)] w-full cursor-pointer accent-[var(--aui-primary)] disabled:cursor-not-allowed disabled:opacity-40 md:h-[var(--aui-component-slider-compact-target-height)]" onChange={(event)=>{setInternal(Number(event.target.value));onChange?.(event)}} {...props}/></label>
+
+  return (
+    <div className={className}>
+      <AstryxSlider
+        label={label}
+        value={current}
+        min={min === undefined ? undefined : Number(min)}
+        max={max === undefined ? undefined : Number(max)}
+        step={step === undefined ? undefined : Number(step)}
+        isDisabled={disabled}
+        valueDisplay={showValue ? "text" : "none"}
+        onChange={(next: number) => {
+          setInternal(next)
+          onChange?.({
+            target: { value: String(next) },
+          } as React.ChangeEvent<HTMLInputElement>)
+        }}
+      />
+    </div>
+  )
 }
 export { Slider }

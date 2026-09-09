@@ -1,23 +1,39 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown } from "@/components/ui/material-icon"
-import { cn } from "@/lib/utils"
+import { Collapsible } from "@astryxdesign/core/Collapsible"
 
-function Accordion({ items, defaultOpenId, className }: { items: Array<{ id: string; title: React.ReactNode; content: React.ReactNode }>; defaultOpenId?: string; className?: string }) {
+/**
+ * `accordion` from the aide.md `component_registry`, rendered by Astryx `Collapsible`.
+ *
+ * The single-open behaviour is kept here as controlled `isOpen`/`onOpenChange`
+ * rather than handed to `CollapsibleGroup`, so the `defaultOpenId` API and the
+ * "click the open item to close it" behaviour survive the swap unchanged.
+ */
+function Accordion({
+  items,
+  defaultOpenId,
+  className,
+}: {
+  items: Array<{ id: string; title: React.ReactNode; content: React.ReactNode }>
+  defaultOpenId?: string
+  className?: string
+}) {
   const [openId, setOpenId] = React.useState<string | undefined>(defaultOpenId)
-  return <div data-slot="accordion" className={cn("w-full overflow-hidden rounded-[var(--aui-radius-card)] bg-[var(--aui-surface)]", className)}>
-    {items.map((item) => {
-      const open = openId === item.id
-      return <div key={item.id} className="border-b border-[var(--aui-border-subtle)] last:border-b-0">
-        <button type="button" aria-expanded={open} onClick={() => setOpenId(open ? undefined : item.id)}
-          className="flex min-h-[var(--aui-control-touch)] w-full items-center justify-between gap-[var(--aui-space-3)] px-[var(--aui-space-4)] py-[var(--aui-space-3)] text-left text-sm font-semibold text-[var(--aui-text)] outline-none hover:bg-[var(--aui-fill)] focus-visible:shadow-[var(--aui-shadow-focus)]">
-          {item.title}
-          <ChevronDown aria-hidden className={cn("size-5 shrink-0 text-[var(--aui-text-muted)] transition-transform", open && "rotate-180")}/>
-        </button>
-        {open && <div className="px-[var(--aui-space-4)] pb-[var(--aui-space-4)] text-sm leading-relaxed text-[var(--aui-text-muted)]">{item.content}</div>}
-      </div>
-    })}
-  </div>
+  return (
+    <div className={className}>
+      {items.map((item) => (
+        <Collapsible
+          key={item.id}
+          value={item.id}
+          trigger={item.title}
+          isOpen={openId === item.id}
+          onOpenChange={(open: boolean) => setOpenId(open ? item.id : undefined)}
+        >
+          {item.content}
+        </Collapsible>
+      ))}
+    </div>
+  )
 }
 export { Accordion }
