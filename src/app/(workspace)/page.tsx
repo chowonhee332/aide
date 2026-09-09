@@ -1423,7 +1423,7 @@ export default function Home() {
             value={genMode}
             onChange={(value) => { setGenMode(value as 'ai' | 'compose'); setTemplateMatchError(null) }}
             label="생성 방식"
-            style={{ alignSelf: 'center', marginBottom: '18px', '--color-text-secondary': '#ffffff' } as React.CSSProperties}
+            style={{ alignSelf: 'center', marginBottom: '18px', '--color-text-secondary': 'var(--aui-on-dark)' } as React.CSSProperties}
           >
             <SegmentedControlItem value="ai" label="AI 생성" />
             <SegmentedControlItem value="compose" label="템플릿" />
@@ -1629,7 +1629,7 @@ export default function Home() {
               </div>
             </div>
             {genMode === 'compose' && (templateMatchError || templateMatching) && (
-              <div style={{ marginTop: '10px', fontSize: 'var(--aui-type-caption-size)', color: templateMatchError ? 'var(--aui-danger, #d92d20)' : 'var(--aui-scrim)' }}>
+              <div style={{ marginTop: '10px', fontSize: 'var(--aui-type-caption-size)', color: templateMatchError ? 'var(--aui-negative)' : 'var(--aui-scrim)' }}>
                 {templateMatchError || '브리프에 맞는 템플릿을 찾는 중…'}
               </div>
             )}
@@ -2228,7 +2228,7 @@ export default function Home() {
             <Link
               onClick={() => setGenMdModalOpen(true)}
               hasUnderline
-              style={{ '--color-text-accent': '#ffffff', display: 'inline-flex', alignItems: 'center', gap: 'var(--aui-space-1)', cursor: 'pointer', letterSpacing: 'var(--aui-tracking-tight)' } as React.CSSProperties}
+              style={{ '--color-text-accent': 'var(--aui-on-dark)', display: 'inline-flex', alignItems: 'center', gap: 'var(--aui-space-1)', cursor: 'pointer', letterSpacing: 'var(--aui-tracking-tight)' } as React.CSSProperties}
             >
               <FileText size={12} />
               design.md 없으신가요? URL·화면 캡처로 자동 생성하기
