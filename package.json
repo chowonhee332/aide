@@ -15,7 +15,8 @@
     "icons:export": "node scripts/generate-material-symbols.mjs",
     "astryx:thumbs": "node scripts/capture-astryx-thumbs.mjs",
     "theme:build": "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs theme build src/theme/aide-theme.ts -o src/theme/generated/aide.css",
-    "theme:check": "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs theme build src/theme/aide-theme.ts -o src/theme/generated/aide.css --check"
+    "theme:check": "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs theme build src/theme/aide-theme.ts -o src/theme/generated/aide.css --check",
+    "demo:video": "node scripts/make-demo-video.mjs"
   },
   "dependencies": {
     "@astryxdesign/core": "^0.5.2",

@@ -49,6 +49,8 @@ next-env.d.ts
 
 # transient dir for the Astryx template vendoring script (prebuild)
 /.astryx-templates-tmp
+# scratch working dir: probe output, and `npm run demo:video` frames + mp4
+/scratchpad
 
 # iCloud sync conflict duplicates ("File 2.md")
 * 2.md
