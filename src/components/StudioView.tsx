@@ -3393,7 +3393,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
         {/* Tab bar */}
         <div className="border-b border-[var(--aui-shadow-soft)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
           <button onClick={onBack} aria-label="Aide 홈으로 이동" className="flex items-center px-3 border-r border-[var(--aui-shadow-soft)] hover:bg-[var(--aui-border)] transition-colors shrink-0">
-            <img src="/logo_aide.png" alt="Aide" className="h-14 w-auto object-contain" />
+            <img src="/logo_aide.png" alt="Aide" width={75} height={56} className="h-14 w-auto object-contain" />
           </button>
           {/* Scrollable history tabs */}
           <div className="flex items-stretch overflow-x-auto" style={{ scrollbarWidth: 'none', flex: '1 1 0', minWidth: 0 }}>
@@ -4102,7 +4102,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       {/* ── Header ── */}
       <header className="sticky top-0 z-10 px-8 flex items-center" style={{ height: 'var(--aui-toolbar-height)', backgroundColor: F.surface, borderBottom: `1px solid ${F.hairlineSoft}` }}>
         <button onClick={onBack} aria-label="Aide 홈으로 이동" className="transition-colors" style={{ border: 'none', background: 'transparent', padding: 0, textDecoration: 'none' }}>
-          <img src="/logo_aide.png" alt="Aide" className="h-14 w-auto object-contain" />
+          <img src="/logo_aide.png" alt="Aide" width={75} height={56} className="h-14 w-auto object-contain" />
         </button>
       </header>
 
