@@ -1,0 +1,15 @@
+/* GNB height follows the active density. Astryx TopNav only exposes `xstyle`
+   (StyleX, no babel plugin in this build), so the bar height is set on its class.
+   Scoped to the workspace shell so it never touches a TopNav inside a template. */
+.aide-workspace-shell .astryx-top-nav {
+  min-height: var(--aui-density-gnb-height);
+  height: var(--aui-density-gnb-height);
+}
+
+/* Collapse/expand: Astryx animates the rail width but snaps the item's
+   inline padding, so the nav icons visibly wobble mid-transition. Pin the
+   item box (no transition) — the icon stays put while only the rail width
+   and label change. */
+.aide-workspace-shell .astryx-side-nav-item {
+  transition: none !important;
+}

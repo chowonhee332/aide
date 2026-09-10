@@ -29,6 +29,7 @@ const tests = [
   'test/verify_astryx_playground_catalog.mjs',
   ['NODE_NO_WARNINGS=1 node', 'test/verify_aide_theme.mjs'],
   ['NODE_NO_WARNINGS=1 node', 'test/verify_astryx_component_map.mjs'],
+  ['NODE_NO_WARNINGS=1 node --experimental-strip-types', 'test/verify_memory_graph.mjs'],
   'test/verify_phase0_routes.mjs',
   'scripts/check-studio-contract.mjs'
 ]

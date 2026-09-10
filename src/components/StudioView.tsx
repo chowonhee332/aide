@@ -4,7 +4,7 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Sparkles, Upload, Download, RefreshCw, ArrowLeft, Check,
   SlidersHorizontal, X, Moon, Sun, Pencil, Send, ChevronDown,
-  CornerUpLeft, CornerUpRight, Image as ImageIcon, Shapes, Zap, ChevronRight, Bell, Settings,
+  CornerUpLeft, CornerUpRight, Image as ImageIcon, Shapes, Zap, ChevronRight, Bell, Settings, Link,
 } from '@/components/ui/material-icon'
 import { cn } from '@/lib/utils'
 import DotField from '@/components/DotField'
@@ -23,6 +23,8 @@ import { TextInput } from '@astryxdesign/core/TextInput'
 import { TextArea } from '@astryxdesign/core/TextArea'
 import { Slider } from '@astryxdesign/core/Slider'
 import { Switch as AstryxSwitch } from '@astryxdesign/core/Switch'
+import { DropdownMenu } from '@astryxdesign/core/DropdownMenu'
+import { Card as AstryxCard } from '@astryxdesign/core/Card'
 import { Chip } from '@/components/ui/chip'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox, Switch } from '@/components/ui/selection-control'
@@ -949,7 +951,6 @@ export default function StudioView({ triggerBrief, triggerPreset, triggerPlatfor
   const [zoom, setZoom] = useState(60)
   const [previewWidth, setPreviewWidth] = useState(390)
   const [copyLinkDone, setCopyLinkDone] = useState(false)
-  const shareRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef<HTMLDivElement>(null)
 
   // Figma export state
@@ -1331,7 +1332,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
   // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (shareRef.current && !shareRef.current.contains(e.target as Node)) setShareOpen(false)
       if (zoomRef.current && !zoomRef.current.contains(e.target as Node)) setZoomOpen(false)
     }
     document.addEventListener('mousedown', handler)
@@ -2341,7 +2341,7 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
 
     return (
       <div
-        className="h-screen overflow-hidden flex flex-col text-[var(--aui-text)] relative"
+        className="h-full overflow-hidden flex flex-col text-[var(--aui-text)] relative"
         style={{
           fontFamily: "var(--font-pretendard)",
           backgroundColor: 'var(--aui-surface-muted)',
@@ -2349,9 +2349,6 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
       >
         {/* Header */}
         <div className="border-b border-[var(--aui-shadow-soft)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
-          <div className="flex items-center px-3 border-r border-[var(--aui-shadow-soft)] shrink-0">
-            <AstryxIconButton onClick={onBack} label="Aide 홈으로 이동" icon={<ArrowLeft size={16} aria-hidden />} variant="ghost" />
-          </div>
           <div className="px-5 text-[13px] flex items-center gap-2 text-[var(--aui-text-muted)]">
             {isAnyGenerating ? (
               <>
@@ -3132,12 +3129,18 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
                 <p className="text-[12px] font-semibold" style={{ color: 'var(--aui-text)' }}>생성 엔진</p>
                 <p className="text-[11px]" style={{ color: 'var(--aui-text-muted)' }}>{generationEngine === 'legacy-html' ? '기존 품질의 자유도 높은 HTML 시안' : '편집·실시간 생성을 위한 Node Graph 실험'}</p>
               </div>
-              <div className="flex items-center p-1" style={{ borderRadius: 'var(--aui-radius-control)', background: 'var(--aui-surface-muted)', border: '1px solid var(--aui-border-subtle)' }}>
-                <button type="button" disabled={isAnyGenerating} onClick={() => changeGenerationEngine('node-graph')} className="px-3 py-1.5 text-[11px] font-medium disabled:opacity-50" style={{ border: 0, borderRadius: 'var(--aui-radius-sm)', cursor: isAnyGenerating ? 'not-allowed' : 'pointer', background: generationEngine === 'node-graph' ? 'var(--aui-on-dark)' : 'transparent', color: generationEngine === 'node-graph' ? 'var(--aui-text)' : 'var(--aui-text-muted)', boxShadow: generationEngine === 'node-graph' ? 'var(--aui-shadow-subtle)' : 'none' }}>Node Graph</button>
-                <button type="button" disabled={isAnyGenerating} onClick={() => changeGenerationEngine('legacy-html')} className="px-3 py-1.5 text-[11px] font-medium disabled:opacity-50" style={{ border: 0, borderRadius: 'var(--aui-radius-sm)', cursor: isAnyGenerating ? 'not-allowed' : 'pointer', background: generationEngine === 'legacy-html' ? 'var(--aui-on-dark)' : 'transparent', color: generationEngine === 'legacy-html' ? 'var(--aui-text)' : 'var(--aui-text-muted)', boxShadow: generationEngine === 'legacy-html' ? 'var(--aui-shadow-subtle)' : 'none' }}>기존 HTML</button>
-              </div>
+              <SegmentedControl
+                label="생성 엔진"
+                size="sm"
+                value={generationEngine}
+                onChange={(v) => changeGenerationEngine(v as 'node-graph' | 'legacy-html')}
+                isDisabled={isAnyGenerating}
+              >
+                <SegmentedControlItem value="node-graph" label="Node Graph" />
+                <SegmentedControlItem value="legacy-html" label="기존 HTML" />
+              </SegmentedControl>
             </div>
-            {generationEngine === 'node-graph' && <button type="button" disabled={isAnyGenerating} onClick={() => changeGenerationEngine('legacy-html')} className="self-start text-[11px] underline underline-offset-2 disabled:opacity-50" style={{ border: 0, padding: 0, background: 'transparent', color: 'var(--aui-text-muted)', cursor: isAnyGenerating ? 'not-allowed' : 'pointer' }}>품질이 낮으면 기존 HTML로 바로 돌아가기</button>}
+            {generationEngine === 'node-graph' && <AstryxButton variant="ghost" size="sm" isDisabled={isAnyGenerating} onClick={() => changeGenerationEngine('legacy-html')} label="품질이 낮으면 기존 HTML로 바로 돌아가기" style={{ alignSelf: 'flex-start' }} />}
           </div>
 
           {mainVariants.every(v => !v) && !isAnyGenerating && (
@@ -3388,13 +3391,10 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
   // ─── Step 4: Figma-style full-screen editor ──────────────────────────────
   if (step === 4 && result) {
     return (
-      <div className="h-screen overflow-hidden flex flex-col text-[var(--aui-text)] relative" style={{ fontFamily: "var(--font-pretendard)", backgroundColor: 'var(--aui-surface-muted)' }}>
+      <div className="h-full overflow-hidden flex flex-col text-[var(--aui-text)] relative" style={{ fontFamily: "var(--font-pretendard)", backgroundColor: 'var(--aui-surface-muted)' }}>
 
         {/* Tab bar */}
         <div className="border-b border-[var(--aui-shadow-soft)] flex items-stretch shrink-0 bg-white" style={{ height: '56px' }}>
-          <button onClick={onBack} aria-label="Aide 홈으로 이동" className="flex items-center px-3 border-r border-[var(--aui-shadow-soft)] hover:bg-[var(--aui-border)] transition-colors shrink-0">
-            <img src="/logo_aide.png" alt="Aide" width={75} height={56} className="h-14 w-auto object-contain" />
-          </button>
           {/* Scrollable history tabs */}
           <div className="flex items-stretch overflow-x-auto" style={{ scrollbarWidth: 'none', flex: '1 1 0', minWidth: 0 }}>
             {gnbHistory.map(item => {
@@ -3460,40 +3460,27 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
             })}
           </div>
           <div className="flex items-center gap-3 px-4">
-            <div className="relative" ref={shareRef}>
-              <AstryxButton
-                variant="secondary"
-                label="공유"
-                endContent={<ChevronDown size={11} />}
-                onClick={() => setShareOpen(o => !o)}
-              />
-              {shareOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-52 bg-white overflow-hidden z-50" style={{ borderRadius: "var(--aui-radius-sm)", boxShadow: "var(--aui-shadow-floating)", border: `1px solid ${F.hairlineSoft}` }}>
-                  <button onClick={handleCopyLink} className="w-full flex items-start gap-2.5 px-4 py-2.5 hover:bg-[var(--aui-border-subtle)] transition-colors text-left">
-                    {copyLinkDone
-                      ? <><span className="text-[var(--aui-positive)] mt-0.5">✓</span><span className="text-[13px] text-[var(--aui-positive)]">복사됨!</span></>
-                      : <><span className="text-[16px] mt-0.5 shrink-0">🔗</span>
-                          <span>
-                            <span className="block text-[13px] text-[var(--aui-text)]">링크 복사</span>
-                            <span className="block text-[13px] text-[var(--aui-text-muted)] leading-tight">이 브라우저에만 저장된 링크입니다.<br />다른 사람과는 HTML을 공유하세요.</span>
-                          </span>
-                        </>
-                    }
-                  </button>
-                  <div className="h-px bg-[var(--aui-border-subtle)] mx-3" />
-                  <button onClick={downloadHtml} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[var(--aui-text)] hover:bg-[var(--aui-border-subtle)] transition-colors text-left">
-                    <span className="text-[16px]">📄</span> HTML 다운로드
-                  </button>
-                  <button onClick={downloadPng} disabled={!result?.image} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-[var(--aui-border-subtle)] transition-colors text-left disabled:opacity-40" style={{ color: 'var(--aui-text)' }}>
-                    <span className="text-[16px]">🖼️</span> PNG 내보내기
-                  </button>
-                  <div className="h-px bg-[var(--aui-border-subtle)] mx-3" />
-                  <button onClick={exportToFigma} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[var(--aui-text)] hover:bg-[var(--aui-border-subtle)] transition-colors text-left">
-                    <span className="text-[16px]">🎨</span> Figma로 내보내기
-                  </button>
-                </div>
-              )}
-            </div>
+            <DropdownMenu
+              button={{ variant: 'secondary', label: '공유' }}
+              isMenuOpen={shareOpen}
+              onOpenChange={setShareOpen}
+              placement="below"
+              alignment="end"
+              menuWidth={248}
+              items={[
+                {
+                  label: copyLinkDone ? '복사됨!' : '링크 복사',
+                  description: '이 브라우저에만 저장된 링크입니다. 다른 사람과는 HTML을 공유하세요.',
+                  icon: copyLinkDone ? <Check size={16} /> : <Link size={16} />,
+                  onClick: handleCopyLink,
+                },
+                { type: 'divider' },
+                { label: 'HTML 다운로드', icon: <Download size={16} />, onClick: downloadHtml },
+                { label: 'PNG 내보내기', icon: <ImageIcon size={16} />, onClick: downloadPng, isDisabled: !result?.image },
+                { type: 'divider' },
+                { label: 'Figma로 내보내기', icon: <Shapes size={16} />, onClick: exportToFigma },
+              ]}
+            />
             <div className="size-7 flex items-center justify-center text-[13px] font-bold text-white shrink-0" style={{ borderRadius: "var(--aui-radius-pill)", backgroundColor: 'var(--aui-text)' }}>
               W
             </div>
@@ -4096,15 +4083,8 @@ const isMobile = platform !== 'web' && !isTablet && !answerStr.includes('웹') &
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ fontFamily: "var(--font-pretendard)", backgroundColor: F.canvas, color: F.ink }}>
+    <div className="min-h-full flex flex-col" style={{ fontFamily: "var(--font-pretendard)", backgroundColor: F.canvas, color: F.ink }}>
       {isExpandingPrototype && <ExpandingOverlay image={pickedVariantIdx !== null ? (mainVariants[pickedVariantIdx]?.image ?? undefined) : undefined} platform={platform} variantLabel={pickedVariantIdx !== null ? ['시안 A','시안 B','시안 C'][pickedVariantIdx] : undefined} />}
-
-      {/* ── Header ── */}
-      <header className="sticky top-0 z-10 px-8 flex items-center" style={{ height: 'var(--aui-toolbar-height)', backgroundColor: F.surface, borderBottom: `1px solid ${F.hairlineSoft}` }}>
-        <button onClick={onBack} aria-label="Aide 홈으로 이동" className="transition-colors" style={{ border: 'none', background: 'transparent', padding: 0, textDecoration: 'none' }}>
-          <img src="/logo_aide.png" alt="Aide" width={75} height={56} className="h-14 w-auto object-contain" />
-        </button>
-      </header>
 
       <main className="flex-1 flex flex-col">
 
@@ -4891,7 +4871,7 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-end p-6 pointer-events-none">
-      <div className="pointer-events-auto bg-white w-72 overflow-y-auto max-h-[90vh]" style={{ borderRadius: "var(--aui-radius-card)", boxShadow: "var(--aui-shadow-floating)", border: `1px solid ${F.hairlineSoft}` }}>
+      <AstryxCard style={{ pointerEvents: 'auto', width: '18rem', maxHeight: '90vh', overflowY: 'auto', padding: 0 }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--aui-shadow-line)]">
           <span className="text-[14px] font-semibold text-[var(--aui-text)]">Tweaks</span>
           <AstryxIconButton variant="ghost" icon={<X size={16} />} label="Tweaks 닫기" onClick={onClose} />
@@ -4972,12 +4952,13 @@ function TweaksModal({ darkMode, brandColor, onDarkMode, onBrandColor, onClose, 
               <span className="text-[13px] text-[var(--aui-text-muted)] font-mono">{brandColor}</span>
               <label className="cursor-pointer">
                 <div className="size-7 border-2 cursor-pointer" style={{ borderRadius: "var(--aui-radius-pill)", backgroundColor: brandColor, borderColor: 'var(--aui-shadow-medium)', boxShadow: "var(--aui-shadow-ring)" }} />
+                {/* Astryx has no color-picker component; the native input stays, visually hidden behind the swatch. */}
                 <input type="color" value={brandColor} onChange={e => onBrandColor(e.target.value)} className="sr-only" />
               </label>
             </div>
           </div>
         </div>
-      </div>
+      </AstryxCard>
     </div>
   )
 }

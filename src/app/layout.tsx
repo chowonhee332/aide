@@ -9,6 +9,7 @@ import "@astryxdesign/theme-neutral/theme.css";
 import "@/theme/generated/aide.css";
 import { AUI_ROOT_CSS } from "@/lib/aide-product-tokens";
 import { CHROME_THEME_CSS } from "@/lib/aide-chrome-theme";
+import { AIDE_DENSITY_ROOT_CSS } from "@/lib/aide-density";
 import { AppChrome } from "@/components/AppChrome";
 
 const geistMono = Geist_Mono({
@@ -50,6 +51,9 @@ export default function RootLayout({
         {CHROME_THEME_CSS ? (
           <style id="aui-chrome-theme">{CHROME_THEME_CSS}</style>
         ) : null}
+        {/* Default density scale. Must load last so it wins over aui-tokens, matching
+            the inline style AideDensityProvider writes onto <html> after hydration. */}
+        <style id="aui-density">{AIDE_DENSITY_ROOT_CSS}</style>
       </head>
       <body className="min-h-full flex flex-col">
         <AppChrome>{children}</AppChrome>

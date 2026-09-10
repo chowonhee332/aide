@@ -14,7 +14,7 @@ type RouteState = 'loading' | 'ready' | 'missing'
 function RecoveryState({ title, detail }: { title: string; detail: string }) {
   const router = useRouter()
   return (
-    <main className="min-h-screen flex items-center justify-center px-6 bg-[var(--aui-page)] text-[var(--aui-text)]">
+    <main className="min-h-full flex items-center justify-center px-6 bg-[var(--aui-page)] text-[var(--aui-text)]">
       <EmptyState
         title={title}
         description={detail}
@@ -26,7 +26,7 @@ function RecoveryState({ title, detail }: { title: string; detail: string }) {
 }
 
 function RouteLoading() {
-  return <main className="min-h-screen flex items-center justify-center bg-[var(--aui-page)]"><Spinner label="작업을 불러오는 중" /></main>
+  return <main className="min-h-full flex items-center justify-center bg-[var(--aui-page)]"><Spinner label="작업을 불러오는 중" /></main>
 }
 
 export function StudioHistoryRoute({ historyId }: { historyId: string }) {

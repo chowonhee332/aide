@@ -25,7 +25,6 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  ArrowLeft,
   ArrowUp,
   CornerUpLeft,
   CornerUpRight,
@@ -199,7 +198,6 @@ interface CanvasFrame {
 }
 
 interface BuilderViewProps {
-  onBack: () => void;
   /** Compose mode: open straight into this Astryx template (id or "astryx:<id>"). */
   initialTemplateId?: string;
   initialDevice?: FrameDevice;
@@ -1560,7 +1558,7 @@ function restoreFrames(value: string | null, refreshTemplates = false): CanvasFr
   }
 }
 
-export default function BuilderView({ onBack, initialTemplateId, initialDevice }: BuilderViewProps) {
+export default function BuilderView({ initialTemplateId, initialDevice }: BuilderViewProps) {
   const [frames, setFramesState] = useState<CanvasFrame[]>(() => [{
     id: 'frame-1',
     name: 'Mobile 1',
@@ -2203,7 +2201,6 @@ export default function BuilderView({ onBack, initialTemplateId, initialDevice }
     >
       {/* ── Top Bar ─────────────────────────────────────────────────────── */}
       <div style={{ height: 58, padding: `0 var(--aui-space-4)`, flexShrink: 0, display: 'flex', alignItems: 'center', gap: "var(--aui-space-3)", background: AIDE.surface, borderBottom: `1px solid ${AIDE.border}`, position: 'relative' }}>
-        <AstryxIconButton type="button" onClick={onBack} tooltip="돌아가기" label="돌아가기" icon={<ArrowLeft size={16} aria-hidden />} variant="secondary" />
         <div style={{ minWidth: 180, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: "var(--aui-space-2)" }}>
             <span style={{ fontSize: "var(--aui-type-label-size)", fontWeight: "var(--aui-weight-bold)", color: AIDE.text }}>Playground</span>

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { type HistoryItem, loadHistory, deleteHistoryItem, relativeTime } from '@/lib/history'
-import { ArrowLeft, Trash2 } from '@/components/ui/material-icon'
+import { Trash2 } from '@/components/ui/material-icon'
 import { AIDE_UI } from '@/lib/aide-ui'
 import { Button } from '@astryxdesign/core/Button'
 import { Card } from '@astryxdesign/core/Card'
@@ -58,15 +58,7 @@ export default function ProjectsView() {
         borderBottom: `1px solid ${F.hairlineSoft}`, padding: '20px 24px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <IconButton
-            onClick={() => router.push('/')}
-            label="홈으로"
-            icon={<ArrowLeft size={16} />}
-            variant="secondary"
-          />
-          <h1 style={{ fontSize: 20, fontWeight: 'var(--aui-weight-semibold)', color: F.ink, margin: 0 }}>프로젝트</h1>
-        </div>
+        <h1 style={{ fontSize: 20, fontWeight: 'var(--aui-weight-semibold)', color: F.ink, margin: 0 }}>프로젝트</h1>
         <TabList value={tab} onChange={(value) => setTab(value as ProjectTab)} aria-label="프로젝트 필터">
           {TABS.map(t => {
             const count = items.filter(item => matchesTab(item, t.id)).length

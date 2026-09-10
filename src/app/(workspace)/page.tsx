@@ -341,13 +341,29 @@ export default function Home() {
   const [usageSummary, setUsageSummary] = useState<GeminiUsageSummary | null>(null)
   const [usageLoading, setUsageLoading] = useState(false)
 
-  // Deep links (/?settings=api|billing) open the matching modal after mount —
-  // reading window in a lazy initializer would desync SSR/CSR hydration.
-  useEffect(() => {
-    const setting = readSettingsParam()
+  const openSettings = useCallback((setting: string) => {
     if (setting === 'api') startTransition(() => setApiKeyModalOpen(true))
     else if (setting === 'billing') startTransition(() => { setUsageLoading(true); setUsageModalOpen(true) })
   }, [])
+
+  // Deep links (/?settings=api|billing) open the matching modal after mount —
+  // reading window in a lazy initializer would desync SSR/CSR hydration.
+  // Consume the param one-shot: without this, closing the modal leaves it in the
+  // URL and every later mount (e.g. clicking 홈) re-opens the modal.
+  useEffect(() => {
+    const setting = readSettingsParam()
+    if (setting !== 'api' && setting !== 'billing') return
+    window.history.replaceState(window.history.state, '', '/')
+    openSettings(setting)
+  }, [openSettings])
+
+  // Same-page trigger from the GNB: when already on '/', router.push only changes
+  // the query string and never remounts, so the deep-link effect above can't fire.
+  useEffect(() => {
+    const onOpen = (event: Event) => openSettings((event as CustomEvent<string>).detail)
+    window.addEventListener('aide:open-settings', onOpen)
+    return () => window.removeEventListener('aide:open-settings', onOpen)
+  }, [openSettings])
 
   useEffect(() => {
     if (!usageModalOpen) return
@@ -2242,7 +2258,7 @@ export default function Home() {
 
             {/* API Key modal */}
       {apiKeyModalOpen && (
-      <Dialog isOpen={apiKeyModalOpen} onOpenChange={(open) => { if (!open) setApiKeyModalOpen(false) }} purpose="form" width={520}>
+      <Dialog isOpen={apiKeyModalOpen} onOpenChange={(open) => { if (!open) setApiKeyModalOpen(false) }} purpose="info" width={520}>
         <Layout
           header={<DialogHeader title={activeApiKeyMeta.title} onOpenChange={(open) => { if (!open) setApiKeyModalOpen(false) }} />}
           content={
